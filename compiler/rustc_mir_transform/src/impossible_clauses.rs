@@ -48,6 +48,7 @@ fn is_structurally_unsized<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
+#[tracing::instrument(level = "debug", skip(tcx), ret)]
 fn has_structurally_impossible_sized_clause<'tcx>(
     tcx: TyCtxt<'tcx>,
     sized_trait: DefId,
@@ -68,22 +69,22 @@ pub(crate) struct ImpossibleClauses;
 pub(crate) fn has_impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     let clauses = tcx.clauses_of(def_id).instantiate_identity(tcx);
     tracing::trace!(?clauses);
+    let clauses = clauses.clauses.into_iter().map(Unnormalized::skip_norm_wip);
+    let mut clauses: Vec<_> = traits::elaborate(tcx, clauses).collect();
+    tracing::trace!(?clauses);
 
     // Some `Sized` clauses that mention local generics are still impossible
     // for every instantiation, e.g. `dyn Trait<T>: Sized`.
     if let Some(sized_trait) = tcx.lang_items().sized_trait() {
         if clauses
-            .clauses
             .iter()
-            .copied()
-            .map(Unnormalized::skip_norm_wip)
-            .any(|clause| has_structurally_impossible_sized_clause(tcx, sized_trait, clause))
+            .any(|clause| has_structurally_impossible_sized_clause(tcx, sized_trait, *clause))
         {
             return true;
         }
     }
 
-    let clauses = clauses.clauses.into_iter().map(Unnormalized::skip_norm_wip).filter(|c| {
+    clauses.retain(|c| {
         !c.has_type_flags(
             // Only consider global clauses to simplify.
             TypeFlags::HAS_FREE_LOCAL_NAMES
@@ -91,7 +92,6 @@ pub(crate) fn has_impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> 
                 | TypeFlags::HAS_CONST_ALIAS,
         )
     });
-    let clauses: Vec<_> = traits::elaborate(tcx, clauses).collect();
     tracing::trace!(?clauses);
     clauses.references_error() || traits::impossible_clauses(tcx, clauses)
 }
