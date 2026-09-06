@@ -1,0 +1,30 @@
+error[E0658]: use of unstable library feature `codeview_annotation`
+  --> $DIR/feature-gate-codeview_annotation.rs:4:5
+   |
+LL |     const ARGS: &[&str] = &["string1", "string2", "string3"];
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(codeview_annotation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `codeview_annotation`
+  --> $DIR/feature-gate-codeview_annotation.rs:3:6
+   |
+LL | impl std::hint::CodeViewAnnotationArgs for Args {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(codeview_annotation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `codeview_annotation`
+  --> $DIR/feature-gate-codeview_annotation.rs:8:5
+   |
+LL |     std::hint::codeview_annotation::<Args>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(codeview_annotation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
