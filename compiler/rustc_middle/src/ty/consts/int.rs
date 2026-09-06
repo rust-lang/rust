@@ -141,7 +141,7 @@ impl std::fmt::Debug for ConstInt {
 ///
 /// This is a packed struct in order to allow this type to be optimally embedded in enums
 /// (like Scalar).
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[repr(packed)]
 pub struct ScalarInt {
     /// The first `size` bytes of `data` are the value.
