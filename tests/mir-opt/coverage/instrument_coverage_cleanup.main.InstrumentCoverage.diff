@@ -5,8 +5,6 @@
       let mut _0: ();
       let mut _1: bool;
   
-      coverage branch { true: BlockMarkerId(0), false: BlockMarkerId(1) } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0)
-  
 +     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage_cleanup.rs:13:1: 13:10 (#0);
 +     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0);
 +     coverage Code { bcb: bcb3 } => $DIR/instrument_coverage_cleanup.rs:14:37: 14:39 (#0);
@@ -32,7 +30,7 @@
   
       bb2: {
 +         Coverage::VirtualCounter(bcb1);
-          Coverage::BlockMarker(1);
+          Coverage::Point(BranchOutcome { outcome: true }, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).4);
           Coverage::Point(ImplicitElse, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).2);
           _0 = const ();
           goto -> bb4;
@@ -40,7 +38,7 @@
   
       bb3: {
 +         Coverage::VirtualCounter(bcb3);
-          Coverage::BlockMarker(0);
+          Coverage::Point(BranchOutcome { outcome: false }, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).4);
           Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).11);
           _0 = const ();
           goto -> bb4;
