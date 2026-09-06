@@ -718,9 +718,9 @@ impl dyn Error {
     #[rustc_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
         if self.is::<T>() {
+            let raw: *mut dyn Error = Box::into_raw(self);
             // SAFETY: Check ensures the type is correct.
             unsafe {
-                let raw: *mut dyn Error = Box::into_raw(self);
                 Ok(Box::from_raw(raw as *mut T))
             }
         } else {
