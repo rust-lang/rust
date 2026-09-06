@@ -1032,6 +1032,10 @@ impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
+
+    fn empty() -> Self {
+        Self::empty()
+    }
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1106,6 +1110,24 @@ pub struct TypingEnv<'tcx> {
     #[type_visitable(ignore)]
     typing_mode: TypingModeEqWrapper<'tcx>,
     pub param_env: ParamEnv<'tcx>,
+}
+
+impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> {
+    fn typing_mode(&self) -> TypingMode<'tcx> {
+        Self::typing_mode(&self)
+    }
+
+    fn new(param_env: ParamEnv<'tcx>, typing_mode: TypingMode<'tcx>) -> Self {
+        Self::new(param_env, typing_mode)
+    }
+
+    fn fully_monomorphized() -> Self {
+        Self::fully_monomorphized()
+    }
+
+    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis(tcx, def_id)
+    }
 }
 
 impl<'tcx> TypingEnv<'tcx> {

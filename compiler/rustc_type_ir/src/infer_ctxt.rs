@@ -6,13 +6,14 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 
 use crate::data_structures::DelayedMap;
+// use rustc_data_structures::stable_hash::StableHash;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
     self as ty, Interner, Region, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    /* TypeVisitable */ TypeVisitableExt,
 };
 
 mod private {

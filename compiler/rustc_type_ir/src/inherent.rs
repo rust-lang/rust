@@ -14,7 +14,8 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, Region, UpcastFrom,
+    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, Region,
+    TypingMode, UpcastFrom,
 };
 
 #[rust_analyzer::prefer_underscore_import]
@@ -244,6 +245,8 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_infer(interner: I, var: ty::InferConst) -> Self;
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
+
+    fn new_value(interner: I, valtree: I::ValTree, ty: I::Ty) -> I::Const;
 
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: ty::BoundConst<I>) -> Self;
 
@@ -620,6 +623,27 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 #[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn caller_bounds(self) -> impl Iterator<Item = I::Clause>;
+
+    /// Construct a trait environment suitable for contexts where there are
+    /// no where-clauses in scope. In the majority of cases it is incorrect
+    /// to use an empty environment. See the [dev guide section][param_env_guide]
+    /// for information on what a `ParamEnv` is and how to acquire one.
+    ///
+    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
+    fn empty() -> Self;
+}
+
+#[rust_analyzer::prefer_underscore_import]
+pub trait TypingEnv<I: Interner>:
+    Copy + Clone + Debug + PartialEq + Eq + Hash + TypeFoldable<I> + TypeVisitable<I>
+{
+    fn typing_mode(&self) -> TypingMode<I>;
+
+    fn new(param_env: I::ParamEnv, typing_mode: TypingMode<I>) -> Self;
+
+    fn fully_monomorphized() -> Self;
+
+    fn post_analysis(cx: I, def_id: I::DefId) -> Self;
 }
 
 #[rust_analyzer::prefer_underscore_import]
