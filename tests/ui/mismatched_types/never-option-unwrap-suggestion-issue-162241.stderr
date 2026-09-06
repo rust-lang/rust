@@ -8,10 +8,6 @@ LL |     let _: Option<u32> = never;
    |
    = note: expected enum `Option<u32>`
               found enum `Option<!>`
-help: consider using `Option::expect` to unwrap the `Option<!>` value, panicking if the value is an `Option::None`
-   |
-LL |     let _: Option<u32> = never.expect("REASON");
-   |                               +++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/never-option-unwrap-suggestion-issue-162241.rs:9:16
@@ -38,10 +34,6 @@ LL |     let number: Option<u32> = never;
    |
    = note: expected enum `Option<u32>`
               found enum `Option<!>`
-help: consider using `Option::expect` to unwrap the `Option<!>` value, panicking if the value is an `Option::None`
-   |
-LL |     let number: Option<u32> = never.expect("REASON");
-   |                                    +++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/never-option-unwrap-suggestion-issue-162241.rs:19:18
@@ -53,10 +45,6 @@ LL |     let _: u32 = never;
    |
    = note: expected type `u32`
               found enum `Option<!>`
-help: use the `?` operator to extract the `Option<!>` value, propagating an `Option::None` value to the caller
-   |
-LL |     let _: u32 = never?;
-   |                       +
 
 error: aborting due to 4 previous errors
 

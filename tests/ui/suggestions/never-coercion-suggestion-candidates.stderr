@@ -26,11 +26,6 @@ LL |     let _: u32 = Inherent::item;
    |
    = note: expected type `u32`
            found fn item `fn() {Inherent::item}`
-help: try referring to the associated const `ITEM` instead
-   |
-LL -     let _: u32 = Inherent::item;
-LL +     let _: u32 = Inherent::ITEM;
-   |
 
 error[E0308]: mismatched types
   --> $DIR/never-coercion-suggestion-candidates.rs:30:40
@@ -77,11 +72,6 @@ LL |     value.unwrap_or(&[])
    |                     this argument influences the return type of `unwrap_or`
 note: method defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-help: use `Option::map_or` to deref inner value of `Option`
-   |
-LL -     value.unwrap_or(&[])
-LL +     value.map_or(&[], |v| v)
-   |
 
 error: aborting due to 4 previous errors
 

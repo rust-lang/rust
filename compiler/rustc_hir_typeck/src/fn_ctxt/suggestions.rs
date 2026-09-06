@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             provided_ty
         };
 
-        if !self.may_coerce(expected_ty, dummy_ty) {
+        if !self.may_coerce_except_never(expected_ty, dummy_ty) {
             return;
         }
         let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
@@ -2003,7 +2003,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if item_ty.has_param() {
             return false;
         }
-        if self.may_coerce(item_ty, expected_ty) {
+        // An unused associated const of type `!` may not have been evaluated yet. Do not
+        // suggest referring to it just because `!` can coerce to the expected type.
+        if self.may_coerce_except_never(item_ty, expected_ty) {
             err.span_suggestion_verbose(
                 segment.ident.span,
                 format!("try referring to the associated const `{capitalized_name}` instead",),
@@ -2367,7 +2369,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             return false;
         };
-        if is_ctor || !self.may_coerce(args.type_at(0), expected) {
+        let inner_ty = args.type_at(0);
+
+        // For `Option<!>` where `Option<u32>` is expected, extracting `!` cannot produce
+        // an `Option<u32>`. Never-to-any coercion alone must not justify `.expect()` or `?`.
+        if is_ctor || !self.may_coerce_except_never(inner_ty, expected) {
             return false;
         }
 
