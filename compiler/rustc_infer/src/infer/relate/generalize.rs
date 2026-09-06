@@ -657,8 +657,8 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 }
 
                 let mut inner = self.infcx.inner.borrow_mut();
-                let variable_table = &mut inner.const_unification_table();
-                match variable_table.probe_value(vid) {
+                let vid_value = inner.const_unification_table().probe_value(vid);
+                match vid_value {
                     ConstVariableValue::Known { value: u } => {
                         drop(inner);
                         self.relate(u, u)
@@ -667,7 +667,8 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
-                            let new_var_id = variable_table
+                            let new_var_id = inner
+                                .const_unification_table()
                                 .new_key(ConstVariableValue::Unknown {
                                     origin,
                                     universe: self.for_universe,
@@ -680,7 +681,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 && !self.infcx.typing_mode_raw().is_coherence()
                                 && self.in_alias
                             {
-                                variable_table.union(vid, new_var_id);
+                                inner.equate_const_vids(vid, new_var_id);
                             }
                             Ok(ty::Const::new_var(tcx, new_var_id))
                         }
