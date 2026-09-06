@@ -296,7 +296,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let mut reachable = DenseBitSet::new_empty(mir.basic_blocks.len());
         let mut to_visit = vec![mir::START_BLOCK];
         while let Some(next) = to_visit.pop() {
-            if !reachable.insert(next) {
+            if !reachable.insert2(next) {
                 continue;
             }
 

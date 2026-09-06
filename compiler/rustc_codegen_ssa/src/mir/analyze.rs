@@ -48,7 +48,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mut non_ssa_locals = DenseBitSet::new_empty(analyzer.locals.len());
     for (local, kind) in analyzer.locals.iter_enumerated() {
         if matches!(kind, LocalKind::Memory) {
-            non_ssa_locals.insert(local);
+            non_ssa_locals.insert2(local);
         }
     }
 
