@@ -121,6 +121,25 @@
 //! definition is just using `T*` can lead to undefined behavior, as
 //! described in [rust-lang/unsafe-code-guidelines#198][ucg#198].
 //!
+//! Converting between any `Box<T>` and `Box<U>` by using [`core::mem::transmute`]
+//! is equivalent to the following sequence of operations:
+//!
+//! ```rust
+//! # let boxed_value = Box::new(1_i32);
+//! let ptr: *mut i32 = Box::into_raw(boxed_value);
+//! let casted_ptr = ptr as *mut u32;
+//! let new_box: Box<u32> = unsafe {
+//!     Box::from_raw(casted_ptr)
+//! };
+//! ```
+//!
+//! Any such conversion therefore needs to uphold the same guarantees as using
+//! a [pointer-to-pointer cast][ptr-cast] to convert between a `*mut T` and a `*mut U`.
+//! In addition such a `core::mem::transmute` call also needs to uphold the requirements
+//! of [`core::mem::transmute`] for a transmute between `T` and `U`, especially
+//! regarding to size, alignment and the validity of values for both types. Finally
+//! it is required that the pointer `*mut T` is well aligned for both types `T` and `U`.
+//!
 //! # Considerations for unsafe code
 //!
 //! **Warning: This section is not normative and is subject to change, possibly
@@ -180,6 +199,7 @@
 //! [`Layout`]: crate::alloc::Layout
 //! [`Layout::for_value(&*value)`]: crate::alloc::Layout::for_value
 //! [valid]: ptr#safety
+//! [ptr-cast]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#r-expr.as.pointer
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
