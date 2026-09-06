@@ -48,37 +48,6 @@ use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
-fn call_simple_intrinsic<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    name: Symbol,
-    args: &[OperandRef<'tcx, &'ll Value>],
-) -> Option<&'ll Value> {
-    let llvm_version = crate::llvm_util::get_version();
-    // minimum/maximum were broken for f64/f128 before
-    // <https://github.com/llvm/llvm-project/commit/56385af687c3a7a1f67716fb3f819336789a8cab>.
-    // We use the fallback body there.
-    let fixed_minmax = llvm_version >= (23, 0, 0);
-
-    let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
-        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
-        sym::minimumf64 if fixed_minmax => ("llvm.minimum", &[bx.type_f64()]),
-        sym::minimumf128 if fixed_minmax => ("llvm.minimum", &[bx.type_f128()]),
-
-        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
-        sym::maximumf64 if fixed_minmax => ("llvm.maximum", &[bx.type_f64()]),
-        sym::maximumf128 if fixed_minmax => ("llvm.maximum", &[bx.type_f128()]),
-
-        _ => return None,
-    };
-    Some(bx.call_intrinsic(
-        base_name,
-        type_params,
-        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-    ))
-}
-
 impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
     fn black_box(&mut self, result: PlaceRef<'tcx, &'ll Value>, span: Span) {
         let result_val_span = [result.val.llval];
@@ -130,18 +99,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
 
-        let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
-            _ if simple.is_some() => simple.unwrap(),
-            sym::minimum_number_nsz_f16
-            | sym::minimum_number_nsz_f32
-            | sym::minimum_number_nsz_f64
-            | sym::minimum_number_nsz_f128
-            | sym::maximum_number_nsz_f16
-            | sym::maximum_number_nsz_f32
-            | sym::maximum_number_nsz_f64
-            | sym::maximum_number_nsz_f128 => {
-                let intrinsic_name = if name.as_str().starts_with("min") {
+            sym::minimum_number_nsz | sym::maximum_number_nsz => {
+                let intrinsic_name = if name == sym::minimum_number_nsz {
                     "llvm.minimumnum"
                 } else {
                     "llvm.maximumnum"
@@ -511,7 +471,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::log2
             | sym::sin
             | sym::cos
-            | sym::powi => {
+            | sym::powi
+            | sym::minimum
+            | sym::maximum => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -546,6 +508,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
                     sym::powi => "llvm.powi",
+
+                    // minimum/maximum were broken for f64/f128 before
+                    // <https://github.com/llvm/llvm-project/commit/56385af687c3a7a1f67716fb3f819336789a8cab>.
+                    // We use the fallback body there.
+                    sym::minimum | sym::maximum
+                        if llvm_version < (23, 0, 0)
+                            && matches!(f, ty::FloatTy::F64 | ty::FloatTy::F128) =>
+                    {
+                        let fallback = ty::Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
+                    sym::minimum => "llvm.minimum",
+                    sym::maximum => "llvm.maximum",
 
                     _ => bug!(),
                 };

@@ -3076,7 +3076,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 #[rustc_intrinsic]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
-/// Returns the minimum of two `f16` values, ignoring NaN.
+/// Returns the minimum of two floating-point values, ignoring NaN.
 ///
 /// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
 /// zeros deterministically. In particular:
@@ -3089,36 +3089,13 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is [`f16::min`].
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimum_number_nsz_f16(x: f16, y: f16) -> f16 {
-    if x.is_nan() || y <= x {
-        y
-    } else {
-        // Either y > x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the minimum of two `f32` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f32::min`].
+/// The stabilized versions of this intrinsic are available on the float primitives via the
+/// `min` method. For example, [`f32::min`].
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn minimum_number_nsz_f32(x: f32, y: f32) -> f32 {
+#[rustc_do_not_const_check]
+pub const fn minimum_number_nsz<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x.is_nan() || y <= x {
         y
     } else {
@@ -3127,158 +3104,7 @@ pub const fn minimum_number_nsz_f32(x: f32, y: f32) -> f32 {
     }
 }
 
-/// Returns the minimum of two `f64` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f64::min`].
-#[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-pub const fn minimum_number_nsz_f64(x: f64, y: f64) -> f64 {
-    if x.is_nan() || y <= x {
-        y
-    } else {
-        // Either y > x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the minimum of two `f128` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f128::min`].
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimum_number_nsz_f128(x: f128, y: f128) -> f128 {
-    if x.is_nan() || y <= x {
-        y
-    } else {
-        // Either y > x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the minimum of two `f16` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf16(x: f16, y: f16) -> f16 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the minimum of two `f32` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf32(x: f32, y: f32) -> f32 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the minimum of two `f64` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf64(x: f64, y: f64) -> f64 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the minimum of two `f128` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf128(x: f128, y: f128) -> f128 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the maximum of two `f16` values, ignoring NaN.
+/// Returns the maximum of two floating-point values, ignoring NaN.
 ///
 /// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
 /// zeros deterministically. In particular:
@@ -3291,36 +3117,13 @@ pub const fn minimumf128(x: f128, y: f128) -> f128 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is [`f16::max`].
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximum_number_nsz_f16(x: f16, y: f16) -> f16 {
-    if x.is_nan() || y >= x {
-        y
-    } else {
-        // Either y < x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the maximum of two `f32` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f32::max`].
+/// The stabilized versions of this intrinsic are available on the float primitives via the
+/// `max` method. For example, [`f32::max`].
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn maximum_number_nsz_f32(x: f32, y: f32) -> f32 {
+#[rustc_do_not_const_check]
+pub const fn maximum_number_nsz<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x.is_nan() || y >= x {
         y
     } else {
@@ -3329,60 +3132,9 @@ pub const fn maximum_number_nsz_f32(x: f32, y: f32) -> f32 {
     }
 }
 
-/// Returns the maximum of two `f64` values, ignoring NaN.
+/// Returns the minimum of two floating-point values, propagating NaN.
 ///
-/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f64::max`].
-#[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-pub const fn maximum_number_nsz_f64(x: f64, y: f64) -> f64 {
-    if x.is_nan() || y >= x {
-        y
-    } else {
-        // Either y < x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the maximum of two `f128` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f128::max`].
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximum_number_nsz_f128(x: f128, y: f128) -> f128 {
-    if x.is_nan() || y >= x {
-        y
-    } else {
-        // Either y < x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the maximum of two `f16` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 maximum. In particular:
+/// This behaves like IEEE 754-2019 minimum. In particular:
 /// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
 /// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
@@ -3391,20 +3143,23 @@ pub const fn maximum_number_nsz_f128(x: f128, y: f128) -> f128 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn maximumf16(x: f16, y: f16) -> f16 {
-    if x > y {
+#[rustc_do_not_const_check]
+pub const fn minimum<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
+    if x < y {
         x
-    } else if y > x {
+    } else if y < x {
         y
     } else if x == y {
-        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
     } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
         x + y
     }
 }
 
-/// Returns the maximum of two `f32` values, propagating NaN.
+/// Returns the maximum of two floating-point values, propagating NaN.
 ///
 /// This behaves like IEEE 754-2019 maximum. In particular:
 /// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
@@ -3415,8 +3170,10 @@ pub const fn maximumf16(x: f16, y: f16) -> f16 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn maximumf32(x: f32, y: f32) -> f32 {
+#[rustc_do_not_const_check]
+pub const fn maximum<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x > y {
         x
     } else if y > x {
@@ -3424,54 +3181,7 @@ pub const fn maximumf32(x: f32, y: f32) -> f32 {
     } else if x == y {
         if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
     } else {
-        x + y
-    }
-}
-
-/// Returns the maximum of two `f64` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 maximum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximumf64(x: f64, y: f64) -> f64 {
-    if x > y {
-        x
-    } else if y > x {
-        y
-    } else if x == y {
-        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
-    } else {
-        x + y
-    }
-}
-
-/// Returns the maximum of two `f128` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 maximum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximumf128(x: f128, y: f128) -> f128 {
-    if x > y {
-        x
-    } else if y > x {
-        y
-    } else if x == y {
-        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
-    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
         x + y
     }
 }
