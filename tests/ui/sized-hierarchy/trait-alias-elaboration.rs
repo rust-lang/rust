@@ -6,7 +6,7 @@ use std::marker::MetaSized;
 // wrote `MetaSized` in the `dyn Trait` then that should still be an error so as not to accidentally
 // accept this going forwards.
 
-trait Qux = Clone;
+trait Qux = std::fmt::Debug;
 
 type Foo = dyn Qux + MetaSized;
 //~^ ERROR: only auto traits can be used as additional traits in a trait object

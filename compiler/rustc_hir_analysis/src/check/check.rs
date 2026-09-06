@@ -756,6 +756,22 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 }
 
+fn check_function_clauses(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    let clauses = tcx.clauses_of(def_id);
+    let param_env = tcx.param_env(def_id);
+    enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+        for (clause, span) in clauses.clauses {
+            wfcx.register_obligation(Obligation::new(
+                tcx,
+                ObligationCause::new(*span, def_id, ObligationCauseCode::WellFormed(None)),
+                param_env,
+                *clause,
+            ));
+        }
+        Ok(())
+    })
+}
+
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let mut res = Ok(());
     let generics = tcx.generics_of(def_id);
@@ -815,9 +831,9 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         DefKind::Fn => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().clauses_of(def_id);
             tcx.ensure_ok().fn_sig(def_id);
             tcx.ensure_ok().codegen_fn_attrs(def_id);
+            res = res.and(check_function_clauses(tcx, def_id));
             if let Some(i) = tcx.intrinsic(def_id) {
                 intrinsic::check_intrinsic_type(
                     tcx,
@@ -982,6 +998,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             } else {
                 check_type_alias_type_params_are_used(tcx, def_id);
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                    // FIXME(fmease): Update comment.
                     // HACK: We sometimes incidentally check that const arguments have the correct
                     // type as a side effect of the anon const desugaring. To make this "consistent"
                     // for users we explicitly check `ConstArgHasType` clauses so that const args
@@ -992,15 +1009,19 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     //
                     // Changing this to normalized obligations is a breaking change:
                     // `type Bar = [(); panic!()];` would become an error
-                    if let Some(unnormalized_obligations) = wfcx.unnormalized_obligations(span, ty.skip_norm_wip())
+                    if let Some(obligations) =
+                        wfcx.unnormalized_obligations(span, ty.skip_norm_wip())
                     {
-                        let filtered_obligations =
-                            unnormalized_obligations.into_iter().filter(|o| {
-                                matches!(o.predicate.kind().skip_binder(),
-                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
-                                    if matches!(ct.kind(), ty::ConstKind::Param(..)))
-                            });
-                        wfcx.ocx.register_obligations(filtered_obligations)
+                        wfcx.ocx.register_obligations(obligations.into_iter().filter(|o| {
+                            match o.predicate.kind().skip_binder() {
+                                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
+                                    ct,
+                                    _,
+                                )) => matches!(ct.kind(), ty::ConstKind::Param(..)),
+                                ty::PredicateKind::DynCompatible(_) => true,
+                                _ => false,
+                            }
+                        }))
                     }
                     Ok(())
                 }));
