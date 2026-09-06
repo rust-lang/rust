@@ -120,6 +120,7 @@ bitflags::bitflags! {
         /// Store aggregated counts of cache hits per query invocation.
         const QUERY_CACHE_HIT_COUNTS  = 1 << 10;
 
+        // keep this in sync with the `-Z self-profile-events` help message in rustc_session/options.rs
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits() |
                         Self::QUERY_PROVIDERS.bits() |
                         Self::QUERY_BLOCKED.bits() |
@@ -128,6 +129,7 @@ bitflags::bitflags! {
                         Self::ARTIFACT_SIZES.bits() |
                         Self::QUERY_CACHE_HIT_COUNTS.bits();
 
+        // keep this in sync with the `-Z self-profile-events` help message in rustc_session/options.rs
         const ARGS = Self::QUERY_KEYS.bits() | Self::FUNCTION_ARGS.bits();
         const QUERY_CACHE_HIT_COMBINED = Self::QUERY_CACHE_HITS.bits() | Self::QUERY_CACHE_HIT_COUNTS.bits();
     }
