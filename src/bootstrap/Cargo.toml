@@ -95,6 +95,7 @@ insta = "1.43"
 # dependencies, only bootstrap itself.
 [profile.dev]
 debug = 0
+debug-assertions = false
 
 [profile.dev.package]
 # Only use debuginfo=1 to further reduce compile times.

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use build_helper::ci::CiEnv;
@@ -86,10 +87,10 @@ impl TidyCtx {
         ctx.start_check(id.clone());
         RunningCheck {
             id,
-            bad: false,
+            bad: AtomicBool::new(false),
             ctx: self.diag_ctx.clone(),
             #[cfg(test)]
-            errors: vec![],
+            errors: Mutex::new(vec![]),
         }
     }
 
@@ -228,10 +229,10 @@ impl FinishedCheck {
 /// Represents a single tidy check, identified by its `name`, running.
 pub struct RunningCheck {
     id: CheckId,
-    bad: bool,
+    bad: AtomicBool,
     ctx: Arc<Mutex<DiagCtxInner>>,
     #[cfg(test)]
-    errors: Vec<String>,
+    errors: Mutex<Vec<String>>,
 }
 
 impl RunningCheck {
@@ -245,26 +246,26 @@ impl RunningCheck {
     }
 
     /// Immediately output an error and mark the check as failed.
-    pub fn error<T: Display>(&mut self, msg: T) {
+    pub fn error<T: Display>(&self, msg: T) {
         self.mark_as_bad();
         let msg = msg.to_string();
         output_message(&msg, Some(&self.id), Some(COLOR_ERROR));
         #[cfg(test)]
-        self.errors.push(msg);
+        self.errors.lock().unwrap().push(msg);
     }
 
     /// Immediately output a warning.
-    pub fn warning<T: Display>(&mut self, msg: T) {
+    pub fn warning<T: Display>(&self, msg: T) {
         output_message(&msg.to_string(), Some(&self.id), Some(COLOR_WARNING));
     }
 
     /// Output an informational message
-    pub fn message<T: Display>(&mut self, msg: T) {
+    pub fn message<T: Display>(&self, msg: T) {
         output_message(&msg.to_string(), Some(&self.id), None);
     }
 
     /// Output a message only if verbose output is enabled.
-    pub fn verbose_msg<T: Display>(&mut self, msg: T) {
+    pub fn verbose_msg<T: Display>(&self, msg: T) {
         if self.is_verbose_enabled() {
             self.message(msg);
         }
@@ -272,7 +273,7 @@ impl RunningCheck {
 
     /// Has an error already occurred for this check?
     pub fn is_bad(&self) -> bool {
-        self.bad
+        self.bad.load(Ordering::Relaxed)
     }
 
     /// Is verbose output enabled?
@@ -282,17 +283,20 @@ impl RunningCheck {
 
     #[cfg(test)]
     pub fn get_errors(&self) -> Vec<String> {
-        self.errors.clone()
+        self.errors.lock().unwrap().clone()
     }
 
-    fn mark_as_bad(&mut self) {
-        self.bad = true;
+    fn mark_as_bad(&self) {
+        self.bad.store(true, Ordering::Relaxed);
     }
 }
 
 impl Drop for RunningCheck {
     fn drop(&mut self) {
-        self.ctx.lock().unwrap().finish_check(FinishedCheck { id: self.id.clone(), bad: self.bad })
+        self.ctx.lock().unwrap().finish_check(FinishedCheck {
+            id: self.id.clone(),
+            bad: self.bad.load(Ordering::Relaxed),
+        })
     }
 }
 

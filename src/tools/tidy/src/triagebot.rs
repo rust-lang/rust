@@ -19,7 +19,7 @@ static SUBMODULES: LazyLock<Vec<&'static Path>> = LazyLock::new(|| {
 });
 
 pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("triagebot");
+    let check = tidy_ctx.start_check("triagebot");
     let triagebot_path = path.join("triagebot.toml");
 
     // This check is mostly to catch broken path filters *within* `triagebot.toml`, and not enforce
