@@ -1169,6 +1169,7 @@ where
                 if this.ty.is_like_maybe_dangling()
                     && let Some(info) = result
                 {
+                    std::hint::cold_path();
                     result = Some(PointeeInfo {
                         // Mark the pointer as raw
                         // (thus removing noalias/readonly/etc in case of the llvm backend)
