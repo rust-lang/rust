@@ -309,6 +309,7 @@ const impl<'f> Drop for VaList<'f> {
 // meantime.
 #[lang = "va_arg_safe"]
 #[stable(feature = "c_variadic", since = "1.99.0")]
+#[rustc_dyn_incompatible_trait]
 pub impl(self) unsafe trait VaArgSafe {}
 
 crate::cfg_select! {
