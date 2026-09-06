@@ -46,7 +46,7 @@ impl<T> Default for TransitiveRelationBuilder<T> {
     }
 }
 
-use crate::data_structures::IndexMap;
+use crate::data_structures::{HashMap, HashSet, IndexMap};
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
@@ -446,6 +446,12 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 ) -> RegionConstraint<I> {
     let assumptions = infcx.get_placeholder_assumptions(u);
 
+    // Replace current-universe `'?x` with a non-var it's equated with in this `And`
+    // (`'?x: '!a` and `'!a: '?x` → `'!a`). Alias/env matching has to see that shape
+    // or `alias_outlives.rs` / `implied_higher_ranked_alias_outlives_assumption.rs`
+    // go ambiguous.
+    let constraint = normalize_equated_region_vars(infcx, constraint, u);
+
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
     //     involving things from `u` or type outlives constraints not involving things from `u`
     //
@@ -468,6 +474,155 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 
     // 4. force the constraint to ambiguous if it could be `false` in future reruns
     propagate_ambiguity(constraint)
+}
+
+fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    constraint: RegionConstraint<I>,
+    u: UniverseIndex,
+) -> RegionConstraint<I> {
+    // Every `And` in the `Or` is a separate branch, so regions equated inside one of
+    // them may only be replaced within that branch.
+    let or_constraint = Or(constraint
+        .or_constraint
+        .0
+        .into_iter()
+        .map(|and| normalize_equated_region_vars_in_and(infcx, and, u))
+        .collect());
+
+    // The outer `And` is conjoined with every branch, so its replacements apply to the
+    // whole constraint.
+    let replacements = compute_equated_region_var_replacements(
+        infcx,
+        &conjunctive_region_outlives(&constraint.and_constraint),
+        u,
+    );
+    let constraint = RegionConstraint { and_constraint: constraint.and_constraint, or_constraint };
+    let constraint = if replacements.is_empty() {
+        constraint
+    } else {
+        constraint.fold_with(&mut EquatedRegionVarReplacer { cx: infcx.cx(), replacements })
+    };
+
+    // Replacing regions can make previously distinct leaves equal, so rebuild the
+    // canonical form instead of handing back a constraint with duplicates in it.
+    RegionConstraint::new_from_or(constraint.splatted_and_constraints())
+}
+
+fn normalize_equated_region_vars_in_and<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    and: And<I>,
+    u: UniverseIndex,
+) -> And<I> {
+    let replacements =
+        compute_equated_region_var_replacements(infcx, &conjunctive_region_outlives(&and), u);
+
+    if replacements.is_empty() {
+        and
+    } else {
+        And::new(and.fold_with(&mut EquatedRegionVarReplacer { cx: infcx.cx(), replacements }).0)
+    }
+}
+
+fn compute_equated_region_var_replacements<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    region_outlives: &[(Region<I>, Region<I>)],
+    u: UniverseIndex,
+) -> HashMap<Region<I>, Region<I>> {
+    compute_equated_region_var_replacements_from(
+        region_outlives,
+        |r| is_current_universe_region_var(infcx, r, u),
+        is_region_var::<I>,
+    )
+}
+
+fn compute_equated_region_var_replacements_from<R>(
+    region_outlives: &[(R, R)],
+    mut is_current_universe_region_var: impl FnMut(R) -> bool,
+    mut is_region_var: impl FnMut(R) -> bool,
+) -> HashMap<R, R>
+where
+    R: Copy + Eq + std::hash::Hash,
+{
+    let edges: HashSet<(R, R)> = region_outlives.iter().copied().collect();
+
+    let mut equated_regions_builder = TransitiveRelationBuilder::default();
+    let mut has_equated_regions = false;
+    for (r1, r2) in region_outlives.iter().copied() {
+        // Paired outlives constraints represent region equality. Build a transitive relation so
+        // current-universe variables equated through other variables still find a non-var partner.
+        if edges.contains(&(r2, r1)) {
+            equated_regions_builder.add(r1, r2);
+            equated_regions_builder.add(r2, r1);
+            has_equated_regions = true;
+        }
+    }
+
+    if !has_equated_regions {
+        return HashMap::default();
+    }
+
+    let equated_regions = equated_regions_builder.freeze();
+    let mut seen = HashSet::default();
+    let mut replacements = HashMap::default();
+    for (r1, r2) in region_outlives.iter().copied() {
+        for candidate in [r1, r2] {
+            if !seen.insert(candidate) || !is_current_universe_region_var(candidate) {
+                continue;
+            }
+
+            // `reachable_from` already includes `candidate` when both equality edges exist.
+            // Candidates are always revars, so the partner has to come from that closure.
+            // If a var has several non-var partners, `find` just picks one; the remaining
+            // folded constraints still relate those partners, so first-match only affects
+            // representation.
+            if let Some(partner) =
+                equated_regions.reachable_from(candidate).into_iter().find(|r| !is_region_var(*r))
+            {
+                replacements.insert(candidate, partner);
+            }
+        }
+    }
+    replacements
+}
+
+fn conjunctive_region_outlives<I: Interner>(and: &And<I>) -> Vec<(Region<I>, Region<I>)> {
+    use LeafRegionConstraint::*;
+
+    and.0
+        .iter()
+        .filter_map(|c| match c {
+            RegionOutlives(r1, r2, ()) => Some((*r1, *r2)),
+            Ambiguity(_) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => None,
+        })
+        .collect()
+}
+
+fn is_current_universe_region_var<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    region: Region<I>,
+    u: UniverseIndex,
+) -> bool {
+    is_region_var::<I>(region) && max_universe(infcx, region) == u
+}
+
+fn is_region_var<I: Interner>(region: Region<I>) -> bool {
+    matches!(region.kind(), RegionKind::ReVar(_))
+}
+
+struct EquatedRegionVarReplacer<I: Interner> {
+    cx: I,
+    replacements: HashMap<Region<I>, Region<I>>,
+}
+
+impl<I: Interner> TypeFolder<I> for EquatedRegionVarReplacer<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
+        self.replacements.get(&r).copied().unwrap_or(r)
+    }
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
@@ -645,6 +800,13 @@ fn pull_region_outlives_constraints_out_of_universe<
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
                 RegionOutlives(region_1, region_2, ()) => {
+                    if region_1 == region_2 {
+                        // `'r: 'r` is always true, including for current-universe regions, so
+                        // there's nothing left to pull out of the universe. Relating a region to
+                        // itself, component destructure, and normalize rewriting `'?x: '!a` +
+                        // `'!a: '?x` into `'!a: '!a` can all produce this.
+                        continue;
+                    }
                     let region_1_u = max_universe(infcx, region_1);
                     let region_2_u = max_universe(infcx, region_2);
 
@@ -1190,3 +1352,6 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
         Ok(a)
     }
 }
+
+#[cfg(all(test, feature = "nightly"))]
+mod tests;
