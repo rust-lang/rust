@@ -517,6 +517,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         }
 
+                        self.suggest_await_on_future(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                            span,
+                        );
+
                         if self.suggest_add_clone_to_arg(
                             &obligation,
                             &mut err,

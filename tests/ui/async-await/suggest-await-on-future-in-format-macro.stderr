@@ -1,0 +1,44 @@
+error[E0277]: `impl Future<Output = i32>` doesn't implement `std::fmt::Display`
+  --> $DIR/suggest-await-on-future-in-format-macro.rs:16:15
+   |
+LL |     println!("{number}");
+   |               ^^^^^^^^ `impl Future<Output = i32>` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `impl Future<Output = i32>`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+help: consider `await`ing on the `Future`
+   |
+LL ~     let number = make_number();
+LL +     let number = number.await;
+   |
+
+error[E0277]: `impl Future<Output = i32>` doesn't implement `Debug`
+  --> $DIR/suggest-await-on-future-in-format-macro.rs:22:15
+   |
+LL |     println!("{number:?}");
+   |               ^^^^^^^^^^ `impl Future<Output = i32>` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = help: the trait `Debug` is not implemented for `impl Future<Output = i32>`
+help: consider `await`ing on the `Future`
+   |
+LL ~     let number = make_number();
+LL +     let number = number.await;
+   |
+
+error[E0277]: `impl Future<Output = i32>` doesn't implement `std::fmt::Display`
+  --> $DIR/suggest-await-on-future-in-format-macro.rs:28:15
+   |
+LL |     println!("{number:.2}");
+   |               ^^^^^^^^^^^ `impl Future<Output = i32>` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `impl Future<Output = i32>`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+help: consider `await`ing on the `Future`
+   |
+LL ~     let number = make_number();
+LL +     let number = number.await;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
