@@ -404,6 +404,14 @@ impl<'a> Parser<'a> {
                 Case::Insensitive,
             );
         } else if macros_allowed && self.check_path() {
+            // Detect `field_name: Type` or `self: Type` inside a trait body and emit
+            // a clearer diagnostic before falling through to the macro invocation path.
+            let is_field_in_trait = fn_parse_mode.context == FnContext::Trait
+                && self.token.is_path_start()
+                && self.look_ahead(1, |t| t.kind == token::Colon);
+            if is_field_in_trait {
+                return self.recover_field_in_trait();
+            }
             if self.isnt_macro_invocation() {
                 self.recover_missing_kw_before_item()?;
             }
@@ -431,6 +439,35 @@ impl<'a> Parser<'a> {
                 Ok(None)
             }
         }
+    }
+
+    fn recover_field_in_trait(&mut self) -> PResult<'a, Option<ItemKind>> {
+        let ident_span = self.token.span;
+        let ident_str = pprust::token_to_string(&self.token).into_owned();
+        let is_self = self.token.is_keyword(kw::SelfLower);
+
+        self.bump(); // identifier or `self`
+        self.bump(); // `:`
+
+        let ty_str = match self.parse_ty() {
+            Ok(ty) => pprust::ty_to_string(&ty),
+            Err(e) => {
+                e.cancel();
+                String::from("Type")
+            }
+        };
+        // Eat the trailing separator so the parser doesn't trip over it.
+        let _ = self.eat(exp!(Comma));
+        let _ = self.eat(exp!(Semi));
+
+        let span = ident_span.to(self.prev_token.span);
+        let sugg = if is_self {
+            diagnostics::FieldNotAllowedInTraitSugg::SelfReceiver { ty: ty_str }
+        } else {
+            diagnostics::FieldNotAllowedInTraitSugg::Method { ident: ident_str, ty: ty_str }
+        };
+        let err = self.dcx().create_err(diagnostics::FieldNotAllowedInTrait { span, sugg });
+        Err(err)
     }
 
     fn parse_use_item(&mut self) -> PResult<'a, ItemKind> {
