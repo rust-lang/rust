@@ -1,0 +1,19 @@
+error[E0758]: unterminated block doc-comment
+  --> $DIR/unterminated-block-comment-backtick.rs:1:1
+   |
+LL |   /** This doc comment has `/*` inside backticks */
+   |   ^-                        --                   -- ...and last nested comment terminates here.
+   |   |                         |
+   |   |                         ...as last nested comment starts here, maybe you want to close this instead?
+   |  _unterminated block doc-comment
+   | |
+...  |
+LL | | fn main() {}
+   | |_____________^
+   |
+   = note: `/*` or `*/` inside a Markdown code span is still interpreted as a block comment delimiter; the lexer does not parse Markdown
+   = help: consider removing the `/*` from the code span, closing it with a matching `*/`, or using a raw string doc attribute: `#![doc = r"..."]`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0758`.
