@@ -35,3 +35,9 @@ tests/ui/extern/issue-64655-allow-unwind-when-calling-panic-directly.rs
 tests/ui/panics/unwind-force-no-unwind-tables.rs
 tests/ui/delegation/fn-header.rs
 tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
+tests/ui/codegen/unknown-llvm-intrinsic.rs
+tests/ui/codegen/incorrect-llvm-intrinsic-signature.rs
+tests/ui/codegen/incorrect-arch-intrinsic.rs
+tests/ui/codegen/custom-target-invalid-llvm-target.rs
+tests/ui/asm/x86_64/naked_asm_escape.rs
+tests/ui/lto/debuginfo-lto-alloc.rs
