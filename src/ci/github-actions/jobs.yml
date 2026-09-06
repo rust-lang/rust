@@ -744,7 +744,7 @@ auto:
   # Run `checktools.sh` and upload the toolstate file.
   - name: test-x86_64-msvc-ext3
     env:
-      SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      SCRIPT: src/ci/docker/host-x86_64/test-x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
       HOST_TARGET: x86_64-pc-windows-msvc
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
