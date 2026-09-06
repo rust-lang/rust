@@ -1100,60 +1100,55 @@ where
     }
 
     if test_type == "ui" {
-        if run_error_pattern_test {
-            // After we removed the error tests that are known to panic with rustc_codegen_gcc, we now remove the passing tests since this runs the error tests.
-            walk_dir(
-                rust_path.join("tests/ui"),
-                &mut |_dir| Ok(()),
-                &mut |file_path| {
-                    if contains_ui_error_patterns(file_path, args.keep_lto_tests)? {
-                        Ok(())
-                    } else {
-                        remove_file(file_path).map_err(|e| e.to_string())
-                    }
-                },
-                true,
-            )?;
-        } else {
-            // These two functions are used to remove files that are known to not be working currently
-            // with the GCC backend to reduce noise.
-            fn dir_handling(keep_lto_tests: bool) -> impl Fn(&Path) -> Result<(), String> {
-                move |dir| {
-                    if dir.file_name().map(|name| name == "auxiliary").unwrap_or(true) {
-                        return Ok(());
-                    }
-
-                    walk_dir(
-                        dir,
-                        &mut dir_handling(keep_lto_tests),
-                        &mut file_handling(keep_lto_tests),
-                        false,
-                    )
+        // Each mode runs one half of the ui tests and removes the other: `run_error_pattern_test`
+        // runs the tests expected to error, the other mode runs the rest. Only `.rs` files outside
+        // `auxiliary` are tests, so the expected output and the auxiliary crates are left alone.
+        fn dir_handling(
+            keep_lto_tests: bool,
+            remove_error_pattern_tests: bool,
+        ) -> impl Fn(&Path) -> Result<(), String> {
+            move |dir| {
+                if dir.file_name().map(|name| name == "auxiliary").unwrap_or(true) {
+                    return Ok(());
                 }
-            }
 
-            fn file_handling(keep_lto_tests: bool) -> impl Fn(&Path) -> Result<(), String> {
-                move |file_path| {
-                    if !file_path.extension().map(|extension| extension == "rs").unwrap_or(false) {
-                        return Ok(());
-                    }
-                    let path_str = file_path.display().to_string().replace("\\", "/");
-                    if valid_ui_error_pattern_test(&path_str) {
-                        return Ok(());
-                    } else if contains_ui_error_patterns(file_path, keep_lto_tests)? {
-                        return remove_file(&file_path);
-                    }
-                    Ok(())
-                }
+                walk_dir(
+                    dir,
+                    &mut dir_handling(keep_lto_tests, remove_error_pattern_tests),
+                    &mut file_handling(keep_lto_tests, remove_error_pattern_tests),
+                    false,
+                )
             }
-
-            walk_dir(
-                rust_path.join("tests/ui"),
-                &mut dir_handling(args.keep_lto_tests),
-                &mut file_handling(args.keep_lto_tests),
-                false,
-            )?;
         }
+
+        fn file_handling(
+            keep_lto_tests: bool,
+            remove_error_pattern_tests: bool,
+        ) -> impl Fn(&Path) -> Result<(), String> {
+            move |file_path| {
+                if !file_path.extension().map(|extension| extension == "rs").unwrap_or(false) {
+                    return Ok(());
+                }
+                let path_str = file_path.display().to_string().replace("\\", "/");
+                if valid_ui_error_pattern_test(&path_str) {
+                    return Ok(());
+                }
+                if contains_ui_error_patterns(file_path, keep_lto_tests)?
+                    == remove_error_pattern_tests
+                {
+                    return remove_file(file_path);
+                }
+                Ok(())
+            }
+        }
+
+        let remove_error_pattern_tests = !run_error_pattern_test;
+        walk_dir(
+            rust_path.join("tests/ui"),
+            &mut dir_handling(args.keep_lto_tests, remove_error_pattern_tests),
+            &mut file_handling(args.keep_lto_tests, remove_error_pattern_tests),
+            false,
+        )?;
         if let Some(retained_tests_list_path) = retained_tests_list_path {
             check_for_dead_listed_tests(&rust_path, retained_tests_list_path)?;
         }
