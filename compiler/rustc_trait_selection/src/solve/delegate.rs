@@ -155,7 +155,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         use ComputeGoalFastPathOutcome as Outcome;
 
         // FIXME(-Zassumptions-on-binders): actually handle fast path
-        if self.tcx.assumptions_on_binders() {
+        if self.tcx.assumptions_on_binders_any() {
             return Outcome::NoFastPath;
         }
 

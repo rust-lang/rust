@@ -21,6 +21,7 @@ use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes
 use crate::solve::assembly::{
     self, AllowInferenceConstraints, AssembleCandidatesFrom, Candidate, FailedCandidateInfo,
 };
+use crate::solve::eval_ctxt::ForallBinderKind;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
@@ -1118,6 +1119,7 @@ where
                     ecx.enter_forall_with_assumptions(
                         target_projection,
                         param_env,
+                        ForallBinderKind::Other,
                         |ecx, target_projection| {
                             let source_projection =
                                 ecx.instantiate_binder_with_infer(source_projection);
@@ -1145,6 +1147,7 @@ where
                         ecx.enter_forall_with_assumptions(
                             target_principal,
                             param_env,
+                            ForallBinderKind::Other,
                             |ecx, target_principal| {
                                 let source_principal =
                                     ecx.instantiate_binder_with_infer(source_principal);
@@ -1180,6 +1183,7 @@ where
                         ecx.enter_forall_with_assumptions(
                             target_projection,
                             param_env,
+                            ForallBinderKind::Other,
                             |ecx, target_projection| {
                                 let source_projection = ecx.instantiate_binder_with_infer(matching);
                                 ecx.eq(param_env, source_projection, target_projection)?;
@@ -1411,9 +1415,11 @@ where
         ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         self.probe_trait_candidate(source).enter(|ecx| {
+            let self_ty = goal.predicate.self_ty();
             let goals = ecx.enter_forall_with_assumptions(
-                constituent_tys(ecx, goal.predicate.self_ty())?,
+                constituent_tys(ecx, self_ty)?,
                 goal.param_env,
+                ForallBinderKind::for_self_ty::<I>(self_ty),
                 |ecx, tys| {
                     tys.into_iter()
                         .map(|ty| {

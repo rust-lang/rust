@@ -638,7 +638,7 @@ impl<I: Interner> Eq for ExternalConstraintsData<I> {}
 
 impl<I: Interner> ExternalConstraintsData<I> {
     pub fn new(cx: I) -> Self {
-        let region_constraints = match cx.assumptions_on_binders() {
+        let region_constraints = match cx.assumptions_on_binders_any() {
             true => ExternalRegionConstraints::NextGen(RegionConstraint::new_true()),
             false => ExternalRegionConstraints::Old(vec![]),
         };

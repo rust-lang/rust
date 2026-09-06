@@ -68,7 +68,7 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         }
         ty::PredicateKind::Clause(
             ty::ClauseKind::RegionOutlives(_) | ty::ClauseKind::TypeOutlives(_),
-        ) if infcx.tcx.assumptions_on_binders() => FulfillmentErrorCode::Outlives,
+        ) if infcx.tcx.assumptions_on_binders_any() => FulfillmentErrorCode::Outlives,
         ty::PredicateKind::Clause(_)
         | ty::PredicateKind::DynCompatible(_)
         | ty::PredicateKind::Ambiguous => {
