@@ -339,7 +339,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             // Fallback via libm, but the LLVM intrinsic is used instead.
             sym::sin,
             sym::cos,
-            sym::powf16, sym::powf32, sym::powf64,
+            sym::powf,
             sym::sqrt,
             sym::exp,
             sym::exp2,

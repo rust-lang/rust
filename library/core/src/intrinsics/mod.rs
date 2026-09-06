@@ -1141,48 +1141,25 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::maybe_available::cosf128(x) }
 }
 
-/// Raises an `f16` to an `f16` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::powf`](../../std/primitive.f16.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf16(a: f16, x: f16) -> f16 {
-    powf32(a as f32, x as f32) as f16
-}
-/// Raises an `f32` to an `f32` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::powf`](../../std/primitive.f32.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf32(a: f32, x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => powf64(a as f64, x as f64) as f32,
-        _ => libm::likely_available::powf(a, x),
+intrinsic_dispatch_on_type! {
+    /// Raises a floating-point value to a power of the same type.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `powf` method. For example, [`f32::powf`](../../std/primitive.f32.html#method.powf).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn powf<T: bounds::FloatPrimitive>(a: T, x: T) -> T;
+
+    f16 => { powf(a as f32, x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => powf(a as f64, x as f64) as f32,
+            _ => libm::likely_available::powf(a, x),
+        }
     }
-}
-/// Raises an `f64` to an `f64` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::powf`](../../std/primitive.f64.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf64(a: f64, x: f64) -> f64 {
-    libm::likely_available::pow(a, x)
-}
-/// Raises an `f128` to an `f128` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::powf`](../../std/primitive.f128.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf128(a: f128, x: f128) -> f128 {
-    libm::maybe_available::powf128(a, x)
+    f64 => { libm::likely_available::pow(a, x) }
+    f128 => { libm::maybe_available::powf128(a, x) }
 }
 
 intrinsic_dispatch_on_type! {

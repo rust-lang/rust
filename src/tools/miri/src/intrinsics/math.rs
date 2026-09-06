@@ -194,10 +194,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
             }
 
-            "powf16" => pow_intrinsic::<HalfS>(this, args, dest)?,
-            "powf32" => pow_intrinsic::<SingleS>(this, args, dest)?,
-            "powf64" => pow_intrinsic::<DoubleS>(this, args, dest)?,
-            "powf128" => todo!("f128"), // FIXME(f128)
+            "powf" => {
+                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                    bug!("`powf` intrinsic called on non-float type");
+                };
+                match float_ty {
+                    FloatTy::F16 => pow_intrinsic::<HalfS>(this, args, dest)?,
+                    FloatTy::F32 => pow_intrinsic::<SingleS>(this, args, dest)?,
+                    FloatTy::F64 => pow_intrinsic::<DoubleS>(this, args, dest)?,
+                    FloatTy::F128 => todo!("f128"), // FIXME(f128)
+                }
+            }
 
             "powif16" => powi_intrinsic::<HalfS>(this, args, dest)?,
             "powif32" => powi_intrinsic::<SingleS>(this, args, dest)?,
