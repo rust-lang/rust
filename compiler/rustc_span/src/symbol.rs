@@ -1203,6 +1203,7 @@ symbols! {
         link_args,
         link_cfg,
         link_dash_arg: "link-arg",
+        link_enzyme_intrinsics,
         link_llvm_intrinsics,
         link_name,
         link_ordinal,
