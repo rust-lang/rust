@@ -230,10 +230,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::autodiff => {
                 return codegen_autodiff(self, instance, args, result_layout, result_place);
             }
-            sym::offload_sync => {
-                codegen_offload_sync(self);
-                return IntrinsicResult::WroteIntoPlace;
-            }
 
             sym::offload_preload => {
                 codegen_offload_preload(self, tcx, instance, args);
@@ -249,9 +245,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
                 }
 
-                //if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-                //    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
-                //}
+                if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
+                }
 
                 codegen_offload(self, tcx, instance, args);
                 // offload *has* a return type, but somehow works without mentioning the place
@@ -1862,19 +1858,7 @@ fn offload_bool_arg<'ll, 'tcx>(args: &[OperandRef<'tcx, &'ll llvm::Value>], idx:
 
     raw != 0
 }
-fn codegen_offload_sync<'ll, 'tcx>(bx: &mut Builder<'_, 'll, 'tcx>) {
-    let cx = bx.cx;
 
-    //register_offload(cx);
-
-    let offload_globals_ref = cx.offload_globals.borrow();
-    let offload_globals = match offload_globals_ref.as_ref() {
-        Some(globals) => globals,
-        None => bug!("offload globals were not initialized"),
-    };
-
-    crate::builder::gpu_helper::synchronize_async_info(bx, offload_globals);
-}
 fn codegen_offload_preload_drop<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -1941,13 +1925,11 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
     crate::builder::gpu_helper::generate_mapper_call(
         bx,
         geps,
-        offload_globals,
         offload_data.memtransfer_end,
         offload_globals.end_mapper,
         offload_globals.mapper_fn_ty,
         1,
         offload_globals.ident_t_global,
-        TransferType::End,
     );
 }
 
@@ -2020,18 +2002,15 @@ fn codegen_offload_preload<'ll, 'tcx>(
     crate::builder::gpu_helper::generate_mapper_call(
         bx,
         geps,
-        offload_globals,
         offload_data.memtransfer_begin,
         offload_globals.begin_mapper,
         offload_globals.mapper_fn_ty,
         1,
         offload_globals.ident_t_global,
-        TransferType::Begin,
     );
 }
 
 pub(crate) enum TransferType {
-    NowaitBegin,
     Begin,
     Kernel,
     End,

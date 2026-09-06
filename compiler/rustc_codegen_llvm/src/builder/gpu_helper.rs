@@ -1,7 +1,5 @@
 use crate::SimpleCx;
 use crate::builder::Builder;
-use crate::builder::gpu_offload::{OffloadGlobals, get_or_create_async_info};
-use crate::intrinsic::TransferType;
 use crate::llvm;
 use crate::llvm::{Type, Value};
 use rustc_abi::Align;
@@ -61,81 +59,21 @@ pub(crate) fn get_geps<'ll, 'tcx>(
     [gep1, gep2, gep3]
 }
 
-pub(crate) fn synchronize_async_info<'ll, 'tcx>(
-    builder: &mut Builder<'_, 'll, 'tcx>,
-    offload_globals: &OffloadGlobals<'ll>,
-) {
-    let cx = builder.cx;
-    let ptr_ty = cx.type_ptr();
-    let null = cx.const_null(ptr_ty);
-
-    let async_info = builder.load(ptr_ty, offload_globals.async_info_global, Align::EIGHT);
-
-    let is_null = builder.icmp(rustc_codegen_ssa::common::IntPredicate::IntEQ, async_info, null);
-
-    let sync_bb = Builder::append_block(cx, builder.llfn(), "offload.async.sync");
-    let done_bb = Builder::append_block(cx, builder.llfn(), "offload.async.sync.done");
-
-    builder.cond_br(is_null, done_bb, sync_bb);
-
-    unsafe {
-        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, sync_bb);
-    }
-
-    builder.call(
-        offload_globals.async_info_synchronize_ty,
-        None,
-        None,
-        offload_globals.async_info_synchronize,
-        &[async_info],
-        None,
-        None,
-    );
-
-    builder.br(done_bb);
-
-    unsafe {
-        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, done_bb);
-    }
-}
-
 pub(crate) fn generate_mapper_call<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     geps: [&'ll Value; 3],
-    offload_globals: &OffloadGlobals<'ll>,
     o_type: &'ll Value,
     fn_to_call: &'ll Value,
     fn_ty: &'ll Type,
     num_args: u64,
     s_ident_t: &'ll Value,
-    transfer: TransferType,
 ) {
     let cx = builder.cx;
     let nullptr = cx.const_null(cx.type_ptr());
     let i64_max = cx.get_const_i64(u64::MAX);
     let num_args = cx.get_const_i32(num_args);
-    let mut args =
+    let args =
         vec![s_ident_t, i64_max, num_args, geps[0], geps[1], geps[2], o_type, nullptr, nullptr];
-    if matches!(transfer, TransferType::NowaitBegin) {
-        let i32_0 = cx.get_const_i32(0);
-        args.append(&mut vec![i32_0, nullptr, i32_0, nullptr]);
-    }
-    if matches!(transfer, TransferType::End) {
-        synchronize_async_info(builder, offload_globals);
-        //let a = offload_globals.taskwait;
-        //let b = offload_globals.taskwait_ty;
-        //let c = offload_globals.threadnum;
-        //let d = offload_globals.threadnum_ty;
-        //dbg!(&c);
-        //dbg!(&d);
-        //dbg!("first");
-        //let tid = builder.call(d, None, None, c, &vec![s_ident_t], None, None);
-        //let args2 = vec![s_ident_t, tid];
-        //dbg!(&a);
-        //dbg!(&b);
-        //dbg!("second");
-        //builder.call(b, None, None, a, &args2, None, None);
-    }
     builder.call(fn_ty, None, None, fn_to_call, &args, None, None);
 }
 

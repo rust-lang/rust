@@ -169,7 +169,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::non_exhaustive
         | sym::offload
         | sym::offload_get_num_devices
-        | sym::offload_sync
         | sym::offload_preload
         | sym::offload_preload_end
         | sym::offset_of
@@ -397,7 +396,6 @@ pub(crate) fn check_intrinsic_type(
         sym::offload_preload | sym::offload_preload_end => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0)), tcx.types.bool], tcx.types.unit)
         }
-        sym::offload_sync => (0, 0, vec![], tcx.types.unit),
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,

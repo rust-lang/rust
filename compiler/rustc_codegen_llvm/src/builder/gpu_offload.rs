@@ -16,10 +16,6 @@ use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Linkage, Type, Value};
 use crate::{SimpleCx, attributes};
 
-use rustc_target::spec::HasTargetSpec;
-//int32 __kmpc_omp_taskwait(ident_t *loc_ref, kmp_int32 gtid);
-//int32 __kmpc_global_thread_num(ident_t *);
-
 // LLVM kernel-independent globals required for offloading
 pub(crate) struct OffloadGlobals<'ll> {
     pub launcher_fn: &'ll llvm::Value,
@@ -33,27 +29,7 @@ pub(crate) struct OffloadGlobals<'ll> {
     pub end_mapper: &'ll llvm::Value,
     pub mapper_fn_ty: &'ll llvm::Type,
 
-    pub nowait_begin_mapper: &'ll llvm::Value,
-    pub nowait_mapper_fn_ty: &'ll llvm::Type,
-
     pub ident_t_global: &'ll llvm::Value,
-
-    //pub taskwait: &'ll llvm::Value,
-    //pub taskwait_ty: &'ll llvm::Type,
-    //pub threadnum: &'ll llvm::Value,
-    //pub threadnum_ty: &'ll llvm::Type,
-    pub async_info_create: &'ll Value,
-    pub async_info_create_ty: &'ll Type,
-
-    pub async_info_synchronize: &'ll Value,
-    pub async_info_synchronize_ty: &'ll Type,
-
-    pub async_info_destroy: &'ll Value,
-    pub async_info_destroy_ty: &'ll Type,
-
-    pub async_kernel_launcher: &'ll Value,
-    pub async_kernel_launcher_ty: &'ll Type,
-    pub async_info_global: &'ll llvm::Value,
 }
 
 impl<'ll> OffloadGlobals<'ll> {
@@ -62,148 +38,23 @@ impl<'ll> OffloadGlobals<'ll> {
         let kernel_args_ty = KernelArgsTy::new_decl(cx);
         let offload_entry_ty = TgtOffloadEntry::new_decl(cx);
         let (begin_mapper, _, end_mapper, mapper_fn_ty) = gen_tgt_data_mappers(cx);
-        let (nowait_begin_mapper, nowait_mapper_fn_ty) = gen_tgt_data_nowait_mappers(cx);
         let ident_t_global = generate_at_one(cx);
-        //let (taskwait, taskwait_ty, threadnum, threadnum_ty) = generate_sync(cx);
-        // ptr __tgt_async_info_create(i64)
-        let async_info_create_ty = cx.type_func(&[cx.type_i64()], cx.type_ptr());
 
-        // i32 __tgt_async_info_synchronize(ptr)
-        let async_info_synchronize_ty = cx.type_func(&[cx.type_ptr()], cx.type_i32());
-
-        // void __tgt_async_info_destroy(ptr)
-        let async_info_destroy_ty = cx.type_func(&[cx.type_ptr()], cx.type_void());
-
-        // i32 __tgt_target_kernel_async(
-        //     ptr ident,
-        //     i64 device,
-        //     i32 num_teams,
-        //     i32 thread_limit,
-        //     ptr host_ptr,
-        //     ptr kernel_args,
-        //     ptr async_info)
-        let async_kernel_launcher_ty = cx.type_func(
-            &[
-                cx.type_ptr(),
-                cx.type_i64(),
-                cx.type_i32(),
-                cx.type_i32(),
-                cx.type_ptr(),
-                cx.type_ptr(),
-                cx.type_ptr(),
-            ],
-            cx.type_i32(),
-        );
         // We want LLVM's openmp-opt pass to pick up and optimize this module, since it covers both
         // openmp and offload optimizations.
         llvm::add_module_flag_u32(cx.llmod(), llvm::ModuleFlagMergeBehavior::Max, "openmp", 51);
 
-        let async_info_create =
-            declare_offload_fn(cx, "__tgt_async_info_create", async_info_create_ty);
-
-        let async_info_synchronize =
-            declare_offload_fn(cx, "__tgt_async_info_synchronize", async_info_synchronize_ty);
-
-        let async_info_destroy =
-            declare_offload_fn(cx, "__tgt_async_info_destroy", async_info_destroy_ty);
-
-        let async_kernel_launcher =
-            declare_offload_fn(cx, "__tgt_target_kernel_async", async_kernel_launcher_ty);
-        let async_info_global = get_or_create_async_info_global(cx);
         OffloadGlobals {
             launcher_fn,
             launcher_ty,
             kernel_args_ty,
             offload_entry_ty,
             begin_mapper,
-            nowait_begin_mapper,
             end_mapper,
             mapper_fn_ty,
-            nowait_mapper_fn_ty,
             ident_t_global,
-            //taskwait,
-            //taskwait_ty,
-            //threadnum,
-            //threadnum_ty,
-            async_info_create,
-            async_info_create_ty,
-
-            async_info_synchronize,
-            async_info_synchronize_ty,
-
-            async_info_destroy,
-            async_info_destroy_ty,
-
-            async_kernel_launcher,
-            async_kernel_launcher_ty,
-            async_info_global,
         }
     }
-}
-
-fn get_or_create_async_info_global<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll llvm::Value {
-    let name = c"__rust_offload_async_info";
-
-    if let Some(global) = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, name.as_ptr()) } {
-        return global;
-    }
-
-    let global = unsafe { llvm::LLVMAddGlobal(cx.llmod, cx.type_ptr(), name.as_ptr()) };
-
-    unsafe {
-        llvm::LLVMSetInitializer(global, cx.const_null(cx.type_ptr()));
-        llvm::set_thread_local_mode(global, llvm::ThreadLocalMode::GeneralDynamic);
-        llvm::LLVMSetLinkage(global, llvm::Linkage::LinkOnceODRLinkage);
-    }
-
-    global
-}
-
-use rustc_codegen_ssa::common::IntPredicate;
-
-pub(crate) fn get_or_create_async_info<'ll, 'tcx>(
-    builder: &mut Builder<'_, 'll, 'tcx>,
-    offload_globals: &OffloadGlobals<'ll>,
-) -> &'ll Value {
-    let cx = builder.cx;
-    let ptr_ty = cx.type_ptr();
-    let null = cx.const_null(ptr_ty);
-
-    let current = builder.load(ptr_ty, offload_globals.async_info_global, Align::EIGHT);
-
-    let is_null = builder.icmp(IntPredicate::IntEQ, current, null);
-
-    let create_bb = Builder::append_block(cx, builder.llfn(), "offload.async.create");
-    let ready_bb = Builder::append_block(cx, builder.llfn(), "offload.async.ready");
-
-    builder.cond_br(is_null, create_bb, ready_bb);
-
-    unsafe {
-        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, create_bb);
-    }
-
-    let device_id = cx.get_const_i64(u64::MAX); // -1/default device
-
-    let created = builder.call(
-        offload_globals.async_info_create_ty,
-        None,
-        None,
-        offload_globals.async_info_create,
-        &[device_id],
-        None,
-        None,
-    );
-
-    builder.store(created, offload_globals.async_info_global, Align::EIGHT);
-
-    builder.br(ready_bb);
-
-    unsafe {
-        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, ready_bb);
-    }
-
-    // Reload instead of needing a phi.
-    builder.load(ptr_ty, offload_globals.async_info_global, Align::EIGHT)
 }
 
 // We need to register offload before using it. We also should unregister it once we are done, for
@@ -359,28 +210,6 @@ pub(crate) fn declare_omp_get_num_devices<'ll>(
     attributes::apply_to_llfn(tgt_decl, Function, &[nounwind]);
     (tgt_decl, tgt_fn_ty)
 }
-
-//fn generate_sync<'ll>(
-//    cx: &CodegenCx<'ll, '_>,
-//) -> (&'ll llvm::Value, &'ll llvm::Type, &'ll llvm::Value, &'ll llvm::Type) {
-//    let tptr = cx.type_ptr();
-//    let ti32 = cx.type_i32();
-//    let args1 = vec![tptr, ti32];
-//    let args2 = vec![tptr];
-//    let fn_ty1 = cx.type_func(&args1, ti32);
-//    let fn_ty2 = cx.type_func(&args2, ti32);
-//    let name1 = "__kmpc_omp_taskwait";
-//    let name2 = "__kmpc_global_thread_num";
-//    let decl1 = declare_offload_fn(&cx, name1, fn_ty1);
-//    let decl2 = declare_offload_fn(&cx, name2, fn_ty2);
-//
-//    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
-//    attributes::apply_to_llfn(decl1, Function, &[nounwind]);
-//    attributes::apply_to_llfn(decl2, Function, &[nounwind]);
-//    //int32 __kmpc_omp_taskwait(ident_t *loc_ref, kmp_int32 gtid);
-//    //int32 __kmpc_global_thread_num(ident_t *);
-//    (decl1, fn_ty1, decl2, fn_ty2)
-//}
 
 // What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
 // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
@@ -538,24 +367,6 @@ pub(crate) struct OffloadKernelGlobals<'ll> {
     pub region_id: &'ll llvm::Value,
 }
 
-fn gen_tgt_data_nowait_mappers<'ll>(
-    cx: &CodegenCx<'ll, '_>,
-) -> (&'ll llvm::Value, &'ll llvm::Type) {
-    let tptr = cx.type_ptr();
-    let ti64 = cx.type_i64();
-    let ti32 = cx.type_i32();
-
-    let args = vec![tptr, ti64, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti32, tptr, ti32, tptr];
-    let mapper_fn_ty = cx.type_func(&args, cx.type_void());
-    let mapper_begin = "__tgt_target_data_begin_nowait_mapper";
-    let begin_mapper_decl = declare_offload_fn(&cx, mapper_begin, mapper_fn_ty);
-
-    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
-    attributes::apply_to_llfn(begin_mapper_decl, Function, &[nounwind]);
-
-    (begin_mapper_decl, mapper_fn_ty)
-}
-
 fn gen_tgt_data_mappers<'ll>(
     cx: &CodegenCx<'ll, '_>,
 ) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Type) {
@@ -652,7 +463,6 @@ pub(crate) fn gen_define_handling<'ll>(
     let valid_begin_mappings = MappingFlags::TO | MappingFlags::LITERAL | MappingFlags::IMPLICIT;
     let transfer_to: Vec<u64> =
         transfer.iter().map(|m| m.intersection(valid_begin_mappings).bits()).collect();
-    //dbg!(&transfer);
     let transfer_from: Vec<u64> =
         transfer.iter().map(|m| m.intersection(MappingFlags::FROM).bits()).collect();
     let valid_kernel_mappings = MappingFlags::LITERAL | MappingFlags::IMPLICIT;
@@ -793,9 +603,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
 
-    let tgt_decl = offload_globals.async_kernel_launcher; //launcher_fn
-    //let tgt_target_kernel_ty = offload_globals.launcher_ty;
-    let tgt_target_kernel_ty = offload_globals.async_kernel_launcher_ty;
+    let tgt_decl = offload_globals.launcher_fn;
+    let tgt_target_kernel_ty = offload_globals.launcher_ty;
 
     let tgt_kernel_decl = offload_globals.kernel_args_ty;
     let begin_mapper_decl = offload_globals.begin_mapper;
@@ -820,17 +629,15 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     // Step 2)
     let s_ident_t = offload_globals.ident_t_global;
     let geps = get_geps(builder, ty, ty2, a1, a2, a4, has_dynamic);
-    //generate_mapper_call(
-    //    builder,
-    //    geps,
-    //    offload_globals,
-    //    memtransfer_begin,
-    //    begin_mapper_decl,
-    //    fn_ty,
-    //    num_args,
-    //    s_ident_t,
-    //    TransferType::Kernel,
-    //);
+    generate_mapper_call(
+        builder,
+        geps,
+        memtransfer_begin,
+        begin_mapper_decl,
+        fn_ty,
+        num_args,
+        s_ident_t,
+    );
     let values = KernelArgsTy::new(
         &cx,
         num_args,
@@ -853,23 +660,19 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     }
 
     let device_id = builder.sext(device_id, cx.type_i64());
-    let async_info = get_or_create_async_info(builder, offload_globals);
-    let args =
-        vec![s_ident_t, device_id, num_workgroups, threads_per_block, region_id, a5, async_info];
+    let args = vec![s_ident_t, device_id, num_workgroups, threads_per_block, region_id, a5];
     builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
 
     // Step 4)
     let geps = get_geps(builder, ty, ty2, a1, a2, a4, has_dynamic);
-    //generate_mapper_call(
-    //    builder,
-    //    geps,
-    //    offload_globals,
-    //    memtransfer_end,
-    //    end_mapper_decl,
-    //    fn_ty,
-    //    num_args,
-    //    s_ident_t,
-    //    TransferType::Kernel,
-    //);
+    generate_mapper_call(
+        builder,
+        geps,
+        memtransfer_end,
+        end_mapper_decl,
+        fn_ty,
+        num_args,
+        s_ident_t,
+    );
 }

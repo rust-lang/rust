@@ -3858,11 +3858,6 @@ pub const fn offload_get_num_devices() -> i32;
 #[rustc_nounwind]
 pub fn offload_preload<T: ?Sized>(ptr: *const T, is_mut: bool);
 
-/// Waits for previously submitted offload operations to complete.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn offload_sync();
-
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn offload_preload_end<T: ?Sized>(ptr: *const T, is_mut: bool);
