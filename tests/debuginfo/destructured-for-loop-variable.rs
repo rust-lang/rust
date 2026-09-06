@@ -73,6 +73,8 @@
 // === LLDB TESTS ==================================================================================
 
 //@ lldb-command:type format add --format hex char
+// MSVC uses signed char
+//@ lldb-command:type format add --format hex 'signed char'
 //@ lldb-command:type format add --format hex 'unsigned char'
 
 //@ lldb-command:run
@@ -144,6 +146,7 @@
 #![allow(unused_variables)]
 #![feature(deref_patterns)]
 
+#[repr(C)]
 struct Struct {
     x: i16,
     y: f32,

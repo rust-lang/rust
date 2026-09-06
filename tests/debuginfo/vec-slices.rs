@@ -74,6 +74,7 @@
 
 #![allow(dead_code, unused_variables)]
 
+#[repr(C)]
 struct AStruct {
     x: i16,
     y: i32,
