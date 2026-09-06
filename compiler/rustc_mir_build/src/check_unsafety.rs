@@ -258,23 +258,23 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 // match is conditional on having this value
                 | PatKind::Constant { .. }
                 | PatKind::Variant { .. }
-                | PatKind::Leaf { .. }
                 | PatKind::Deref { .. }
                 | PatKind::DerefPattern { .. }
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
-                | PatKind::Array { .. }
-                | PatKind::Guard { .. }
                 // Never constitutes a witness of uninhabitedness.
                 | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);
                     return; // we can return here since this already requires unsafe
                 }
                 // wildcard doesn't read anything.
-                PatKind::Wild |
+                PatKind::Wild
                 // these just wrap other patterns, which we recurse on below.
-                PatKind::Or { .. } |
-                PatKind::Error(_) => {}
+                | PatKind::Or { .. }
+                | PatKind::Leaf { .. }
+                | PatKind::Array { .. }
+                | PatKind::Guard { .. }
+                | PatKind::Error(_) => {}
             }
         };
 
