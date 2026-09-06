@@ -256,7 +256,7 @@ const impl<A: [const] AlwaysApplicableOrd> SlicePartialOrd for A {
 
 #[rustc_specialization_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-const trait AlwaysApplicableOrd: [const] SliceOrd + [const] Ord {}
+const trait AlwaysApplicableOrd: const SliceOrd + const Ord {}
 
 macro_rules! always_applicable_ord {
     ($([$($p:tt)*] $t:ty,)*) => {
@@ -304,7 +304,7 @@ const impl<A: [const] Ord> SliceOrd for A {
 /// * For every `x` and `y` of this type, `Ord(x, y)` must return the same
 ///   value as `Ord::cmp(transmute::<_, u8>(x), transmute::<_, u8>(y))`.
 #[rustc_specialization_trait]
-const unsafe trait UnsignedBytewiseOrd: [const] Ord {}
+const unsafe trait UnsignedBytewiseOrd: const Ord {}
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const unsafe impl UnsignedBytewiseOrd for bool {}
