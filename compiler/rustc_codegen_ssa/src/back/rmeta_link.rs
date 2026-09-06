@@ -13,7 +13,6 @@ use rustc_serialize::opaque::{MAGIC_END_BYTES, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Symbol;
 use rustc_structures::NativeLibKind;
-use rustc_target::spec::Target;
 use tracing::debug;
 
 use super::metadata::{get_metadata_xcoff, search_for_section};
@@ -47,14 +46,28 @@ impl RmetaLink {
     }
 }
 
+/// Decodes the `lib.rmeta-link` member.
+///
+/// On XCOFF, `create_wrapper_file` writes the payload to `.info` instead of [`SECTION`], so we
+/// need to check the wrapper's format and not the target.
+fn decode_member(rlib_path: &Path, member_data: &[u8]) -> Option<RmetaLink> {
+    let is_xcoff = object::File::parse(member_data)
+        .is_ok_and(|file| file.format() == object::BinaryFormat::Xcoff);
+    let section_data = if is_xcoff {
+        get_metadata_xcoff(rlib_path, member_data).ok()?
+    } else {
+        search_for_section(rlib_path, member_data, SECTION).ok()?
+    };
+    RmetaLink::decode(section_data)
+}
+
 /// Reads the link-time metadata from an already-parsed archive.
 pub fn read(archive: &ArchiveFile<'_>, archive_data: &[u8], rlib_path: &Path) -> Option<RmetaLink> {
     for entry in archive.members() {
         let entry = entry.ok()?;
         if entry.name() == FILENAME.as_bytes() {
             let data = entry.data(archive_data).ok()?;
-            let section_data = search_for_section(rlib_path, data, SECTION).ok()?;
-            return RmetaLink::decode(section_data);
+            return decode_member(rlib_path, data);
         }
     }
     None
@@ -84,14 +97,13 @@ impl RmetaLinkCache {
 
     pub fn native_lib_filenames(
         &mut self,
-        target: &Target,
         rlib_path: &Path,
         native_libs: &[NativeLib],
     ) -> Vec<Option<Symbol>> {
         if !crate_may_have_bundled_libs(native_libs) {
             return Vec::new();
         }
-        self.get_or_insert_with(rlib_path, || read_from_path(target, rlib_path))
+        self.get_or_insert_with(rlib_path, || read_from_path(rlib_path))
             .map(|rl| {
                 rl.native_lib_filenames.iter().map(|f| f.as_deref().map(Symbol::intern)).collect()
             })
@@ -105,7 +117,7 @@ fn crate_may_have_bundled_libs(libs: &[NativeLib]) -> bool {
 }
 
 // FIXME: this is mostly a copy-paste of `DefaultMetadataLoader::get_rlib_metadata`.
-fn read_from_path(target: &Target, path: &Path) -> Option<RmetaLink> {
+fn read_from_path(path: &Path) -> Option<RmetaLink> {
     let Ok(file) = File::open(path) else {
         debug!("failed to open rlib for rmeta-link: {}", path.display());
         return None;
@@ -114,19 +126,6 @@ fn read_from_path(target: &Target, path: &Path) -> Option<RmetaLink> {
         debug!("failed to mmap rlib for rmeta-link: {}", path.display());
         return None;
     };
-
-    if target.is_like_aix {
-        let archive = ArchiveFile::parse(&*mmap).ok()?;
-        for entry in archive.members() {
-            let entry = entry.ok()?;
-            if entry.name() == FILENAME.as_bytes() {
-                let member_data = entry.data(&*mmap).ok()?;
-                let section_data = get_metadata_xcoff(path, member_data).ok()?;
-                return RmetaLink::decode(section_data);
-            }
-        }
-        return None;
-    }
 
     read_from_data(&mmap, path)
 }
