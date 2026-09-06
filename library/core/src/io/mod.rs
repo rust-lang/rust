@@ -23,8 +23,6 @@ pub use self::error::const_error;
 #[unstable(feature = "core_io", issue = "154046")]
 pub use self::{
     cursor::Cursor,
-    error::{Error, ErrorKind, Result},
-    io_slice::{IoSlice, IoSliceMut},
     seek::{Seek, SeekFrom},
     util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink},
     write::Write,
@@ -41,6 +39,11 @@ pub use self::{
     size_hint::SizeHint,
     util::{chain, take},
     write::default_write_vectored,
+};
+#[stable(feature = "core_io_fundamentals", since = "CURRENT_RUSTC_VERSION")]
+pub use self::{
+    error::{Error, ErrorKind, Result},
+    io_slice::{IoSlice, IoSliceMut},
 };
 
 /// Marks that a type `T` can have IO traits such as [`Seek`], [`Write`], etc. automatically
