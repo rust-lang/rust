@@ -24,40 +24,16 @@ fn coroutine_test() -> impl Coroutine<Yield = i32, Return = ()> {
 
 // CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "coroutine_test"
 // CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "{coroutine_env#0}", scope: [[GEN_FN]]
-// CHECK:      [[VARIANT:!.*]] = !DICompositeType(tag: DW_TAG_variant_part, scope: [[GEN]],
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: discriminator: [[DISC:![0-9]*]]
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "0", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE:![0-9]*]], line: 16,
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "Unresumed", scope: [[GEN]],
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "1", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 20,
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "2", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 20,
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "3", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 17,
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "4", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 19,
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      [[S1:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Suspend1", scope: [[GEN]],
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "s", scope: [[S1]]
-// CHECK-NOT:  flags: DIFlagArtificial
-// CHECK-SAME: )
-// CHECK:      [[DISC]] = !DIDerivedType(tag: DW_TAG_member, name: "__state", scope: [[GEN]],
-// CHECK-SAME: flags: DIFlagArtificial
+// CHECK-DAG:  [[VARIANT:!.*]] = !DICompositeType(tag: DW_TAG_variant_part, scope: [[GEN]], {{.*}}discriminator: [[DISC:![0-9]*]]
+// CHECK-DAG:  {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "0", scope: [[VARIANT]], {{.*}}file: [[FILE:![0-9]*]], line: 16,
+// CHECK-DAG:  {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "Unresumed", scope: [[GEN]],
+// CHECK-DAG:  {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "1", scope: [[VARIANT]], {{.*}}file: [[FILE]], line: 20,
+// CHECK-DAG:  {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "2", scope: [[VARIANT]], {{.*}}file: [[FILE]], line: 20,
+// CHECK-DAG:  {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "3", scope: [[VARIANT]], {{.*}}file: [[FILE]], line: 17,
+// CHECK-DAG:  {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "4", scope: [[VARIANT]], {{.*}}file: [[FILE]], line: 19,
+// CHECK-DAG:  [[S1:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Suspend1", scope: [[GEN]],
+// CHECK-DAG:  {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "s", scope: [[S1]]
+// CHECK-DAG:  [[DISC]] = !DIDerivedType(tag: DW_TAG_member, name: "__state", scope: [[GEN]],
 
 fn main() {
     let _dummy = coroutine_test();

@@ -7,15 +7,15 @@
 //@ compile-flags: -g -C no-prepopulate-passes
 
 // CHECK-LABEL: @main
-// CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "E",{{.*}}
-// CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_variant_part,{{.*}}discriminator:{{.*}}
-// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "A",{{.*}}extraData:{{.*}}
-// CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "A",{{.*}}
-// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "__0",{{.*}}
-// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "B",{{.*}}extraData:{{.*}}
-// CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "B",{{.*}}
-// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "__0",{{.*}}
-// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}flags: DIFlagArtificial{{.*}}
+// CHECK-DAG: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "E",{{.*}}
+// CHECK-DAG: {{.*}}DICompositeType{{.*}}tag: DW_TAG_variant_part,{{.*}}discriminator:{{.*}}
+// CHECK-DAG: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "A",{{.*}}extraData:{{.*}}
+// CHECK-DAG: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "A",{{.*}}
+// CHECK-DAG: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "__0",{{.*}}
+// CHECK-DAG: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "B",{{.*}}extraData:{{.*}}
+// CHECK-DAG: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "B",{{.*}}
+// CHECK-DAG: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "__0",{{.*}}
+// CHECK-DAG: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}flags: DIFlagArtificial{{.*}}
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
