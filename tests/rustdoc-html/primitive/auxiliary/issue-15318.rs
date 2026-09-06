@@ -4,10 +4,10 @@
 #![doc(html_root_url = "http://example.com/")]
 #![feature(rustc_attrs)]
 #![feature(lang_items)]
+#![feature(panic_unwind)]
 #![no_std]
 
-#[lang = "eh_personality"]
-fn foo() {}
+extern crate unwind;
 
 #[panic_handler]
 fn bar(_: &core::panic::PanicInfo) -> ! { loop {} }

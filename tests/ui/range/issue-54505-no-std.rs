@@ -6,12 +6,11 @@
 
 #![no_std]
 #![feature(lang_items)]
+#![feature(panic_unwind)]
+
+extern crate unwind;
 
 use core::ops::RangeBounds;
-
-#[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
