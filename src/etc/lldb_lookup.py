@@ -357,6 +357,7 @@ def register_providers_compatibility():
         MSVCTupleSyntheticProvider,
         TupleSummaryProvider,
         r"^tuple\$<.+>$",
+        type_options=DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
     )
 
 
