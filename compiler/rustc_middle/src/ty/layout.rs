@@ -1165,21 +1165,6 @@ where
                     }
                 }
 
-                // Patch result if we are a MaybeDangling-like type.
-                if this.ty.is_like_maybe_dangling()
-                    && let Some(info) = result
-                {
-                    result = Some(PointeeInfo {
-                        // Mark the pointer as raw
-                        // (thus removing noalias/readonly/etc in case of the llvm backend)
-                        safe: None,
-                        // Make sure we don't assert dereferenceability of the pointer.
-                        size: Size::ZERO,
-                        // Preserve the alignment assertion! That is required even inside `MaybeDangling`.
-                        align: info.align,
-                    });
-                }
-
                 result
             }
         };
