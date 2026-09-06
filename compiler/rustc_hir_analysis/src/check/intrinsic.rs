@@ -82,10 +82,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::caller_location
         | sym::carrying_mul_add
         | sym::carryless_mul
-        | sym::ceilf16
-        | sym::ceilf32
-        | sym::ceilf64
-        | sym::ceilf128
+        | sym::ceil
         | sym::cold_path
         | sym::const_eval_select
         | sym::contract_check_ensures
@@ -106,10 +103,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::field_representing_type_actual_type_id
         | sym::field_representing_type_name
         | sym::field_representing_type_offset
-        | sym::floorf16
-        | sym::floorf32
-        | sym::floorf64
-        | sym::floorf128
+        | sym::floor
         | sym::fmaf16
         | sym::fmaf32
         | sym::fmaf64
@@ -170,14 +164,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::return_address
         | sym::rotate_left
         | sym::rotate_right
-        | sym::round_ties_even_f16
-        | sym::round_ties_even_f32
-        | sym::round_ties_even_f64
-        | sym::round_ties_even_f128
-        | sym::roundf16
-        | sym::roundf32
-        | sym::roundf64
-        | sym::roundf128
+        | sym::round
+        | sym::round_ties_even
         | sym::rustc_peek
         | sym::saturating_add
         | sym::saturating_sub
@@ -191,10 +179,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::sqrtf128
         | sym::sub_with_overflow
         | sym::three_way_compare
-        | sym::truncf16
-        | sym::truncf32
-        | sym::truncf64
-        | sym::truncf128
+        | sym::trunc
         | sym::type_id
         | sym::type_id_eq
         | sym::type_id_field_representing_type
@@ -443,7 +428,12 @@ pub(crate) fn check_intrinsic_type(
         | sym::log10
         | sym::fabs
         | sym::sin
-        | sym::cos => (1, 0, vec![param(0)], param(0)),
+        | sym::cos
+        | sym::floor
+        | sym::ceil
+        | sym::trunc
+        | sym::round_ties_even
+        | sym::round => (1, 0, vec![param(0)], param(0)),
 
         sym::minimum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::minimum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
@@ -470,31 +460,6 @@ pub(crate) fn check_intrinsic_type(
         sym::maximumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
         sym::copysign => (1, 0, vec![param(0), param(0)], param(0)),
-
-        sym::floorf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::floorf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::floorf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::floorf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::ceilf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::ceilf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::ceilf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::ceilf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::truncf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::truncf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::truncf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::truncf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::round_ties_even_f16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::round_ties_even_f32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::round_ties_even_f64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::round_ties_even_f128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::roundf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::roundf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::roundf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::roundf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
         sym::volatile_load | sym::unaligned_volatile_load => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0))

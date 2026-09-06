@@ -349,31 +349,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
         sym::fmuladdf128 => return false, // has a fallback
 
-        sym::floorf16 => return false, // has a fallback via f32
-        sym::floorf32 => ("floorf", 1, fx.tcx.types.f32, types::F32),
-        sym::floorf64 => ("floor", 1, fx.tcx.types.f64, types::F64),
-        sym::floorf128 => ("floorf128", 1, fx.tcx.types.f128, types::F128),
-
-        sym::ceilf16 => return false, // has a fallback via f32
-        sym::ceilf32 => ("ceilf", 1, fx.tcx.types.f32, types::F32),
-        sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64, types::F64),
-        sym::ceilf128 => ("ceilf128", 1, fx.tcx.types.f128, types::F128),
-
-        sym::truncf16 => return false, // has a fallback via f32
-        sym::truncf32 => ("truncf", 1, fx.tcx.types.f32, types::F32),
-        sym::truncf64 => ("trunc", 1, fx.tcx.types.f64, types::F64),
-        sym::truncf128 => ("truncf128", 1, fx.tcx.types.f128, types::F128),
-
-        sym::round_ties_even_f16 => return false, // has a fallback via f32
-        sym::round_ties_even_f32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
-        sym::round_ties_even_f64 => ("rint", 1, fx.tcx.types.f64, types::F64),
-        sym::round_ties_even_f128 => ("rintf128", 1, fx.tcx.types.f128, types::F128),
-
-        sym::roundf16 => return false, // has a fallback via f32
-        sym::roundf32 => ("roundf", 1, fx.tcx.types.f32, types::F32),
-        sym::roundf64 => ("round", 1, fx.tcx.types.f64, types::F64),
-        sym::roundf128 => ("roundf128", 1, fx.tcx.types.f128, types::F128),
-
         _ => return false,
     };
 
@@ -412,10 +387,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
             fx.bcx.ins().fma(args[0], args[1], args[2])
         }
-        sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
-        sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
-        sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
-        sym::round_ties_even_f32 | sym::round_ties_even_f64 => fx.bcx.ins().nearest(args[0]),
         sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
 
         // These intrinsics aren't supported natively by Cranelift.
@@ -1201,6 +1172,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
         }
 
         sym::fabs
+        | sym::floor
+        | sym::ceil
+        | sym::trunc
+        | sym::round
+        | sym::round_ties_even
         | sym::exp
         | sym::exp2
         | sym::log
@@ -1223,6 +1199,23 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let x = arg.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
                 (sym::fabs, F32 | F64) => Codegen(fx.bcx.ins().fabs(x)),
+
+                (sym::floor, F32 | F64) => Codegen(fx.bcx.ins().floor(x)),
+                (sym::floor, F128) => Fallback("floorf128"),
+
+                (sym::ceil, F32 | F64) => Codegen(fx.bcx.ins().ceil(x)),
+                (sym::ceil, F128) => Fallback("ceilf128"),
+
+                (sym::trunc, F32 | F64) => Codegen(fx.bcx.ins().trunc(x)),
+                (sym::trunc, F128) => Fallback("truncf128"),
+
+                (sym::round_ties_even, F32 | F64) => Codegen(fx.bcx.ins().nearest(x)),
+                (sym::round_ties_even, F128) => Fallback("rintf128"),
+
+                (sym::round, F32) => Fallback("roundf"),
+                (sym::round, F64) => Fallback("round"),
+                (sym::round, F128) => Fallback("roundf128"),
+
                 (sym::exp, F32) => Fallback("expf"),
                 (sym::exp, F64) => Fallback("exp"),
                 (sym::exp, F128) => Fallback("expf128"),

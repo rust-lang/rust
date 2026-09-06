@@ -75,18 +75,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::maximumf32 => return float_intrinsic(cx, cx.type_f32(), "fmaximumf"),
         sym::maximumf64 => return float_intrinsic(cx, cx.type_f64(), "fmaximum"),
         sym::maximumf128 => return float_intrinsic(cx, cx.type_f128(), "fmaximumf128"),
-        sym::floorf32 => "floorf",
-        sym::floorf64 => "floor",
-        sym::ceilf32 => "ceilf",
-        sym::ceilf64 => "ceil",
         sym::powf128 => return float_intrinsic(cx, cx.type_f128(), "powf128"),
-        sym::truncf32 => "truncf",
-        sym::truncf64 => "trunc",
-        // We match the LLVM backend and lower this to `rint`.
-        sym::round_ties_even_f32 => "rintf",
-        sym::round_ties_even_f64 => "rint",
-        sym::roundf32 => "roundf",
-        sym::roundf64 => "round",
         sym::abort => "abort",
         _ => return None,
     };
@@ -101,18 +90,18 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     let f128_type = cx.type_f128();
     let (func_name, args): (&str, &[gccjit::Type<'_>]) = match name {
         sym::copysign => ("copysignf128", &[f128_type, f128_type]),
-        sym::ceilf128 => ("ceilf128", &[f128_type]),
+        sym::ceil => ("ceilf128", &[f128_type]),
         sym::cos => ("cosf128", &[f128_type]),
         sym::fabs => ("fabsf128", &[f128_type]),
         sym::exp => ("expf128", &[f128_type]),
         sym::exp2 => ("exp2f128", &[f128_type]),
-        sym::floorf128 => ("floorf128", &[f128_type]),
+        sym::floor => ("floorf128", &[f128_type]),
         sym::log => ("logf128", &[f128_type]),
         sym::log2 => ("log2f128", &[f128_type]),
         sym::log10 => ("log10f128", &[f128_type]),
-        sym::truncf128 => ("truncf128", &[f128_type]),
-        sym::roundf128 => ("roundf128", &[f128_type]),
-        sym::round_ties_even_f128 => ("roundevenf128", &[f128_type]),
+        sym::trunc => ("truncf128", &[f128_type]),
+        sym::round => ("roundf128", &[f128_type]),
+        sym::round_ties_even => ("roundevenf128", &[f128_type]),
         sym::sin => ("sinf128", &[f128_type]),
         sym::sqrtf128 => ("sqrtf128", &[f128_type]),
         _ => span_bug!(span, "used get_simple_function_f128 for unsupported f128 intrinsic"),
@@ -132,22 +121,22 @@ fn f16_builtin<'gcc, 'tcx>(
 ) -> RValue<'gcc> {
     let f32_type = cx.type_f32();
     let builtin_name = match name {
-        sym::ceilf16 => "__builtin_ceilf",
+        sym::ceil => "__builtin_ceilf",
         sym::copysign => "__builtin_copysignf",
         sym::cos => "cosf",
         sym::exp => "expf",
         sym::exp2 => "exp2f",
         sym::fabs => "fabsf",
-        sym::floorf16 => "__builtin_floorf",
+        sym::floor => "__builtin_floorf",
         sym::log => "logf",
         sym::log2 => "log2f",
         sym::log10 => "log10f",
         sym::powf16 => "__builtin_powf",
-        sym::roundf16 => "__builtin_roundf",
-        sym::round_ties_even_f16 => "__builtin_rintf",
+        sym::round => "__builtin_roundf",
+        sym::round_ties_even => "__builtin_rintf",
         sym::sin => "sinf",
         sym::sqrtf16 => "__builtin_sqrtf",
-        sym::truncf16 => "__builtin_truncf",
+        sym::trunc => "__builtin_truncf",
         _ => unreachable!(),
     };
 
@@ -212,21 +201,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::ceilf16
-            | sym::floorf16
-            | sym::powf16
-            | sym::roundf16
-            | sym::round_ties_even_f16
-            | sym::sqrtf16
-            | sym::truncf16 => f16_builtin(self, name, args),
-            sym::ceilf128
-            | sym::floorf128
-            | sym::truncf128
-            | sym::roundf128
-            | sym::round_ties_even_f128
-            | sym::sqrtf128
-                if self.cx.supports_f128_type =>
-            {
+            sym::powf16 | sym::sqrtf16 => f16_builtin(self, name, args),
+            sym::sqrtf128 if self.cx.supports_f128_type => {
                 let func = get_simple_function_f128(span, self, name);
                 self.cx.context.new_call(
                     self.location,
@@ -391,6 +367,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::copysign
             | sym::fabs
+            | sym::floor
+            | sym::ceil
+            | sym::trunc
+            | sym::round
+            | sym::round_ties_even
             | sym::exp
             | sym::exp2
             | sym::log
@@ -409,6 +390,22 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                     (sym::fabs, F32) => self.context.get_builtin_function("fabsf"),
                     (sym::fabs, F64) => self.context.get_builtin_function("fabs"),
+
+                    (sym::floor, F32) => self.context.get_builtin_function("floorf"),
+                    (sym::floor, F64) => self.context.get_builtin_function("floor"),
+
+                    (sym::ceil, F32) => self.context.get_builtin_function("ceilf"),
+                    (sym::ceil, F64) => self.context.get_builtin_function("ceil"),
+
+                    (sym::trunc, F32) => self.context.get_builtin_function("truncf"),
+                    (sym::trunc, F64) => self.context.get_builtin_function("trunc"),
+
+                    (sym::round, F32) => self.context.get_builtin_function("roundf"),
+                    (sym::round, F64) => self.context.get_builtin_function("round"),
+
+                    // We match the LLVM backend and lower this to `rint`.
+                    (sym::round_ties_even, F32) => self.context.get_builtin_function("rintf"),
+                    (sym::round_ties_even, F64) => self.context.get_builtin_function("rint"),
 
                     (sym::exp, F32) => self.context.get_builtin_function("expf"),
                     (sym::exp, F64) => self.context.get_builtin_function("exp"),
