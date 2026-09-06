@@ -104,17 +104,18 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         let mut instantiated_goals = vec![];
         for step in &self.steps {
             match **step {
-                inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
-                    source,
-                    instantiate_canonical_state(
+                inspect::ProbeStep::AddGoal(source, goal) => {
+                    let goal = instantiate_canonical_state(
                         infcx,
                         span,
                         param_env,
                         self.goal.prev_universe,
                         &mut orig_values,
                         goal,
-                    ),
-                )),
+                    );
+                    let evaluated = self.instantiate_proof_tree_for_nested_goal(source, goal, span);
+                    instantiated_goals.push(evaluated);
+                }
                 inspect::ProbeStep::RecordImplArgs { .. } => {}
                 inspect::ProbeStep::MakeCanonicalResponse { .. }
                 | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
@@ -131,9 +132,6 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         );
 
         instantiated_goals
-            .into_iter()
-            .map(|(source, goal)| self.instantiate_proof_tree_for_nested_goal(source, goal, span))
-            .collect()
     }
 
     /// Instantiate the args of an impl if this candidate came from a
@@ -188,22 +186,13 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         span: Span,
     ) -> InspectGoal<'a, 'tcx> {
         let infcx = self.goal.infcx;
-        match goal.predicate.kind().no_bound_vars() {
-            Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { .. })) => {
-                // We don't handle `NormalizesTo` as a nested goal
-                unreachable!()
-            }
-            _ => {
-                // We're using a probe here as evaluating a goal could constrain
-                // inference variables by choosing one candidate. If we then recurse
-                // into another candidate who ends up with different inference
-                // constraints, we get an ICE if we already applied the constraints
-                // from the chosen candidate.
-                let proof_tree =
-                    infcx.probe(|_| infcx.evaluate_root_goal_for_proof_tree(goal, span).1);
-                InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, source)
-            }
-        }
+        // We're using a probe here as evaluating a goal could constrain
+        // inference variables by choosing one candidate. If we then recurse
+        // into another candidate who ends up with different inference
+        // constraints, we get an ICE if we already applied the constraints
+        // from the chosen candidate.
+        let proof_tree = infcx.probe(|_| infcx.evaluate_root_goal_for_proof_tree(goal, span).1);
+        InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, source)
     }
 
     /// Visit all nested goals of this candidate, rolling back
