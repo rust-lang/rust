@@ -1,4 +1,5 @@
 //@ compile-flags: -Zassumptions-on-binders
+//@ normalize-stderr: "DefId\(\d+:\d+ ~ core\[[0-9a-f]+\]::marker::Move\)" -> "DefId(core::marker::Move)"
 #![feature(test_binder_constraints)]
 #![expect(incomplete_features)]
 
