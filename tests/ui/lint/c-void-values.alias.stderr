@@ -1,0 +1,34 @@
+error: `c_void` should not be used by value
+  --> $DIR/c-void-values.rs:13:30
+   |
+LL | const FOO: c_void = unsafe { std::mem::transmute(0u8) };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for legacy reasons, Rust considers `c_void` to have size 1, so this can cause Undefined Behavior
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
+note: the lint level is defined here
+  --> $DIR/c-void-values.rs:4:9
+   |
+LL | #![deny(c_void_values)]
+   |         ^^^^^^^^^^^^^
+
+error: `c_void` should not be used by value
+  --> $DIR/c-void-values.rs:15:31
+   |
+LL | static BAR: c_void = unsafe { std::mem::transmute(0u8) };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for legacy reasons, Rust considers `c_void` to have size 1, so this can cause Undefined Behavior
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
+
+error: `c_void` should not be used by value
+  --> $DIR/c-void-values.rs:19:14
+   |
+LL |     unsafe { r.read() };
+   |              ^^^^^^^^
+   |
+   = note: for legacy reasons, Rust considers `c_void` to have size 1, so this can cause Undefined Behavior
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
+
+error: aborting due to 3 previous errors
+
