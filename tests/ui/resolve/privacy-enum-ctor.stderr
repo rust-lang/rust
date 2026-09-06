@@ -79,6 +79,8 @@ note: similarly named function `f` defined here
    |
 LL |     fn f() {
    |     ^^^^^^
+   = note: 'std::f128::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f128)]` attribute
+   = note: 'std::f16::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f16)]` attribute
 help: you might have meant to use the following enum variant
    |
 LL -     let _: E = m::E;
@@ -128,6 +130,8 @@ LL | |         },
 LL | |         Unit,
 LL | |     }
    | |_____^
+   = note: 'std::f128::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f128)]` attribute
+   = note: 'std::f16::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f16)]` attribute
 help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;

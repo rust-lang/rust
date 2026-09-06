@@ -14,6 +14,7 @@ LL | use test as y;
    |     |
    |     no `test` in the root
    |
+   = note: 'test::test' is unstable in nightly Rust and is only available with the `#![feature(test)]` attribute
 help: consider importing this module instead
    |
 LL | use test::test as y;
