@@ -31,10 +31,10 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
                 fn_abi.ret.cast_to(Reg { kind, size: fn_abi.ret.layout.size });
             } else if t.abi_return_struct_as_int || opts.reg_struct_return {
                 match fn_abi.ret.layout.size.bytes() {
-                    1 => fn_abi.ret.cast_to(Reg::i8()),
-                    2 => fn_abi.ret.cast_to(Reg::i16()),
-                    4 => fn_abi.ret.cast_to(Reg::i32()),
-                    8 => fn_abi.ret.cast_to(Reg::i64()),
+                    1 => fn_abi.ret.cast_to_maybe_noundef(Reg::i8(), cx),
+                    2 => fn_abi.ret.cast_to_maybe_noundef(Reg::i16(), cx),
+                    4 => fn_abi.ret.cast_to_maybe_noundef(Reg::i32(), cx),
+                    8 => fn_abi.ret.cast_to_maybe_noundef(Reg::i64(), cx),
                     _ => fn_abi.ret.make_indirect(),
                 }
             } else {
