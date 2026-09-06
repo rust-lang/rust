@@ -345,10 +345,10 @@ impl CodegenBackend for LlvmCodegenBackend {
             sym::log,
             sym::log10,
             sym::log2,
+            sym::floor, sym::ceil, sym::trunc,
+            sym::round, sym::round_ties_even,
 
             // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
-            sym::floorf16, sym::ceilf16, sym::truncf16,
-            sym::round_ties_even_f16, sym::roundf16,
             sym::sqrtf16, sym::powif16,
             sym::fmaf16,
 
