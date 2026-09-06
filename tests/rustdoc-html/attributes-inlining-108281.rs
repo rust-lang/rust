@@ -2,6 +2,7 @@
 // It ensures that the attributes on the first reexport are not duplicated.
 
 #![crate_name = "foo"]
+#![allow(rustdoc::unportable_markdown)]
 
 //@ has 'foo/index.html'
 

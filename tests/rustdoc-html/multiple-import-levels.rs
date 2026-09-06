@@ -2,6 +2,7 @@
 // account.
 
 #![crate_name = "foo"]
+#![allow(rustdoc::unportable_markdown)]
 
 mod a {
     /// 1

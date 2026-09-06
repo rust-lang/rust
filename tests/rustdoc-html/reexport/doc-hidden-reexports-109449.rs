@@ -2,6 +2,7 @@
 // <https://github.com/rust-lang/rust/issues/109449>.
 
 #![crate_name = "foo"]
+#![allow(rustdoc::unportable_markdown)]
 
 mod private_module {
     #[doc(hidden)]
