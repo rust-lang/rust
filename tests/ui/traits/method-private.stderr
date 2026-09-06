@@ -10,7 +10,7 @@ LL |     foo.method();
    = help: items from traits can only be used if the trait is in scope
 help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use inner::Bar;
+LL + use crate::inner::Bar;
    |
 
 error: aborting due to 1 previous error

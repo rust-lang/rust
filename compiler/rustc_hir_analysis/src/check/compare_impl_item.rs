@@ -1067,12 +1067,12 @@ fn report_trait_method_mismatch<'tcx>(
                     };
                 };
             } else if let Some(trait_ty) = trait_sig.inputs().get(*i) {
-                diag.span_suggestion_verbose(
+                rustc_middle::ty::print::with_crate_prefix!(diag.span_suggestion_verbose(
                     impl_err_span,
                     "change the parameter type to match the trait",
                     trait_ty,
                     Applicability::MachineApplicable,
-                );
+                ));
             }
         }
         _ => {}

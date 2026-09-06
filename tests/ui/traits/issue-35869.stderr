@@ -33,7 +33,7 @@ LL |     fn bar(_: Option<u8>);
 help: change the parameter type to match the trait
    |
 LL -     fn bar(_: Option<u16>) {}
-LL +     fn bar(_: Option<u8>) {}
+LL +     fn bar(_: std::option::Option<u8>) {}
    |
 
 error[E0053]: method `baz` has an incompatible type for trait
