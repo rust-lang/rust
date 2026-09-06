@@ -376,10 +376,13 @@ fn codegen_float_intrinsic_call<'tcx>(
     true
 }
 
-/// Used to distinguish fallbacks of float intrinsics. For some we have a codegen fallback,
-/// while for others we fallback to an external libcall.
-enum IntrinsicFallback {
-    Fallback(&'static str),
+/// How a float intrinsic is lowered: either directly to Cranelift instructions, or to a call to an
+/// external (libm/compiler-builtins) function. This is unrelated to the Rust fallback bodies of
+/// intrinsics.
+// FIXME: the `Libcall` cases could probably all use the Rust fallback bodies instead, which would
+// allow removing this enum.
+enum FloatIntrinsicLowering {
+    Libcall(&'static str),
     Codegen(Value),
 }
 
@@ -1099,8 +1102,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     layout.ty
                 );
             };
+            use FloatIntrinsicLowering::*;
             use FloatTy::*;
-            use IntrinsicFallback::*;
             let x = arg1.load_scalar(fx);
             let y = arg2.load_scalar(fx);
             let z = arg3.load_scalar(fx);
@@ -1109,7 +1112,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 // sofware emulation, use cranelift intrinsic analogous to llvm.fmuladd.*.
                 (sym::fma | sym::fmuladd, F32 | F64) => Codegen(fx.bcx.ins().fma(x, y, z)),
 
-                (sym::fma, F128) => Fallback("fmaf128"),
+                (sym::fma, F128) => Libcall("fmaf128"),
 
                 (sym::fmuladd, F128) | (_, F16) => {
                     // We use the intrinsic fallback bodies for the rest
@@ -1120,7 +1123,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             };
             let val = match res {
                 Codegen(val) => val,
-                Fallback(name) => {
+                Libcall(name) => {
                     let ty = fx.clif_type(layout.ty).unwrap();
                     let arg = AbiParam::new(ty);
                     fx.lib_call(name, vec![arg, arg, arg], vec![arg], &[x, y, z])[0]
@@ -1141,14 +1144,14 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     layout.ty
                 );
             };
+            use FloatIntrinsicLowering::*;
             use FloatTy::*;
-            use IntrinsicFallback::*;
             let x = arg1.load_scalar(fx);
             let y = arg2.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
-                (sym::powf, F32) => Fallback("powf"),
-                (sym::powf, F64) => Fallback("pow"),
-                (sym::powf, F128) => Fallback("powf128"),
+                (sym::powf, F32) => Libcall("powf"),
+                (sym::powf, F64) => Libcall("pow"),
+                (sym::powf, F128) => Libcall("powf128"),
 
                 (_, F16) => {
                     // We use the intrinsic fallback bodies for the rest
@@ -1159,7 +1162,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             };
             let val = match res {
                 Codegen(_) => span_bug!(source_info.span, "`powf` is always lowered to a libcall"),
-                Fallback(name) => {
+                Libcall(name) => {
                     let ty = fx.clif_type(layout.ty).unwrap();
                     let arg = AbiParam::new(ty);
                     fx.lib_call(name, vec![arg, arg], vec![arg], &[x, y])[0]
@@ -1193,58 +1196,58 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     layout.ty
                 );
             };
+            use FloatIntrinsicLowering::*;
             use FloatTy::*;
-            use IntrinsicFallback::*;
             let x = arg.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
                 (sym::fabs, F32 | F64) => Codegen(fx.bcx.ins().fabs(x)),
 
                 (sym::sqrt, F32 | F64) => Codegen(fx.bcx.ins().sqrt(x)),
-                (sym::sqrt, F128) => Fallback("sqrtf128"),
+                (sym::sqrt, F128) => Libcall("sqrtf128"),
 
                 (sym::floor, F32 | F64) => Codegen(fx.bcx.ins().floor(x)),
-                (sym::floor, F128) => Fallback("floorf128"),
+                (sym::floor, F128) => Libcall("floorf128"),
 
                 (sym::ceil, F32 | F64) => Codegen(fx.bcx.ins().ceil(x)),
-                (sym::ceil, F128) => Fallback("ceilf128"),
+                (sym::ceil, F128) => Libcall("ceilf128"),
 
                 (sym::trunc, F32 | F64) => Codegen(fx.bcx.ins().trunc(x)),
-                (sym::trunc, F128) => Fallback("truncf128"),
+                (sym::trunc, F128) => Libcall("truncf128"),
 
                 (sym::round_ties_even, F32 | F64) => Codegen(fx.bcx.ins().nearest(x)),
-                (sym::round_ties_even, F128) => Fallback("rintf128"),
+                (sym::round_ties_even, F128) => Libcall("rintf128"),
 
-                (sym::round, F32) => Fallback("roundf"),
-                (sym::round, F64) => Fallback("round"),
-                (sym::round, F128) => Fallback("roundf128"),
+                (sym::round, F32) => Libcall("roundf"),
+                (sym::round, F64) => Libcall("round"),
+                (sym::round, F128) => Libcall("roundf128"),
 
-                (sym::exp, F32) => Fallback("expf"),
-                (sym::exp, F64) => Fallback("exp"),
-                (sym::exp, F128) => Fallback("expf128"),
+                (sym::exp, F32) => Libcall("expf"),
+                (sym::exp, F64) => Libcall("exp"),
+                (sym::exp, F128) => Libcall("expf128"),
 
-                (sym::exp2, F32) => Fallback("exp2f"),
-                (sym::exp2, F64) => Fallback("exp2"),
-                (sym::exp2, F128) => Fallback("exp2f128"),
+                (sym::exp2, F32) => Libcall("exp2f"),
+                (sym::exp2, F64) => Libcall("exp2"),
+                (sym::exp2, F128) => Libcall("exp2f128"),
 
-                (sym::log, F32) => Fallback("logf"),
-                (sym::log, F64) => Fallback("log"),
-                (sym::log, F128) => Fallback("logf128"),
+                (sym::log, F32) => Libcall("logf"),
+                (sym::log, F64) => Libcall("log"),
+                (sym::log, F128) => Libcall("logf128"),
 
-                (sym::log2, F32) => Fallback("log2f"),
-                (sym::log2, F64) => Fallback("log2"),
-                (sym::log2, F128) => Fallback("log2f128"),
+                (sym::log2, F32) => Libcall("log2f"),
+                (sym::log2, F64) => Libcall("log2"),
+                (sym::log2, F128) => Libcall("log2f128"),
 
-                (sym::log10, F32) => Fallback("log10f"),
-                (sym::log10, F64) => Fallback("log10"),
-                (sym::log10, F128) => Fallback("log10f128"),
+                (sym::log10, F32) => Libcall("log10f"),
+                (sym::log10, F64) => Libcall("log10"),
+                (sym::log10, F128) => Libcall("log10f128"),
 
-                (sym::sin, F32) => Fallback("sinf"),
-                (sym::sin, F64) => Fallback("sin"),
-                (sym::sin, F128) => Fallback("sinf128"),
+                (sym::sin, F32) => Libcall("sinf"),
+                (sym::sin, F64) => Libcall("sin"),
+                (sym::sin, F128) => Libcall("sinf128"),
 
-                (sym::cos, F32) => Fallback("cosf"),
-                (sym::cos, F64) => Fallback("cos"),
-                (sym::cos, F128) => Fallback("cosf128"),
+                (sym::cos, F32) => Libcall("cosf"),
+                (sym::cos, F64) => Libcall("cos"),
+                (sym::cos, F128) => Libcall("cosf128"),
 
                 (sym::fabs, F128) | (_, F16) => {
                     // FIXME(bytecodealliance/wasmtime#8312): Use the native operations once
@@ -1257,7 +1260,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             };
             let val = match res {
                 Codegen(val) => val,
-                Fallback(name) => {
+                Libcall(name) => {
                     let ty = fx.clif_type(layout.ty).unwrap();
                     fx.lib_call(name, vec![AbiParam::new(ty)], vec![AbiParam::new(ty)], &[x])[0]
                 }
