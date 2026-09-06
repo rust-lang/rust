@@ -1,0 +1,80 @@
+
+running 5 tests
+test $DIR/expect-item-after-attribute.rs - (line 12) ... FAILED
+test $DIR/expect-item-after-attribute.rs - (line 4) ... FAILED
+test $DIR/expect-item-after-attribute.rs - (line 19) ... FAILED
+test $DIR/expect-item-after-attribute.rs - (line 16) ... FAILED
+test $DIR/expect-item-after-attribute.rs - (line 7) ... FAILED
+
+failures:
+
+---- $DIR/expect-item-after-attribute.rs - (line 12) stdout ----
+error: expected item after attributes
+  --> $DIR/expect-item-after-attribute.rs:14:1
+   |
+LL | #[should_panic]
+   | ^^^^^^^^^^^^^^^ expected an item after this
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/expect-item-after-attribute.rs - (line 4) stdout ----
+error: expected item after attributes
+  --> $DIR/expect-item-after-attribute.rs:5:1
+   |
+LL | #[should_panic]
+   | ^^^^^^^^^^^^^^^ expected an item after this
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/expect-item-after-attribute.rs - (line 19) stdout ----
+error: expected item, found keyword `let`
+  --> $DIR/expect-item-after-attribute.rs:20:1
+   |
+LL | let x = 0; //! assert!(true);
+   | ^^^
+   | |
+   | `let` cannot be used for global variables
+   | help: consider using `static` or `const` instead of `let`
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/expect-item-after-attribute.rs - (line 16) stdout ----
+error: expected item, found keyword `let`
+  --> $DIR/expect-item-after-attribute.rs:17:1
+   |
+LL | let x = 0; #[should_panic]
+   | ^^^
+   | |
+   | `let` cannot be used for global variables
+   | help: consider using `static` or `const` instead of `let`
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+---- $DIR/expect-item-after-attribute.rs - (line 7) stdout ----
+error: expected statement after outer attribute
+  --> $DIR/expect-item-after-attribute.rs:9:5
+   |
+LL |     #[should_panic]
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/expect-item-after-attribute.rs - (line 12)
+    $DIR/expect-item-after-attribute.rs - (line 16)
+    $DIR/expect-item-after-attribute.rs - (line 19)
+    $DIR/expect-item-after-attribute.rs - (line 4)
+    $DIR/expect-item-after-attribute.rs - (line 7)
+
+test result: FAILED. 0 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
