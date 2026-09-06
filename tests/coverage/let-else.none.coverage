@@ -7,7 +7,6 @@
    LL|       |
    LL|      1|fn let_else_semi(opt_msg: Option<&str>) {
    LL|      1|    let Some(msg) = opt_msg else {
-                           ^0
    LL|      1|        return;
    LL|       |    };
    LL|      0|    say(msg);
@@ -16,7 +15,6 @@
    LL|       |#[rustfmt::skip]
    LL|      1|fn let_else_no_semi(opt_msg: Option<&str>) {
    LL|      1|    let Some(msg) = opt_msg else {
-                           ^0
    LL|      1|        return
    LL|       |    };
    LL|      0|    say(msg);

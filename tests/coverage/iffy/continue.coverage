@@ -9,17 +9,17 @@
    LL|       |            true => {
    LL|     10|                continue;
    LL|       |            }
-   LL|      0|            _ => {
+   LL|       |            _ => {
    LL|      0|                x = 1;
-   LL|      0|            }
+   LL|       |            }
    LL|       |        }
    LL|      0|        x = 3;
    LL|       |    }
    LL|      1|    for _ in 0..10 {
    LL|     10|        match is_true {
-   LL|      0|            false => {
+   LL|       |            false => {
    LL|      0|                x = 1;
-   LL|      0|            }
+   LL|       |            }
    LL|       |            _ => {
    LL|     10|                continue;
    LL|       |            }
@@ -28,9 +28,9 @@
    LL|       |    }
    LL|      1|    for _ in 0..10 {
    LL|     10|        match is_true {
-   LL|     10|            true => {
+   LL|       |            true => {
    LL|     10|                x = 1;
-   LL|     10|            }
+   LL|       |            }
    LL|       |            _ => {
    LL|      0|                continue;
    LL|       |            }
@@ -45,20 +45,20 @@
    LL|       |    }
    LL|      1|    for _ in 0..10 {
    LL|     10|        match is_true {
-   LL|      0|            false => {
+   LL|       |            false => {
    LL|      0|                x = 1;
-   LL|      0|            }
-   LL|     10|            _ => {
+   LL|       |            }
+   LL|       |            _ => {
    LL|     10|                let _ = x;
-   LL|     10|            }
+   LL|       |            }
    LL|       |        }
    LL|     10|        x = 3;
    LL|       |    }
    LL|      1|    for _ in 0..10 {
    LL|      1|        match is_true {
-   LL|      0|            false => {
+   LL|       |            false => {
    LL|      0|                x = 1;
-   LL|      0|            }
+   LL|       |            }
    LL|       |            _ => {
    LL|      1|                break;
    LL|       |            }

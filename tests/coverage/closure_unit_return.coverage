@@ -5,8 +5,7 @@
    LL|       |// of their trailing expression, and functions that implicitly return `()`.
    LL|       |
    LL|      1|fn explicit_unit() {
-   LL|      1|    let closure = || {
-                                   ^0
+   LL|      0|    let closure = || {
    LL|      0|        ();
    LL|      0|    };
    LL|       |
@@ -15,8 +14,7 @@
    LL|      1|}
    LL|       |
    LL|      1|fn implicit_unit() {
-   LL|      1|    let closure = || {
-                                   ^0
+   LL|      0|    let closure = || {
    LL|      0|        ();
    LL|      0|    };
    LL|       |

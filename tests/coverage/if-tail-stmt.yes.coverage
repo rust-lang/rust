@@ -11,23 +11,21 @@
    LL|       |
    LL|      1|    if cond {
    LL|      1|        say("true");
-   LL|      1|    }
-                  ^0
+   LL|      0|    }
    LL|       |
    LL|      1|    if cond {
    LL|      1|        say("true");
-   LL|      1|    } else {
+   LL|       |    } else {
    LL|      0|        say("false");
-   LL|      0|    }
+   LL|       |    }
    LL|       |
    LL|      1|    if cond {
    LL|      1|        say("cond");
-   LL|      1|    } else if other {
-                            ^0
+   LL|      0|    } else if other {
    LL|      0|        say("other");
-   LL|      0|    } else {
+   LL|       |    } else {
    LL|      0|        say("neither");
-   LL|      0|    }
+   LL|       |    }
    LL|       |
    LL|      1|    say("goodbye");
    LL|      1|}
