@@ -649,6 +649,22 @@ use crate::string;
 pub fn format(args: Arguments<'_>) -> string::String {
     fn format_inner(args: Arguments<'_>) -> string::String {
         let capacity = args.estimated_capacity();
+        //
+        // fn debug_print(s: &str) {
+        //     unsafe extern "C" {
+        //         fn write(fd: i32, buf: *const u8, count: usize) -> isize;
+        //     }
+        //
+        //     unsafe {
+        //         write(1, s.as_ptr(), s.len()); // fd 1 = stdout
+        //     }
+        // }
+        //
+        // let str = capacity.to_string();
+        // debug_print("estimated_capacity: ");
+        // debug_print(&str);
+        // debug_print("\n");
+
         let mut output = string::String::with_capacity(capacity);
         output
             .write_fmt(args)

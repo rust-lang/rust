@@ -428,6 +428,12 @@ where
             Owned(ref o) => fmt::Display::fmt(o, f),
         }
     }
+    fn size_hint(&self) -> Option<usize> {
+        match *self {
+            Borrowed(ref b) => fmt::Display::size_hint(b),
+            Owned(ref o) => fmt::Display::size_hint(o),
+        }
+    }
 }
 
 #[stable(feature = "default", since = "1.11.0")]

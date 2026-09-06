@@ -56,6 +56,7 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
+#![feature(split_array)]
 #![allow(unused_features)]
 #![allow(incomplete_features)]
 #![allow(unused_attributes)]
