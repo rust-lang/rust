@@ -1308,6 +1308,17 @@ impl CrateMetadata {
         canonical_symbols
     }
 
+    /// Iterates over the fake_doc_items in the given crate.
+    fn get_fake_doc_items(&self, tcx: TyCtxt<'_>) -> Vec<DefId> {
+        let mut fake_doc_items = Vec::new();
+
+        for def_index in self.root.fake_doc_items.decode((self, tcx)) {
+            let id = self.local_def_id(def_index);
+            fake_doc_items.push(id);
+        }
+
+        fake_doc_items
+    }
     fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
         let ident = self.item_ident(tcx, id);
         let res = Res::Def(self.def_kind(id), self.local_def_id(id));
