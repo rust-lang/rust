@@ -88,12 +88,16 @@ where
         pre_assumptions.is_empty(),
         "scrape_region_constraints: incoming region assumptions = {pre_assumptions:#?}",
     );
+    let pre_solver_constraints = infcx.take_solver_region_constraints();
+    assert!(
+        pre_solver_constraints.is_true(),
+        "scrape_region_constraints: incoming solver constraints = {pre_solver_constraints:#?}",
+    );
 
-    let (value, solver_constraints) = infcx.with_fresh_solver_region_constraints(|| {
-        infcx.commit_if_ok(|_| {
-            let ocx = ObligationCtxt::new(infcx);
-            let value = op(&ocx).map_err(|_| {
-                infcx.tcx.check_potentially_region_dependent_goals(root_def_id).err().unwrap_or_else(
+    let value = infcx.commit_if_ok(|_| {
+        let ocx = ObligationCtxt::new(infcx);
+        let value = op(&ocx).map_err(|_| {
+            infcx.tcx.check_potentially_region_dependent_goals(root_def_id).err().unwrap_or_else(
                 // FIXME: In this region-dependent context, `type_op` should only fail due to
                 // region-dependent goals. Any other kind of failure indicates a bug and we
                 // should ICE.
@@ -126,29 +130,26 @@ where
                         .dcx()
                         .span_delayed_bug(span, format!("error performing operation: {name}"))
                 },
-                )
-            })?;
-            let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if errors.no_errors() {
-                Ok(value)
-            } else if let Err(guar) =
-                infcx.tcx.check_potentially_region_dependent_goals(root_def_id)
-            {
-                Err(guar)
-            } else {
-                Err(infcx.dcx().delayed_bug(format!(
-                    "errors selecting obligation during MIR typeck: {name} {root_def_id:?} {errors:?}"
-                )))
-            }
-        })
-    });
-    let value = value?;
+            )
+        })?;
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
+        if errors.no_errors() {
+            Ok(value)
+        } else if let Err(guar) = infcx.tcx.check_potentially_region_dependent_goals(root_def_id) {
+            Err(guar)
+        } else {
+            Err(infcx.dcx().delayed_bug(format!(
+                "errors selecting obligation during MIR typeck: {name} {root_def_id:?} {errors:?}"
+            )))
+        }
+    })?;
 
     // Next trait solver performs operations locally, and normalize goals should resolve vars.
     let value = infcx.resolve_vars_if_possible(value);
 
     let region_obligations = infcx.take_registered_region_obligations();
     let region_assumptions = infcx.take_registered_region_assumptions();
+    let solver_constraints = infcx.take_solver_region_constraints();
     let region_constraint_data = infcx.take_and_reset_region_constraints();
     let region_constraints = query_response::make_query_region_constraints(
         region_obligations,

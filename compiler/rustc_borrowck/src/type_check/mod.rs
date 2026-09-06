@@ -136,6 +136,13 @@ pub(crate) fn type_check<'tcx>(
             pre_assumptions.is_empty(),
             "there should be no incoming region assumptions = {pre_assumptions:#?}",
         );
+        // Solver region constraints from computing the implied bounds went through
+        // `ConstraintConversion` and are already stored in `constraints`.
+        let pre_solver_constraints = infcx.take_solver_region_constraints();
+        assert!(
+            pre_solver_constraints.is_true(),
+            "there should be no incoming solver region constraints = {pre_solver_constraints:#?}",
+        );
     }
 
     debug!(?normalized_inputs_and_output);
