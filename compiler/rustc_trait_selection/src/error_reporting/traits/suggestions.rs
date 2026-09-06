@@ -3765,15 +3765,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return false;
         };
 
-        let typeck_root = self.tcx.typeck_root_def_id(closure_def_id.to_def_id());
-        // Querying `typeck` for the body currently being checked would create a cycle, so use the
-        // in-progress results when they belong to this closure's typeck root.
-        let captures: Vec<_> = match &self.typeck_results {
-            Some(typeck_results) if typeck_results.hir_owner.to_def_id() == typeck_root => {
-                typeck_results.closure_min_captures_flattened(closure_def_id).collect()
-            }
-            _ => self.tcx.closure_captures(closure_def_id).to_vec(),
+        // This can run while `typeck` for the closure's root is still on the query stack, for
+        // example when reporting an overflow from inside trait selection, so only the in-progress
+        // results are safe to look at. Asking for the captures through `tcx.closure_captures`
+        // would call `typeck` again and replace the error being reported with a cycle error.
+        let Some(typeck_results) = &self.typeck_results else {
+            return false;
         };
+        let typeck_root = self.tcx.typeck_root_def_id(closure_def_id.to_def_id());
+        if typeck_results.hir_owner.to_def_id() != typeck_root {
+            return false;
+        }
+        let captures: Vec<_> =
+            typeck_results.closure_min_captures_flattened(closure_def_id).collect();
         let upvar_tys = upvar_args.upvar_tys();
         if captures.len() != upvar_tys.len() {
             return false;
