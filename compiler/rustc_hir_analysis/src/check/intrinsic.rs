@@ -302,6 +302,15 @@ pub(crate) fn check_intrinsic_type(
         }
         sym::forget => (1, 0, vec![param(0)], tcx.types.unit),
         sym::transmute | sym::transmute_unchecked => (2, 0, vec![param(0)], param(1)),
+        sym::transmute_copy => {
+            let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
+            (
+                2,
+                0,
+                vec![Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0))],
+                param(1),
+            )
+        }
         sym::prefetch_read_data
         | sym::prefetch_write_data
         | sym::prefetch_read_instruction

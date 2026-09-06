@@ -795,6 +795,7 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::PointerCoercion(_, _)
                 | CastKind::PointerWithExposedProvenance
                 | CastKind::Transmute
+                | CastKind::TransmuteCopy
                 | CastKind::BoxDerefTransmute
                 | CastKind::Subtype,
                 _,
