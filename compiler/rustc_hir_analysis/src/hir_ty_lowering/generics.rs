@@ -491,6 +491,7 @@ pub(crate) fn check_generic_arg_count(
             has_self as usize,
             gen_args,
             def_id,
+            cx.item_def_id(),
         ));
 
         Err(reported)
@@ -605,6 +606,7 @@ pub(crate) fn check_generic_arg_count(
                     params_offset,
                     gen_args,
                     def_id,
+                    cx.item_def_id(),
                 ))
                 .emit_unless_delay(all_params_are_binded || has_invalid_bound)
         });
