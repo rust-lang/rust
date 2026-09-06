@@ -133,7 +133,7 @@ note: found an item that was configured out
   --> $DIR/cfg_select.rs:258:16
    |
 LL |     all(true, false) => {
-   |        ------------- the item is gated here
+   |               ----- the item is gated here
 LL |         struct Thing1;
    |                ^^^^^^
 
@@ -154,7 +154,7 @@ note: found an item that was configured out
   --> $DIR/cfg_select.rs:272:16
    |
 LL |     all(true, feature = "meow") => {
-   |        ------------------------ the item is gated here
+   |               ---------------- the item is gated behind the `meow` feature
 LL |         struct Thing2;
    |                ^^^^^^
 
