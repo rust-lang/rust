@@ -2195,7 +2195,6 @@ impl<'tcx> Ty<'tcx> {
                 def.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
                     || def.flags().contains(AdtFlags::IS_MANUALLY_DROP)
             }
-            ty::Closure(..) | ty::Coroutine(..) | ty::CoroutineClosure(..) => true,
             _ => false,
         }
     }
