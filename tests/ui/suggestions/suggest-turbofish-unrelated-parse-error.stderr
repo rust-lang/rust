@@ -1,0 +1,8 @@
+error: expected expression, found `@`
+  --> $DIR/suggest-turbofish-unrelated-parse-error.rs:8:32
+   |
+LL |     take_three(a < b, c > (d), @);
+   |                                ^ expected expression
+
+error: aborting due to 1 previous error
+
