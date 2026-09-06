@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait` for type `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>>>`
-  --> $DIR/coherence-fulfill-overflow.rs:14:1
+  --> $DIR/coherence-fulfill-overflow.rs:12:1
    |
 LL | impl<T: TwoW> Trait for W<T> {}
    | ---------------------------- first implementation here
