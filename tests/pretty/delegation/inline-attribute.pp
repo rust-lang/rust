@@ -29,7 +29,7 @@ impl Trait for u8 { }
 struct S(u8);
 
 mod to_import {
-    fn check(arg: &'_ u8) -> &'_ u8 { arg }
+    fn check(arg: &u8) -> &u8 { arg }
 }
 
 impl Trait for S {
