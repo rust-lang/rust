@@ -5,6 +5,37 @@ use rustc_abi::{
 use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
+/// Is this a struct with a single float field?
+fn is_single_fp_element<'a, Ty, C>(mut layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    // On X86 over-aligned structs are disqualified.
+    let outer_size = layout.layout.size();
+
+    loop {
+        layout = layout.peel_transparent_wrappers(cx);
+
+        return match layout.backend_repr {
+            BackendRepr::Scalar(scalar) => match scalar.primitive() {
+                Primitive::Float(float) => float.size() == outer_size,
+                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+            },
+            BackendRepr::Memory { .. } => {
+                // Structs, unions and arrays all qualify.
+                if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
+                    layout = layout.field(cx, 0);
+                    continue;
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+    }
+}
+
 #[derive(PartialEq)]
 pub(crate) enum Flavor {
     General,
@@ -42,8 +73,9 @@ where
             {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
-                if fn_abi.ret.layout.is_single_fp_element(cx) {
+                if is_single_fp_element(fn_abi.ret.layout, cx) {
                     match fn_abi.ret.layout.size.bytes() {
+                        2 => fn_abi.ret.cast_to(Reg::f16()),
                         4 => fn_abi.ret.cast_to(Reg::f32()),
                         8 => fn_abi.ret.cast_to(Reg::f64()),
                         _ => fn_abi.ret.make_indirect(),
