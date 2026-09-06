@@ -1,8 +1,10 @@
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_hir::Safety;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_span::{Span, Spanned};
 
@@ -205,6 +207,97 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         )
     }
 
+    fn parse_cast_fn_ptr_safety(&self, expr_id: ExprId) -> PResult<Safety> {
+        parse_by_kind!(self, expr_id, _, "function pointer safety",
+            @variant(mir_cast_fn_ptr_safety, Safe) => {
+                Ok(Safety::Safe)
+            },
+            @variant(mir_cast_fn_ptr_safety, Unsafe) => {
+                Ok(Safety::Unsafe)
+            },
+        )
+    }
+
+    fn parse_cast_pointer_coercion(&self, expr_id: ExprId) -> PResult<PointerCoercion> {
+        parse_by_kind!(self, expr_id, expr, "pointer coercion kind",
+            @variant(mir_cast_ptr_coercion, ReifyFnPointer) => {
+                let ExprKind::Adt(AdtExpr { fields, .. }) = &expr.kind else {
+                    unreachable!("already matched")
+                };
+                Ok(PointerCoercion::ReifyFnPointer(
+                    self.parse_cast_fn_ptr_safety(fields[0].expr)?,
+                ))
+            },
+            @variant(mir_cast_ptr_coercion, UnsafeFnPointer) => {
+                Ok(PointerCoercion::UnsafeFnPointer)
+            },
+            @variant(mir_cast_ptr_coercion, ClosureFnPointer) => {
+                let ExprKind::Adt(AdtExpr { fields, .. }) = &expr.kind else {
+                    unreachable!("already matched")
+                };
+                Ok(PointerCoercion::ClosureFnPointer(
+                    self.parse_cast_fn_ptr_safety(fields[0].expr)?,
+                ))
+            },
+            @variant(mir_cast_ptr_coercion, MutToConstPointer) => {
+                Ok(PointerCoercion::MutToConstPointer)
+            },
+            @variant(mir_cast_ptr_coercion, ArrayToPointer) => {
+                Ok(PointerCoercion::ArrayToPointer)
+            },
+            @variant(mir_cast_ptr_coercion, UnsizePointee) => {
+                Ok(PointerCoercion::Unsize)
+            },
+        )
+    }
+
+    fn parse_cast_kind(&self, expr_id: ExprId) -> PResult<CastKind> {
+        parse_by_kind!(self, expr_id, expr, "cast kind",
+            @variant(mir_cast_kind, PointerExposeProvenance) => {
+                Ok(CastKind::PointerExposeProvenance)
+            },
+            @variant(mir_cast_kind, PointerWithExposedProvenance) => {
+                Ok(CastKind::PointerWithExposedProvenance)
+            },
+            @variant(mir_cast_kind, IntToInt) => {
+                Ok(CastKind::IntToInt)
+            },
+            @variant(mir_cast_kind, FloatToInt) => {
+                Ok(CastKind::FloatToInt)
+            },
+            @variant(mir_cast_kind, FloatToFloat) => {
+                Ok(CastKind::FloatToFloat)
+            },
+            @variant(mir_cast_kind, IntToFloat) => {
+                Ok(CastKind::IntToFloat)
+            },
+            @variant(mir_cast_kind, PtrToPtr) => {
+                Ok(CastKind::PtrToPtr)
+            },
+            @variant(mir_cast_kind, FnPtrToPtr) => {
+                Ok(CastKind::FnPtrToPtr)
+            },
+            @variant(mir_cast_kind, Transmute) => {
+                Ok(CastKind::Transmute)
+            },
+            @variant(mir_cast_kind, BoxDerefTransmute) => {
+                Ok(CastKind::BoxDerefTransmute)
+            },
+            @variant(mir_cast_kind, Subtype) => {
+                Ok(CastKind::Subtype)
+            },
+            @variant(mir_cast_kind, PointerCoercion) => {
+                let ExprKind::Adt(AdtExpr { fields, .. }) = &expr.kind else {
+                    unreachable!("already matched")
+                };
+                Ok(CastKind::PointerCoercion(
+                    self.parse_cast_pointer_coercion(fields[0].expr)?,
+                    CoercionSource::AsCast,
+                ))
+            },
+        )
+    }
+
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "rvalue",
             @call(mir_discriminant, args) => self.parse_place(args[0]).map(Rvalue::Discriminant),
@@ -220,6 +313,10 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let source = self.parse_operand(args[0])?;
                 let kind = CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, CoercionSource::AsCast);
                 Ok(Rvalue::Cast(kind, source, expr.ty))
+            },
+            @call(mir_cast, args) => {
+                let source = self.parse_operand(args[0])?;
+                Ok(Rvalue::Cast(self.parse_cast_kind(args[1])?, source, expr.ty))
             },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
