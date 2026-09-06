@@ -29,7 +29,7 @@ fn default() {
 /// Use std's default hasher.
 #[test]
 fn random_state() {
-    check::<std::collections::hash_map::RandomState>();
+    check::<std::hash::RandomState>();
 }
 
 /// Use a constant 0 hash.

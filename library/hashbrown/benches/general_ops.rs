@@ -6,7 +6,7 @@ use criterion::Criterion;
 use hashbrown::DefaultHashBuilder;
 use hashbrown::{HashMap, HashSet};
 use std::{
-    collections::hash_map::RandomState,
+    hash::RandomState,
     hint::black_box,
     sync::atomic::{self, AtomicUsize},
 };
