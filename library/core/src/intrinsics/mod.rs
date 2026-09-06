@@ -3731,6 +3731,14 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
 #[rustc_intrinsic]
 pub const fn offload_get_num_devices() -> i32;
 
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn offload_preload<T: ?Sized>(ptr: *const T, is_mut: bool);
+
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn offload_preload_end<T: ?Sized>(ptr: *const T, is_mut: bool);
+
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]

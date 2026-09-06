@@ -1461,6 +1461,8 @@ symbols! {
         off,
         offload,
         offload_get_num_devices,
+        offload_preload,
+        offload_preload_end,
         offload_kernel,
         offset,
         offset_of,
