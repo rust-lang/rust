@@ -211,22 +211,6 @@ fn find_similar_kw(lookup: Ident, candidates: &[Symbol]) -> Option<MisspelledKw>
     })
 }
 
-struct MultiSugg {
-    msg: String,
-    patches: Vec<(Span, String)>,
-    applicability: Applicability,
-}
-
-impl MultiSugg {
-    fn emit(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion(self.msg, self.patches, self.applicability);
-    }
-
-    fn emit_verbose(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion(self.msg, self.patches, self.applicability);
-    }
-}
-
 /// SnapshotParser is used to create a snapshot of the parser
 /// without causing duplicate errors being emitted when the `Parser`
 /// is dropped.
@@ -1726,15 +1710,23 @@ impl<'a> Parser<'a> {
         );
         err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
 
-        // (pre, post)
-        let spans = match kind.fixity {
+        let (pre_span, post_span) = match kind.fixity {
             UnaryFixity::Pre => (op_span, base.span.shrink_to_hi()),
             UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
         };
 
         match kind.standalone {
             IsStandalone::Standalone => {
-                self.inc_dec_standalone_suggest(kind, spans).emit_verbose(&mut err)
+                let mut patches = Vec::new();
+                if !pre_span.is_empty() {
+                    patches.push((pre_span, String::new()));
+                }
+                patches.push((post_span, format!(" {}= 1", kind.op.chr())));
+                err.multipart_suggestion(
+                    format!("use `{}= 1` instead", kind.op.chr()),
+                    patches,
+                    Applicability::MachineApplicable,
+                );
             }
             IsStandalone::Subexpr => {
                 let Ok(base_src) = self.span_to_snippet(base.span) else {
@@ -1743,71 +1735,42 @@ impl<'a> Parser<'a> {
                 };
                 match kind.fixity {
                     UnaryFixity::Pre => {
-                        self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                        err.multipart_suggestion(
+                            format!("use `{}= 1` instead", kind.op.chr()),
+                            vec![
+                                (pre_span, "{ ".to_string()),
+                                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
                     }
                     UnaryFixity::Post => {
                         // won't suggest since we can not handle the precedences
                         // for example: `a + b++` has been parsed (a + b)++ and we can not suggest here
                         if !matches!(base.kind, ExprKind::Binary(_, _, _)) {
-                            self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                            let tmp_var = if base_src.trim() == "tmp" { "tmp_" } else { "tmp" };
+                            err.multipart_suggestion(
+                                format!("use `{}= 1` instead", kind.op.chr()),
+                                vec![
+                                    (pre_span, format!("{{ let {tmp_var} = ")),
+                                    (
+                                        post_span,
+                                        format!(
+                                            "; {} {}= 1; {} }}",
+                                            base_src,
+                                            kind.op.chr(),
+                                            tmp_var
+                                        ),
+                                    ),
+                                ],
+                                Applicability::HasPlaceholders,
+                            );
                         }
                     }
                 }
             }
         }
         err
-    }
-
-    fn prefix_inc_dec_suggest(
-        &mut self,
-        base_src: String,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![
-                (pre_span, "{ ".to_string()),
-                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
-            ],
-            applicability: Applicability::MachineApplicable,
-        }
-    }
-
-    fn postfix_inc_dec_suggest(
-        &mut self,
-        base_src: String,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        let tmp_var = if base_src.trim() == "tmp" { "tmp_" } else { "tmp" };
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![
-                (pre_span, format!("{{ let {tmp_var} = ")),
-                (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
-            ],
-            applicability: Applicability::HasPlaceholders,
-        }
-    }
-
-    fn inc_dec_standalone_suggest(
-        &mut self,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        let mut patches = Vec::new();
-
-        if !pre_span.is_empty() {
-            patches.push((pre_span, String::new()));
-        }
-
-        patches.push((post_span, format!(" {}= 1", kind.op.chr())));
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches,
-            applicability: Applicability::MachineApplicable,
-        }
     }
 
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
