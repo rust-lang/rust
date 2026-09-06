@@ -26,17 +26,29 @@ fn load<T, const N: usize>(v: PackedSimd<T, N>) -> FullSimd<T, N> {
     }
 }
 
-// CHECK-LABEL: square_packed_full
-// CHECK-SAME: ptr{{[a-z_ ]*}} sret([[RET_TYPE:[^)]+]]) [[RET_ALIGN:align (8|16)]]{{[^%]*}} [[RET_VREG:%[_0-9]*]]
+// CHECK-LABEL: define <3 x float> @square_packed_full
 // CHECK-SAME: ptr{{[a-z_ ]*}} align 4
 #[no_mangle]
 pub fn square_packed_full(x: PackedSimd<f32, 3>) -> FullSimd<f32, 3> {
     // CHECK-NEXT: start
-    // noopt: alloca [[RET_TYPE]], [[RET_ALIGN]]
     // CHECK: load <3 x float>
     let x = load(x);
     // CHECK: [[VREG:%[a-z0-9_]+]] = fmul <3 x float>
-    // CHECK-NEXT: store <3 x float> [[VREG]], ptr [[RET_VREG]], [[RET_ALIGN]]
+    // CHECK-NEXT: ret <3 x float> [[VREG]]
+    unsafe { intrinsics::simd_mul(x, x) }
+}
+
+// Also test a big version that uses in-memory argument passing.
+// CHECK-LABEL: square_packed_full_big
+// CHECK-SAME: ptr{{[a-z_ ]*}} sret([[RET_TYPE:[^)]+]]) [[RET_ALIGN:align 32]]{{[^%]*}} [[RET_VREG:%[_0-9]*]]
+#[no_mangle]
+pub fn square_packed_full_big(x: PackedSimd<f32, 7>) -> FullSimd<f32, 7> {
+    // CHECK-NEXT: start
+    // noopt: alloca [[RET_TYPE]], [[RET_ALIGN]]
+    // CHECK: load <7 x float>
+    let x = load(x);
+    // CHECK: [[VREG:%[a-z0-9_]+]] = fmul <7 x float>
+    // CHECK-NEXT: store <7 x float> [[VREG]], ptr [[RET_VREG]], [[RET_ALIGN]]
     // CHECK-NEXT: ret void
     unsafe { intrinsics::simd_mul(x, x) }
 }
