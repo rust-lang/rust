@@ -119,7 +119,7 @@ mod prelude {
     }
     pub struct Rc<T: ?Sized, A = Global> {
         ptr: NonNull<RcInner<T>>,
-        phantom: PhantomData<RcInner<T>>,
+        phantom: PhantomData<Box<RcInner<T>>>,
         alloc: A,
     }
 
@@ -133,7 +133,7 @@ mod prelude {
     }
     pub struct Arc<T: ?Sized, A = Global> {
         ptr: NonNull<ArcInner<T>>,
-        phantom: PhantomData<ArcInner<T>>,
+        phantom: PhantomData<Box<ArcInner<T>>>,
         alloc: A,
     }
 }
