@@ -492,14 +492,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 fn env_var_os<'tcx>(tcx: TyCtxt<'tcx>, key: &'tcx OsStr) -> Option<&'tcx OsStr> {
     let value = env::var_os(key);
 
-    let value_tcx = value.as_ref().map(|value| {
-        let encoded_bytes = tcx.arena.alloc_slice(value.as_encoded_bytes());
-        debug_assert_eq!(value.as_encoded_bytes(), encoded_bytes);
-        // SAFETY: The bytes came from `as_encoded_bytes`, and we assume that
-        // `alloc_slice` is implemented correctly, and passes the same bytes
-        // back (debug asserted above).
-        unsafe { OsStr::from_encoded_bytes_unchecked(encoded_bytes) }
-    });
+    let value_tcx = value.as_ref().map(|value| tcx.arena.alloc_os_str(value));
 
     // Also add the variable to Cargo's dependency tracking
     //

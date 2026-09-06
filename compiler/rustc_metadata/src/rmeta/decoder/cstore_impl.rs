@@ -382,7 +382,7 @@ provide! { tcx, def_id, other, cdata,
     crate_name => { cdata.root.header.name }
     num_extern_def_ids => { cdata.num_def_ids() }
 
-    extra_filename => { cdata.root.extra_filename.clone() }
+    extra_filename => { tcx.arena.alloc_str(&cdata.root.extra_filename) }
 
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits(tcx)) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls(tcx)) }
@@ -418,7 +418,9 @@ provide! { tcx, def_id, other, cdata,
     exported_non_generic_symbols => { cdata.exported_non_generic_symbols(tcx) }
     exported_generic_symbols => { cdata.exported_generic_symbols(tcx) }
 
-    crate_extern_paths => { cdata.source().paths().cloned().collect() }
+    crate_extern_paths => {
+        tcx.arena.alloc_from_iter(cdata.source().paths().map(|p| tcx.arena.alloc_path(p)))
+    }
     expn_that_defined => { cdata.get_expn_that_defined(tcx, def_id.index) }
     default_field => { cdata.get_default_field(tcx, def_id.index) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
