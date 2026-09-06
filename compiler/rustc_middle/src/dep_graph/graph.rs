@@ -3,7 +3,7 @@ use std::cell::Cell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashSet;
@@ -69,14 +69,13 @@ rustc_index::newtype_index! {
     pub struct DepNodeIndex {}
 }
 
-// We store a large collection of these in `prev_index_to_index` during
-// non-full incremental builds, and want to ensure that the element size
-// doesn't inadvertently increase.
-rustc_data_structures::static_assert_size!(Option<DepNodeIndex>, 4);
-
 impl DepNodeIndex {
     const SINGLETON_ZERO_DEPS_ANON_NODE: DepNodeIndex = DepNodeIndex::ZERO;
     pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
+
+    /// Indices below this belong to the singleton nodes, which sit at the same index in
+    /// every session.
+    pub(super) const FIRST_ALLOCATED: u32 = 2;
 }
 
 impl From<DepNodeIndex> for QueryInvocationId {
@@ -185,29 +184,30 @@ impl DepGraph {
 
         let colors = DepNodeColorMap::new(prev_index_space_len);
 
-        // Instantiate a node with zero dependencies only once for anonymous queries.
-        let _green_node_index = current.alloc_new_node(
+        // Instantiate a node with zero dependencies only once for anonymous queries. The
+        // previous node can be green: it never changes, and its outdated key does not
+        // matter, since nothing looks an anon node up by key.
+        current.alloc_singleton_node(
+            DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE,
             DepNode { kind: DepKind::AnonZeroDeps, key_fingerprint: current.anon_id_seed.into() },
             &[],
             Fingerprint::ZERO,
+            &colors,
+            DesiredColor::Green,
         );
-        assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE);
 
-        // Create a single always-red node, with no dependencies of its own.
-        // Other nodes can use the always-red node as a fake dependency, to
-        // ensure that their dependency list will never be all-green.
-        let red_node_index = current.alloc_new_node(
+        // Create a single always-red node with no dependencies. Other nodes use it as a
+        // fake dependency to keep their dependency list from ever being all-green. The
+        // previous node must be red too, or the marking walk would mark it green, and
+        // its dependents with it.
+        current.alloc_singleton_node(
+            DepNodeIndex::FOREVER_RED_NODE,
             DepNode { kind: DepKind::Red, key_fingerprint: Fingerprint::ZERO.into() },
             &[],
             Fingerprint::ZERO,
+            &colors,
+            DesiredColor::Red,
         );
-        assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
-        if prev_index_space_len > 0 {
-            let prev_index =
-                const { SerializedDepNodeIndex::from_u32(DepNodeIndex::FOREVER_RED_NODE.as_u32()) };
-            let result = colors.try_set_color(prev_index, DesiredColor::Red);
-            assert_matches!(result, TrySetColorResult::Success);
-        }
 
         DepGraph {
             data: Some(Arc::new(DepGraphData {
@@ -1159,20 +1159,10 @@ rustc_index::newtype_index! {
 /// largest in the compiler.
 ///
 /// For this reason, we avoid storing `DepNode`s more than once as map
-/// keys. The `anon_node_to_index` map only contains nodes of anonymous queries not in the previous
-/// graph, and we map nodes in the previous graph to indices via a two-step
-/// mapping. `SerializedDepGraph` maps from `DepNode` to `SerializedDepNodeIndex`,
-/// and the `prev_index_to_index` vector (which is more compact and faster than
-/// using a map) maps from `SerializedDepNodeIndex` to `DepNodeIndex`.
-///
-/// This struct uses three locks internally. The `data`, `anon_node_to_index`,
-/// and `prev_index_to_index` fields are locked separately. Operations that take
-/// a `DepNodeIndex` typically just access the `data` field.
-///
-/// We only need to manipulate at most two locks simultaneously:
-/// `anon_node_to_index` and `data`, or `prev_index_to_index` and `data`. When
-/// manipulating both, we acquire `anon_node_to_index` or `prev_index_to_index`
-/// first, and `data` second.
+/// keys. The `anon_node_to_index` map only contains nodes of anonymous queries not in the
+/// previous graph. Nodes in the previous graph are found through `SerializedDepGraph`,
+/// which maps from `DepNode` to `SerializedDepNodeIndex`; a node that `DepNodeColorMap`
+/// says is green keeps that same numeric value as its current `DepNodeIndex`.
 pub(super) struct CurrentDepGraph {
     encoder: GraphEncoder,
     anon_node_to_index: ShardedHashMap<DepNode, DepNodeIndex>,
@@ -1275,6 +1265,33 @@ impl CurrentDepGraph {
 
         dep_node_index
     }
+
+    /// Writes one of the singleton nodes, which sit at the same reserved index in every
+    /// session. If a previous session left a node at that index, it is colored
+    /// `prev_color` right away, which keeps the marking walk from promoting it: promotion
+    /// would write a second record for the index, next to the one written here.
+    #[inline(always)]
+    fn alloc_singleton_node(
+        &self,
+        index: DepNodeIndex,
+        key: DepNode,
+        edges: &[DepNodeIndex],
+        value_fingerprint: Fingerprint,
+        colors: &DepNodeColorMap,
+        prev_color: DesiredColor,
+    ) {
+        self.encoder.send_new_singleton(index, key, value_fingerprint, edges);
+
+        // The color map covers exactly the previous session's index space.
+        if (index.as_u32() as usize) < colors.values.len() {
+            let prev_index = SerializedDepNodeIndex::from_u32(index.as_u32());
+            let result = colors.try_set_color(prev_index, prev_color);
+            assert_matches!(result, TrySetColorResult::Success);
+        }
+
+        #[cfg(debug_assertions)]
+        self.record_edge(index, key, value_fingerprint);
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1323,26 +1340,30 @@ impl TaskDeps {
     }
 }
 
-// A data structure that stores Option<DepNodeColor> values as a contiguous
-// array, using one u32 per entry.
+// The color of every node in the previous graph, one byte per node. A green node's
+// current index is not stored here: it is numerically equal to the previous index.
 pub(super) struct DepNodeColorMap {
-    values: IndexVec<SerializedDepNodeIndex, AtomicU32>,
+    values: IndexVec<SerializedDepNodeIndex, AtomicU8>,
 }
 
-// All values below `COMPRESSED_RED` are green.
-const COMPRESSED_RED: u32 = u32::MAX - 1;
-const COMPRESSED_UNKNOWN: u32 = u32::MAX;
+const COLOR_GREEN: u8 = 0;
+const COLOR_RED: u8 = 1;
+const COLOR_UNKNOWN: u8 = 2;
 
 impl DepNodeColorMap {
     fn new(size: usize) -> DepNodeColorMap {
-        debug_assert!(COMPRESSED_RED > DepNodeIndex::MAX_AS_U32);
-        DepNodeColorMap { values: (0..size).map(|_| AtomicU32::new(COMPRESSED_UNKNOWN)).collect() }
+        DepNodeColorMap { values: (0..size).map(|_| AtomicU8::new(COLOR_UNKNOWN)).collect() }
     }
 
+    /// The current-session index of a node that has been marked green, or `None`
+    /// if it has not been.
     #[inline]
     pub(super) fn current(&self, index: SerializedDepNodeIndex) -> Option<DepNodeIndex> {
-        let value = self.values[index].load(Ordering::Relaxed);
-        if value <= DepNodeIndex::MAX_AS_U32 { Some(DepNodeIndex::from_u32(value)) } else { None }
+        if self.values[index].load(Ordering::Relaxed) == COLOR_GREEN {
+            Some(DepNodeIndex::from_u32(index.as_u32()))
+        } else {
+            None
+        }
     }
 
     /// Atomically sets the color of a previous-session dep node to either green
@@ -1357,17 +1378,17 @@ impl DepNodeColorMap {
         color: DesiredColor,
     ) -> TrySetColorResult {
         match self.values[prev_index].compare_exchange(
-            COMPRESSED_UNKNOWN,
+            COLOR_UNKNOWN,
             match color {
-                DesiredColor::Red => COMPRESSED_RED,
-                DesiredColor::Green { index } => index.as_u32(),
+                DesiredColor::Red => COLOR_RED,
+                DesiredColor::Green => COLOR_GREEN,
             },
             Ordering::Relaxed,
             Ordering::Relaxed,
         ) {
             Ok(_) => TrySetColorResult::Success,
-            Err(COMPRESSED_RED) => TrySetColorResult::AlreadyRed,
-            Err(index) => TrySetColorResult::AlreadyGreen { index: DepNodeIndex::from_u32(index) },
+            Err(COLOR_RED) => TrySetColorResult::AlreadyRed,
+            Err(_) => TrySetColorResult::AlreadyGreen,
         }
     }
 
@@ -1376,24 +1397,25 @@ impl DepNodeColorMap {
         let value = self.values[index].load(Ordering::Acquire);
         // Green is by far the most common case. Check for that first so we can succeed with a
         // single comparison.
-        if value < COMPRESSED_RED {
-            DepNodeColor::Green(DepNodeIndex::from_u32(value))
-        } else if value == COMPRESSED_RED {
+        if value == COLOR_GREEN {
+            DepNodeColor::Green(DepNodeIndex::from_u32(index.as_u32()))
+        } else if value == COLOR_RED {
             DepNodeColor::Red
         } else {
-            debug_assert_eq!(value, COMPRESSED_UNKNOWN);
+            debug_assert_eq!(value, COLOR_UNKNOWN);
             DepNodeColor::Unknown
         }
     }
 }
 
 /// The color that [`DepNodeColorMap::try_set_color`] should try to apply to a node.
+/// A green node keeps its previous index, so no index needs to be given.
 #[derive(Clone, Copy, Debug)]
 pub(super) enum DesiredColor {
     /// Try to mark the node red.
     Red,
-    /// Try to mark the node green, associating it with a current-session node index.
-    Green { index: DepNodeIndex },
+    /// Try to mark the node green.
+    Green,
 }
 
 /// Return value of [`DepNodeColorMap::try_set_color`], indicating success or failure,
@@ -1404,9 +1426,8 @@ pub(super) enum TrySetColorResult {
     Success,
     /// Coloring failed because the node was already marked red.
     AlreadyRed,
-    /// Coloring failed because the node was already marked green,
-    /// and corresponds to node `index` in the current-session dep graph.
-    AlreadyGreen { index: DepNodeIndex },
+    /// Coloring failed because the node was already marked green.
+    AlreadyGreen,
 }
 
 #[inline(never)]
