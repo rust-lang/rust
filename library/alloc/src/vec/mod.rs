@@ -992,7 +992,8 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// capacity after the push, *O*(*capacity*) time is taken to copy the
     /// vector's elements to a larger allocation. This expensive operation is
     /// offset by the *capacity* *O*(1) insertions it allows.
-    #[inline]
+    #[inline(always)]
+    #[rustc_diagnostic_item = "vec_push"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push_back", "put", "append")]
     pub fn push(&mut self, value: T) {
@@ -1024,7 +1025,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// capacity after the push, *O*(*capacity*) time is taken to copy the
     /// vector's elements to a larger allocation. This expensive operation is
     /// offset by the *capacity* *O*(1) insertions it allows.
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
     pub fn push_mut(&mut self, value: T) -> &mut T {

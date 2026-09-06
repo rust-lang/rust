@@ -127,17 +127,23 @@ fn zst() {
     zst_sanity(&v);
 
     assert_eq!(
-        unsafe { v.inner.grow_amortized(100, usize::MAX - 100, ZST::LAYOUT, &Global) },
+        unsafe { v.inner.grow_plan(100, usize::MAX - 100, ZST::LAYOUT, false).map(|_| ()) },
         cap_err
     );
     assert_eq!(
-        unsafe { v.inner.grow_amortized(101, usize::MAX - 100, ZST::LAYOUT, &Global) },
+        unsafe { v.inner.grow_plan(101, usize::MAX - 100, ZST::LAYOUT, false).map(|_| ()) },
         cap_err
     );
     zst_sanity(&v);
 
-    assert_eq!(unsafe { v.inner.grow_exact(100, usize::MAX - 100, ZST::LAYOUT, &Global) }, cap_err);
-    assert_eq!(unsafe { v.inner.grow_exact(101, usize::MAX - 100, ZST::LAYOUT, &Global) }, cap_err);
+    assert_eq!(
+        unsafe { v.inner.grow_plan(100, usize::MAX - 100, ZST::LAYOUT, true).map(|_| ()) },
+        cap_err
+    );
+    assert_eq!(
+        unsafe { v.inner.grow_plan(101, usize::MAX - 100, ZST::LAYOUT, true).map(|_| ()) },
+        cap_err
+    );
     zst_sanity(&v);
 }
 

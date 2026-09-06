@@ -1,16 +1,22 @@
 use std::iter::repeat;
+use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
+use std::ptr;
 
 use rand::RngCore;
 use test::{Bencher, black_box};
 
+#[inline(never)]
+fn push_grow(n: usize) -> Vec<usize> {
+    let mut v = Vec::new();
+    for i in 0..n {
+        v.push(i);
+    }
+    v
+}
+
 fn do_bench_push(b: &mut Bencher, n: usize) {
-    b.iter(|| {
-        let mut v = Vec::new();
-        for i in 0..n {
-            v.push(i);
-        }
-        v
-    });
+    b.iter(|| push_grow(n));
 }
 
 #[bench]
@@ -39,6 +45,111 @@ fn push_preallocated(n: usize) -> Vec<usize> {
 
 fn do_bench_push_preallocated(b: &mut Bencher, n: usize) {
     b.iter(|| push_preallocated(n));
+}
+
+struct CaptureLocally<'a, T> {
+    value: ManuallyDrop<T>,
+    old: *mut T,
+    _marker: PhantomData<&'a mut T>,
+}
+
+impl<T> Drop for CaptureLocally<'_, T> {
+    fn drop(&mut self) {
+        unsafe {
+            let value = ptr::read((&raw const self.value).cast::<T>());
+            ptr::write(self.old, value);
+        }
+    }
+}
+
+impl<'a, T> CaptureLocally<'a, T> {
+    #[inline(always)]
+    fn new(old: &'a mut T) -> Self {
+        Self { value: ManuallyDrop::new(unsafe { ptr::read(old) }), old, _marker: PhantomData }
+    }
+
+    #[inline(always)]
+    fn get_mut(&mut self) -> &mut T {
+        unsafe { &mut *((&raw mut self.value).cast::<T>()) }
+    }
+
+    #[inline(always)]
+    fn restore(self) {
+        let this = ManuallyDrop::new(self);
+        unsafe {
+            let value = ptr::read((&raw const this.value).cast::<T>());
+            ptr::write(this.old, value);
+        }
+    }
+}
+
+#[inline(never)]
+fn push_borrowed(v: &mut Vec<usize>, n: usize) {
+    for i in 0..n {
+        v.push(i);
+    }
+}
+
+#[inline(never)]
+fn push_borrowed_captured(v: &mut Vec<usize>, n: usize) {
+    let mut local = CaptureLocally::new(v);
+    {
+        let v = local.get_mut();
+        for i in 0..n {
+            v.push(i);
+        }
+    }
+    local.restore();
+}
+
+#[inline(never)]
+fn push_owned(mut v: Vec<usize>, n: usize) -> Vec<usize> {
+    for i in 0..n {
+        v.push(i);
+    }
+    v
+}
+
+fn do_bench_push_borrowed(b: &mut Bencher, n: usize, captured: bool) {
+    b.iter(|| {
+        let mut v = Vec::new();
+        if captured {
+            push_borrowed_captured(&mut v, n);
+        } else {
+            push_borrowed(&mut v, n);
+        }
+        v
+    });
+}
+
+#[bench]
+fn bench_push_borrowed_1000(b: &mut Bencher) {
+    do_bench_push_borrowed(b, 1000, false);
+}
+
+#[bench]
+fn bench_push_borrowed_captured_1000(b: &mut Bencher) {
+    do_bench_push_borrowed(b, 1000, true);
+}
+
+#[bench]
+fn bench_push_borrowed_10000(b: &mut Bencher) {
+    do_bench_push_borrowed(b, 10000, false);
+}
+
+#[bench]
+fn bench_push_borrowed_captured_10000(b: &mut Bencher) {
+    do_bench_push_borrowed(b, 10000, true);
+}
+
+#[bench]
+fn bench_push_owned_1000(b: &mut Bencher) {
+    b.iter(|| push_owned(Vec::new(), 1000));
+}
+
+#[bench]
+fn bench_push_owned_10000(b: &mut Bencher) {
+    b.iter(|| push_owned(Vec::new(), 10000));
 }
 
 #[bench]
