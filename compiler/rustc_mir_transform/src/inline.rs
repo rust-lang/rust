@@ -527,6 +527,23 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
     }
 }
 
+pub(super) fn try_resolve_call_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    def_id: DefId,
+    args: ty::Binder<'tcx, ty::GenericArgsRef<'tcx>>,
+) -> Option<(Instance<'tcx>, ty::GenericArgsRef<'tcx>)> {
+    // To resolve an instance its args have to be fully normalized.
+    let normalized_args = tcx
+        .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(args))
+        .ok()?
+        .no_bound_vars()
+        .unwrap();
+    let instance =
+        Instance::try_resolve(tcx, typing_env, def_id, normalized_args).ok().flatten()?;
+    Some((instance, normalized_args))
+}
+
 fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     inliner: &I,
     caller_body: &Body<'tcx>,
@@ -546,14 +563,8 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
                 return None;
             }
 
-            // To resolve an instance its args have to be fully normalized.
-            let args = tcx
-                .try_normalize_erasing_regions(inliner.typing_env(), Unnormalized::new_wip(args))
-                .ok()?
-                .no_bound_vars()
-                .unwrap();
-            let mut callee =
-                Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
+            let (mut callee, args) =
+                try_resolve_call_instance(tcx, inliner.typing_env(), def_id, args)?;
 
             if let InstanceKind::Virtual(..) = callee.def {
                 return None;
