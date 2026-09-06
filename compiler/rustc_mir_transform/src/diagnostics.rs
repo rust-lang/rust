@@ -7,7 +7,7 @@ use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::{ARITHMETIC_OVERFLOW, UNCONDITIONAL_PANIC};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{Binder, FnSig, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
 
@@ -159,16 +159,33 @@ pub(crate) struct FfiUnwindCall {
     pub foreign: bool,
 }
 
+pub(crate) struct GenericArgsPrinter<'tcx>(pub GenericArgsRef<'tcx>);
+
+impl core::fmt::Display for GenericArgsPrinter<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let Self(args) = self;
+        if args.is_empty() {
+            return Ok(());
+        }
+        f.write_str("::<")?;
+        for (i, arg) in args.terms().enumerate() {
+            write!(f, "{}{arg}", if i == 0 { "" } else { ", " })?
+        }
+        f.write_str(">")
+    }
+}
+
 #[derive(Diagnostic)]
 #[diag("taking a reference to a function item does not give a function pointer")]
-pub(crate) struct FnItemRef {
+pub(crate) struct FnItemRef<'tcx> {
     #[suggestion(
         "cast `{$ident}` to obtain a function pointer",
-        code = "{sugg}",
+        code = "{ident}{fn_args} as {fn_sig}",
         applicability = "unspecified"
     )]
     pub span: Span,
-    pub sugg: String,
+    pub fn_sig: Binder<'tcx, FnSig<'tcx>>,
+    pub fn_args: GenericArgsPrinter<'tcx>,
     pub ident: Ident,
 }
 
