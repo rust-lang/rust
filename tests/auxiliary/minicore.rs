@@ -496,4 +496,5 @@ pub mod simd {
     pub type i64x8 = Simd<i64, 8>;
 
     pub type u8x16 = Simd<u8, 16>;
+    pub type u64x2 = Simd<u8, 16>;
 }

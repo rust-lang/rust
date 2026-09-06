@@ -4,8 +4,9 @@ use Determinacy::*;
 use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PerNS};
 use rustc_lint_defs::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
+use rustc_middle::middle::resolve::PartialRes;
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
@@ -1512,7 +1513,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
                             }
                         }
-                        RibKind::ConstantItem(_, item) => {
+                        RibKind::ConstantItem(_, item, requires_type) => {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
                                 let (span, resolution_error) = match item {
@@ -1541,6 +1542,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                                 suggestion: "const",
                                                 current: "let",
                                                 type_span,
+                                                requires_type,
                                             },
                                         )
                                     }
@@ -1551,6 +1553,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             suggestion: "let",
                                             current: kind.as_str(),
                                             type_span: None,
+                                            requires_type,
                                         },
                                     ),
                                 };
@@ -1621,7 +1624,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial
                                 && !matches!(res, Res::SelfTyAlias { .. })
                             {
@@ -1715,7 +1718,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial {
                                 if let Some(span) = finalize {
                                     let error = match cause {

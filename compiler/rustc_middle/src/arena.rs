@@ -36,18 +36,21 @@ rustc_arena::declare_arena! {
             rustc_hir::def_id::LocalDefId,
             rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
         >,
-    resolver: rustc_data_structures::steal::Steal<rustc_middle::ty::ResolverAstLowering<'tcx>>,
+    resolver:
+        rustc_data_structures::steal::Steal<
+            rustc_middle::middle::resolve::ResolverAstLowering<'tcx>
+        >,
     index_ast:
         rustc_index::IndexVec<
             rustc_span::def_id::LocalDefId,
             rustc_data_structures::steal::Steal<(
-                std::sync::Arc<rustc_middle::ty::ResolverAstLowering<'tcx>>,
-                rustc_ast::AstOwner
+                std::sync::Arc<rustc_middle::middle::resolve::ResolverAstLowering<'tcx>>,
+                rustc_middle::middle::resolve::AstOwner
             )>
         >,
     crate_alone: rustc_data_structures::steal::Steal<rustc_ast::Crate>,
     crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
-    resolutions: rustc_middle::ty::ResolverGlobalCtxt,
+    resolutions: rustc_middle::middle::resolve::ResolverGlobalCtxt,
     const_allocs: rustc_middle::mir::interpret::Allocation,
     region_scope_tree: rustc_middle::middle::region::ScopeTree,
     // Required for the incremental on-disk cache
@@ -128,9 +131,9 @@ rustc_arena::declare_arena! {
             rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>
         >,
     external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<TyCtxt<'tcx>>,
-    doc_link_resolutions: rustc_hir::def::DocLinkResMap,
+    doc_link_resolutions: rustc_middle::middle::resolve::DocLinkResMap,
     stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
-    mod_child: rustc_middle::metadata::ModChild,
+    mod_child: rustc_middle::middle::resolve::ModChild,
     features: rustc_feature::Features,
     specialization_graph: rustc_middle::traits::specialization_graph::Graph,
     crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,

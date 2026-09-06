@@ -395,6 +395,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         self.check_late_bound_lifetime_defs(&exists.params);
         visit::walk_test_binder_exists(self, exists)
     }
+
+    fn visit_test_binder_bound_type_constraint(
+        &mut self,
+        bound_type: &'a ast::TestBinderBoundTypeConstraint,
+    ) -> Self::Result {
+        self.check_late_bound_lifetime_defs(&bound_type.params);
+        visit::walk_test_binder_bound_type_constraint(self, bound_type)
+    }
 }
 
 // -----------------------------------------------------------------------------

@@ -9,7 +9,6 @@ use rustc_type_ir::{TypeSuperVisitable as _, TypeVisitable, TypeVisitor};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedClauses, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
-use crate::ty::region::RegionExt;
 use crate::ty::{self, ClauseKind, EarlyBinder, GenericArgsRef, Region, RegionKind, TyKind};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
@@ -151,6 +150,9 @@ impl std::fmt::Debug for Generics {
 impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
     fn count(&self) -> usize {
         self.parent_count + self.own_params.len()
+    }
+    fn param_region_def_id(self, tcx: TyCtxt<'tcx>, ebr: ty::EarlyParamRegion) -> DefId {
+        self.region_param(ebr, tcx).def_id
     }
 }
 

@@ -505,6 +505,22 @@ fn push_const_arg_has_type_obligation<'tcx>(
     }
 }
 
+/// The old solver does not support references to non-type-consts.
+/// Emit a delayed bug if there is a type system reference to a non type const, as this should have
+/// already errored elsewhere.
+pub fn const_of_item_or_delayed_bug<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
+    tcx.const_of_item(def_id).unwrap_or_else(|| {
+        let e = tcx.dcx().span_delayed_bug(
+            tcx.def_span(def_id),
+            "encountered regular consts in the old solver's const normalization",
+        );
+        ty::EarlyBinder::bind(tcx, ty::Const::new_error(tcx, e))
+    })
+}
+
 /// Confirm and normalize the given inherent projection.
 // FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
@@ -565,7 +581,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     let term = if alias_term.kind.is_type() {
         tcx.type_of(def_id).instantiate(tcx, args).map(Into::into)
     } else {
-        tcx.const_of_item(def_id).instantiate(tcx, args).map(Into::into)
+        const_of_item_or_delayed_bug(tcx, def_id).instantiate(tcx, args).map(Into::into)
     };
 
     let term = selcx.infcx.resolve_vars_if_possible(term);
@@ -2115,7 +2131,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         let term = if obligation.predicate.kind.is_type() {
             tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
         } else {
-            tcx.const_of_item(assoc_term.item.def_id).map_bound(|ct| ct.into())
+            const_of_item_or_delayed_bug(tcx, assoc_term.item.def_id).map_bound(|ct| ct.into())
         };
 
         assoc_term_own_obligations(selcx, obligation, &mut nested);

@@ -140,7 +140,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
         super::simplify::remove_dead_blocks(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements part of MIR semantics, turning effectively implicit aborts into explicit
         // ones.
         PassPolicy::Required
