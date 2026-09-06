@@ -43,6 +43,7 @@ pub(crate) trait DIBuilderExt<'ll> {
         unsafe { llvm::LLVMDIBuilderCreateExpression(this, addr_ops.as_ptr(), addr_ops.len()) }
     }
 
+    /// Creates a DIGlobalVariable debug info node.
     fn create_static_variable(
         &self,
         scope: Option<&'ll llvm::Metadata>,
@@ -52,6 +53,7 @@ pub(crate) trait DIBuilderExt<'ll> {
         line_number: c_uint,
         ty: &'ll llvm::Metadata,
         is_local_to_unit: bool,
+        is_definition: bool,
         val: &'ll llvm::Value,
         decl: Option<&'ll llvm::Metadata>,
         align: Option<Align>,
@@ -59,14 +61,14 @@ pub(crate) trait DIBuilderExt<'ll> {
         let this = self.as_di_builder();
         let align_in_bits = align.map_or(0, |align| align.bits() as u32);
 
-        // `LLVMDIBuilderCreateGlobalVariableExpression` would assert if we
+        // `LLVMRustDIBuilderCreateGlobalVariableExpression` would assert if we
         // gave it a null `Expr` pointer, so give it an empty expression
         // instead, which is what the C++ `createGlobalVariableExpression`
         // method would do if given a null `DIExpression` pointer.
         let expr = self.create_expression(&[]);
 
         let global_var_expr = unsafe {
-            llvm::LLVMDIBuilderCreateGlobalVariableExpression(
+            llvm::LLVMRustDIBuilderCreateGlobalVariableExpression(
                 this,
                 scope,
                 name.as_ptr(),
@@ -77,6 +79,7 @@ pub(crate) trait DIBuilderExt<'ll> {
                 line_number,
                 ty,
                 is_local_to_unit.to_llvm_bool(),
+                is_definition.to_llvm_bool(),
                 expr,
                 decl,
                 align_in_bits,
