@@ -229,6 +229,7 @@ impl CodegenBackend for LlvmCodegenBackend {
                 sym::sin,
                 sym::cos,
                 sym::powf16, sym::powf32, sym::powf64,
+                sym::sqrt,
                 sym::exp,
                 sym::exp2,
                 sym::log,
@@ -238,7 +239,7 @@ impl CodegenBackend for LlvmCodegenBackend {
                 sym::round, sym::round_ties_even,
 
                 // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
-                sym::sqrtf16, sym::powif16,
+                sym::powif16,
                 sym::fmaf16,
 
                 sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,

@@ -100,7 +100,7 @@ pub fn f32_nearest(a: f32) -> f32 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f32_sqrt(a: f32) -> f32 {
-    crate::intrinsics::sqrtf32(a)
+    crate::intrinsics::sqrt(a)
 }
 
 /// Generates the [`f64.ceil`] instruction, returning the smallest integer greater than or equal to `a`.
@@ -171,5 +171,5 @@ pub fn f64_nearest(a: f64) -> f64 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f64_sqrt(a: f64) -> f64 {
-    crate::intrinsics::sqrtf64(a)
+    crate::intrinsics::sqrt(a)
 }

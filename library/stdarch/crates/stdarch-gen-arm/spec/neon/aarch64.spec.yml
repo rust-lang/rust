@@ -8222,7 +8222,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [sqrtf16, [a], []]
+      - FnCall: [sqrt, [a], []]
 
   - name: "vrsqrts{type[0]}"
     doc: "Floating-point reciprocal square root step"
