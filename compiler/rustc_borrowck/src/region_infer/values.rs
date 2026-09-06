@@ -272,11 +272,45 @@ pub(crate) struct RegionValues<'tcx, N: Idx> {
     location_map: Rc<DenseLocationMap>,
     placeholder_indices: PlaceholderIndices<'tcx>,
     points: SparseIntervalMatrix<N, PointIndex>,
-    free_regions: SparseBitMatrix<N, RegionVid>,
+    free_regions: ReversedSparseBitMatrix<N, RegionVid>,
 
     /// Placeholders represent bound regions -- so something like `'a`
     /// in `for<'a> fn(&'a u32)`.
-    placeholders: SparseBitMatrix<N, PlaceholderIndex>,
+    placeholders: ReversedSparseBitMatrix<N, PlaceholderIndex>,
+}
+
+struct ReversedSparseBitMatrix<R: Idx, C: Idx> {
+    num_rows: usize,
+    rows: SparseBitMatrix<R, C>,
+}
+
+impl<R: Idx, C: Idx> ReversedSparseBitMatrix<R, C> {
+    #[inline]
+    fn new(rows: usize, cols: usize) -> ReversedSparseBitMatrix<R, C> {
+        Self { num_rows: rows, rows: SparseBitMatrix::new(cols) }
+    }
+    #[inline]
+    fn insert(&mut self, row: R, col: C) {
+        self.rows.insert(self.inner_row_index(row), col);
+    }
+
+    #[inline]
+    fn inner_row_index(&self, row: R) -> R {
+        R::new(self.num_rows - 1 - row.index())
+    }
+
+    #[inline]
+    fn contains(&self, row: R, col: C) -> bool {
+        self.rows.contains(self.inner_row_index(row), col)
+    }
+    #[inline]
+    fn iter(&self, row: R) -> impl Iterator<Item = C> {
+        self.rows.iter(self.inner_row_index(row))
+    }
+    #[inline]
+    fn union_rows(&mut self, read: R, write: R) -> bool {
+        self.rows.union_rows(self.inner_row_index(read), self.inner_row_index(write))
+    }
 }
 
 impl<'tcx, N: Idx> RegionValues<'tcx, N> {
@@ -285,6 +319,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     /// empty set of points and no causal information.
     pub(crate) fn new(
         location_map: Rc<DenseLocationMap>,
+        num_constraint_sccs: usize,
         num_universal_regions: usize,
         placeholder_indices: PlaceholderIndices<'tcx>,
     ) -> Self {
@@ -294,8 +329,8 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
             location_map,
             points: SparseIntervalMatrix::new(num_points),
             placeholder_indices,
-            free_regions: SparseBitMatrix::new(num_universal_regions),
-            placeholders: SparseBitMatrix::new(num_placeholders),
+            free_regions: ReversedSparseBitMatrix::new(num_constraint_sccs, num_universal_regions),
+            placeholders: ReversedSparseBitMatrix::new(num_constraint_sccs, num_placeholders),
         }
     }
 
@@ -354,7 +389,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
 
     /// Returns just the universal regions that are contained in a given region's value.
     pub(crate) fn universal_regions_outlived_by(&self, r: N) -> impl Iterator<Item = RegionVid> {
-        self.free_regions.row(r).map(|set| set.iter()).into_flat_iter()
+        self.free_regions.iter(r)
     }
 
     /// Returns all the elements contained in a given region's value.
@@ -362,11 +397,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
         &self,
         r: N,
     ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
-        self.placeholders
-            .row(r)
-            .map(|set| set.iter())
-            .into_flat_iter()
-            .map(move |p| self.placeholder_indices.lookup_placeholder(p))
+        self.placeholders.iter(r).map(move |p| self.placeholder_indices.lookup_placeholder(p))
     }
 
     /// Returns all the elements contained in a given region's value.
