@@ -498,8 +498,8 @@ more specific `jobs-*` options cannot specify larger values.
 Parallelism used by compilation stages from lexing to generation of backend IR (e.g. LLVM IR).
 
 - If `jobs-frontend` is passed, then it is used as the limit,
-- otherwise if `jobs` is passed, then it is used as the limit,
-- otherwise `1` is used as the limit (parallelism is disabled), this default may change.
+- otherwise `1` is used as the limit (parallelism is disabled), this default may change,
+  but if it's changed to a larger value the limit from `jobs` will still be respected.
 
 In any case the parallelism here may be additionally limited dynamically by jobserver
 passed from a higher level build system like cargo.
@@ -510,8 +510,7 @@ Parallelism used by compilation stages converting backend IR to object files.
 
 - If `jobs-backend` is passed, then it is used as the limit,
 - otherwise if `jobs` is passed, then it is used as the limit,
-- otherwise `32` is used as the limit or there's no limit in case of an inherited jobserver,
-  this default may change.
+- otherwise the number of available logical CPUs is used as the limit, this default may change.
 
 In any case the parallelism here may be additionally limited dynamically by jobserver
 passed from a higher level build system like cargo.
