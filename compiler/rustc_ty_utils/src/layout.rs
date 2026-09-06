@@ -11,6 +11,7 @@ use rustc_abi::{
 };
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::find_attr;
 use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::bug;
@@ -738,7 +739,7 @@ fn layout_of_uncached<'tcx>(
                         .is_sized(tcx, typing_env)
                 });
 
-            let layout = cx
+            let mut layout = cx
                 .calc
                 .layout_of_struct_or_enum(
                     &def.repr(),
@@ -803,6 +804,13 @@ fn layout_of_uncached<'tcx>(
                 if sized_tail < unsized_tail {
                     bug!("unsizing {ty:?} moved tail backwards!\n{layout:?}\n{unsized_layout:?}");
                 }
+            }
+
+            if tcx.is_lang_item(def.did(), LangItem::F16B) {
+                let bfloat = scalar_unit(Primitive::Float(abi::Float::F16B));
+                assert_eq!(layout.size, abi::Float::F16B.size());
+                layout.align = abi::Float::F16B.align(cx);
+                layout.backend_repr = BackendRepr::Scalar(bfloat);
             }
 
             tcx.mk_layout(layout)
