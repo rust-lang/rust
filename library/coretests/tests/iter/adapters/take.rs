@@ -323,3 +323,31 @@ fn test_iterator_take_count() {
         .count();
     assert_eq!(counted, yielded.len());
 }
+
+#[test]
+fn test_take_side_effects_after_skip() {
+    let mut for_each_calls = 0;
+    [1, 2, 3]
+        .iter()
+        .map(|&x| {
+            for_each_calls += 1;
+            x
+        })
+        .skip(3)
+        .take(100)
+        .for_each(drop);
+
+    let mut fold_calls = 0;
+    [1, 2, 3]
+        .iter()
+        .map(|&x| {
+            fold_calls += 1;
+            x
+        })
+        .skip(3)
+        .take(100)
+        .fold((), |(), _| ());
+
+    assert_eq!(for_each_calls, 3);
+    assert_eq!(fold_calls, 3);
+}
