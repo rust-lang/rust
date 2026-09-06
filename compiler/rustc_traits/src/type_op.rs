@@ -49,7 +49,7 @@ where
     let Normalized { value, obligations } = ocx
         .infcx
         .at(&ObligationCause::dummy(), param_env)
-        .query_normalize(value.skip_normalization())?;
+        .query_normalize_with_deferred_projection_obligations(value.skip_normalization())?;
     ocx.register_obligations(obligations);
     Ok(value)
 }

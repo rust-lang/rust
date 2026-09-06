@@ -12,6 +12,7 @@ pub(crate) use normalize::deeply_normalize_for_diagnostics;
 pub use normalize::{
     deeply_normalize, deeply_normalize_with_skipped_universes,
     deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals, normalize,
+    normalize_with_skipped_universes,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RequiredDepth, TyCtxt};

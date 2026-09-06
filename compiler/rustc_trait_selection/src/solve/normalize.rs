@@ -25,6 +25,17 @@ where
     normalize_with_universes(at, value, vec![])
 }
 
+pub fn normalize_with_skipped_universes<'tcx, T>(
+    at: At<'_, 'tcx>,
+    value: Unnormalized<'tcx, T>,
+    universes: Vec<Option<UniverseIndex>>,
+) -> Normalized<'tcx, T>
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+{
+    normalize_with_universes(at, value, universes)
+}
+
 /// Like `deeply_normalize`, but we handle ambiguity and inference variables in this routine.
 /// The behavior should be same as the old solver.
 /// For error, we return an infer var plus the failed obligation.
