@@ -130,6 +130,7 @@ const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
 const STAGING_DEP_GRAPH_FILENAME: &str = "dep-graph.part.bin";
 const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
 const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
+const METADATA_WORK_PRODUCT_FILENAME: &str = "metadata.rmeta";
 
 // We encode integers using the following base, so they are shorter than decimal
 // or hexadecimal numbers (we want short file and directory names). Since these
@@ -333,7 +334,27 @@ pub fn finalize_session_directory(
     let new_path = incr_comp_session_dir.parent().unwrap().join(&*sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
+    let result = std_fs::rename(&*incr_comp_session_dir, &new_path).or_else(|e| {
+        if e.kind() != ErrorKind::PermissionDenied {
+            return Err(e);
+        }
+
+        // On ReFS, renaming a directory that contains a hard link to the metadata workproduct file
+        // can fail if it is being used by another process (such as another rustc instance).
+        // As a fallback, we try to replace the hard link with a copy, which should allow the
+        // rename to succeed.
+        // See https://github.com/rust-lang/rust/issues/151181
+        if let Err(err) = replace_hard_link_with_copy(&in_incr_comp_dir_sess(
+            &incr_comp_session,
+            METADATA_WORK_PRODUCT_FILENAME,
+        )) {
+            debug!("finalize_session_directory() - error replacing hard link with copy: {}", err);
+        }
+
+        rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3)
+    });
+
+    match result {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
         }
@@ -887,4 +908,16 @@ fn rename_path_with_retry(from: &Path, to: &Path, mut retries_left: usize) -> st
             }
         }
     }
+}
+
+/// Turns a hard link of the file at `path` into a copy.
+fn replace_hard_link_with_copy(path: &Path) -> std::io::Result<()> {
+    let tmp_name = path.with_added_extension("tmp");
+
+    // In case a stale temporary file was linked from a previous failed attempt.
+    safe_remove_file(&tmp_name)?;
+
+    std_fs::copy(path, &tmp_name).and_then(|_| std_fs::rename(&tmp_name, path)).inspect_err(|_| {
+        let _ = safe_remove_file(&tmp_name);
+    })
 }
