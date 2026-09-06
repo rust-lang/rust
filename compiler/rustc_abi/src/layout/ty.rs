@@ -245,7 +245,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     }
 
     /// If this method returns `true`, then this type should always have a `PassMode` of
-    /// `Indirect { on_stack: false, .. }` when being used as the argument type of a function with a
+    /// `Indirect { on_stack: false, by_ref: false, .. }` when being used as the argument type of a function with a
     /// non-Rustic ABI (this is true for structs annotated with the
     /// `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute).
     ///

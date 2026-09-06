@@ -445,15 +445,16 @@ fn fn_abi_sanity_check<'tcx>(
                 // omitted entirely in the calling convention.
                 assert!(arg.is_ignore());
             }
-            if let PassMode::Indirect { on_stack, .. } = arg.mode
+            if let PassMode::Indirect { on_stack, by_ref, .. } = arg.mode
                 && spec_abi != ExternAbi::RustTail
             {
-                assert!(!on_stack, "rustic abi {spec_abi:?} shouldn't use on_stack");
+                assert!(!on_stack, "rust abi shouldn't use on_stack");
+                assert!(!by_ref, "rust abi shouldn't use by_ref");
             }
         } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             assert_matches!(
                 arg.mode,
-                PassMode::Indirect { on_stack: false, .. },
+                PassMode::Indirect { on_stack: false, by_ref: false, .. },
                 "the {spec_abi} ABI does not implement `#[rustc_pass_indirectly_in_non_rustic_abis]`"
             );
         }
@@ -507,7 +508,13 @@ fn fn_abi_sanity_check<'tcx>(
                 // Indirect returns are arguments from an ABI perspective.
                 fn_arg_attrs_sanity_check(attrs, false);
             }
-            PassMode::Indirect { meta_attrs: Some(meta_attrs), attrs, on_stack } => {
+            PassMode::Indirect {
+                meta_attrs: Some(meta_attrs),
+                attrs,
+                address_space: _,
+                on_stack,
+                by_ref: _,
+            } => {
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
                 // Also, must not be `extern` type.
