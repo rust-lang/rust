@@ -570,6 +570,11 @@ pub trait InferCtxtLike: Sized {
 
     type OpaqueTypeStorageEntries: OpaqueTypeStorageEntries;
     fn opaque_types_storage_num_entries(&self) -> Self::OpaqueTypeStorageEntries;
+    fn num_opaque_hidden_type_bounds(&self) -> usize;
+    /// Whether the number of opaques has changed in a way that necessitates
+    /// reevaluating a goal. For now, this is only when the number of non-duplicated
+    /// entries and bounds for hidden types of opaques changed.
+    fn needs_reevaluation(&self, opaques: usize, hidden_ty_bounds: usize) -> bool;
     fn clone_opaque_types_lookup_table(
         &self,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
@@ -583,7 +588,7 @@ pub trait InferCtxtLike: Sized {
     fn clone_opaque_hidden_ty_bounds_added_since(
         &self,
         prev_entries: &Self::OpaqueTypeStorageEntries,
-    ) -> Vec<(<Self::Interner as Interner>::Ty, Vec<ty::OpaqueHiddenTyBound<Self::Interner>>)>;
+    ) -> Vec<(<Self::Interner as Interner>::Ty, ty::OpaqueHiddenTyBound<Self::Interner>)>;
     fn hidden_types_of_opaques_modulo_sub_unification(
         &self,
         ty_vid: TyVid,
@@ -605,6 +610,10 @@ pub trait InferCtxtLike: Sized {
         &self,
         hidden_ty: <Self::Interner as Interner>::Ty,
         bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<Self::Interner>>,
+    );
+    fn add_opaque_hidden_ty_bounds_in_storage(
+        &self,
+        bounds: &[(<Self::Interner as Interner>::Ty, ty::OpaqueHiddenTyBound<Self::Interner>)],
     );
 
     fn reset_opaque_types(&self);

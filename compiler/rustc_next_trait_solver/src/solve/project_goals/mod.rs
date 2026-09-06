@@ -67,7 +67,7 @@ where
                 hidden_bounds.iter().flat_map(|(_, bounds)| bounds).copied(),
                 goal.predicate,
             ) {
-                self.add_hidden_type_of_opaque_in_storage(alias.self_ty(), Some(unmentioned));
+                self.add_opaque_hidden_type_bounds_in_storage(&[(alias.self_ty(), unmentioned)]);
             }
         }
 
