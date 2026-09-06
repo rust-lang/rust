@@ -60,9 +60,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => {
-                self.deduce_closure_signature(self.resolve_vars_with_obligations(ty), closure.kind)
-            }
+            Some(ty) => self.deduce_closure_signature(
+                self.resolve_vars_with_obligations(ty),
+                closure.def_id,
+                closure.kind,
+            ),
             None => (None, None),
         };
 
@@ -290,9 +292,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_closure_signature(
         &self,
         expected_ty: Ty<'tcx>,
+        closure_def_id: LocalDefId,
         closure_kind: hir::ClosureKind,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
+            ty::Coroutine(def_id, args)
+                if def_id == closure_def_id.to_def_id()
+                    && matches!(
+                        closure_kind,
+                        hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::Async,
+                            hir::CoroutineSource::Closure,
+                        ))
+                    ) =>
+            {
+                // An async closure's body is itself a coroutine. Propagate the signature
+                // inferred for that coroutine into its body.
+                let args = args.as_coroutine();
+                let sig = ty::Binder::dummy(
+                    self.tcx.mk_fn_sig_safe_rust_abi([args.resume_ty()], args.return_ty()),
+                );
+                (Some(ExpectedSig { cause_span: None, sig }), None)
+            }
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
