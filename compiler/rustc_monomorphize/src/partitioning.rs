@@ -116,7 +116,7 @@ use rustc_middle::mono::{
     MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, InstanceKind, ShimKind, TyCtxt};
+use rustc_middle::ty::{self, InstanceKind, ShimKind, TyCtxt, TyKind};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
@@ -644,6 +644,17 @@ fn characteristic_def_id_of_mono_item<'tcx>(
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceKind::Item(def) => def,
+                ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, ty)) => {
+                    if let Some(ty) = ty {
+                        match ty.kind() {
+                            TyKind::CoroutineClosure(def_id, _) => *def_id,
+                            TyKind::Coroutine(def_id, _) => *def_id,
+                            _ => return None,
+                        }
+                    } else {
+                        return None;
+                    }
+                }
                 ty::InstanceKind::Intrinsic(..)
                 | ty::InstanceKind::LlvmIntrinsic(..)
                 | ty::InstanceKind::Virtual(..)
@@ -652,7 +663,6 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { .. })
                 | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure { .. })
-                | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..))
