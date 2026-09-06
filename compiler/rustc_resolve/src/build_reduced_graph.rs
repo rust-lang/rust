@@ -258,21 +258,41 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let ident = path.segments.get(0).expect("empty path in visibility").ident;
                 let crate_root = if ident.is_path_segment_keyword() {
                     None
-                } else if ident.span.is_rust_2015() {
+                } else {
                     Some(Segment::from_ident(Ident::new(
-                        kw::PathRoot,
+                        // Although relative paths are banned in edition 2018, we still
+                        // need the path for diagnostic so we use `Crate` in this case.
+                        // We don't use `Crate` in edition 2015 is to keep the diagnostic accurate.
+                        if path.span.is_rust_2015() { kw::PathRoot } else { kw::Crate },
                         path.span.shrink_to_lo().with_ctxt(ident.span.ctxt()),
                     )))
-                } else {
-                    return Err(VisResolutionError::Relative2018(
-                        ident.span,
-                        path.as_ref().clone(),
-                    ));
                 };
                 let segments = crate_root
                     .into_iter()
                     .chain(path.segments.iter().map(|seg| seg.into()))
                     .collect::<Vec<_>>();
+                if !path.span.is_rust_2015() && !ident.is_path_segment_keyword() {
+                    // If there isn't a module called `parent`, the user is
+                    // likely referring to "the parent module" of the current item.
+                    let suggest_super = ident.name.as_str() == "parent"
+                        && matches!(
+                            self.cm_mut().resolve_path(
+                                &segments,
+                                None,
+                                parent_scope,
+                                finalize.then(|| Finalize::new(id, path.span)),
+                                None,
+                                None,
+                            ),
+                            PathResult::Failed { .. }
+                        );
+                    return Err(VisResolutionError::Relative2018(
+                        ident.span,
+                        path.as_ref().clone(),
+                        suggest_super,
+                    ));
+                }
+
                 let expected_found_error = |res| {
                     Err(VisResolutionError::ExpectedFound(
                         path.span,
