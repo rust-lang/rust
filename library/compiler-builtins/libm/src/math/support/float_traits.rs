@@ -309,7 +309,6 @@ macro_rules! float_impl {
         $from_bits:path,
         $to_bits:path,
         $fma_fn:ident,
-        $fma_intrinsic:ident,
         $floor_fn:ident,
         $roundeven_fn:ident
     ) => {
@@ -434,7 +433,7 @@ macro_rules! float_impl {
                 cfg_select_nofmt! {
                     // fma is not yet available in `core`
                     intrinsics_enabled => {
-                        core::intrinsics::$fma_intrinsic(self, y, z)
+                        core::intrinsics::fma(self, y, z)
                     }
                     _ => {
                         super::super::$fma_fn(self, y, z)
@@ -480,7 +479,6 @@ float_impl!(
     f16::from_bits,
     f16::to_bits,
     fmaf16,
-    fmaf16,
     floorf16,
     roundevenf16
 );
@@ -493,7 +491,6 @@ float_impl!(
     f32_from_bits,
     f32_to_bits,
     fmaf,
-    fmaf32,
     floorf,
     roundevenf
 );
@@ -506,7 +503,6 @@ float_impl!(
     f64_from_bits,
     f64_to_bits,
     fma,
-    fmaf64,
     floor,
     roundeven
 );
@@ -519,7 +515,6 @@ float_impl!(
     112,
     f128::from_bits,
     f128::to_bits,
-    fmaf128,
     fmaf128,
     floorf128,
     roundevenf128

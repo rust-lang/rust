@@ -1981,7 +1981,7 @@ impl f16 {
     #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add(self, a: f16, b: f16) -> f16 {
-        intrinsics::fmaf16(self, a, b)
+        intrinsics::fma(self, a, b)
     }
 
     /// Computes `(self * a) + b` with nondeterministic rounding.
@@ -2017,7 +2017,7 @@ impl f16 {
     #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add_relaxed(self, a: f16, b: f16) -> f16 {
-        intrinsics::fmuladdf16(self, a, b)
+        intrinsics::fmuladd(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.

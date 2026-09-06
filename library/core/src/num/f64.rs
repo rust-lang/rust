@@ -1899,7 +1899,7 @@ impl f64 {
     #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
     #[inline]
     pub const fn mul_add_relaxed(self, a: f64, b: f64) -> f64 {
-        intrinsics::fmuladdf64(self, a, b)
+        intrinsics::fmuladd(self, a, b)
     }
 
     /// Returns `self` if the value is not NaN, otherwise returns `replacement`
@@ -2160,7 +2160,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add(x: f64, a: f64, b: f64) -> f64 {
-        intrinsics::fmaf64(x, a, b)
+        intrinsics::fma(x, a, b)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f64::div_euclid`] for details.

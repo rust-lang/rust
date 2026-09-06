@@ -10240,7 +10240,7 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - Let: [c, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]
-      - FnCall: ["fma{type[0]}", [b, c, a]]
+      - FnCall: [fma, [b, c, a]]
 
   - name: "vfmad_lane_f64"
     doc: "Floating-point fused multiply-add to accumulator"
@@ -10257,7 +10257,7 @@ intrinsics:
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
       - Let: [c, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]
-      - FnCall: [fmaf64, [b, c, a]]
+      - FnCall: [fma, [b, c, a]]
 
 
   - name: "vfma{type[1]}"
@@ -10273,7 +10273,7 @@ intrinsics:
     types:
       - ["f16", "h_f16"]
     compose:
-      - FnCall: [fmaf16, [b, c, a], []]
+      - FnCall: [fma, [b, c, a], []]
 
 
   - name: "vfmah_lane{type[2]}"

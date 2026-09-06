@@ -1918,7 +1918,7 @@ impl f32 {
     #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
     #[inline]
     pub const fn mul_add_relaxed(self, a: f32, b: f32) -> f32 {
-        intrinsics::fmuladdf32(self, a, b)
+        intrinsics::fmuladd(self, a, b)
     }
 
     /// Returns `self` if the value is not NaN, otherwise returns `replacement`
@@ -2179,7 +2179,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn mul_add(x: f32, y: f32, z: f32) -> f32 {
-        intrinsics::fmaf32(x, y, z)
+        intrinsics::fma(x, y, z)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f32::div_euclid`] for details.
