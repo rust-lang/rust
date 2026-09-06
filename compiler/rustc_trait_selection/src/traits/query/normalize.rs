@@ -118,6 +118,39 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         );
         result.map(|value| Normalized { value, obligations: normalizer.obligations })
     }
+
+    /// Normalize for type-op queries while preserving ambiguous next-solver
+    /// projection goals as obligations for the surrounding obligation context.
+    ///
+    /// This intentionally does not change the stricter `query_normalize`
+    /// contract, as some callers require fully resolved values or only
+    /// outlives obligations.
+    fn query_normalize_with_deferred_projection_obligations<T>(
+        self,
+        value: T,
+    ) -> Result<Normalized<'tcx, T>, NoSolution>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if self.infcx.next_trait_solver() {
+            let universes = if value.has_escaping_bound_vars() {
+                let mut max_visitor =
+                    MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };
+                value.visit_with(&mut max_visitor);
+                vec![None; max_visitor.escaping]
+            } else {
+                vec![]
+            };
+
+            return Ok(crate::solve::normalize_with_skipped_universes(
+                self,
+                Unnormalized::new_wip(value),
+                universes,
+            ));
+        }
+
+        self.query_normalize(value)
+    }
 }
 
 // Visitor to find the maximum escaping bound var
