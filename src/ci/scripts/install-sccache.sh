@@ -7,14 +7,26 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
+# Note that this script is executed **inside** the source directory.
+# So take care not to extract stuff into it that could perturb the build or the distributed
+# source tarballs.
+
 if isMacOS; then
-    curl -fo /usr/local/bin/sccache \
-      "${MIRRORS_BASE}/2025-02-24-sccache-v0.10.0-x86_64-apple-darwin"
+    mkdir -p sccache
+    cd sccache
+    curl -fo sccache.tar.gz \
+      "${MIRRORS_BASE}/2026-06-19-sccache-v0.16.0-x86_64-apple-darwin.tar.gz"
+    tar -xvf sccache.tar.gz --strip-components 1 \
+      sccache-v0.16.0-x86_64-apple-darwin/sccache
+    rm sccache.tar.gz
+    mv sccache /usr/local/bin/sccache
     chmod +x /usr/local/bin/sccache
 elif isWindows; then
     mkdir -p sccache
-    curl -fo sccache/sccache.exe \
-      "${MIRRORS_BASE}/2025-02-24-sccache-v0.10.0-x86_64-pc-windows-msvc.exe"
+    curl -fo sccache/sccache.zip \
+      "${MIRRORS_BASE}/2026-06-19-sccache-v0.16.0-x86_64-pc-windows-msvc.zip"
+    unzip -j sccache/sccache.zip sccache-v0.16.0-x86_64-pc-windows-msvc/sccache.exe -d sccache
+    rm sccache/sccache.zip
     ciCommandAddPath "$(cygpath -m "$(pwd)/sccache")"
 fi
 
