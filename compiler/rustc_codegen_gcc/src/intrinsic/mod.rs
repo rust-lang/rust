@@ -58,8 +58,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     name: Symbol,
 ) -> Option<Function<'gcc>> {
     let gcc_name = match name {
-        sym::sqrtf32 => "sqrtf",
-        sym::sqrtf64 => "sqrt",
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
         sym::powf32 => "powf",
@@ -104,7 +102,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
         sym::round => "roundf128",
         sym::round_ties_even => "roundevenf128",
         sym::sin => "sinf128",
-        sym::sqrtf128 => "sqrtf128",
+        sym::sqrt => "sqrtf128",
         _ => span_bug!(span, "used get_simple_function_f128 for non-unary f128 intrinsic"),
     };
     cx.context.new_function(
@@ -138,7 +136,7 @@ fn f16_builtin<'gcc, 'tcx>(
         sym::round => "__builtin_roundf",
         sym::round_ties_even => "__builtin_rintf",
         sym::sin => "sinf",
-        sym::sqrtf16 => "__builtin_sqrtf",
+        sym::sqrt => "__builtin_sqrtf",
         sym::trunc => "__builtin_truncf",
         _ => unreachable!(),
     };
@@ -204,15 +202,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::copysignf16 | sym::powf16 | sym::sqrtf16 => f16_builtin(self, name, args),
-            sym::sqrtf128 if self.cx.supports_f128_type => {
-                let func = get_simple_function_f128(span, self, name);
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
+            sym::copysignf16 | sym::powf16 => f16_builtin(self, name, args),
             sym::copysignf128 if self.cx.supports_f128_type => {
                 let f128_type = self.cx.type_f128();
                 let func = self.cx.context.new_function(
@@ -388,6 +378,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 }
             }
             sym::fabs
+            | sym::sqrt
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -408,6 +399,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 let func = match (name, float_ty) {
                     (sym::fabs, F32) => self.context.get_builtin_function("fabsf"),
                     (sym::fabs, F64) => self.context.get_builtin_function("fabs"),
+
+                    (sym::sqrt, F32) => self.context.get_builtin_function("sqrtf"),
+                    (sym::sqrt, F64) => self.context.get_builtin_function("sqrt"),
 
                     (sym::floor, F32) => self.context.get_builtin_function("floorf"),
                     (sym::floor, F64) => self.context.get_builtin_function("floor"),

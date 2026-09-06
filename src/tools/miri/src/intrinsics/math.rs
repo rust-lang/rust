@@ -100,10 +100,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match intrinsic_name {
             // Operations we can do with soft-floats.
-            "sqrtf16" => sqrt::<rustc_apfloat::ieee::Half>(this, args, dest)?,
-            "sqrtf32" => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
-            "sqrtf64" => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
-            "sqrtf128" => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
+            "sqrt" => {
+                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                    bug!("`sqrt` intrinsic called on non-float type");
+                };
+                match float_ty {
+                    FloatTy::F16 => sqrt::<rustc_apfloat::ieee::Half>(this, args, dest)?,
+                    FloatTy::F32 => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
+                    FloatTy::F64 => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
+                    FloatTy::F128 => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
+                }
+            }
 
             #[rustfmt::skip]
             | "fadd_fast"
