@@ -144,14 +144,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // then invert the meaning of the true/false blocks.
                 // This avoids an intermediate temporary for negating the condition value.
                 // See <https://github.com/rust-lang/rust/pull/111752>.
-
-                // Improve branch coverage instrumentation by noting conditions
-                // nested within one or more `!` expressions.
-                // (Skipped if branch coverage is not enabled.)
-                if let Some(coverage_info) = this.coverage_info.as_mut() {
-                    coverage_info.visit_unary_not(this.thir, expr_id);
-                }
-
                 let local_scope = this.local_scope();
                 let (true_block, false_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
@@ -205,7 +197,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Record branch coverage info for this condition.
                 // (Does nothing if branch coverage is not enabled.)
-                this.visit_coverage_branch_condition(expr_id, true_block, false_block);
+                this.push_coverage_points_for_branch_outcomes(expr, true_block, false_block);
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
@@ -2328,13 +2320,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Controls whether bindings are declared or not, as requested by the caller.
         declare_let_bindings: DeclareLetBindings,
     ) -> BlockAnd<()> {
-        let scrutinee_span = self.thir[scrutinee_id].span;
+        let scrutinee = &self.thir[scrutinee_id];
         let scrutinee_place_builder = unpack!(block = self.lower_scrutinee(block, scrutinee_id));
 
         // Lower the scrutinee and pattern as though they were desugared to a `match`.
         let built_tree = self.lower_match_tree(
             block,
-            scrutinee_span,
+            scrutinee.span,
             &scrutinee_place_builder,
             pat.span,
             vec![(pat, HasMatchGuard::No)],
@@ -2344,14 +2336,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let false_block = built_tree.otherwise_block;
 
         // If pattern-matching failed, break out of the enclosing if-then scope.
-        self.break_from_if_then_scope(false_block, self.source_info(scrutinee_span));
+        self.break_from_if_then_scope(false_block, self.source_info(scrutinee.span));
 
         match declare_let_bindings {
             DeclareLetBindings::Yes => {
                 let scrutinee_place;
                 let opt_match_place = try {
                     scrutinee_place = scrutinee_place_builder.try_to_place(self)?;
-                    (Some(&scrutinee_place), scrutinee_span)
+                    (Some(&scrutinee_place), scrutinee.span)
                 };
                 self.declare_bindings(
                     source_scope,
@@ -2365,14 +2357,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             DeclareLetBindings::LetNotPermitted => self
                 .tcx
                 .dcx()
-                .span_bug(scrutinee_span, "let expression not expected in this context"),
+                .span_bug(scrutinee.span, "let expression not expected in this context"),
         }
 
         let true_block =
-            self.bind_pattern(self.source_info(pat.span), true_branch, &[], scrutinee_span, None);
+            self.bind_pattern(self.source_info(pat.span), true_branch, &[], scrutinee.span, None);
 
         // If branch coverage is enabled, record this branch.
-        self.visit_coverage_conditional_let(pat, true_block, false_block);
+        self.push_coverage_points_for_branch_outcomes(scrutinee, true_block, false_block);
 
         true_block.unit()
     }

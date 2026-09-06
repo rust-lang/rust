@@ -9,15 +9,6 @@ use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::Span;
 
 rustc_index::newtype_index! {
-    /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR
-    /// lowering, so that those blocks can be identified later.
-    #[stable_hash]
-    #[encodable]
-    #[debug_format = "BlockMarkerId({})"]
-    pub struct BlockMarkerId {}
-}
-
-rustc_index::newtype_index! {
     /// ID of a coverage counter. Values ascend from 0.
     ///
     /// Before MIR inlining, counter IDs are local to their enclosing function.
@@ -76,11 +67,21 @@ impl Debug for CovTerm {
 pub enum PointKind {
     /// Inserted just before evaluating an expression.
     Expr,
+
     /// Inserted when a one-sided `if` expression generates its synthetic `else {}`.
     /// The absent `else` has no node, so [`HirId`] is the `if` expression.
     ImplicitElse,
+
     /// Inserted at the end of a function's body. [`HirId`] is the function itself.
     FunctionEnd,
+
+    /// Inserted into the true-outcome and false-outcome blocks after branching on
+    /// a boolean condition or a fallible `let`.
+    ///
+    /// [`HirId`] is one of:
+    /// - The boolean expression being tested
+    /// - The initializer expression (RHS) of a fallible `let`
+    BranchOutcome { outcome: bool },
 }
 
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash)]
@@ -89,12 +90,6 @@ pub enum CoverageKind {
     /// MIR control-flow. The relationship between the node and the point is
     /// indicated by [`PointKind`]. Injected during MIR building.
     Point { point_kind: PointKind, hir_id: HirId },
-
-    /// Marks its enclosing basic block with an ID that can be referred to by
-    /// side data in [`CoverageEarlyInfo`].
-    ///
-    /// Should be erased before codegen (at some point after `InstrumentCoverage`).
-    BlockMarker { id: BlockMarkerId },
 
     /// Marks its enclosing basic block with the ID of the coverage graph node
     /// that it was part of during the `InstrumentCoverage` MIR pass.
@@ -110,7 +105,6 @@ impl Debug for CoverageKind {
             CoverageKind::Point { point_kind, hir_id } => {
                 write!(fmt, "Point({point_kind:?}, {hir_id:?}")
             }
-            CoverageKind::BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
             CoverageKind::VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
         }
     }
@@ -122,7 +116,7 @@ impl CoverageKind {
     /// no longer needed after that pass.
     pub fn is_removed_after_analysis(&self) -> bool {
         match self {
-            CoverageKind::Point { .. } | CoverageKind::BlockMarker { .. } => true,
+            CoverageKind::Point { .. } => true,
             CoverageKind::VirtualCounter { .. } => false,
         }
     }
@@ -182,32 +176,6 @@ pub struct CoverageMirInfo {
     pub priority_list: Vec<BasicCoverageBlock>,
 
     pub mappings: Vec<Mapping>,
-}
-
-/// Coverage information for a function, collected in advance at the THIR/MIR
-/// boundary during MIR building, and attached to the corresponding `mir::Body`.
-///
-/// This side-data is "early" in that it must be collected prior to the main
-/// instrumentation step, in contrast to the main [`CoverageMirInfo`] produced
-/// by instrumentation itself.
-///
-/// Used by the `InstrumentCoverage` MIR pass.
-#[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
-pub struct CoverageEarlyInfo {
-    /// 1 more than the highest-numbered [`CoverageKind::BlockMarker`] that was
-    /// injected into the MIR body. This makes it possible to allocate per-ID
-    /// data structures without having to scan the entire body first.
-    pub num_block_markers: usize,
-    pub branch_spans: Vec<BranchSpan>,
-}
-
-#[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
-pub struct BranchSpan {
-    pub span: Span,
-    pub true_marker: BlockMarkerId,
-    pub false_marker: BlockMarkerId,
 }
 
 /// Contains information needed during codegen, obtained by inspecting the
