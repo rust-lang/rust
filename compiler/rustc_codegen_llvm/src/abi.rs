@@ -6,6 +6,7 @@ use rustc_abi::{
     RegKind, Size, X86Call,
 };
 use rustc_codegen_ssa::MemFlags;
+use rustc_codegen_ssa::common::RealPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
@@ -175,6 +176,9 @@ impl LlvmType for Reg {
 
 impl LlvmType for CastTarget {
     fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+        if self.x87_floating_point_stack {
+            return cx.type_x86_fp80();
+        }
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
         let rest_count = if self.rest.total == Size::ZERO {
             0
@@ -324,6 +328,7 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     ) {
         arg_abi.store_fn_arg(self, idx, dst)
     }
+
     fn store_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
@@ -331,6 +336,165 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
         arg_abi.store(self, val, dst)
+    }
+
+    fn x87_lossless_float_to_fp_stack(&mut self, value: &'ll Value, no_undef: bool) -> &'ll Value {
+        // If value is (partially) uninitialized (e.g. when returning `MaybeUninit<f64>`) then e.g.
+        // branching on it could lead to undefined behaviour. To ensure that doesn't happen and that
+        // any initialized bytes within a partially uninitialized value survive the round trip,
+        // freeze the value.
+        let value = if no_undef { value } else { self.freeze(value) };
+        // While we only need to manually convert sNaNs, all NaNs can be converted the same way and
+        // checking whether `value` is NaN only takes a single floating-point x86 instruction,
+        // whereas checking if it is a signalling NaNs requires bit operations. LLVM also generally
+        // won't know a non-constant `value` is not a sNaN but could be a qNaN, so being more
+        // general here doesn't prevent the branch from being optimised out in likely scenarios.
+        let is_nan = self.fcmp(RealPredicate::RealUNO, value, value);
+        let is_nan_block = self.append_sibling_block("float_pre_ret.is_nan");
+        let is_not_nan_block = self.append_sibling_block("float_pre_ret.is_not_nan");
+        let after_block = self.append_sibling_block("float_pre_ret.after");
+        let dbg_loc = self.get_dbg_loc();
+        self.cond_br(is_nan, is_nan_block, is_not_nan_block);
+
+        self.switch_to_block(is_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        // This manually converts a NaN to x86_fp80 to avoid setting the quiet NaN bit of
+        // signalling NaNs.
+        let num_bits = self.float_width(self.val_ty(value)) as u64;
+        assert!(
+            num_bits == 32 || num_bits == 64,
+            "attempt to return float on x87 floating point stack with width {num_bits}"
+        );
+        let bits_ty = self.type_ix(num_bits);
+        let bits = self.bitcast(value, bits_ty);
+        // The high 16 bits of an x86_fp80 are the exponent and sign (the sign is the highest
+        // bit) NaNs always have all bits of the exponent set to 1, so the only bit that is
+        // needed from `value` is the sign bit.
+        // Shift out the lower bits.
+        let exp_and_sign = self.lshr(bits, self.const_uint(bits_ty, num_bits - 16));
+        // Set the exponent to all 1s.
+        let exp_and_sign = self.or(exp_and_sign, self.const_uint(bits_ty, 0x7FFF));
+        // Shift the exponent and sign into position.
+        let exp_and_sign = self.zext(exp_and_sign, self.type_ix(80));
+        let exp_and_sign = self.shl(exp_and_sign, self.const_uint_big(self.type_ix(80), 64));
+
+        // The fraction of the input NaN needs to be shifted left to just before x86_fp80's
+        // explicit integer bit. There's no need to manually set the integer bit itself, as it
+        // will be already set to 1 due to the all 1s exponent in the input NaN.
+        let (fraction_bits, fraction) = match num_bits {
+            32 => (f32::MANTISSA_DIGITS - 1, self.zext(bits, self.type_i64())),
+            64 => (f64::MANTISSA_DIGITS - 1, bits),
+            _ => bug!(),
+        };
+        // Shift the fraction into position.
+        let fraction = self.shl(fraction, self.const_u64(63 - u64::from(fraction_bits)));
+        let fraction = self.zext(fraction, self.type_ix(80));
+
+        let is_nan_res = self.or(exp_and_sign, fraction);
+        let is_nan_res = self.bitcast(is_nan_res, self.type_x86_fp80());
+        self.br(after_block);
+
+        self.switch_to_block(is_not_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        let is_not_nan_res = self.fpext(value, self.type_x86_fp80());
+        self.br(after_block);
+
+        self.switch_to_block(after_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        self.phi(
+            self.type_x86_fp80(),
+            &[is_nan_res, is_not_nan_res],
+            &[is_nan_block, is_not_nan_block],
+        )
+    }
+
+    fn x87_lossless_fp_stack_to_float(
+        &mut self,
+        value: &'ll Value,
+        float_type: &'ll Type,
+        no_undef: bool,
+    ) -> &'ll Value {
+        // If value is (partially) uninitialized (e.g. when returning `MaybeUninit<f64>`) then e.g.
+        // branching on it could lead to undefined behaviour. To ensure that doesn't happen and that
+        // any initialized bytes within a partially uninitialized value survive the round trip,
+        // freeze the value.
+        let value = if no_undef { value } else { self.freeze(value) };
+        let num_bits = self.float_width(float_type) as u64;
+        let fraction_bits = u64::from(match num_bits {
+            32 => f32::MANTISSA_DIGITS - 1,
+            64 => f64::MANTISSA_DIGITS - 1,
+            _ => bug!("attempt to return float on x87 floating point stack with width {num_bits}"),
+        });
+        let dest_bits_type = self.type_ix(num_bits);
+        // While we only need to manually convert sNaNs, all NaNs can be converted the same way and
+        // checking whether `value` is NaN only takes a single floating-point x86 instruction,
+        // whereas checking if it is a signalling NaNs requires bit operations. LLVM also generally
+        // won't know a non-constant `value` is not a sNaN but could be a qNaN, so being more
+        // general here doesn't prevent the branch from being optimised out in likely scenarios.
+        let is_nan = self.fcmp(RealPredicate::RealUNO, value, value);
+        let is_nan_block = self.append_sibling_block("float_post_ret.is_nan");
+        let is_not_nan_block = self.append_sibling_block("float_post_ret.is_not_nan");
+        let after_block = self.append_sibling_block("float_post_ret.after");
+        let dbg_loc = self.get_dbg_loc();
+        self.cond_br(is_nan, is_nan_block, is_not_nan_block);
+
+        self.switch_to_block(is_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        // This block converts a NaN to `x86_fp80` manually to avoid setting the quiet NaN bit of
+        // signalling NaNs.
+        // We don't handle the "invalid operand" bitpatterns here (which are treated like NaNs) as
+        // they can't be generated by any post-80387 hardware, and the return value should have been
+        // converted from an actual `f32`/`f64`. Even on non-SSE targets current compilers don't
+        // seem to miscompile code so badly as to allow user-supplied `x86_fp80` "invalid operands"
+        // to be returned as `f32`/`f64`. Similarly, sNaNs are never produced by the hardware so we
+        // don't handle the case where the only fraction bits set are truncated, as that can never
+        // happen with sNaNs converted from `f32`s/`f64`s.
+        let bits = self.bitcast(value, self.type_ix(80));
+        // Mask out the extra 1s in the exponent as `f32`/`f64` have less bits in their
+        // exponents than `x86_fp80`.
+        let exp_and_sign_bits = num_bits - fraction_bits;
+        let exp_and_sign_mask = u16::MAX << (16 - exp_and_sign_bits);
+        let exp_and_sign_mask = u128::from(exp_and_sign_mask) << 64;
+        let exp_and_sign = self.and(bits, self.const_uint_big(self.type_ix(80), exp_and_sign_mask));
+        // Shift the exponent and sign into position
+        let exp_and_sign = self
+            .lshr(exp_and_sign, self.const_uint_big(self.type_ix(80), 80 - u128::from(num_bits)));
+        let exp_and_sign = self.trunc(exp_and_sign, dest_bits_type);
+
+        // Truncate off the exponent and sign
+        let fraction = self.trunc(bits, self.type_i64());
+        // Shift the fraction in to position. There's no need to mask out `x86_fp80`'s
+        // explicit integer bit as the fraction is right next to the exponent which is all
+        // 1s anyway.
+        let fraction = self.lshr(fraction, self.const_u64(63 - fraction_bits));
+        let fraction = if num_bits != 64 { self.trunc(fraction, dest_bits_type) } else { fraction };
+
+        // Combine the parts into the resulting float
+        let is_nan_res = self.or(exp_and_sign, fraction);
+        let is_nan_res = self.bitcast(is_nan_res, float_type);
+        self.br(after_block);
+
+        self.switch_to_block(is_not_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        // Use a regular floating point conversion when the value it not a NaN.
+        let is_not_nan_res = self.fptrunc(value, float_type);
+        self.br(after_block);
+
+        self.switch_to_block(after_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        self.phi(float_type, &[is_nan_res, is_not_nan_res], &[is_nan_block, is_not_nan_block])
     }
 }
 
