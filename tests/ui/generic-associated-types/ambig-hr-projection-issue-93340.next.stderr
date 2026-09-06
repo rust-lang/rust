@@ -4,6 +4,7 @@ error[E0282]: type annotations needed
 LL |     cmp_eq
    |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
    |
+   = note: cannot infer type of hidden type of opaque
 help: consider specifying the generic arguments
    |
 LL |     cmp_eq::<A, B, O>
