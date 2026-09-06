@@ -1,6 +1,8 @@
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
+//@ check-pass
+
 pub trait Enumerable {
     const N: usize;
 }

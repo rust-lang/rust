@@ -2,6 +2,8 @@
 // These failures were legitimate, but not truly relevant - the docs in question couldn't be
 // checked for accuracy anyway.
 
+//@ check-pass
+
 #![deny(rustdoc::broken_intra_doc_links)]
 
 /// ooh, i'm a [rebel] just for kicks
