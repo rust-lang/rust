@@ -17,9 +17,11 @@ use rustc_hir::{
     UsePath, VERSION_PLACEHOLDER, Variant, find_attr,
 };
 use rustc_lint_defs::builtin::{
-    DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
+    DEPRECATED, DUPLICATE_FEATURES, INCOMPATIBLE_REEXPORT_STABILITY,
+    INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
 };
 use rustc_middle::hir::nested_filter;
+use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, EvalResult};
@@ -522,7 +524,9 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
 fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, mod_id: LocalModId) {
-    tcx.hir_visit_item_likes_in_module(mod_id, &mut Checker { tcx });
+    let mut checker = Checker { tcx, mod_id, reexport_stability: FxIndexMap::default() };
+    tcx.hir_visit_item_likes_in_module(mod_id, &mut checker);
+    checker.emit_incompatible_reexport_stability();
 
     let is_staged_api =
         tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api();
@@ -552,8 +556,177 @@ pub(crate) fn provide(providers: &mut Providers) {
     };
 }
 
+struct ReexportStability {
+    hir_id: HirId,
+    span: Span,
+    has_target: bool,
+    mismatch: Option<(String, String)>,
+}
+
 struct Checker<'tcx> {
     tcx: TyCtxt<'tcx>,
+    mod_id: LocalModId,
+    reexport_stability: FxIndexMap<Span, ReexportStability>,
+}
+
+impl<'tcx> Checker<'tcx> {
+    fn reexport_stability_attr(&self, item: &'tcx hir::Item<'tcx>) -> Option<(Stability, Span)> {
+        let attrs = self.tcx.hir_attrs(item.hir_id());
+        find_attr!(attrs, Stability { stability, span } => (*stability, *span))
+    }
+
+    fn stability_is_compatible(reexport: &Stability, target: &Stability) -> bool {
+        match (&reexport.level, &target.level) {
+            (
+                StabilityLevel::Stable { since: reexport_since, .. },
+                StabilityLevel::Stable { since: target_since, .. },
+            ) => {
+                // Avoid another error for an invalid `since`.
+                matches!(
+                    (*reexport_since, *target_since),
+                    (StableSince::Err(_), _) | (_, StableSince::Err(_))
+                ) || (reexport.feature == target.feature && reexport_since == target_since)
+            }
+
+            (
+                StabilityLevel::Unstable { issue: reexport_issue, .. },
+                StabilityLevel::Unstable { issue: target_issue, .. },
+            ) => reexport.feature == target.feature && reexport_issue == target_issue,
+
+            // An unstable re-export cannot make a stable item unstable.
+            (StabilityLevel::Unstable { .. }, StabilityLevel::Stable { .. }) => false,
+
+            // Stable re-exports of unstable items are handled elsewhere.
+            (StabilityLevel::Stable { .. }, StabilityLevel::Unstable { .. }) => true,
+        }
+    }
+
+    fn classify_reexport_targets<Id>(
+        &self,
+        own_stability: &Stability,
+        targets: impl IntoIterator<Item = Res<Id>>,
+    ) -> (bool, Option<(String, String)>) {
+        let mut has_target = false;
+        let mut mismatch = None;
+
+        for res in targets {
+            match res {
+                Res::Def(_, def_id) => {
+                    has_target = true;
+
+                    if mismatch.is_none()
+                        && let Some(target_stability) = self.tcx.lookup_stability(def_id)
+                        && !Self::stability_is_compatible(own_stability, &target_stability)
+                    {
+                        mismatch =
+                            Some((format!("{own_stability:?}"), format!("{target_stability:?}")));
+                    }
+                }
+
+                Res::PrimTy(_) => {
+                    has_target = true;
+
+                    // Primitives are stable and have no DefId.
+                    if own_stability.level.is_unstable() && mismatch.is_none() {
+                        mismatch =
+                            Some((format!("{own_stability:?}"), "stable primitive".to_string()));
+                    }
+                }
+
+                // No stability metadata to compare.
+                _ => {}
+            }
+        }
+
+        (has_target, mismatch)
+    }
+
+    fn record_reexport_stability(
+        &mut self,
+        item: &'tcx hir::Item<'tcx>,
+        attr_span: Span,
+        span: Span,
+        has_target: bool,
+        mismatch: Option<(String, String)>,
+    ) {
+        let entry = self.reexport_stability.entry(attr_span).or_insert(ReexportStability {
+            hir_id: item.hir_id(),
+            span,
+            has_target: false,
+            mismatch: None,
+        });
+
+        entry.has_target |= has_target;
+
+        // Keep the first mismatch for the diagnostic.
+        if entry.mismatch.is_none() && mismatch.is_some() {
+            entry.span = span;
+            entry.mismatch = mismatch;
+        }
+    }
+
+    fn check_single_reexport_stability(
+        &mut self,
+        item: &'tcx hir::Item<'tcx>,
+        path: &'tcx UsePath<'tcx>,
+    ) {
+        let Some((own_stability, attr_span)) = self.reexport_stability_attr(item) else {
+            return;
+        };
+
+        let (has_target, mismatch) =
+            self.classify_reexport_targets(&own_stability, path.res.present_items());
+
+        self.record_reexport_stability(item, attr_span, path.span, has_target, mismatch);
+    }
+
+    fn check_glob_reexport_stability(
+        &mut self,
+        item: &'tcx hir::Item<'tcx>,
+        path: &'tcx UsePath<'tcx>,
+    ) {
+        let Some((own_stability, attr_span)) = self.reexport_stability_attr(item) else {
+            return;
+        };
+
+        let glob_def_id = item.owner_id.def_id.to_def_id();
+
+        let targets = self
+            .tcx
+            .module_children_local(self.mod_id.to_local_def_id())
+            .iter()
+            .filter(|child| {
+                child.reexport_chain.iter().any(|reexport| {
+                    matches!(
+                        *reexport,
+                        Reexport::Glob(def_id) if def_id == glob_def_id
+                    )
+                })
+            })
+            .map(|child| child.res);
+
+        let (has_target, mismatch) = self.classify_reexport_targets(&own_stability, targets);
+
+        self.record_reexport_stability(item, attr_span, path.span, has_target, mismatch);
+    }
+
+    fn emit_incompatible_reexport_stability(&self) {
+        for reexport in self.reexport_stability.values() {
+            if reexport.has_target
+                && let Some((reexport_stability, target_stability)) = &reexport.mismatch
+            {
+                self.tcx.emit_node_span_lint(
+                    INCOMPATIBLE_REEXPORT_STABILITY,
+                    reexport.hir_id,
+                    reexport.span,
+                    diagnostics::IncompatibleReexportStability {
+                        reexport_stability: reexport_stability.as_str(),
+                        target_stability: target_stability.as_str(),
+                    },
+                );
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
@@ -580,6 +753,20 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 };
                 let def_id = cnum.as_def_id();
                 self.tcx.check_stability(def_id, Some(item.hir_id()), item.span, None);
+            }
+
+            hir::ItemKind::Use(path, hir::UseKind::Single(_))
+                if self.tcx.features().staged_api()
+                    && self.tcx.local_visibility(item.owner_id.def_id).is_public() =>
+            {
+                self.check_single_reexport_stability(item, path);
+            }
+
+            hir::ItemKind::Use(path, hir::UseKind::Glob)
+                if self.tcx.features().staged_api()
+                    && self.tcx.local_visibility(item.owner_id.def_id).is_public() =>
+            {
+                self.check_glob_reexport_stability(item, path);
             }
 
             // For implementations of traits, check the stability of each item

@@ -53,6 +53,7 @@ pub mod hardwired {
             FUNCTION_ITEM_REFERENCES,
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
+            INCOMPATIBLE_REEXPORT_STABILITY,
             INCOMPLETE_INCLUDE,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
@@ -2814,6 +2815,41 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
+}
+
+declare_lint! {
+    /// The `incompatible_reexport_stability` lint detects stability
+    /// annotations on re-exports that are incompatible with the stability
+    /// metadata of the re-exported item.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(staged_api)]
+    /// #![stable(feature = "test", since = "1.0.0")]
+    ///
+    /// #[stable(feature = "original", since = "1.0.0")]
+    /// pub struct S;
+    ///
+    /// #[stable(feature = "different", since = "1.0.0")]
+    /// pub use self::S as T;
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Stability annotations on re-exports should be compatible with the
+    /// stability metadata of the item being re-exported. Stable metadata is
+    /// compared by `feature` and `since`, while unstable metadata is compared by
+    /// `feature` and `issue`. Stable re-exports of unstable definitions remain
+    /// handled by the existing stability machinery.
+    pub INCOMPATIBLE_REEXPORT_STABILITY,
+    Deny,
+    "detects incompatible stability annotations on re-exports",
+    @feature_gate = staged_api;
 }
 
 declare_lint! {

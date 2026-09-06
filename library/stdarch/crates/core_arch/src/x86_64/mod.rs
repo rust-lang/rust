@@ -81,6 +81,8 @@ pub use self::bmi2::*;
 
 mod tbm;
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::tbm::*;
 
 mod avx512f;

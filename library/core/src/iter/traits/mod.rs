@@ -12,6 +12,8 @@ pub use self::marker::TrustedFused;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Path stability is tracked separately.
 pub use self::{
     accum::{Product, Sum},
     collect::{Extend, FromIterator, IntoIterator},

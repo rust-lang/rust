@@ -32,6 +32,9 @@
 #![stable(feature = "time", since = "1.3.0")]
 
 #[stable(feature = "time", since = "1.3.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use core::time::Duration;
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
 pub use core::time::TryFromFloatSecsError;

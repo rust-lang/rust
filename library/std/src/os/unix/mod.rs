@@ -107,15 +107,24 @@ pub mod prelude {
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use super::fs::DirEntryExt;
     #[doc(no_inline)]
     #[stable(feature = "file_offset", since = "1.15.0")]
     pub use super::fs::FileExt;
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use super::fs::{FileTypeExt, MetadataExt, OpenOptionsExt, PermissionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use super::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
     #[doc(no_inline)]
     #[unstable(feature = "unix_send_signal", issue = "141975")]
@@ -125,5 +134,8 @@ pub mod prelude {
     pub use super::process::{CommandExt, ExitStatusExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use super::thread::JoinHandleExt;
 }

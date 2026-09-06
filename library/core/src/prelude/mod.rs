@@ -18,6 +18,8 @@ pub mod v1;
 pub mod rust_2015 {
     #[stable(feature = "prelude_2015", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use super::v1::*;
 }
 
@@ -28,6 +30,8 @@ pub mod rust_2015 {
 pub mod rust_2018 {
     #[stable(feature = "prelude_2018", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use super::v1::*;
 }
 
@@ -38,14 +42,20 @@ pub mod rust_2018 {
 pub mod rust_2021 {
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use super::v1::*;
 
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::iter::FromIterator;
 
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::convert::{TryFrom, TryInto};
 }
 
@@ -56,18 +66,26 @@ pub mod rust_2021 {
 pub mod rust_2024 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use super::v1::*;
 
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::iter::FromIterator;
 
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::convert::{TryFrom, TryInto};
 
     #[stable(feature = "prelude_2024", since = "1.85.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::future::{Future, IntoFuture};
 }
 
@@ -79,17 +97,25 @@ pub mod rust_2024 {
 pub mod rust_future {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use super::v1::*;
 
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::iter::FromIterator;
 
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::convert::{TryFrom, TryInto};
 
     #[stable(feature = "prelude_2024", since = "1.85.0")]
     #[doc(no_inline)]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::future::{Future, IntoFuture};
 }

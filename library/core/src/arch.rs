@@ -10,6 +10,9 @@
     unreachable_pub
 )]
 #[stable(feature = "simd_arch", since = "1.27.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// Keep the facade's stability.
 pub use crate::core_arch::arch::*;
 
 /// Inline assembly.

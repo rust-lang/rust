@@ -70,6 +70,9 @@
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use alloc_crate::alloc::*;
 
 use crate::ptr::NonNull;

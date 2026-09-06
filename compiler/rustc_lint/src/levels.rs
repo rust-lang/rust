@@ -969,14 +969,18 @@ where
                 let mut lint = Diag::new(dcx, level, msg!("unknown lint: `{$name}`"))
                     .with_arg("name", lint_id.lint.name_lower())
                     .with_note(msg!("the `{$name}` lint is unstable"));
-                rustc_session::diagnostics::add_feature_diagnostics_for_issue(
-                    &mut lint,
-                    sess,
-                    feature,
-                    GateIssue::Language,
-                    lint_from_cli,
-                    None,
-                );
+                // `staged_api` is only intended for the standard library, so don't
+                // suggest enabling it just to use this lint.
+                if feature != sym::staged_api {
+                    rustc_session::diagnostics::add_feature_diagnostics_for_issue(
+                        &mut lint,
+                        sess,
+                        feature,
+                        GateIssue::Language,
+                        lint_from_cli,
+                        None,
+                    );
+                }
                 lint
             }
         }
