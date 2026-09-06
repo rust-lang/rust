@@ -2366,13 +2366,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         let res = self.expand_cfg_true(&mut node, attr, pos);
                         match res {
                             EvalConfigResult::True => continue,
-                            EvalConfigResult::False { reason, reason_span } => {
+                            EvalConfigResult::False { reason } => {
                                 for ident in node.declared_idents() {
                                     self.cx.resolver.append_stripped_cfg_item(
                                         self.cx.current_expansion.lint_node_id,
                                         ident,
                                         reason.clone(),
-                                        reason_span,
+                                        reason.span(),
                                     )
                                 }
                             }
