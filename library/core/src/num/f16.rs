@@ -1980,7 +1980,7 @@ impl f16 {
     #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add(self, a: f16, b: f16) -> f16 {
-        intrinsics::fmaf16(self, a, b)
+        intrinsics::fma(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
