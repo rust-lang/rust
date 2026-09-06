@@ -11,7 +11,7 @@ use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind, find_attr};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty::AssocContainer;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{CRATE_MOD_ID, LocalDefId, LocalModId};
 use rustc_span::{BytePos, Ident, Span, sym};
 use rustc_structures::CrateType;
 
@@ -328,8 +328,8 @@ impl NonSnakeCase {
 }
 
 impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
-    fn check_mod(&mut self, cx: &LateContext<'_>, _: &'tcx hir::Mod<'tcx>, id: hir::HirId) {
-        if id != hir::CRATE_HIR_ID {
+    fn check_mod(&mut self, cx: &LateContext<'_>, _: &'tcx hir::Mod<'tcx>, id: LocalModId) {
+        if id != CRATE_MOD_ID {
             return;
         }
 
