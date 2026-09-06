@@ -191,7 +191,8 @@ where
             // the other case.
             TraitErrors::NoErrors
         } else {
-            TraitErrors::HasErrors(collect_remaining_errors_impl(self, infcx))
+            let errors = collect_remaining_errors_impl(self, infcx);
+            TraitErrors::from_iter(errors.into_iter())
         }
     }
 
@@ -412,7 +413,7 @@ where
                 .drain(..)
                 .map(|obligation| NextSolverError::Overflow(obligation)),
         )
-        .map(|e| E::from_solver_error(infcx, e))
+        .filter_map(|e| E::try_from_solver_error(infcx, e))
         .collect()
 }
 
@@ -434,6 +435,18 @@ impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tc
             NextSolverError::Overflow(obligation) => {
                 fulfillment_error_for_overflow(infcx, obligation)
             }
+        }
+    }
+
+    fn try_from_solver_error(
+        infcx: &InferCtxt<'tcx>,
+        error: NextSolverError<'tcx>,
+    ) -> Option<Self> {
+        match error {
+            NextSolverError::Ambiguity(obligation) => {
+                try_fulfillment_error_for_stalled(infcx, obligation)
+            }
+            error => Some(Self::from_solver_error(infcx, error)),
         }
     }
 }

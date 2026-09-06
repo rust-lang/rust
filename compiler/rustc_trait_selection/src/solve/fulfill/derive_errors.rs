@@ -86,7 +86,23 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
     infcx: &InferCtxt<'tcx>,
     root_obligation: PredicateObligation<'tcx>,
 ) -> FulfillmentError<'tcx> {
-    let (code, refine_obligation) = infcx.probe(|_| {
+    fulfillment_error_for_stalled_impl(infcx, root_obligation, false)
+        .expect("strict stalled error conversion cannot be suppressed")
+}
+
+pub(super) fn try_fulfillment_error_for_stalled<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    root_obligation: PredicateObligation<'tcx>,
+) -> Option<FulfillmentError<'tcx>> {
+    fulfillment_error_for_stalled_impl(infcx, root_obligation, true)
+}
+
+fn fulfillment_error_for_stalled_impl<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    root_obligation: PredicateObligation<'tcx>,
+    delay_bug_on_success: bool,
+) -> Option<FulfillmentError<'tcx>> {
+    let evaluation = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
             root_obligation.as_goal(),
             root_obligation.cause.span,
@@ -100,7 +116,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                         stalled_on_coroutines: _,
                     }),
                 ..
-            }) => (FulfillmentErrorCode::Ambiguity { overflow: None }, true),
+            }) => Some((FulfillmentErrorCode::Ambiguity { overflow: None }, true)),
             Ok(GoalEvaluation {
                 certainty:
                     Certainty::Maybe(MaybeInfo {
@@ -110,7 +126,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                         stalled_on_coroutines: _,
                     }),
                 ..
-            }) => (
+            }) => Some((
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
                 // We discard the inference constraints from overflowing goals, so
@@ -119,13 +135,24 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 //
                 // FIXME: We should probably just look into overflows here.
                 false,
-            ),
+            )),
             Ok(GoalEvaluation { certainty: Certainty::Yes, .. }) => {
-                span_bug!(
-                    root_obligation.cause.span,
-                    "did not expect successful goal when collecting ambiguity errors for `{:?}`",
-                    infcx.resolve_vars_if_possible(root_obligation.predicate),
-                )
+                if delay_bug_on_success {
+                    infcx.dcx().span_delayed_bug(
+                        root_obligation.cause.span,
+                        format!(
+                            "did not expect successful goal when collecting ambiguity errors for `{:?}`",
+                            infcx.resolve_vars_if_possible(root_obligation.predicate),
+                        ),
+                    );
+                    None
+                } else {
+                    span_bug!(
+                        root_obligation.cause.span,
+                        "did not expect successful goal when collecting ambiguity errors for `{:?}`",
+                        infcx.resolve_vars_if_possible(root_obligation.predicate),
+                    )
+                }
             }
             Err(_) => {
                 span_bug!(
@@ -137,7 +164,9 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
         }
     });
 
-    FulfillmentError {
+    let (code, refine_obligation) = evaluation?;
+
+    Some(FulfillmentError {
         obligation: if refine_obligation {
             find_best_leaf_obligation(infcx, &root_obligation, true)
         } else {
@@ -145,7 +174,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
         },
         code,
         root_obligation,
-    }
+    })
 }
 
 pub(super) fn fulfillment_error_for_overflow<'tcx>(
