@@ -3591,49 +3591,18 @@ pub const fn fabs<T: const bounds::FloatPrimitive>(x: T) -> T {
     T::from_bits(x.to_bits() & !T::SIGN_MASK)
 }
 
-/// Copies the sign from `y` to `x` for `f16` values.
+/// Copies the sign from `y` to `x` for floating-point values.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `copysign` method. For example, [`f32::copysign`].
 #[inline]
 #[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn copysignf16(x: f16, y: f16) -> f16 {
-    f16::from_bits((x.to_bits() & !f16::SIGN_MASK) | (y.to_bits() & f16::SIGN_MASK))
-}
-
-/// Copies the sign from `y` to `x` for `f32` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
-#[inline]
-#[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn copysignf32(x: f32, y: f32) -> f32 {
-    f32::from_bits((x.to_bits() & !f32::SIGN_MASK) | (y.to_bits() & f32::SIGN_MASK))
-}
-/// Copies the sign from `y` to `x` for `f64` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
-#[inline]
-#[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-pub const fn copysignf64(x: f64, y: f64) -> f64 {
-    f64::from_bits((x.to_bits() & !f64::SIGN_MASK) | (y.to_bits() & f64::SIGN_MASK))
-}
-
-/// Copies the sign from `y` to `x` for `f128` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
-#[inline]
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn copysignf128(x: f128, y: f128) -> f128 {
-    f128::from_bits((x.to_bits() & !f128::SIGN_MASK) | (y.to_bits() & f128::SIGN_MASK))
+#[miri::intrinsic_fallback_is_spec]
+pub const fn copysign<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+    T::from_bits((x.to_bits() & !T::SIGN_MASK) | (y.to_bits() & T::SIGN_MASK))
 }
 
 /// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,

@@ -91,10 +91,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::contract_check_ensures
         | sym::contract_check_requires
         | sym::contract_checks
-        | sym::copysignf16
-        | sym::copysignf32
-        | sym::copysignf64
-        | sym::copysignf128
+        | sym::copysign
         | sym::cos
         | sym::ctlz
         | sym::ctpop
@@ -472,10 +469,7 @@ pub(crate) fn check_intrinsic_type(
         sym::maximumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
         sym::maximumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
-        sym::copysignf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::copysignf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::copysignf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::copysignf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+        sym::copysign => (1, 0, vec![param(0), param(0)], param(0)),
 
         sym::floorf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
         sym::floorf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),

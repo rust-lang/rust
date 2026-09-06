@@ -95,11 +95,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
         //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
         //
-        sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
-        sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
-        sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
-        sym::copysignf128 => ("llvm.copysign", &[bx.type_f128()]),
-
         sym::floorf16 => ("llvm.floor", &[bx.type_f16()]),
         sym::floorf32 => ("llvm.floor", &[bx.type_f32()]),
         sym::floorf64 => ("llvm.floor", &[bx.type_f64()]),
@@ -567,7 +562,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            sym::fabs
+            sym::copysign
+            | sym::fabs
             | sym::exp
             | sym::exp2
             | sym::log
@@ -586,6 +582,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 };
                 let llty = self.type_float_from_ty(*f);
                 let llvm_name = match name {
+                    sym::copysign => "llvm.copysign",
                     sym::fabs => "llvm.fabs",
                     sym::exp => "llvm.exp",
                     sym::exp2 => "llvm.exp2",
