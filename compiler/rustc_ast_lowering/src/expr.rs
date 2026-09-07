@@ -1593,7 +1593,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some((id, _)) => {
                 if let Some(loop_id) = self.curr_owner.owner.get_label_res(id) {
                     let local_id = self.curr_owner.ident_and_label_to_local_id[&loop_id];
-                    let loop_hir_id = HirId { owner: self.curr_owner.owner_id, local_id };
+                    let loop_hir_id = HirId { owner: self.curr_owner.owner_id(), local_id };
                     Ok(loop_hir_id)
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)

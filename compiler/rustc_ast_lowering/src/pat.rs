@@ -293,7 +293,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             hir_id
                         } else {
                             hir::HirId {
-                                owner: self.curr_owner.owner_id,
+                                owner: self.curr_owner.owner_id(),
                                 local_id: self.curr_owner.ident_and_label_to_local_id[&id],
                             }
                         }
