@@ -35,10 +35,12 @@ fn sock_addr_from_pathname() {
 fn sock_addr_without_trailing_nul() {
     const PATH: &[u8] = b"/path/to/socket";
 
-    // SAFETY: all zeros is a valid representation for `sockaddr_un`.
-    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
-    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
-    for (dst, &src) in addr.sun_path.iter_mut().zip(PATH) {
+    let mut addr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
+    let sun_family = (libc::AF_UNIX as libc::sa_family_t).to_ne_bytes();
+    addr[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
+        .copy_from_slice(&sun_family);
+
+    for (dst, &src) in addr[SUN_PATH_OFFSET..].iter_mut().zip(PATH) {
         *dst = src as _;
     }
     let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
@@ -848,4 +850,35 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
     } else {
         unreachable!("must be ScmRights");
     }
+}
+
+#[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
+fn test_unix_datagram_max_path() {
+    let dir = tmpdir();
+    // +1 for separator byte on join
+    let dir_len = dir.path().as_os_str().len() + 1;
+    // SUN_PATH_MAX_LEN differs based on platform (e.g. for macos this should be 254, for
+    // linux this should be 108). We test whether a socket can bind to the maximally allowed
+    // path size, which is SUN_PATH_MAX_LEN - 1
+    let sock = format!(
+        "sock{}",
+        vec!['a'; SUN_PATH_MAX_LEN.saturating_sub(6 + dir_len)].into_iter().collect::<String>()
+    );
+    let sock2 = format!(
+        "sock{}",
+        vec!['b'; SUN_PATH_MAX_LEN.saturating_sub(6 + dir_len)].into_iter().collect::<String>()
+    );
+    let path1 = dir.path().join(sock);
+    let path2 = dir.path().join(sock2);
+
+    let sock1 = or_panic!(UnixDatagram::bind(&path1));
+    let sock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    let msg = b"hello world";
+    or_panic!(sock1.send_to(msg, &path2));
+    let mut buf = [0; 11];
+    or_panic!(sock2.recv_from(&mut buf));
+    assert_eq!(msg, &buf[..]);
 }

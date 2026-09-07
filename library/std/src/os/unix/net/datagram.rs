@@ -14,7 +14,7 @@
 ))]
 use libc::MSG_NOSIGNAL;
 
-use super::{SocketAddr, sockaddr_un};
+use super::SocketAddr;
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
@@ -98,9 +98,13 @@ impl UnixDatagram {
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixDatagram> {
         unsafe {
             let socket = UnixDatagram::unbound()?;
-            let (addr, len) = sockaddr_un(path.as_ref())?;
+            let sockaddr = SocketAddr::from_path(path.as_ref())?;
 
-            cvt(libc::bind(socket.as_raw_fd(), (&raw const addr) as *const _, len as _))?;
+            cvt(libc::bind(
+                socket.as_raw_fd(),
+                (&raw const sockaddr.addr) as *const _,
+                sockaddr.len as _,
+            ))?;
 
             Ok(socket)
         }
@@ -217,9 +221,13 @@ impl UnixDatagram {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         unsafe {
-            let (addr, len) = sockaddr_un(path.as_ref())?;
+            let sockaddr = SocketAddr::from_path(path.as_ref())?;
 
-            cvt(libc::connect(self.as_raw_fd(), (&raw const addr) as *const _, len))?;
+            cvt(libc::connect(
+                self.as_raw_fd(),
+                (&raw const sockaddr.addr) as *const _,
+                sockaddr.len,
+            ))?;
         }
         Ok(())
     }
@@ -298,7 +306,9 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
+        SocketAddr::new(|addr, len| unsafe {
+            libc::getsockname(self.as_raw_fd(), addr as *mut libc::sockaddr, len)
+        })
     }
 
     /// Returns the address of this socket's peer.
@@ -323,7 +333,9 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getpeername(self.as_raw_fd(), addr, len) })
+        SocketAddr::new(|addr, len| unsafe {
+            libc::getpeername(self.as_raw_fd(), addr as *mut libc::sockaddr, len)
+        })
     }
 
     fn recv_from_flags(
@@ -338,7 +350,7 @@ impl UnixDatagram {
                 buf.as_mut_ptr() as *mut _,
                 buf.len(),
                 flags,
-                addr,
+                addr as *mut libc::sockaddr,
                 len,
             );
             if count > 0 {
@@ -530,15 +542,15 @@ impl UnixDatagram {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
         unsafe {
-            let (addr, len) = sockaddr_un(path.as_ref())?;
+            let sockaddr = SocketAddr::from_path(path.as_ref())?;
 
             let count = cvt(libc::sendto(
                 self.as_raw_fd(),
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,
-                (&raw const addr) as *const _,
-                len,
+                (&raw const sockaddr.addr) as *const _,
+                sockaddr.len,
             ))?;
             Ok(count as usize)
         }
