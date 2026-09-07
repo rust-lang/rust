@@ -6,8 +6,9 @@ use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
-    Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
-    Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    Block, BlockCheckMode, BorrowKind, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item,
+    ItemKind, MutTy, Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty,
+    TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -27,7 +28,8 @@ use super::{
 };
 use crate::diagnostics::{
     AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
-    AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
+    AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, CStyleReference,
+    CStyleReferenceExpr, CStyleReferenceExprSugg, CStyleReferenceSugg, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
@@ -1588,6 +1590,31 @@ impl<'a> Parser<'a> {
                 },
             });
             self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
+        } else {
+            ty
+        }
+    }
+
+    /// If a user writes `T&` instead of `&T`, this method
+    /// attempts to recover and provide a helpful error message.
+    pub(super) fn maybe_recover_from_c_style_reference(&mut self, ty: Box<Ty>) -> Box<Ty> {
+        if self.token == token::And
+            && self.may_recover()
+            && !self.look_ahead(1, |t| t.can_begin_type() || t.is_keyword(kw::Mut))
+        {
+            self.bump();
+
+            let ref_span = self.prev_token.span;
+
+            self.dcx().emit_err(CStyleReference {
+                span: ref_span,
+                sugg: CStyleReferenceSugg { remove: ref_span, insert: ty.span.shrink_to_lo() },
+            });
+
+            self.mk_ty(
+                ty.span.to(ref_span),
+                TyKind::Ref(None, MutTy { ty, mutbl: Mutability::Not }),
+            )
         } else {
             ty
         }
@@ -3186,5 +3213,37 @@ impl<'a> Parser<'a> {
             });
             new_error
         })
+    }
+
+    pub(super) fn recover_from_c_style_reference(&mut self, lhs: Box<Expr>) -> Box<Expr> {
+        let ref_span = self.prev_token.span;
+
+        let mutbl = self.parse_mutability();
+        let prefix = mutbl.prefix_str();
+
+        let op_span = ref_span.to(self.prev_token.span);
+        let span = lhs.span.to(op_span);
+
+        if matches!(lhs.kind, ExprKind::Binary(..) | ExprKind::Cast(..)) {
+            self.dcx().emit_err(CStyleReferenceExpr {
+                span,
+                mutbl: prefix.to_string(),
+                sugg: None,
+            });
+            return lhs;
+        }
+
+        let insert = lhs.span.shrink_to_lo();
+        let sugg = match mutbl {
+            Mutability::Mut => CStyleReferenceExprSugg::Mut { removal: op_span, insert },
+            Mutability::Not => CStyleReferenceExprSugg::Shared { removal: op_span, insert },
+        };
+        self.dcx().emit_err(CStyleReferenceExpr {
+            span,
+            mutbl: prefix.to_string(),
+            sugg: Some(sugg),
+        });
+
+        self.mk_expr(span, ExprKind::AddrOf(BorrowKind::Ref, mutbl, lhs))
     }
 }

@@ -1797,6 +1797,12 @@ impl<'a> Parser<'a> {
         }
         None
     }
+
+    fn is_c_style_reference_start(&self) -> bool {
+        self.token.is_keyword(kw::Mut)
+            && self.may_recover()
+            && self.look_ahead(1, |t| *t == token::And)
+    }
 }
 
 // Metavar captures of various kinds. The more complex node kinds (e.g. `Item`, `Expr`) store
