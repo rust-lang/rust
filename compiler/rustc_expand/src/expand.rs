@@ -1382,7 +1382,11 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 // This lets `parse_external_mod` catch cycles if it's self-referential.
                 let file_path = match inline {
                     Inline::Yes => None,
-                    Inline::No { .. } => mod_file_path_from_attr(ecx.sess, &node.attrs, &dir_path),
+                    Inline::No { .. } => mod_file_path_from_attr(
+                        ecx.sess,
+                        &node.attrs,
+                        &ecx.current_expansion.module.dir_path,
+                    ),
                 };
                 (file_path, dir_path, dir_ownership)
             }
