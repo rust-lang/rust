@@ -47,9 +47,9 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
 pub unsafe trait FloatPrimitive:
     Sized + Copy + PartialOrd + core::ops::Mul<Output = Self> + core::ops::Add<Output = Self>
 {
-    type UInt: const core::ops::BitOr<Output = Self::UInt>
-        + const core::ops::BitAnd<Output = Self::UInt>
-        + const core::ops::Not<Output = Self::UInt>;
+    type UInt: core::ops::BitOr<Output = Self::UInt>
+        + core::ops::BitAnd<Output = Self::UInt>
+        + core::ops::Not<Output = Self::UInt>;
     const SIGN_MASK: Self::UInt;
     fn to_bits(self) -> Self::UInt;
     fn from_bits(bits: Self::UInt) -> Self;
