@@ -1047,14 +1047,21 @@ impl<'test> TestCx<'test> {
             .args(&self.props.doc_flags);
 
         match kind {
-            DocKind::Html => {}
+            DocKind::Html => {
+                if self.props.use_rustdoc_cci_doc_meta_merge {
+                    rustdoc.arg("--write-doc-meta-dir").arg(out_dir.as_ref().join("doc.meta"));
+                }
+            }
             DocKind::Json => {
                 rustdoc.arg("--output-format").arg("json");
             }
         }
 
         // Both JSON output and `--disable-minification` are unstable rustdoc options.
-        if matches!(kind, DocKind::Json) || self.config.disable_minification {
+        if matches!(kind, DocKind::Json)
+            || self.config.disable_minification
+            || self.props.use_rustdoc_cci_doc_meta_merge
+        {
             rustdoc.arg("-Zunstable-options");
         }
         if self.config.disable_minification {
@@ -1065,7 +1072,31 @@ impl<'test> TestCx<'test> {
             rustdoc.arg(format!("-Clinker={}", linker));
         }
 
-        self.compose_and_run_compiler(rustdoc, None)
+        let docres = self.compose_and_run_compiler(rustdoc, None);
+        if !docres.status.success() {
+            return docres;
+        }
+        if kind == DocKind::Html && self.props.use_rustdoc_cci_doc_meta_merge {
+            let mut rustdoc_merge = Command::new(rustdoc_path);
+            let current_dir = self.output_base_dir();
+            rustdoc_merge.current_dir(current_dir);
+            rustdoc_merge
+                .arg("-o")
+                .arg(out_dir.as_ref())
+                .args(&self.props.compile_flags)
+                .args(&self.props.doc_flags)
+                .arg("--read-doc-meta-dir")
+                .arg(out_dir.as_ref().join("doc.meta"))
+                .arg("-Zunstable-options");
+            if self.config.disable_minification {
+                rustdoc_merge.arg("--disable-minification");
+            }
+            let docmerge = self.compose_and_run_compiler(rustdoc_merge, None);
+            if !docmerge.status.success() {
+                return docmerge;
+            }
+        }
+        docres
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
