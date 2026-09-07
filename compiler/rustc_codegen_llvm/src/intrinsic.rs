@@ -60,11 +60,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     let fixed_minmax = llvm_version >= (23, 0, 0);
 
     let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
-        sym::powif16 => ("llvm.powi", &[bx.type_f16(), bx.type_i32()]),
-        sym::powif32 => ("llvm.powi", &[bx.type_f32(), bx.type_i32()]),
-        sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
-        sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
-
         sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         sym::minimumf64 if fixed_minmax => ("llvm.minimum", &[bx.type_f64()]),
@@ -519,7 +514,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => {
+            | sym::cos
+            | sym::powi => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -552,11 +548,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::log2 => "llvm.log2",
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
+                    sym::powi => "llvm.powi",
+
                     _ => bug!(),
                 };
+
+                let params: &[&'ll Type] = match name {
+                    sym::powi => &[llty, self.type_i32()],
+                    _ => &[llty],
+                };
+
                 self.call_intrinsic(
                     llvm_name,
-                    &[llty],
+                    params,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
