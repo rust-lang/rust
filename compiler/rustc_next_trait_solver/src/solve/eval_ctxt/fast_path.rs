@@ -5,6 +5,7 @@
 //!
 //! For debugging, fast paths can be disabled using `-Zdisable-fast-paths`.
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{
     Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques, MaybeInfo,
     SucceededInErased,
@@ -82,7 +83,9 @@ where
         } => {
             // If any opaques changed in the opaque type storage,
             // rerunning might make progress so we should rerun.
-            if delegate.needs_reevaluation(num_opaques_in_storage, num_hidden_ty_bounds_in_storage)
+            if delegate
+                .opaque_types_storage_num_entries()
+                .needs_reevaluation(num_opaques_in_storage, num_hidden_ty_bounds_in_storage)
             {
                 // Unless this goal previously succeeded in erased mode.
                 // If the stalled goal successfully evaluated while erasing opaque types,

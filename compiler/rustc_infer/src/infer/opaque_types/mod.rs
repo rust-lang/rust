@@ -235,7 +235,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // heuristics.
         let hidden_ty = inner
             .opaque_type_storage
-            .iter_opaque_hidden_ty_bounds()
+            .iter_hidden_types_of_opaques()
             .map(|(hidden_ty, _)| hidden_ty)
             .find(|hidden_ty| {
                 if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
