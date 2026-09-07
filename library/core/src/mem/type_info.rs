@@ -78,9 +78,9 @@ pub enum TypeKind {
     /// Tuples.
     Tuple,
     /// Arrays.
-    Array(Array),
+    Array,
     /// Slices.
-    Slice(Slice),
+    Slice,
     /// Dynamic Traits.
     DynTrait(DynTrait),
     /// Structs.
@@ -107,26 +107,6 @@ pub enum TypeKind {
     FnPtr(FnPtr),
     /// FIXME(#146922): add all the common types
     Other,
-}
-
-/// Compile-time type information about arrays.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Array {
-    /// The type of each element in the array.
-    pub element_ty: TypeId,
-    /// The length of the array.
-    pub len: usize,
-}
-
-/// Compile-time type information about slices.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Slice {
-    /// The type of each element in the slice.
-    pub element_ty: TypeId,
 }
 
 /// Compile-time type information about dynamic traits.
@@ -301,6 +281,44 @@ impl TypeId {
     #[rustc_comptime]
     pub fn is_signed(self) -> bool {
         intrinsics::type_id_is_signed(self)
+    }
+
+    /// When called on a `TypeId` representing an array or slice this returns the type of each
+    /// element otherwise this returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().element_ty() }, Some(TypeId::of::<u32>()));
+    /// assert_eq!(const { TypeId::of::<u8>().element_ty() }, None); // not an array or slice
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn element_ty(self) -> Option<TypeId> {
+        intrinsics::type_id_element_ty(self)
+    }
+
+    /// When called on a `TypeId` representing an array this returns the length of the array in
+    /// all other cases this returns zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().array_len() }, 16);
+    /// assert_eq!(const { TypeId::of::<u8>().array_len() }, 0); // not an array
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn array_len(self) -> usize {
+        intrinsics::type_id_array_len(self)
     }
 
     /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
