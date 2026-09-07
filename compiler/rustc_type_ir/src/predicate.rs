@@ -502,7 +502,10 @@ impl<I: Interner> ExistentialProjection<I> {
         ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 interner,
-                interner.alias_term_kind_from_def_id(self.def_id.into()),
+                interner.alias_term_kind_from_def_id(
+                    self.def_id.into(),
+                    ty::AliasConstInherentArgsKind::WithSelf,
+                ),
                 [self_ty.into()].iter().chain(self.args.iter()),
             ),
             term: self.term,

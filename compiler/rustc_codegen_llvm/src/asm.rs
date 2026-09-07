@@ -414,6 +414,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        extra_rust_target_features: &[String],
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -499,14 +500,26 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        let target_features = self.tcx.global_backend_features(()).join(",");
-        let target_cpu = llvm_util::target_cpu(self.tcx.sess);
+        // Globally-enabled features that are already in the backend format.
+        let global_features = self.tcx.global_backend_features(()).iter().map(String::as_str);
+
+        // Features enabled on a particular instance, in the rust format.
+        // These need to be translated to the LLVM format.
+        let function_features: Vec<_> = extra_rust_target_features
+            .iter()
+            .flat_map(|feat| llvm_util::to_llvm_features(self.tcx.sess, feat))
+            .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
+            .collect();
+
+        let function_features = function_features.iter().map(String::as_str);
+        let target_features =
+            global_features.chain(function_features).intersperse(",").collect::<String>();
 
         llvm::append_module_inline_asm(
             self.llmod,
             template_str.as_bytes(),
             &target_features,
-            target_cpu,
+            llvm_util::target_cpu(self.tcx.sess),
         );
     }
 
@@ -719,18 +732,25 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     format!("{{{}{}}}", class, idx)
                 }
             } else if let Some(idx) = a64_vreg_index(reg) {
-                let class = if let Some(layout) = layout {
-                    match layout.size.bytes() {
+                let class = match layout {
+                    Some(layout)
+                        if matches!(
+                            layout.backend_repr,
+                            BackendRepr::SimdScalableVector { .. }
+                        ) =>
+                    {
+                        'z'
+                    }
+                    Some(layout) => match layout.size.bytes() {
                         16 => 'q',
                         8 => 'd',
                         4 => 's',
                         2 => 'h',
                         1 => 'd', // We fixup i8 to i8x8
                         _ => unreachable!(),
-                    }
-                } else {
+                    },
                     // We use i64x2 as the type for discarded outputs
-                    'q'
+                    None => 'q',
                 };
                 format!("{{{}{}}}", class, idx)
             } else if let Some(idx) = hexagon_reg_pair_index(reg) {
@@ -762,7 +782,10 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             AArch64(AArch64InlineAsmRegClass::reg) => "r",
             AArch64(AArch64InlineAsmRegClass::vreg) => "w",
             AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
-            AArch64(AArch64InlineAsmRegClass::preg) => unreachable!("clobber-only"),
+            // Although the above link suggests its just 'Upa', llvm's own tests seem to suggest its
+            // '@3Upa'. (see "src/llvm-project/clang/test/CodeGen/AArch64/sve-inline-asm-datatypes.c" line 139)
+            AArch64(AArch64InlineAsmRegClass::preg) => "@3Upa",
+            AArch64(AArch64InlineAsmRegClass::ffr) => unreachable!("clobber-only"),
             Arm(ArmInlineAsmRegClass::reg) => "r",
             Arm(ArmInlineAsmRegClass::sreg)
             | Arm(ArmInlineAsmRegClass::dreg_low16)
@@ -872,7 +895,7 @@ fn modifier_to_llvm(
                 modifier
             }
         }
-        AArch64(AArch64InlineAsmRegClass::preg) => unreachable!("clobber-only"),
+        AArch64(AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr) => None,
         Arm(ArmInlineAsmRegClass::reg) => None,
         Arm(ArmInlineAsmRegClass::sreg) | Arm(ArmInlineAsmRegClass::sreg_low16) => None,
         Arm(ArmInlineAsmRegClass::dreg)
@@ -977,7 +1000,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         AArch64(AArch64InlineAsmRegClass::vreg) | AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             cx.type_vector(cx.type_i64(), 2)
         }
-        AArch64(AArch64InlineAsmRegClass::preg) => unreachable!("clobber-only"),
+        AArch64(AArch64InlineAsmRegClass::preg) => cx.type_scalable_vector(cx.type_i1(), 16),
+        AArch64(AArch64InlineAsmRegClass::ffr) => unreachable!("clobber-only"),
         Arm(ArmInlineAsmRegClass::reg) => cx.type_i32(),
         Arm(ArmInlineAsmRegClass::sreg) | Arm(ArmInlineAsmRegClass::sreg_low16) => cx.type_f32(),
         Arm(ArmInlineAsmRegClass::dreg)
@@ -1243,7 +1267,10 @@ fn llvm_fixup_input<'ll, 'tcx>(
         (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
             if s.primitive() == Primitive::Float(Float::F16) =>
         {
-            // Smaller floats are always "NaN-boxed" inside larger floats on LoongArch.
+            // The LoongArch psABI only requires the upper bits to be widened to
+            // GRLEN, leaving them undefined. We NaN-box instead (set all upper
+            // bits to 1), matching LLVM's own codegen, to avoid an `f16` value
+            // being mistaken for a valid `f32` value.
             let value = bx.bitcast(value, bx.type_i16());
             let value = bx.zext(value, bx.type_i32());
             let value = bx.or(value, bx.const_u32(0xFFFF_0000));
@@ -1283,16 +1310,27 @@ fn llvm_fixup_input<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+        ) if let Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64)) =
+            s.primitive() =>
+        {
             let num_lanes = 16 / float.size().bytes();
+            // `f16` is located in the rightmost halfword of doubleword 0 per section 7.3.2.5 of
+            // "Power Instruction Set Architecture", version 3.1C.
+            let offset = if float == Float::F16 { 3 } else { 0 };
             bx.insert_element(
                 bx.const_undef(bx.type_vector(bx.type_from_float(float), num_lanes)),
                 value,
                 bx.const_usize(match bx.target_spec().endian {
-                    Endian::Little => num_lanes - 1,
-                    Endian::Big => 0,
+                    Endian::Little => num_lanes - 1 - offset,
+                    Endian::Big => offset,
                 }),
             )
+        }
+        (
+            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F128) => {
+            bx.bitcast(value, bx.type_vector(bx.type_f64(), 2))
         }
         _ => value,
     }
@@ -1459,16 +1497,25 @@ fn llvm_fixup_output<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+        ) if let Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64)) =
+            s.primitive() =>
+        {
             let num_lanes = 16 / float.size().bytes();
+            // `f16` is located in the rightmost halfword of doubleword 0 per section 7.3.2.5 of
+            // "Power Instruction Set Architecture", version 3.1C.
+            let offset = if float == Float::F16 { 3 } else { 0 };
             bx.extract_element(
                 value,
                 bx.const_usize(match bx.target_spec().endian {
-                    Endian::Little => num_lanes - 1,
-                    Endian::Big => 0,
+                    Endian::Little => num_lanes - 1 - offset,
+                    Endian::Big => offset,
                 }),
             )
         }
+        (
+            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F128) => bx.bitcast(value, bx.type_f128()),
         _ => value,
     }
 }
@@ -1613,9 +1660,15 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+        ) if let Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64)) =
+            s.primitive() =>
+        {
             cx.type_vector(cx.type_from_float(float), 16 / float.size().bytes())
         }
+        (
+            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F128) => cx.type_vector(cx.type_f64(), 2),
         _ => layout.llvm_type(cx),
     }
 }

@@ -5,6 +5,9 @@
 This guide is meant to help document how rustc – the Rust compiler – works,
 as well as to help new contributors get involved in rustc development.
 
+Note that this guide is intended as a reference; it's recommended that you search
+for the docs you're looking for instead of reading them top to bottom.
+
 There are several parts to this guide:
 
 1. [Building and debugging `rustc`][p1]:
@@ -32,7 +35,7 @@ There are several parts to this guide:
    There are a few of these with different information, including a glossary.
 
 [p1]: ./building/how-to-build-and-run.md
-[p2]: ./contributing.md
+[p2]: ./getting-started.md
 [p3]: ./building/bootstrapping/intro.md
 [p4]: ./part-2-intro.md
 [p5]: ./part-3-intro.md
@@ -58,7 +61,7 @@ Even better, open a PR with a correction!
 If you do contribute to the guide,
 please see the corresponding [subsection on writing documentation in this guide].
 
-[subsection on writing documentation in this guide]: contributing.md#contributing-to-rustc-dev-guide
+[subsection on writing documentation in this guide]: contributing-to-guide.md
 
 > “‘All conditioned things are impermanent’ —
 > when one sees this with wisdom, one turns away from suffering.”

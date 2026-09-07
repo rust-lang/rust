@@ -436,7 +436,7 @@ fn parse_cfg_attr_internal<'a>(
 }
 
 fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Features>) {
-    let gate = find_gated_cfg(|sym| sym == name);
+    let gate = find_gated_cfg(name);
     if let (Some(feats), Some(gated_cfg)) = (features, gate) {
         gate_cfg(gated_cfg, span, sess, feats);
     }

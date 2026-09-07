@@ -97,8 +97,15 @@ pub fn main() -> std::process::ExitCode {
     std::process::ExitCode::SUCCESS
 }
 
+pub enum Uninhabited {}
+
 //~v must_use_candidate
-pub fn result_uninhabited_1() -> Result<i32, std::convert::Infallible> {
+pub fn result_uninhabited_1() -> Result<i32, Uninhabited> {
+    todo!()
+}
+
+//~v must_use_candidate
+pub fn result_never_1() -> Result<i32, !> {
     todo!()
 }
 
@@ -106,7 +113,12 @@ pub fn result_uninhabited_1() -> Result<i32, std::convert::Infallible> {
 pub struct T;
 
 // Do not lint, `T` is `#[must_use]`, so the `Result<T, uninhabited>` also is.
-pub fn result_uninhabited_2() -> Result<T, std::convert::Infallible> {
+pub fn result_uninhabited_2() -> Result<T, Uninhabited> {
+    todo!()
+}
+
+// Do not lint, `T` is `#[must_use]`, so the `Result<T, uninhabited>` also is.
+pub fn result_never_2() -> Result<T, !> {
     todo!()
 }
 

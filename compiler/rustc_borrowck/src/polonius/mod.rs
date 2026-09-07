@@ -41,18 +41,42 @@ mod liveness_constraints;
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::bit_set::SparseBitMatrix;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
 pub(self) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
+pub(crate) use self::liveness_constraints::record_live_region_variance;
+use crate::BorrowSet;
+use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
 use crate::region_infer::values::LivenessValues;
-use crate::{BorrowSet, RegionInferenceContext};
+use crate::universal_regions::UniversalRegions;
 
-pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
+#[derive(Clone)]
+pub(crate) struct LiveLoans {
+    num_points: usize,
+    // This matrix always has more rows (PointIndex) than columns (BorrowIndex),
+    // and the borrow dimension is usually very low (single digit in 90% of cases in our benchmark suite),
+    // so we store it packed in a single bitset. Rows are points, columns are borrows.
+    flat_matrix: DenseBitSet<usize>,
+}
+
+impl LiveLoans {
+    pub(crate) fn new(num_points: usize, num_borrows: usize) -> Self {
+        Self { num_points, flat_matrix: DenseBitSet::new_empty(num_points * num_borrows) }
+    }
+    pub(crate) fn insert(&mut self, row: PointIndex, col: BorrowIndex) {
+        let bit_index = row.index() + self.num_points * col.index();
+        self.flat_matrix.insert(bit_index);
+    }
+    pub(crate) fn contains(&self, row: PointIndex, col: BorrowIndex) -> bool {
+        let bit_index = row.index() + self.num_points * col.index();
+        self.flat_matrix.contains(bit_index)
+    }
+}
 
 /// This struct holds the necessary
 ///  - liveness data, created during MIR typeck, and which will be used to lazily compute the
@@ -65,7 +89,7 @@ pub(crate) struct PoloniusContext {
 
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
-    live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
+    pub(crate) live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
 
     /// The regions that outlive free regions are used to distinguish relevant live locals from
     /// boring locals. A boring local is one whose type contains only such regions. Polonius
@@ -77,7 +101,7 @@ pub(crate) struct PoloniusContext {
 /// The direction a constraint can flow into. Used to create liveness constraints according to
 /// variance.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum ConstraintDirection {
+pub(crate) enum ConstraintDirection {
     /// For covariant cases, we add a forward edge `O at P1 -> O at P2`.
     Forward,
 
@@ -101,31 +125,32 @@ impl PoloniusContext {
     /// The constraint data will be used to compute errors and diagnostics.
     pub(crate) fn compute_loan_liveness<'tcx>(
         &mut self,
-        regioncx: &mut RegionInferenceContext<'tcx>,
+        liveness: &mut LivenessValues,
+        outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
+        universal_regions: &UniversalRegions<'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
+        num_points: usize,
     ) {
-        let liveness = regioncx.liveness_constraints();
-
         // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
         // trace throughout localized constraints.
         if borrow_set.len() > 0 {
             // From the outlives constraints, liveness, and variances, we can compute reachability
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).
-            let graph = LocalizedConstraintGraph::new(liveness, regioncx.outlives_constraints());
+            let graph = LocalizedConstraintGraph::new(liveness, outlives_constraints);
 
-            let mut live_loans = LiveLoans::new(borrow_set.len());
+            let mut live_loans = LiveLoans::new(num_points, borrow_set.len());
             let mut visitor = LoanLivenessVisitor { liveness, live_loans: &mut live_loans };
             graph.traverse(
                 body,
                 liveness,
                 &self.live_region_variances,
-                regioncx.universal_regions(),
+                universal_regions,
                 borrow_set,
                 &mut visitor,
             );
-            regioncx.record_live_loans(live_loans);
+            liveness.record_live_loans(live_loans);
 
             // The graph can be traversed again during MIR dumping, so we store it here.
             self.graph = Some(graph);

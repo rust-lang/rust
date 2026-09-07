@@ -1256,13 +1256,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         };
                         let mut struct_fmt = fmt.debug_struct(&name);
 
-                        // FIXME(project-rfc-2229#48): This should be a list of capture names/places
-                        if let Some(def_id) = def_id.as_local()
-                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
-                        {
-                            for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir_name(var_id);
-                                struct_fmt.field(var_name.as_str(), place);
+                        if let Some(def_id) = def_id.as_local() {
+                            let captures = tcx.closure_captures(def_id);
+                            assert_eq!(captures.len(), places.len());
+                            for (&capture, place) in iter::zip(captures, places) {
+                                struct_fmt.field(capture.to_symbol().as_str(), place);
                             }
                         } else {
                             for (index, place) in places.iter().enumerate() {
@@ -1277,13 +1275,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let name = format!("{{coroutine@{:?}}}", tcx.def_span(def_id));
                         let mut struct_fmt = fmt.debug_struct(&name);
 
-                        // FIXME(project-rfc-2229#48): This should be a list of capture names/places
-                        if let Some(def_id) = def_id.as_local()
-                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
-                        {
-                            for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir_name(var_id);
-                                struct_fmt.field(var_name.as_str(), place);
+                        if let Some(def_id) = def_id.as_local() {
+                            let captures = tcx.closure_captures(def_id);
+                            assert_eq!(captures.len(), places.len());
+                            for (&capture, place) in iter::zip(captures, places) {
+                                struct_fmt.field(capture.to_symbol().as_str(), place);
                             }
                         } else {
                             for (index, place) in places.iter().enumerate() {
@@ -1504,7 +1500,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     ty::ConstKind::Alias(_, alias_const) => {
                         let kind = match alias_const.kind {
                             ty::AliasConstKind::Projection { def_id }
-                            | ty::AliasConstKind::Inherent { def_id }
+                            | ty::AliasConstKind::InherentSelf { def_id }
+                            | ty::AliasConstKind::InherentImpl { def_id }
                             | ty::AliasConstKind::Free { def_id }
                             | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
                         };

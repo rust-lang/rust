@@ -255,7 +255,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
-        assert!(!self.infcx.next_trait_solver());
+        if self.infcx.next_trait_solver() {
+            return self.infcx.select_in_new_trait_solver(obligation);
+        }
 
         let candidate = match self.select_from_obligation(obligation) {
             Err(SelectionError::Overflow(OverflowError::Canonical)) => {
@@ -292,10 +294,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
-        if self.infcx.next_trait_solver() {
-            return self.infcx.select_in_new_trait_solver(obligation);
-        }
-
         self.poly_select(&Obligation {
             cause: obligation.cause.clone(),
             param_env: obligation.param_env,
@@ -876,7 +874,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 && matches!(
                                     a.kind,
                                     ty::AliasConstKind::Projection { .. }
-                                        | ty::AliasConstKind::Inherent { .. }
+                                        | ty::AliasConstKind::InherentSelf { .. }
+                                        | ty::AliasConstKind::InherentImpl { .. }
                                 ) =>
                         {
                             if let Ok(InferOk { obligations, value: () }) = self

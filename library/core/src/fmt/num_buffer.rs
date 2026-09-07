@@ -38,8 +38,15 @@ impl_NumBufferTrait! {
     i128, u128,
 }
 
-/// A buffer wrapper of which the internal size is based on the maximum
-/// number of digits the associated integer can have.
+/// Memory for formatting numbers using [`T::format_into()`][u8::format_into].
+///
+/// This type consists of enough memory to hold the longest decimal string representation
+/// a number of type `T` could have.
+/// It is used only by calling `format_into()`; there is no other way to access its contents.
+/// Its purpose is to allow formatting numbers without involving the dynamic dispatch of the
+/// [`fmt`] system, which may be more efficient when [`fmt`] is not otherwise used.
+///
+/// [`fmt`]: crate::fmt
 ///
 /// # Examples
 ///

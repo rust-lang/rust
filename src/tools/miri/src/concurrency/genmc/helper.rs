@@ -40,15 +40,14 @@ pub fn scalar_to_genmc_scalar<'tcx>(
             let value: u64 = scalar_int.to_uint(scalar_int.size()).try_into().unwrap();
             GenmcScalar { value, provenance: 0, is_init: true }
         }
-        rustc_const_eval::interpret::Scalar::Ptr(pointer, size) => {
+        rustc_const_eval::interpret::Scalar::Ptr(pointer, _ptr_size) => {
             // FIXME(genmc,borrow tracking): Borrow tracking information is lost.
             let addr = crate::Pointer::from(pointer).addr();
             if let crate::Provenance::Wildcard = pointer.provenance {
                 throw_unsup_format!("Pointers with wildcard provenance not allowed in GenMC mode");
             }
             let (alloc_id, _size, _prov_extra) =
-                rustc_const_eval::interpret::Machine::ptr_get_alloc(ecx, pointer, size.into())
-                    .unwrap();
+                rustc_const_eval::interpret::Machine::ptr_get_alloc(ecx, pointer, 0).unwrap();
             let base_addr = ecx.addr_from_alloc_id(alloc_id, None)?;
             // Add the base_addr alloc_id pair to the map.
             genmc_ctx.exec_state.genmc_shared_allocs_map.borrow_mut().insert(base_addr, alloc_id);

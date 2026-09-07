@@ -122,7 +122,7 @@ pub(crate) fn expand_kernel(
             span,
             ecx.path_global(
                 span,
-                [sym::std, sym::unimplemented].map(|s| Ident::new(s, span)).to_vec(),
+                [sym::core, sym::unimplemented].map(|s| Ident::new(s, span)).to_vec(),
             ),
             Delimiter::Parenthesis,
             TokenStream::default(),

@@ -66,7 +66,7 @@ impl<'tcx> crate::MirPass<'tcx> for Subtyper {
         checker.patcher.apply(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Later MIR phases expect all subtyping to be explicit.
         PassPolicy::Required
     }

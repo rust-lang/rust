@@ -3,8 +3,8 @@
 As described in [Overview of the compiler], the Rust compiler
 is still (as of <!-- date-check --> July 2021) transitioning from a
 traditional "pass-based" setup to a "demand-driven" system.
-The compiler query system is the key to rustc's demand-driven organization.
-The idea is pretty simple.
+
+The compiler's "query system" is the key to rustc's demand-driven organization.
 Instead of entirely independent passes
 (parsing, type-checking, etc.), a set of function-like *queries*
 compute information about the input source.
@@ -20,6 +20,11 @@ query, it will go do the computation, but the next time, the result is returned 
 Moreover, query execution fits nicely into
 *incremental computation*; the idea is roughly that, when you invoke a
 query, the result *may* be returned to you by loading stored data from disk.[^incr-comp-detail]
+
+When we execute a query,
+we also discover (at runtime!) what other queries it depends on.
+This allows us to construct a **dependency graph** of our crate,
+which makes incremental computation sound.
 
 Eventually, we want the entire compiler control-flow to be query driven.
 There will effectively be one top-level query (`compile`) that will run compilation on a crate; this

@@ -585,7 +585,7 @@ use crate::num::NonZero;
 use crate::ops::{self, ControlFlow, Deref, DerefMut, Residual, Try};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
-use crate::{cmp, convert, hint, mem, slice};
+use crate::{cmp, hint, mem, slice};
 
 /// The `Option` type. See [the module level documentation](self) for more.
 #[doc(search_unbox)]
@@ -2864,7 +2864,7 @@ impl<T, V: FromIterator<T>> FromIterator<Option<T>> for Option<V> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<T> ops::Try for Option<T> {
     type Output = T;
-    type Residual = Option<convert::Infallible>;
+    type Residual = Option<!>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2884,9 +2884,9 @@ const impl<T> ops::Try for Option<T> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-const impl<T> ops::FromResidual<Option<convert::Infallible>> for Option<T> {
+const impl<T> ops::FromResidual<Option<!>> for Option<T> {
     #[inline]
-    fn from_residual(residual: Option<convert::Infallible>) -> Self {
+    fn from_residual(residual: Option<!>) -> Self {
         match residual {
             None => None,
         }
@@ -2905,7 +2905,7 @@ const impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T> ops::Residual<T> for Option<convert::Infallible> {
+const impl<T> ops::Residual<T> for Option<!> {
     type TryType = Option<T>;
 }
 

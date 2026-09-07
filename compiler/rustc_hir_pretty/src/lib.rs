@@ -218,6 +218,9 @@ impl<'a> State<'a> {
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
             Node::TestBinderForall(_) => panic!("cannot print Node::TestBinderForall"),
             Node::TestBinderExists(_) => panic!("cannot print Node::TestBinderExists"),
+            Node::TestBinderBoundTypeConstraint(_) => {
+                panic!("cannot print Node::TestBinderBoundTypeConstraint")
+            }
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }
@@ -1166,7 +1169,7 @@ impl<'a> State<'a> {
     fn print_const_item_rhs(&mut self, ct_rhs: hir::ConstItemRhs<'_>) {
         match ct_rhs {
             hir::ConstItemRhs::Body(body_id) => self.ann.nested(self, Nested::Body(body_id)),
-            hir::ConstItemRhs::TypeConst(const_arg) => self.print_const_arg(const_arg),
+            hir::ConstItemRhs::Direct(const_arg) => self.print_const_arg(const_arg),
         }
     }
 

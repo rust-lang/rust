@@ -268,15 +268,15 @@ impl Config {
         download_component(dwn_ctx, &self.out, mode, filename, prefix, key, destination);
     }
 
-    /// Attempts to download LLVM from CI for the **host target**.
+    /// Attempts to download LLVM from CI for the given **target**.
     /// Returns a path to the downloaded and extracted directory.
-    pub(crate) fn maybe_download_host_ci_llvm(&self) -> Option<PathBuf> {
+    pub(crate) fn maybe_download_ci_llvm(&self, target: TargetSelection) -> Option<PathBuf> {
         // Never try to download CI LLVM during unit tests.
         if cfg!(test) {
             return None;
         }
 
-        let llvm_root = self.out.join(self.host_target).join("ci-llvm");
+        let llvm_root = self.out.join(target).join("ci-llvm");
         let llvm_freshness =
             detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository());
         self.do_if_verbose(|| {
@@ -296,7 +296,7 @@ impl Config {
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
-            self.download_ci_llvm(&llvm_root, &llvm_sha);
+            self.download_ci_llvm(&llvm_root, target, &llvm_sha);
 
             if self.should_fix_bins_and_dylibs() {
                 for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
@@ -315,7 +315,7 @@ impl Config {
             let now = std::time::SystemTime::now();
             let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
 
-            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.host_target));
+            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", target));
             t!(crate::utils::helpers::set_file_times(llvm_config, file_times));
 
             if self.should_fix_bins_and_dylibs() {
@@ -353,13 +353,13 @@ impl Config {
         Some(llvm_root)
     }
 
-    fn download_ci_llvm(&self, llvm_root: &Path, llvm_sha: &str) {
+    fn download_ci_llvm(&self, llvm_root: &Path, target: TargetSelection, llvm_sha: &str) {
         // For unit tests, downloading should have been blocked by `maybe_download_ci_llvm`.
         assert!(cfg!(not(test)), "unit tests shouldn't be downloading CI LLVM");
 
         let llvm_assertions = self.llvm_assertions;
 
-        let cache_prefix = format!("llvm-{llvm_sha}-{llvm_assertions}");
+        let cache_prefix = format!("llvm-{}-{llvm_sha}-{llvm_assertions}", target.triple);
         let cache_dst =
             self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
 
@@ -373,20 +373,23 @@ impl Config {
             &self.stage0_metadata.config.artifacts_server
         };
         let version = self.artifact_version_part(llvm_sha);
-        let filename = format!("rust-dev-{}-{}.tar.xz", version, self.host_target.triple);
+        let filename = format!("rust-dev-{}-{}.tar.xz", version, target.triple);
         let tarball = rustc_cache.join(&filename);
         if !tarball.exists() {
-            let help_on_error = "ERROR: failed to download llvm from ci
+            let help_on_error = format!(
+                "ERROR: failed to download llvm from CI for `{target}`
 
     HELP: There could be two reasons behind this:
-        1) The host triple is not supported for `download-ci-llvm`.
+        1) `{target}` is not supported for `download-ci-llvm`.
         2) Old builds get deleted after a certain time.
     HELP: In either case, disable `download-ci-llvm` in your bootstrap.toml:
 
     [llvm]
     download-ci-llvm = false
-    ";
-            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
+    ",
+                target = target.triple
+            );
+            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, &help_on_error);
         }
         self.unpack(&tarball, llvm_root, "rust-dev");
     }

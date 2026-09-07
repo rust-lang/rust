@@ -364,6 +364,15 @@ impl NoArgsAttributeParser for TrackCallerParser {
                     });
                 }
             }
+            Target::Closure if !cx.features().closure_track_caller() => {
+                feature_err(
+                    cx.sess(),
+                    sym::closure_track_caller,
+                    attr_span,
+                    "`#[track_caller]` on closures is currently unstable",
+                )
+                .emit();
+            }
             _ => {}
         }
     }

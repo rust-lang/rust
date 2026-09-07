@@ -145,7 +145,7 @@
 
 use core::alloc::Allocator;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
-use core::mem::{DropGuard, ManuallyDrop, swap};
+use core::mem::{self, ManuallyDrop, swap};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
@@ -1574,9 +1574,9 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        let ptr = self.data.as_mut_ptr();
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let ptr = self.data.as_mut_ptr();
             let index_ptr: *const _ = ptr.add(index);
             let hole_ptr = ptr.add(self.pos);
             ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
@@ -1589,9 +1589,9 @@ impl<T> Drop for Hole<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // fill the hole again
+        let pos = self.pos;
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let pos = self.pos;
             ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
         }
     }
@@ -1914,10 +1914,18 @@ impl<'a, T: Ord, A: Allocator> DrainSorted<'a, T, A> {
 impl<'a, T: Ord, A: Allocator> Drop for DrainSorted<'a, T, A> {
     /// Removes heap elements in heap order.
     fn drop(&mut self) {
+        struct DropGuard<'r, 'a, T: Ord, A: Allocator>(&'r mut DrainSorted<'a, T, A>);
+
+        impl<'r, 'a, T: Ord, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
+            fn drop(&mut self) {
+                while self.0.inner.pop().is_some() {}
+            }
+        }
+
         while let Some(item) = self.inner.pop() {
-            let guard = DropGuard::new(&mut *self, |this| while this.inner.pop().is_some() {});
+            let guard = DropGuard(self);
             drop(item);
-            DropGuard::dismiss(guard);
+            mem::forget(guard);
         }
     }
 }

@@ -1650,8 +1650,15 @@ impl<'a> Parser<'a> {
             Ok(PatKind::Ident(BindingMode::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
             let pat = Box::new(self.parse_pat_with_range_pat(false, None, None)?);
-            self.dcx().emit_err(diagnostics::BoxPatternsRemoved {
-                span: box_span.to(self.prev_token.span),
+            let before_span = box_span.until(pat.span);
+            self.dcx().emit_err(diagnostics::BoxPatsRemoved {
+                span: box_span,
+                sugg_deref_macro_call: diagnostics::UseDerefMacro {
+                    field: None,
+                    before: before_span,
+                    after: pat.span.shrink_to_hi(),
+                },
+                sugg_removal: before_span,
             });
             // Treat the box pattern like a deref pattern to avoid lots of "value not found" errors.
             Ok(PatKind::Deref(pat))
@@ -1905,12 +1912,13 @@ impl<'a> Parser<'a> {
             (pat, fieldname, false)
         } else {
             // FIXME: remove the recovery for parsing box patterrns entirely
-            let is_box = self.eat_keyword(exp!(Box));
-            if is_box {
-                self.dcx()
-                    .create_err(diagnostics::BoxPatternsRemoved { span: self.prev_token.span })
-                    .emit();
-            }
+            let is_box = if self.eat_keyword(exp!(Box)) {
+                let span = self.prev_token.span;
+                self.dcx().span_delayed_bug(span, "box patterns have been removed");
+                Some(span)
+            } else {
+                None
+            };
             let boxed_span = self.token.span;
             let mutability = self.parse_mutability();
             let by_ref = self.parse_byref();
@@ -1925,7 +1933,21 @@ impl<'a> Parser<'a> {
             ) {
                 self.psess.gated_spans.gate(sym::mut_ref, fieldpat.span);
             }
-            let subpat = if is_box {
+            let subpat = if let Some(box_span) = is_box {
+                let prefix_span = box_span.until(boxed_span);
+
+                self.dcx()
+                    .create_err(diagnostics::BoxPatsRemoved {
+                        span: box_span,
+                        sugg_deref_macro_call: diagnostics::UseDerefMacro {
+                            field: Some((prefix_span, fieldname)),
+                            before: boxed_span.shrink_to_lo(),
+                            after: hi.shrink_to_hi(),
+                        },
+                        sugg_removal: prefix_span,
+                    })
+                    .emit();
+
                 self.mk_pat(lo.to(hi), PatKind::Deref(Box::new(fieldpat)))
             } else {
                 fieldpat

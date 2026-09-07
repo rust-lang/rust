@@ -72,8 +72,8 @@ impl<'a> Sugg<'a> {
     ///
     /// - Applicability level `Unspecified` will never be changed.
     /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-    /// - If the default value is used and the applicability level is `MachineApplicable`, change it
-    ///   to `HasPlaceholders`
+    /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
+    ///   `HasPlaceholders`
     pub fn hir_with_applicability(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
@@ -966,8 +966,8 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // Note about method calls:
                 // - compiler automatically dereference references if the target type is a reference (works also for
                 //   function call)
-                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and
-                //   no projection should be suggested
+                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and no
+                //   projection should be suggested
                 if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler

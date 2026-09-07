@@ -7,7 +7,6 @@ use super::thread::Thread;
 use super::{Result, spawnhook};
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
-use crate::mem::MaybeDangling;
 use crate::sync::Arc;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sys::{AsInner, IntoInner, thread as imp};
@@ -57,14 +56,9 @@ where
         Arc::new(Packet { scope: scope_data, result: UnsafeCell::new(None), _marker: PhantomData });
     let their_packet = my_packet.clone();
 
-    // Pass `f` in `MaybeDangling` because actually that closure might *run longer than the lifetime of `F`*.
-    // See <https://github.com/rust-lang/rust/issues/101983> for more details.
-    let f = MaybeDangling::new(f);
-
     // The entrypoint of the Rust thread, after platform-specific thread
     // initialization is done.
     let rust_start = move || {
-        let f = f.into_inner();
         let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.inherit_and_run());
             crate::sys::backtrace::__rust_begin_short_backtrace(f)

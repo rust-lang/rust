@@ -13,7 +13,7 @@ use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
-use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
+use rustc_feature::BUILTIN_ATTRIBUTE_SET;
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{
@@ -146,7 +146,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid, ..] => {}
 
                         [name, rest @ ..] => {
-                            if let Some(_) = BUILTIN_ATTRIBUTE_MAP.get(name) {
+                            if BUILTIN_ATTRIBUTE_SET.contains(name) {
                                 if rest.len() > 0
                                     && AttributeParser::is_parsed_attribute(slice::from_ref(name))
                                 {

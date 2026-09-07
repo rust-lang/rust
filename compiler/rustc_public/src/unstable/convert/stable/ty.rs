@@ -60,7 +60,8 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
             | ty::AliasTermKind::AnonConst { def_id }
             | ty::AliasTermKind::ProjectionConst { def_id }
             | ty::AliasTermKind::FreeConst { def_id }
-            | ty::AliasTermKind::InherentConst { def_id } => def_id,
+            | ty::AliasTermKind::InherentConstSelf { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => def_id,
         };
         crate::ty::AliasTerm { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
     }

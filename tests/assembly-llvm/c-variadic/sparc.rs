@@ -90,14 +90,17 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // CHECK-LABEL: read_i64
     //
     // SPARC: ld [%o0], %o1
-    // SPARC-NEXT: add %o1, 4, %o2
+    // SPARC-NEXT: add %o1, 8, %o2
     // SPARC-NEXT: st %o2, [%o0]
-    // SPARC-NEXT: ld [%o1], %o2
-    // SPARC-NEXT: add %o1, 8, %o3
-    // SPARC-NEXT: st %o3, [%o0]
-    // SPARC-NEXT: ld [%o1+4], %o1
+    // SPARC-NEXT: ld [%o1+4], %o0
+    // SPARC-NEXT: add %sp, 96, %o2
+    // SPARC-NEXT: or %o2, 4, %o2
+    // SPARC-NEXT: st %o0, [%o2]
+    // SPARC-NEXT: ld [%o1], %o0
+    // SPARC-NEXT: st %o0, [%sp+96]
+    // SPARC-NEXT: ldd [%sp+96], %o0
     // SPARC-NEXT: retl
-    // SPARC-NEXT: mov %o2, %o0
+    // SPARC-NEXT: add %sp, 104, %sp
     //
     // SPARC64: ldx [%o0], %o1
     // SPARC64-NEXT: add %o1, 8, %o2

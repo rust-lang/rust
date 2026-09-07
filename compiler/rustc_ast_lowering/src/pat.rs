@@ -289,17 +289,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         // will be resolved to the same `Res::Local`. Thus they just share a single
                         // `HirId`.
                         if id == p.id {
-                            self.ident_and_label_to_local_id.insert(id, hir_id.local_id);
+                            self.curr_owner.ident_and_label_to_local_id.insert(id, hir_id.local_id);
                             hir_id
                         } else {
                             hir::HirId {
-                                owner: self.current_hir_id_owner,
-                                local_id: self.ident_and_label_to_local_id[&id],
+                                owner: self.curr_owner.owner_id,
+                                local_id: self.curr_owner.ident_and_label_to_local_id[&id],
                             }
                         }
                     }
                     _ => {
-                        self.ident_and_label_to_local_id.insert(p.id, hir_id.local_id);
+                        self.curr_owner.ident_and_label_to_local_id.insert(p.id, hir_id.local_id);
                         hir_id
                     }
                 };

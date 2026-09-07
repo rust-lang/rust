@@ -67,7 +67,7 @@ impl Thread {
             assert_eq!(
                 libc::pthread_attr_setstacksize(
                     attr.get(),
-                    cmp::max(stack, min_stack_size(attr.as_ptr()))
+                    cmp::max(stack, min_stack_size(attr.get()))
                 ),
                 0
             );

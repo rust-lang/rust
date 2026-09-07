@@ -5,13 +5,15 @@
 //! [^win]: On Windows the section name is `.lcovfun`.
 
 use std::ffi::CString;
+use std::iter;
 use std::sync::Arc;
 
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, ConstCodegenMethods};
+use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    BasicCoverageBlock, CounterId, CovTerm, CoverageCodegenInfo, CoverageMirInfo, Expression,
-    ExpressionId, Mapping, MappingKind, Op,
+    BasicCoverageBlock, CounterId, CovTerm, CoverageCodegenInfo, Expression, ExpressionId, Mapping,
+    MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::{SourceFile, Span};
@@ -19,7 +21,7 @@ use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, spans};
+use crate::coverageinfo::mapgen::{GlobalFileTable, LocalFileId, spans};
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
@@ -34,16 +36,15 @@ pub(crate) struct CovfunRecord<'tcx> {
     source_hash: u64,
     is_used: bool,
 
-    virtual_file_mapping: VirtualFileMapping,
     expressions: Vec<ffi::CounterExpression>,
-    regions: llvm_cov::Regions,
+    mappings: ResolvedMappings,
 }
 
 impl<'tcx> CovfunRecord<'tcx> {
     /// Iterator that yields all source files referred to by this function's
     /// coverage mappings. Used to build the global file table for the CGU.
     pub(crate) fn all_source_files(&self) -> impl Iterator<Item = &SourceFile> {
-        self.virtual_file_mapping.local_file_table.iter().map(Arc::as_ref)
+        self.mappings.all_source_files()
     }
 }
 
@@ -56,36 +57,29 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     let cg_info = tcx.coverage_codegen_info(instance.def)?;
 
     let expressions = prepare_expressions(cg_info);
+    let mappings = prepare_resolved_mappings(tcx, cg_info, is_used, &mir_info.mappings)?;
 
-    let mut covfun = CovfunRecord {
+    let covfun = CovfunRecord {
         _instance: instance,
         mangled_function_name: tcx.symbol_name(instance).name,
         source_hash: if is_used { mir_info.function_source_hash } else { 0 },
         is_used,
-        virtual_file_mapping: VirtualFileMapping::default(),
         expressions,
-        regions: llvm_cov::Regions::default(),
+        mappings,
     };
-
-    fill_region_tables(tcx, mir_info, cg_info, &mut covfun);
-
-    if covfun.regions.has_no_regions() {
-        debug!(?covfun, "function has no mappings to embed; skipping");
-        return None;
-    }
 
     Some(covfun)
 }
 
-pub(crate) fn counter_for_term(term: CovTerm) -> ffi::Counter {
-    use ffi::Counter;
+fn counter_for_term(term: CovTerm) -> ffi::Counter {
     match term {
-        CovTerm::Zero => Counter::ZERO,
-        CovTerm::Counter(id) => {
-            Counter { kind: ffi::CounterKind::CounterValueReference, id: CounterId::as_u32(id) }
-        }
+        CovTerm::Zero => ffi::Counter::ZERO,
+        CovTerm::Counter(id) => ffi::Counter {
+            kind: ffi::CounterKind::CounterValueReference,
+            id: CounterId::as_u32(id),
+        },
         CovTerm::Expression(id) => {
-            Counter { kind: ffi::CounterKind::Expression, id: ExpressionId::as_u32(id) }
+            ffi::Counter { kind: ffi::CounterKind::Expression, id: ExpressionId::as_u32(id) }
         }
     }
 }
@@ -110,16 +104,60 @@ fn prepare_expressions(cg_info: &CoverageCodegenInfo) -> Vec<ffi::CounterExpress
         .collect::<Vec<_>>()
 }
 
-/// Populates the mapping region tables in the current function's covfun record.
-fn fill_region_tables<'tcx>(
+/// Intermediate representation of coverage mappings, after all mapping spans
+/// have been resolved to file coordinates (or discarded), but before producing
+/// a final [`llvm_cov::Regions`].
+///
+/// Having a separate resolution step makes it easier to handle edge cases
+/// where a function (or someday an expansion) manages to lose all of its spans,
+/// without accidentally emitting invalid covfun records containing empty files.
+#[derive(Debug)]
+struct ResolvedMappings {
+    /// Source file for all of the [`spans::Coords`] in these mappings.
+    source_file: Arc<SourceFile>,
+
+    code_mappings: Vec<CodeMapping>,
+    branch_mappings: Vec<BranchMapping>,
+}
+
+impl ResolvedMappings {
+    fn ensure_nonempty(self) -> Option<Self> {
+        let ResolvedMappings { source_file: _, code_mappings, branch_mappings } = &self;
+        if code_mappings.is_empty() && branch_mappings.is_empty() { None } else { Some(self) }
+    }
+
+    fn all_source_files(&self) -> impl Iterator<Item = &SourceFile> {
+        // FIXME(Zalathar): When expansion regions are supported, this also needs to yield
+        // any source files used by descendant expansions.
+        let ResolvedMappings { source_file, code_mappings: _, branch_mappings: _ } = self;
+        iter::once(source_file.as_ref())
+    }
+}
+
+/// Resolved from [`MappingKind::Code`], and the precursor to [`ffi::CodeRegion`].
+#[derive(Debug)]
+struct CodeMapping {
+    coords: spans::Coords,
+    counter: ffi::Counter,
+}
+
+/// Resolved from [`MappingKind::Branch`], and the precursor to [`ffi::BranchRegion`].
+#[derive(Debug)]
+struct BranchMapping {
+    coords: spans::Coords,
+    true_counter: ffi::Counter,
+    false_counter: ffi::Counter,
+}
+
+fn prepare_resolved_mappings<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mir_info: &'tcx CoverageMirInfo,
     cg_info: &'tcx CoverageCodegenInfo,
-    covfun: &mut CovfunRecord<'tcx>,
-) {
+    is_used: bool,
+    mappings: &[Mapping],
+) -> Option<ResolvedMappings> {
     // If this function is unused, replace all counters with zero.
     let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
-        let term = if covfun.is_used {
+        let term = if is_used {
             cg_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
         } else {
             CovTerm::Zero
@@ -130,13 +168,8 @@ fn fill_region_tables<'tcx>(
     // Currently a function's mappings must all be in the same file, so use the
     // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
-    let Some(first_span) = (try { mir_info.mappings.first()?.span }) else {
-        debug_assert!(false, "function has no mappings: {covfun:?}");
-        return;
-    };
+    let first_span = mappings.first()?.span;
     let source_file = source_map.lookup_source_file(first_span.lo());
-
-    let local_file_id = covfun.virtual_file_mapping.push_file(&source_file);
 
     // In rare cases, _all_ of a function's spans are discarded, and coverage
     // codegen needs to handle that gracefully to avoid #133606.
@@ -147,37 +180,64 @@ fn fill_region_tables<'tcx>(
         if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
     };
 
+    let mut code_mappings = vec![];
+    let mut branch_mappings = vec![];
+
+    for &Mapping { ref kind, span } in mappings {
+        let Some(coords) = make_coords(span) else { continue };
+        match *kind {
+            MappingKind::Code { bcb } => {
+                code_mappings.push(CodeMapping { coords, counter: counter_for_bcb(bcb) })
+            }
+            MappingKind::Branch { true_bcb, false_bcb } => branch_mappings.push(BranchMapping {
+                coords,
+                true_counter: counter_for_bcb(true_bcb),
+                false_counter: counter_for_bcb(false_bcb),
+            }),
+        }
+    }
+
+    ResolvedMappings { source_file, code_mappings, branch_mappings }.ensure_nonempty()
+}
+
+/// Populates the mapping region tables for the current function's covfun record.
+fn fill_region_tables(
+    global_file_table: &GlobalFileTable,
+    mappings: &ResolvedMappings,
+    virtual_file_mapping: &mut IndexVec<LocalFileId, u32>,
+    regions: &mut llvm_cov::Regions,
+) {
+    let ResolvedMappings { source_file, code_mappings, branch_mappings } = mappings;
+    let Some(global_file_id) = global_file_table.get_existing_id(source_file) else {
+        debug_assert!(false, "couldn't find an existing global-file-id for {source_file:?}");
+        return;
+    };
+
     let llvm_cov::Regions {
         code_regions,
         expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
         branch_regions,
-    } = &mut covfun.regions;
+    } = regions;
 
-    // For each counter/region pair in this function+file, convert it to a
-    // form suitable for FFI.
-    for &Mapping { ref kind, span } in &mir_info.mappings {
-        let Some(coords) = make_coords(span) else { continue };
+    // The global file IDs are stored as `u32` to make FFI easier.
+    // FIXME(Zalathar): Consider giving `newtype_index!` a safe transmute to `&[u32]`.
+    let local_file_id = virtual_file_mapping.push(global_file_id.as_u32());
+
+    for &CodeMapping { coords, counter } in code_mappings {
         let cov_span = coords.make_coverage_span(local_file_id);
+        code_regions.push(ffi::CodeRegion { cov_span, counter });
+    }
 
-        match *kind {
-            MappingKind::Code { bcb } => {
-                code_regions.push(ffi::CodeRegion { cov_span, counter: counter_for_bcb(bcb) });
-            }
-            MappingKind::Branch { true_bcb, false_bcb } => {
-                branch_regions.push(ffi::BranchRegion {
-                    cov_span,
-                    true_counter: counter_for_bcb(true_bcb),
-                    false_counter: counter_for_bcb(false_bcb),
-                });
-            }
-        }
+    for &BranchMapping { coords, true_counter, false_counter } in branch_mappings {
+        let cov_span = coords.make_coverage_span(local_file_id);
+        branch_regions.push(ffi::BranchRegion { cov_span, true_counter, false_counter });
     }
 }
 
-/// Generates the contents of the covfun record for this function, which
-/// contains the function's coverage mapping data. The record is then stored
+/// Generates and emits the covfun record for this function, which
+/// contains the function's coverage mapping data. The record is emitted
 /// as a global variable in the `__llvm_covfun` section.
-pub(crate) fn generate_covfun_record<'tcx>(
+pub(crate) fn emit_covfun_record<'tcx>(
     cx: &mut CodegenCx<'_, 'tcx>,
     global_file_table: &GlobalFileTable,
     covfun: &CovfunRecord<'tcx>,
@@ -187,24 +247,25 @@ pub(crate) fn generate_covfun_record<'tcx>(
         mangled_function_name,
         source_hash,
         is_used,
-        ref virtual_file_mapping,
         ref expressions,
-        ref regions,
+        ref mappings,
     } = covfun;
 
-    let Some(local_file_table) = virtual_file_mapping.resolve_all(global_file_table) else {
-        debug_assert!(
-            false,
-            "all local files should be present in the global file table: \
-                global_file_table = {global_file_table:?}, \
-                virtual_file_mapping = {virtual_file_mapping:?}"
-        );
+    let mut regions = llvm_cov::Regions::default();
+    let mut virtual_file_mapping = IndexVec::new();
+    fill_region_tables(global_file_table, mappings, &mut virtual_file_mapping, &mut regions);
+
+    if regions.has_no_regions() {
+        debug_assert!(false, "mappings should have produced at least one region: {mappings:#?}");
         return;
-    };
+    }
 
     // Encode the function's coverage mappings into a buffer.
-    let coverage_mapping_buffer =
-        llvm_cov::write_function_mappings_to_buffer(&local_file_table, expressions, regions);
+    let coverage_mapping_buffer = llvm_cov::write_function_mappings_to_buffer(
+        &virtual_file_mapping.raw,
+        expressions,
+        &regions,
+    );
 
     // A covfun record consists of four target-endian integers, followed by the
     // encoded mapping data in bytes. Note that the length field is 32 bits.

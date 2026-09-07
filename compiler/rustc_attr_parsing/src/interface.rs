@@ -10,7 +10,7 @@ use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{BUILTIN_ATTRIBUTE_MAP, Features};
+use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
 use rustc_lint_defs::{LintId, RegisteredTools};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
@@ -376,7 +376,7 @@ impl<'sess> AttributeParser<'sess> {
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
                         if let [part] = parts.as_slice() {
-                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(part));
+                            debug_assert!(BUILTIN_ATTRIBUTE_SET.contains(part));
                         }
 
                         let Some(args) = ArgParser::from_attr_args(

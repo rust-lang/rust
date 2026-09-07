@@ -79,6 +79,29 @@ class LLDBFeature(Flag):
     Float128 = auto()
     """Added in LLDB 22.1. Adds builtin support for Float 128's, including an `eBasicTypeFloat128`,
     a formatter, and handlers in `TypeSystemClang`"""
+    GetParent = auto()
+    """Added in LLDB 23.1. Adds `SBValue.GetParent`, which retrieves the `SBValue` that the caller
+    originates from. Useful when a child object must be modified/styled based on information only
+    available to is parent e.g. unsized array types that must determine their length via the parent
+    wide pointer value."""
+    ProviderDecorator = auto()
+    """Added in LLDB 23.1. Adds `@lldb.summary` and `@lldb.synthetic`, which can automatically
+    register decorated providers. At time of writing, we do not use this feature for the following
+    reasons:
+
+    1. backwards compatibility
+    2. to maintain more strict control over the order in which providers are loaded"""
+    PerObjectSynthetics = auto()
+    """Currently only available in prerelease. Adds:
+
+    * `SBValue.SetTypeSynthetic` - allows synthetic providers to override their children's synthetic
+    provider without overriding the synthetic provider of all objects with that share a type name.
+    * `SBValue.GetTypeSyntheticImplementation` - retrieves the *instance* of the synthetic provider
+    associated with that variable. This allows us to easily inspect the state of a parent/child
+    and use it to make decisions about the current object without needing to redo work. It is worth
+    noting that this can be achieved backwards-compatibly (though less elegantly) by using a global
+    `weakref.WeakValueDictionary`, with the keys being `SBValue.GetID()` (which are unique per
+    session) and the values being the provider instance."""
 
 
 def detect_features() -> LLDBFeature:
@@ -93,6 +116,12 @@ def detect_features() -> LLDBFeature:
         features |= LLDBFeature.TypeRecognizers
     if getattr(lldb, "eBasicTypeFloat128", None) is not None:
         features |= LLDBFeature.Float128
+    if getattr(lldb.SBValue, "GetParent", None) is not None:
+        features |= LLDBFeature.GetParent
+    if getattr(lldb, "summary", None) is not None:
+        features |= LLDBFeature.ProviderDecorator
+    if getattr(lldb.SBValue, "SetTypeSynthetic", None) is not None:
+        features |= LLDBFeature.PerObjectSynthetics
 
     return features
 
@@ -680,6 +709,9 @@ class MSVCStrSyntheticProvider:
         element = self.data_ptr.CreateValueFromAddress(
             f"[{index}]", address, self.data_ptr.GetType().GetPointeeType()
         )
+
+        element.SetFormat(eFormatChar)
+
         return element
 
     def get_type_name(self):
@@ -1154,10 +1186,28 @@ class StdVecSyntheticProvider:
 
 
 class StdSliceSyntheticProvider:
-    __slots__ = ["valobj", "length", "data_ptr", "element_type", "element_size"]
+    __slots__ = [
+        "valobj",
+        "length",
+        "data_ptr",
+        "element_type",
+        "element_size",
+        "is_str",
+    ]
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        type_name = self.valobj.GetTypeName()
+        self.is_str = type_name.startswith("alloc::boxed::Box<str") or type_name in {
+            "&str",
+            "&mut str",
+            "*const str",
+            "*mut str",
+            "ref$<str>",
+            "ref_mut$<str>",
+            "ptr_const$<str>",
+            "ptr_mut$<str>",
+        }
         self.update()
 
     def num_children(self) -> int:
@@ -1176,6 +1226,9 @@ class StdSliceSyntheticProvider:
         element = self.data_ptr.CreateValueFromAddress(
             "[%s]" % index, address, self.element_type
         )
+
+        if self.is_str:
+            element.SetFormat(eFormatChar)
         return element
 
     def update(self):

@@ -21,18 +21,17 @@ use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
 };
 use crate::core::config::{Config, LlvmCiMode, LlvmPgoGenerationMode, TargetSelection};
-use crate::core::session::{CLang, GitRepo};
+use crate::core::session::CLang;
 use crate::trace;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-
 /// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
 pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum LlvmKind {
     /// The LLVM was built from in-tree sources
     BuiltLocally,
@@ -151,13 +150,7 @@ impl LdFlags {
 ///
 /// Calling this function should never attempt to checkout the LLVM submodule.
 pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> Option<LlvmOutput> {
-    // Try to download LLVM from CI, if possible
-    let llvm_ci = builder.ensure(LlvmFromCi { target });
-    if let Some(llvm) = llvm_ci {
-        return Some(llvm.output);
-    }
-
-    // If it is not available, use an externally provided LLVM
+    // Use an externally provided LLVM, if available
     if let Some(config) = builder.config.target_config.get(&target)
         && let Some(ref s) = config.llvm_config
     {
@@ -176,6 +169,12 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
             llvm_root_dir,
             kind: LlvmKind::External,
         });
+    }
+
+    // If external LLVM is not configured, try to download LLVM from CI, if possible
+    let llvm_ci = builder.ensure(LlvmFromCi { target });
+    if let Some(llvm) = llvm_ci {
+        return Some(llvm.output);
     }
 
     // If LLVM is not available from CI nor externally, it is still possible that it was already
@@ -258,24 +257,28 @@ fn llvm_output_dir(builder: &Builder<'_>, target: TargetSelection) -> PathBuf {
 fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Option<DownloadedLlvm> {
     match builder.config.llvm_ci_mode {
         LlvmCiMode::BuildLocally => return None,
-        LlvmCiMode::DownloadFromCi => {}
-    }
+        LlvmCiMode::Download => {}
+        LlvmCiMode::DownloadIfUnchanged => {
+            builder.config.update_submodule("src/llvm-project");
 
-    // FIXME: this should eventually be relaxed
-    if target != builder.host_target {
-        crate::debug!("LLVM not available on CI for non-host target {target}");
-        return None;
+            // Check for untracked changes in `src/llvm-project` and other important places.
+            let has_changes = builder.config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
+            if has_changes {
+                builder.info("Warning: LLVM will not be downloaded because of local changes");
+                return None;
+            }
+        }
     }
 
     if !is_ci_llvm_available_for_target(&target, builder.config.llvm_assertions) {
-        crate::debug!(
-            "LLVM not available on CI for target={target} and assertions={}",
+        builder.info(&format!(
+            "Warning: LLVM not available on CI for target={target} and assertions={}",
             builder.config.llvm_assertions
-        );
+        ));
         return None;
     }
 
-    let ci_llvm = builder.config.maybe_download_host_ci_llvm()?;
+    let ci_llvm = builder.config.maybe_download_ci_llvm(target)?;
     let link_shared = if !builder.config.dry_run() {
         let link_type = t!(
             std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
@@ -288,7 +291,7 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
 
     Some(DownloadedLlvm {
         output: LlvmOutput {
-            llvm_config: ci_llvm.join("bin").join(exe("llvm-config", builder.host_target)),
+            llvm_config: ci_llvm.join("bin").join(exe("llvm-config", target)),
             link_shared,
             llvm_root_dir: ci_llvm,
             kind: LlvmKind::DownloadedFromCi,
@@ -405,8 +408,12 @@ impl Step for LlvmFromCi {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let llvm_ci = try_download_ci_llvm(builder, self.target)?;
-        // Sanity check
-        check_llvm_version(builder, llvm_ci.output.llvm_config());
+
+        // Sanity check (we execute the llvm-config, so we can only do it on the host target).
+        if builder.host_target == self.target {
+            check_llvm_version(builder, llvm_ci.output.llvm_config());
+        }
+
         Some(llvm_ci)
     }
 }
@@ -804,6 +811,27 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {version}, need >=21\n\n")
 }
 
+/// C/C++ debug info remap flags for LLVM build.
+///
+/// The remap is observable when LLVM is compiled with debug info,
+/// for example, with `llvm.release-debuginfo = true`.
+fn debuginfo_map_cflags(builder: &Builder<'_>, target: TargetSelection) -> Vec<String> {
+    if !builder.config.rust_remap_debuginfo {
+        return Vec::new();
+    }
+
+    let mut flags = Vec::new();
+    let map = format!("{}=/rustc/llvm", builder.src.display());
+    let cc = builder.cc_tool(target);
+    if cc.is_like_clang() || cc.is_like_gnu() {
+        flags.push(format!("-fdebug-prefix-map={map}"));
+    } else if cc.is_like_clang_cl() {
+        flags.push("-Xclang".into());
+        flags.push(format!("-fdebug-prefix-map={map}"));
+    }
+    flags
+}
+
 fn configure_cmake(
     builder: &Builder<'_>,
     target: TargetSelection,
@@ -968,7 +996,8 @@ fn configure_cmake(
     for flag in builder
         .cc_handled_cflags(target, CLang::C)
         .into_iter()
-        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
+        .chain(builder.cc_unhandled_cflags(target, CLang::C))
+        .chain(debuginfo_map_cflags(builder, target))
         .filter(|flag| !suppressed_compiler_flag_prefixes.iter().any(|p| flag.starts_with(p)))
     {
         cflags.push(" ");
@@ -989,7 +1018,8 @@ fn configure_cmake(
     for flag in builder
         .cc_handled_cflags(target, CLang::Cxx)
         .into_iter()
-        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
+        .chain(builder.cc_unhandled_cflags(target, CLang::Cxx))
+        .chain(debuginfo_map_cflags(builder, target))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()

@@ -181,10 +181,10 @@ where
 
     result.extend_from_slice(first);
 
+    let pos = result.len();
+    debug_assert!(reserved_len >= pos);
     // ignore-tidy-undocumented-unsafe
     unsafe {
-        let pos = result.len();
-        debug_assert!(reserved_len >= pos);
         let target = result.spare_capacity_mut().get_unchecked_mut(..reserved_len - pos);
 
         // Convert the separator and slices to slices of MaybeUninit

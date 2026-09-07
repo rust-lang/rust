@@ -350,8 +350,8 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
 
 /// If `pat` is:
 /// - `Some(inner)`, returns `inner`
-///    - it will _usually_ contain just one element, but could have two, given patterns like
-///      `Some(inner, ..)` or `Some(.., inner)`
+///    - it will _usually_ contain just one element, but could have two, given patterns like `Some(inner, ..)` or
+///      `Some(.., inner)`
 /// - `Some`, returns `[]`
 /// - otherwise, returns `None`
 pub fn as_some_pattern<'a, 'hir>(cx: &LateContext<'_>, pat: &'a Pat<'hir>) -> Option<&'a [Pat<'hir>]> {
@@ -1702,8 +1702,9 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
 
 /// Checks if the given `DefId` matches the `libc` item.
 pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: Symbol) -> bool {
-    // libc is meant to be used as a flat list of names, but they're all actually defined in different
-    // modules based on the target platform. Ignore everything but crate name and the item name.
+    // libc is meant to be used as a flat list of names, but they're all actually defined in
+    // different modules based on the target platform. Ignore everything but crate name and the
+    // item name.
     cx.tcx.crate_name(did.krate) == sym::libc && cx.tcx.def_path_str(did).ends_with(name.as_str())
 }
 
@@ -2790,7 +2791,8 @@ pub fn expr_use_sites<'tcx>(
                 | Node::TyPat(_)
                 | Node::WherePredicate(_)
                 | Node::TestBinderForall(_)
-                | Node::TestBinderExists(_) => {
+                | Node::TestBinderExists(_)
+                | Node::TestBinderBoundTypeConstraint(_) => {
                     // This shouldn't be possible to hit; the inner iterator should have
                     // been moved to the end before we hit any of these nodes.
                     debug_assert!(false, "found {parent:?} which is after the final use node");
@@ -3137,7 +3139,8 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                                 let in_final_expr = mem::replace(&mut self.in_final_expr, false);
                                 self.visit_expr(guard);
                                 self.in_final_expr = in_final_expr;
-                                // The compiler doesn't consider diverging guards as causing the arm to diverge.
+                                // The compiler doesn't consider diverging guards as causing the arm
+                                // to diverge.
                                 self.is_never = false;
                             }
                             self.visit_expr(arm.body);
@@ -3595,8 +3598,7 @@ pub fn is_expr_default<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> 
 /// - `return expr`
 /// - then or else part of a `if` in return position
 /// - arm body of a `match` in a return position
-/// - `break expr` or `break 'label expr` if the loop or block being exited is used as a return
-///   value
+/// - `break expr` or `break 'label expr` if the loop or block being exited is used as a return value
 ///
 /// Contrary to [`TyCtxt::hir_get_fn_id_for_return_block()`], if `expr` is part of a
 /// larger expression, for example a field expression of a `struct`, it will not be

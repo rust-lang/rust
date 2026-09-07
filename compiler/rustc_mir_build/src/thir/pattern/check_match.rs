@@ -314,7 +314,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // Casts don't cause a load.
             NeverToAny { source }
             | Cast { source }
-            | Use { source }
+            | ValueExpr { source }
             | PointerCoercion { source, .. }
             | PlaceTypeAscription { source, .. }
             | ValueTypeAscription { source, .. }
@@ -733,7 +733,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         {
             let variant_inhabited = adt
                 .variant(*variant_index)
-                .inhabited_predicate(self.tcx, *adt)
+                .inhabited_predicate(self.tcx)
                 .instantiate(self.tcx, args);
             variant_inhabited.apply(self.tcx, cx.typing_env, cx.module)
                 && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env)

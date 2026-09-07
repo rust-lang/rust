@@ -1,4 +1,7 @@
 //@ check-pass
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 #![feature(
     min_generic_const_args,
     generic_const_parameter_types,

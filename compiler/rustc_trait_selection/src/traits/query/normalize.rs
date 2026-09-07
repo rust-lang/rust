@@ -331,7 +331,9 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
             ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
                 tcx.normalize_canonicalized_free_alias(c_term)
             }
-            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+            ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. } => {
                 tcx.normalize_canonicalized_inherent_projection(c_term)
             }
             kind @ (ty::AliasTermKind::OpaqueTy { .. } | ty::AliasTermKind::AnonConst { .. }) => {

@@ -20,7 +20,8 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::builder::matches::{
-    MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
+    MatchPairKind, MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind,
+    TestableCase,
 };
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -31,7 +32,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pair: &MatchPairTree<'tcx>,
     ) -> Test<'tcx> {
-        let kind = match match_pair.testable_case {
+        // Or-patterns are not tested directly; instead they are expanded into subcandidates,
+        // which are then distinguished by testing whatever non-or patterns they contain.
+        let MatchPairKind::Testable { ref testable_case, .. } = match_pair.kind else {
+            bug!("or-patterns should have already been handled")
+        };
+        let kind = match *testable_case {
             TestableCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
             TestableCase::Constant { value: _, kind: PatConstKind::Bool } => TestKind::If,
@@ -52,10 +58,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
             TestableCase::Never => TestKind::Never,
-
-            // Or-patterns are not tested directly; instead they are expanded into subcandidates,
-            // which are then distinguished by testing whatever non-or patterns they contain.
-            TestableCase::Or { .. } => bug!("or-patterns should have already been handled"),
         };
 
         Test { span: match_pair.pattern_span, kind }

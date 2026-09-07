@@ -953,7 +953,7 @@ impl Iterator for ReadDir {
     }
 }
 
-/// Aborts the process if a file desceriptor is not open, if debug asserts are enabled
+/// Aborts the process if a file descriptor is not open, if debug asserts are enabled
 ///
 /// Many IO syscalls can't be fully trusted about EBADF error codes because those
 /// might get bubbled up from a remote FUSE server rather than the file descriptor
@@ -1884,6 +1884,13 @@ pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ())
 }
 
+#[cfg(target_os = "vxworks")]
+pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    // VxWorks has no `O_NOFOLLOW`, and its `fchmodat` rejects
+    // `AT_SYMLINK_NOFOLLOW` with `ENOTSUP`, so a no-follow chmod is unsupported.
+    Err(crate::io::ErrorKind::Unsupported.into())
+}
+
 #[cfg(target_os = "android")]
 pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     // Currently Android seems to be having inconsistent behavior with fchmodat
@@ -1896,7 +1903,7 @@ pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     Err(crate::io::ErrorKind::Unsupported.into())
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_os = "vxworks")))]
 pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     #[inline]
     /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior
@@ -2299,6 +2306,19 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 #[cfg(target_vendor = "apple")]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     const COPYFILE_ALL: libc::copyfile_flags_t = libc::COPYFILE_METADATA | libc::COPYFILE_DATA;
+
+    struct FreeOnDrop(libc::copyfile_state_t);
+    impl Drop for FreeOnDrop {
+        fn drop(&mut self) {
+            // The code below ensures that `FreeOnDrop` is never a null pointer
+            unsafe {
+                // `copyfile_state_free` returns -1 if the `to` or `from` files
+                // cannot be closed. However, this is not considered an error.
+                libc::copyfile_state_free(self.0);
+            }
+        }
+    }
+
     let (reader, reader_metadata) = open_from(from)?;
 
     let clonefile_result = run_path_with_cstr(to, &|to| {
@@ -2319,29 +2339,24 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     // Fall back to using `fcopyfile` if `fclonefileat` does not succeed.
     let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
 
-    let state = unsafe { libc::copyfile_state_alloc() };
-    // We ensure that the guard never contains a null pointer so it is
+    // We ensure that `FreeOnDrop` never contains a null pointer so it is
     // always safe to call `copyfile_state_free`
-    if state.is_null() {
-        return Err(crate::io::Error::last_os_error());
-    }
-    let state = crate::mem::DropGuard::new(state, |state| {
-        // SAFETY: just checked it's not null
-        unsafe {
-            // `copyfile_state_free` returns -1 if the `to` or `from` files
-            // cannot be closed. However, this is not considered an error.
-            libc::copyfile_state_free(state);
+    let state = unsafe {
+        let state = libc::copyfile_state_alloc();
+        if state.is_null() {
+            return Err(crate::io::Error::last_os_error());
         }
-    });
+        FreeOnDrop(state)
+    };
 
     let flags = if writer_metadata.is_file() { COPYFILE_ALL } else { libc::COPYFILE_DATA };
 
-    cvt(unsafe { libc::fcopyfile(reader.as_raw_fd(), writer.as_raw_fd(), *state, flags) })?;
+    cvt(unsafe { libc::fcopyfile(reader.as_raw_fd(), writer.as_raw_fd(), state.0, flags) })?;
 
     let mut bytes_copied: libc::off_t = 0;
     cvt(unsafe {
         libc::copyfile_state_get(
-            *state,
+            state.0,
             libc::COPYFILE_STATE_COPIED as u32,
             (&raw mut bytes_copied) as *mut libc::c_void,
         )

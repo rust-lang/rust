@@ -86,8 +86,8 @@ impl<T, A1: Allocator, A2: Allocator> SpecExtend<T, vec::IntoIter<T, A2>> for Ve
         // ignore-tidy-undocumented-unsafe
         unsafe {
             self.copy_slice(self.to_wrapped_index(self.len), slice);
-            self.len += slice.len();
         }
+        self.len += slice.len();
         iterator.forget_remaining_elements_and_dealloc();
     }
 }
@@ -113,8 +113,8 @@ where
         // ignore-tidy-undocumented-unsafe
         unsafe {
             self.copy_slice(self.to_wrapped_index(self.len), slice);
-            self.len += slice.len();
         }
+        self.len += slice.len();
     }
 }
 

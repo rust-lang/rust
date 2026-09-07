@@ -13,7 +13,6 @@ use syn::spanned::Spanned;
 use syn::{Attribute, Field, LitStr, Meta, Path, Token, Type, TypeTuple, parenthesized};
 use synstructure::{BindingInfo, VariantInfo};
 
-use super::error::invalid_attr;
 use crate::diagnostics::error::{
     DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
@@ -542,16 +541,6 @@ impl SuggestionKind {
             }
         }
     }
-
-    fn from_suffix(s: &str) -> Option<Self> {
-        match s {
-            "" => Some(SuggestionKind::Normal),
-            "_short" => Some(SuggestionKind::Short),
-            "_hidden" => Some(SuggestionKind::Hidden),
-            "_verbose" => Some(SuggestionKind::Verbose),
-            _ => None,
-        }
-    }
 }
 
 /// Types of subdiagnostics that can be created using attributes
@@ -569,7 +558,7 @@ pub(super) enum SubdiagnosticKind {
     HelpOnce,
     /// `#[warning(...)]`
     Warn,
-    /// `#[suggestion{,_short,_hidden,_verbose}]`
+    /// `#[suggestion(..)]`
     Suggestion {
         suggestion_kind: SuggestionKind,
         applicability: SpannedOption<Applicability>,
@@ -580,7 +569,7 @@ pub(super) enum SubdiagnosticKind {
         /// `let __formatted_code = /* whatever */;`
         code_init: TokenStream,
     },
-    /// `#[multipart_suggestion{,_short,_hidden,_verbose}]`
+    /// `#[multipart_suggestion(..)]`
     MultipartSuggestion {
         suggestion_kind: SuggestionKind,
         applicability: SpannedOption<Applicability>,
@@ -618,44 +607,18 @@ impl SubdiagnosticVariant {
             "help" => SubdiagnosticKind::Help,
             "help_once" => SubdiagnosticKind::HelpOnce,
             "warning" => SubdiagnosticKind::Warn,
+            "suggestion" => SubdiagnosticKind::Suggestion {
+                suggestion_kind: SuggestionKind::Normal,
+                applicability: None,
+                code_field: new_code_ident(),
+                code_init: TokenStream::new(),
+            },
+            "multipart_suggestion" => SubdiagnosticKind::MultipartSuggestion {
+                suggestion_kind: SuggestionKind::Normal,
+                applicability: None,
+            },
             _ => {
-                // Recover old `#[(multipart_)suggestion_*]` syntaxes
-                // FIXME(#100717): remove
-                if let Some(suggestion_kind) =
-                    name.strip_prefix("suggestion").and_then(SuggestionKind::from_suffix)
-                {
-                    if suggestion_kind != SuggestionKind::Normal {
-                        invalid_attr(attr)
-                            .help(format!(
-                                r#"Use `#[suggestion(..., style = "{suggestion_kind}")]` instead"#
-                            ))
-                            .emit();
-                    }
-
-                    SubdiagnosticKind::Suggestion {
-                        suggestion_kind: SuggestionKind::Normal,
-                        applicability: None,
-                        code_field: new_code_ident(),
-                        code_init: TokenStream::new(),
-                    }
-                } else if let Some(suggestion_kind) =
-                    name.strip_prefix("multipart_suggestion").and_then(SuggestionKind::from_suffix)
-                {
-                    if suggestion_kind != SuggestionKind::Normal {
-                        invalid_attr(attr)
-                            .help(format!(
-                                r#"Use `#[multipart_suggestion(..., style = "{suggestion_kind}")]` instead"#
-                            ))
-                            .emit();
-                    }
-
-                    SubdiagnosticKind::MultipartSuggestion {
-                        suggestion_kind: SuggestionKind::Normal,
-                        applicability: None,
-                    }
-                } else {
-                    throw_invalid_attr!(attr);
-                }
+                throw_invalid_attr!(attr);
             }
         };
 

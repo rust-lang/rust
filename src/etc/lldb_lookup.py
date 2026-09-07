@@ -126,6 +126,38 @@ def register_providers_compatibility():
 
     global RUST_CATEGORY
 
+    # Don't format 8-bit builtins as chars
+    unsigned_format = lldb.SBTypeFormat(
+        lldb.eFormatUnsigned,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
+    )
+
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("u8", False), unsigned_format)
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("unsigned char", False),
+        unsigned_format,
+    )
+
+    signed_format = lldb.SBTypeFormat(
+        lldb.eFormatDecimal,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
+    )
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("i8", False), lldb.SBTypeFormat(lldb.eFormatDecimal)
+    )
+
+    # i8 translates to signed char on msvc
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("signed char", False),
+        signed_format,
+    )
+    # Does not conflict with rust char, which ends up with the type name `char32_t`
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("char", False), signed_format)
+
     if LLDBFeature.TypeRecognizers in FEATURE_FLAGS:
         # enforce uniform aggregate formatting
         register_summary(
@@ -357,6 +389,7 @@ def register_providers_compatibility():
         MSVCTupleSyntheticProvider,
         TupleSummaryProvider,
         r"^tuple\$<.+>$",
+        type_options=DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
     )
 
 

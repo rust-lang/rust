@@ -22,8 +22,8 @@ use crate::{
     InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
-pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
-    ty::CanonicalQueryInput<I, QueryInput<I, T>>;
+pub type CanonicalInputData<I> =
+    ty::CanonicalQueryInput<I, QueryInput<I, <I as Interner>::Predicate>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///

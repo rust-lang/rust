@@ -104,6 +104,7 @@ ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasip1
 ENV TARGETS=$TARGETS,wasm32-wasip1-threads
 ENV TARGETS=$TARGETS,wasm32-wasip2
+ENV TARGETS=$TARGETS,wasm32-wasip3
 ENV TARGETS=$TARGETS,wasm32v1-none
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx

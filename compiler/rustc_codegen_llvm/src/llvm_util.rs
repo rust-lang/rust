@@ -50,10 +50,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
     // Check to ensure we're running against the correct LLVM version.
     unsafe {
-        let mut llvm_major = 0;
-        let mut llvm_minor = 0;
-        let mut llvm_patch = 0;
-        llvm::LLVMGetVersion(&mut llvm_major, &mut llvm_minor, &mut llvm_patch);
+        let (llvm_major, llvm_minor, llvm_patch) = get_version();
         let expected_version = llvm::LLVMRustVersionMajor();
         if llvm_major != expected_version {
             sess.dcx().emit_fatal(diagnostics::LlvmVersionMismatch {
@@ -465,7 +462,11 @@ pub(crate) fn print_version() {
 pub(crate) fn get_version() -> (u32, u32, u32) {
     // Can be called without initializing LLVM
     unsafe {
-        (llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor(), llvm::LLVMRustVersionPatch())
+        let mut llvm_major = 0;
+        let mut llvm_minor = 0;
+        let mut llvm_patch = 0;
+        llvm::LLVMGetVersion(&mut llvm_major, &mut llvm_minor, &mut llvm_patch);
+        (llvm_major, llvm_minor, llvm_patch)
     }
 }
 

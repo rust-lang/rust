@@ -746,7 +746,8 @@ struct SuggestionStyleTwice {
 
 #[derive(Subdiagnostic)]
 #[suggestion_hidden("example message", code = "")]
-//~^ ERROR #[suggestion_hidden(...)]` is not a valid attribute
+//~^ ERROR cannot find attribute `suggestion_hidden` in this scope
+//~| ERROR derive(Diagnostic): `#[suggestion_hidden(...)]` is not a valid attribute
 struct SuggestionStyleOldSyntax {
     #[primary_span]
     sub: Span,
@@ -754,7 +755,8 @@ struct SuggestionStyleOldSyntax {
 
 #[derive(Subdiagnostic)]
 #[suggestion_hidden("example message", code = "", style = "normal")]
-//~^ ERROR #[suggestion_hidden(...)]` is not a valid attribute
+//~^ ERROR cannot find attribute `suggestion_hidden` in this scope
+//~| ERROR derive(Diagnostic): `#[suggestion_hidden(...)]` is not a valid attribute
 struct SuggestionStyleOldAndNewSyntax {
     #[primary_span]
     sub: Span,

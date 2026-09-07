@@ -164,13 +164,16 @@ where
                 // this is the defining scope, and otherwise treat it as rigid.
                 // However, in `ErasedNotcoherence` we *always* treat it as rigid.
                 // This is the same as other modes if def_id is None, but wrong if we do have a DefId.
-                // So, if we have one, we register in the EvalCtxt that we may need that defid.
-                // We might then decide to rerun in the correct typing mode.
-                if let Some(def_id) = def_id.as_local() {
-                    self.opaque_accesses.rerun_if_opaque_in_opaque_type_storage(
-                        RerunReason::NormalizeOpaqueType,
-                        def_id,
-                    )?;
+                // Thus we should rerun if the opaque is in the defining scope. And we should do
+                // so immediately, otherwise we might continue evaluating with rigid opaques that
+                // should be revealed and trigger query cycle when leaking it for auto trait.
+                // See `tests/ui/traits/next-solver/normalize/always-rerun-normalizing-opaques.rs`.
+                //
+                // FIXME: verify that we can get away with not rerunning immediately when
+                // normalizing foreign opaques. Currently we don't do so because that would greatly
+                // worsen the compilation time of `wg-grammar`.
+                if def_id.as_local().is_some() {
+                    match self.opaque_accesses.rerun_always(RerunReason::NormalizeOpaqueType)? {}
                 } else {
                     self.opaque_accesses
                         .rerun_if_in_post_analysis(RerunReason::NormalizeOpaqueTypeRemoteCrate)?;

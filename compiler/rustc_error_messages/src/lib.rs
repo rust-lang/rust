@@ -213,8 +213,8 @@ impl From<Vec<Span>> for MultiSpan {
     }
 }
 
-fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale::Locale> {
-    icu_locale::Locale::try_from_str(&lang.to_string()).ok()
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale_core::Locale> {
+    icu_locale_core::Locale::try_from_str(&lang.to_string()).ok()
 }
 
 pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {

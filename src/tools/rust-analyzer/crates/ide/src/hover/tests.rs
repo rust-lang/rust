@@ -2626,7 +2626,7 @@ fn bar() { fo$0o(); }
 
             ---
 
-            \<- `　` here
+            　\<- `　` here
         "#]],
     );
 }
@@ -5081,6 +5081,33 @@ fn foo$0() {}
             ```rust
             let x = 3;
             ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_doc_block_style_leading_asterisks() {
+    check(
+        r#"
+/**
+ * Some docs, *not a bullet*.
+ */
+fn foo$0() {}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn foo()
+            ```
+
+            ---
+
+            Some docs, *not a bullet*.
         "#]],
     );
 }
@@ -11969,4 +11996,56 @@ fn main() {
         let resolved = sema.resolve_type(&type_node).unwrap();
         let _ = resolved.as_array(db);
     });
+}
+
+#[test]
+fn extern_c_fn_ptr_display() {
+    check(
+        r#"
+extern "C" fn foo() {}
+
+fn bar() {
+    let v$0 = foo as extern "C" fn();
+}
+    "#,
+        expect![[r#"
+            *v*
+
+            ```rust
+            let v: extern "C" fn()
+            ```
+
+            ---
+
+            size = 8, align = 8, niches = 1, no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn subst_impl_trait_arg_with_const_generic() {
+    check(
+        r#"
+fn main() {
+    generic$0_tn([()], 1);
+}
+
+fn generic_tn<T, const N: usize>(_: [T; N], _: impl Sized) {}
+"#,
+        expect![[r#"
+            *generic_tn*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn generic_tn<T, const N: usize>(_: [T; {const}], _: impl Sized)
+            ```
+
+            ---
+
+            `T` = `()`
+        "#]],
+    );
 }

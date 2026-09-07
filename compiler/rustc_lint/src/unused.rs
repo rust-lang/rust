@@ -1094,6 +1094,10 @@ impl UnusedDelimLint for UnusedBraces {
                 if let [stmt] = inner.stmts.as_slice()
                     && let ast::StmtKind::Expr(ref expr) = stmt.kind
                     && !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
+                    // In Rust 2024, this block may drop tail-expression temporaries, such as a
+                    // lock guard, before the loop starts.
+                    && !(ctx == UnusedDelimsCtx::ForIterExpr
+                        && value.span.edition().at_least_rust_2024())
                     && (ctx != UnusedDelimsCtx::AnonConst
                         || (matches!(expr.kind, ast::ExprKind::Lit(_))
                             && !expr.span.from_expansion()))

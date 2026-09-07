@@ -3,7 +3,6 @@ name = "clippy"
 version = "0.1.100"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
-readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
@@ -40,7 +39,7 @@ serde_json = "1.0.122"
 walkdir = "2.3"
 itertools = "0.15"
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
-askama = { version = "0.16.0", default-features = false, features = ["alloc", "config", "derive"] }
+askama = { version = "0.16.1", default-features = false, features = ["alloc", "config", "derive"] }
 
 [dev-dependencies.toml]
 version = "1.1"

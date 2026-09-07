@@ -336,8 +336,7 @@ macro_rules! impl_try_from_unbounded {
             type Error = TryFromIntError;
 
             /// Tries to create the target number type from a source
-            /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            /// number type. This never returns an error.
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
                 Ok(value as Self)
@@ -356,7 +355,7 @@ macro_rules! impl_try_from_lower_bounded {
 
             /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            #[doc = concat!("is less than [`", stringify!($target), "::MIN`].")]
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u >= 0 {
@@ -379,7 +378,7 @@ macro_rules! impl_try_from_upper_bounded {
 
             /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            #[doc = concat!("is greater than [`", stringify!($target), "::MAX`].")]
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u > (Self::MAX as $source) {

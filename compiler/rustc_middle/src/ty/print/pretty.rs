@@ -24,7 +24,6 @@ use smallvec::SmallVec;
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::{IntoQueryKey, Providers};
-use crate::ty::region::RegionExt;
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitClause,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -1539,7 +1538,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::ConstKind::Alias(_, ty::AliasConst { kind, args, .. }) => {
                 match kind {
                     ty::AliasConstKind::Projection { def_id }
-                    | ty::AliasConstKind::Inherent { def_id }
+                    | ty::AliasConstKind::InherentSelf { def_id }
+                    | ty::AliasConstKind::InherentImpl { def_id }
                     | ty::AliasConstKind::Free { def_id } => {
                         self.pretty_print_value_path(def_id, args)?;
                     }
@@ -3172,7 +3172,7 @@ define_print! {
 
     ty::AliasTerm<'tcx> {
         match self.kind {
-            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConstSelf { .. } => {
                 p.pretty_print_inherent_projection(*self)?;
             }
             ty::AliasTermKind::ProjectionTy { def_id } => {
@@ -3188,7 +3188,8 @@ define_print! {
             | ty::AliasTermKind::FreeConst { def_id }
             | ty::AliasTermKind::OpaqueTy { def_id }
             | ty::AliasTermKind::AnonConst { def_id }
-            | ty::AliasTermKind::ProjectionConst { def_id } => {
+            | ty::AliasTermKind::ProjectionConst { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => {
                 p.print_def_path(def_id, self.args)?;
             }
         }

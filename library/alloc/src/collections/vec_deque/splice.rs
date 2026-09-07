@@ -64,10 +64,10 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
         // At this point draining is done and the only remaining tasks are splicing
         // and moving things into the final place.
 
+        let tail_len = self.drain.tail_len; // #elements behind the drain
+
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let tail_len = self.drain.tail_len; // #elements behind the drain
-
             if tail_len == 0 {
                 self.drain.deque.as_mut().extend(self.replace_with.by_ref());
                 return;

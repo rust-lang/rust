@@ -97,7 +97,7 @@ fn check_table(cx: &LateContext<'_>, table: &DeTable<'_>, known_groups: &FxHashS
                     diag.span_suggestion_verbose(
                         config_span,
                         format!(
-                            "to have lints override the group set `{}` to a lower priority",
+                            "to have lints override the group, set `{}` to a lower priority",
                             group.as_ref()
                         ),
                         format!("{{ level = {:?}, priority = {low_priority} }}", group_config.level),

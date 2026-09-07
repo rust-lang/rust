@@ -6,7 +6,9 @@ use tracing::debug;
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::PlaceBase;
-use crate::builder::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestableCase};
+use crate::builder::matches::{
+    Binding, Candidate, FlatPat, MatchPairKind, MatchPairTree, TestableCase,
+};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a false edge to `imaginary_target` and a real edge to
@@ -159,35 +161,36 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'tcx>) {
-        if let TestableCase::Or { pats, .. } = &match_pair.testable_case {
-            for flat_pat in pats.iter() {
-                self.visit_flat_pat(flat_pat)
+        match match_pair.kind {
+            MatchPairKind::Or { ref or_subpats } => {
+                for flat_pat in or_subpats {
+                    self.visit_flat_pat(flat_pat);
+                }
             }
-        } else if matches!(match_pair.testable_case, TestableCase::Deref { .. }) {
-            // The subpairs of a deref pattern are all places relative to the deref temporary, so we
-            // don't fake borrow them. Problem is, if we only shallowly fake-borrowed
-            // `match_pair.place`, this would allow:
-            // ```
-            // let mut b = Box::new(false);
-            // match b {
-            //     deref!(true) => {} // not reached because `*b == false`
-            //     _ if { *b = true; false } => {} // not reached because the guard is `false`
-            //     deref!(false) => {} // not reached because the guard changed it
-            //     // UB because we reached the unreachable.
-            // }
-            // ```
-            // Hence we fake borrow using a deep borrow.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Deep);
-            }
-        } else {
-            // Insert a Shallow borrow of any place that is switched on.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Shallow);
-            }
+            MatchPairKind::Testable { place, ref testable_case, ref subpairs } => {
+                if matches!(testable_case, TestableCase::Deref { .. }) {
+                    // The subpairs of a deref pattern are all places relative to the deref temporary, so we
+                    // don't fake borrow them. Problem is, if we only shallowly fake-borrowed
+                    // `match_pair.place`, this would allow:
+                    // ```
+                    // let mut b = Box::new(false);
+                    // match b {
+                    //     deref!(true) => {} // not reached because `*b == false`
+                    //     _ if { *b = true; false } => {} // not reached because the guard is `false`
+                    //     deref!(false) => {} // not reached because the guard changed it
+                    //     // UB because we reached the unreachable.
+                    // }
+                    // ```
+                    // Hence we fake borrow using a deep borrow.
+                    self.fake_borrow(place, FakeBorrowKind::Deep);
+                } else {
+                    // Insert a Shallow borrow of any place that is switched on.
+                    self.fake_borrow(place, FakeBorrowKind::Shallow);
 
-            for subpair in &match_pair.subpairs {
-                self.visit_match_pair(subpair);
+                    for subpair in subpairs {
+                        self.visit_match_pair(subpair);
+                    }
+                }
             }
         }
     }

@@ -1086,6 +1086,10 @@ impl<'a> Parser<'a> {
 
     /// Can the current token begin a bound?
     fn can_begin_bound(&mut self) -> bool {
+        // NOTE: Tokens `!`, `~`, `const` & `async` which represent the start of currently unstable
+        //       trait bound modifiers are intentionally not included in `Token::can_begin_type` to
+        //       avoid affecting stable macro matching behavior.
+
         self.check_path()
             || self.check_lifetime()
             || self.check(exp!(Bang))

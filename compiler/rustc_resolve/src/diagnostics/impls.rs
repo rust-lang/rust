@@ -50,7 +50,7 @@ use crate::diagnostics::{
 };
 use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::{Import, ImportKind, UnresolvedImportError, import_path_to_string};
-use crate::late::{DiagMetadata, PatternSource, Rib};
+use crate::late::{ConstantRequiresType, DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
     DelayedVisResolutionError, Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey,
@@ -1188,6 +1188,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 current,
                 type_span,
+                requires_type,
             } => {
                 // let foo =...
                 //     ^^^ given this Span
@@ -1224,11 +1225,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                         if is_simple_binding {
                             (
-                                Some(diagnostics::AttemptToUseNonConstantValueInConstantWithSuggestion {
-                                    span: sp,
-                                    suggestion,
-                                    current,
-                                    type_span,
+                                Some(match requires_type {
+                                    ConstantRequiresType::Usize => {
+                                        diagnostics::AttemptToUseNonConstantValueInConstantWithSuggestion::Usize {
+                                            span: sp,
+                                            suggestion,
+                                            current,
+                                            type_span,
+                                        }
+                                    }
+                                    ConstantRequiresType::No => {
+                                        diagnostics::AttemptToUseNonConstantValueInConstantWithSuggestion::Placeholder {
+                                            span: sp,
+                                            suggestion,
+                                            current,
+                                            type_span,
+                                        }
+                                    }
                                 }),
                                 Some(diagnostics::AttemptToUseNonConstantValueInConstantLabelWithSuggestion { span }),
                                 None,
@@ -3622,10 +3635,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             } else {
                 // If the root import is module-relative, add the import separately
-                corrections.push((
-                    import.use_span.shrink_to_lo(),
-                    format!("use {module_name}::{import_snippet};\n"),
-                ));
+                if let Ok(vis) = source_map.span_to_snippet(import.vis_span)
+                    && let Some(indentation) = source_map.indentation_before(import.use_span)
+                {
+                    let vis = if vis.trim().is_empty() { String::new() } else { format!("{vis} ") };
+                    corrections.push((
+                        import.use_span.shrink_to_lo(),
+                        format!("{vis}use {module_name}::{import_snippet};\n{indentation}"),
+                    ));
+                }
             }
         }
 
