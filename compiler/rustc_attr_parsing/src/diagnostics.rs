@@ -1825,6 +1825,13 @@ pub(crate) struct EmptyLinkName {
 }
 
 #[derive(Diagnostic)]
+#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct Link;
+
+#[derive(Diagnostic)]
 #[diag("link kind `framework` is only supported on Apple targets", code = E0455)]
 pub(crate) struct LinkFrameworkApple {
     #[primary_span]

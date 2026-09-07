@@ -30,7 +30,7 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
             .zip(iter::repeat(cx.attr_span))
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         check_macro_only(cx, attr_span);
     }
 }
