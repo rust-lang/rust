@@ -1,0 +1,62 @@
+error[E0599]: no method named `hello` found for unit type `()` in the current scope
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:16:8
+   |
+LL |             fn hello(&self) {
+   |                ----- the method is available for `()` here
+...
+LL |     ().hello();
+   |        ^^^^^ method not found in `()`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Hello` which provides `hello` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use main::Hello;
+   |
+
+error[E0599]: no method named `nested` found for unit type `()` in the current scope
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:30:8
+   |
+LL |             fn nested(&self) {}
+   |                ------ the method is available for `()` here
+...
+LL |     ().nested();
+   |        ^^^^^^ method not found in `()`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Nested` which provides `nested` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use nested_module::inner::Nested;
+   |
+
+error[E0599]: no method named `in_const` found for unit type `()` in the current scope
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:42:8
+   |
+LL |         fn in_const(&self) {}
+   |            -------- the method is available for `()` here
+...
+LL |     ().in_const();
+   |        ^^^^^^^^ method not found in `()`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `InConst` which provides `in_const` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use _::InConst;
+   |
+
+error[E0599]: no method named `several` found for unit type `()` in the current scope
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:57:8
+   |
+LL |     ().several();
+   |        ^^^^^^^ method not found in `()`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `several` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use multiple_candidates::First;
+   |
+LL + use multiple_candidates::Second;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
