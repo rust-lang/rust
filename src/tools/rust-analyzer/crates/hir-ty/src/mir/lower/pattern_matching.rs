@@ -9,7 +9,7 @@ use rustc_type_ir::inherent::{IntoKind, Ty as _};
 use crate::{
     BindingMode, ByRef,
     mir::{
-        FieldIndex, LocalId, MutBorrowKind, Operand, OperandKind, PlaceRef, Projection,
+        FieldIndex, LocalId, MutBorrowKind, Operand, OperandKind, Place, Projection,
         lower::{
             BasicBlockId, BinOp, BindingId, BorrowKind, Expr, Idx, MemoryMap, MirLowerCtx,
             MirLowerError, MirSpan, Pat, PatId, PlaceElem, ProjectionElem, ResolveValueResult,
@@ -67,7 +67,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         &mut self,
         current: BasicBlockId,
         current_else: Option<BasicBlockId>,
-        cond_place: PlaceRef<'db>,
+        cond_place: Place<'db>,
         pattern: PatId,
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
         let (current, current_else) = self.pattern_match_inner(
@@ -90,7 +90,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
     pub(super) fn pattern_match_assignment(
         &mut self,
         current: BasicBlockId,
-        value: PlaceRef<'db>,
+        value: Place<'db>,
         pattern: PatId,
     ) -> Result<'db, BasicBlockId> {
         let (current, _) =
@@ -118,7 +118,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         &mut self,
         mut current: BasicBlockId,
         mut current_else: Option<BasicBlockId>,
-        mut cond_place: PlaceRef<'db>,
+        mut cond_place: Place<'db>,
         pattern: PatId,
         mode: MatchingMode,
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
@@ -527,7 +527,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         &mut self,
         id: BindingId,
         mode: BindingMode,
-        cond_place: PlaceRef<'db>,
+        cond_place: Place<'db>,
         span: MirSpan,
         current: BasicBlockId,
         current_else: Option<BasicBlockId>,
@@ -543,7 +543,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         current: BasicBlockId,
         target_place: LocalId,
         mode: BindingMode,
-        cond_place: PlaceRef<'db>,
+        cond_place: Place<'db>,
         span: MirSpan,
     ) {
         self.push_assignment(
@@ -570,7 +570,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         current_else: Option<BasicBlockId>,
         current: BasicBlockId,
         c: Operand,
-        cond_place: PlaceRef<'db>,
+        cond_place: Place<'db>,
         pattern: Idx<Pat>,
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
         let then_target = self.new_basic_block();
@@ -600,7 +600,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
 
     fn pattern_matching_variant(
         &mut self,
-        cond_place: PlaceRef<'db>,
+        cond_place: Place<'db>,
         variant: VariantId,
         mut current: BasicBlockId,
         span: MirSpan,
@@ -671,7 +671,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         v: VariantId,
         current: BasicBlockId,
         current_else: Option<BasicBlockId>,
-        cond_place: &PlaceRef<'db>,
+        cond_place: &Place<'db>,
         mode: MatchingMode,
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
         let downcast_place = if matches!(v, VariantId::EnumVariantId(_)) {
@@ -718,7 +718,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         mut current: BasicBlockId,
         mut current_else: Option<BasicBlockId>,
         args: impl Iterator<Item = (PlaceElem, PatId)>,
-        cond_place: &PlaceRef<'db>,
+        cond_place: &Place<'db>,
         mode: MatchingMode,
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
         for (proj, arg) in args {
@@ -736,7 +736,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         args: &[PatId],
         ellipsis: Option<u32>,
         fields: impl DoubleEndedIterator<Item = PlaceElem> + Clone,
-        cond_place: &PlaceRef<'db>,
+        cond_place: &Place<'db>,
         mode: MatchingMode,
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
         let (al, ar) = args.split_at(ellipsis.map_or(args.len(), |it| it as usize));

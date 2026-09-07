@@ -112,7 +112,10 @@ fn complete_trait_impl_name(
             .find(|child| {
                 !matches!(
                     child.kind(),
-                    SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR
+                    SyntaxKind::COMMENT
+                        | SyntaxKind::DOC_COMMENT
+                        | SyntaxKind::WHITESPACE
+                        | SyntaxKind::ATTR
                 )
             })
             .unwrap_or_else(|| SyntaxElement::Node(real_file_item.clone()));
@@ -1365,7 +1368,7 @@ noop! {
 struct Test;
 
 impl Foo for Test {
-    fn foo(&mut self,bar: i64,baz: &mut u32) -> Result<(),u32> {
+    fn foo(&mut self, bar: i64, baz: &mut u32) -> Result<(), u32> {
     $0
 }
 }
@@ -1440,7 +1443,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait { define_method!(); }
 impl AnotherTrait for () {
-    fn method(&mut self,params: <ty!()as SomeTrait>::Output) {
+    fn method(&mut self, params: <ty!()as SomeTrait>::Output) {
     $0
 }
 }
@@ -1478,7 +1481,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait<T: SomeTrait> { define_method!(T); }
 impl AnotherTrait<i32> for () {
-    fn method(&mut self,params: <ty!(T)as SomeTrait>::Output) {
+    fn method(&mut self, params: <ty!(T)as SomeTrait>::Output) {
     $0
 }
 }

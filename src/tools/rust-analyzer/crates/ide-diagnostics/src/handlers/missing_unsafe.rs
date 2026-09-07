@@ -425,7 +425,6 @@ fn main() {
         check_diagnostics(
             r#"
 //- minicore: index, slice
-#![allow(unused_variables)]
 
 fn main() {
 

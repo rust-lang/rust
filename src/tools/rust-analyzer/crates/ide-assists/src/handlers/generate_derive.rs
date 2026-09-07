@@ -1,5 +1,5 @@
 use syntax::{
-    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
+    SyntaxKind::{ATTR, COMMENT, DOC_COMMENT, WHITESPACE},
     T,
     ast::{self, AstNode, HasAttrs, edit::IndentLevel},
     syntax_editor::{Element, Position},
@@ -55,7 +55,7 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_, '_>) ->
                 let after_attrs_and_comments = nominal
                     .syntax()
                     .children_with_tokens()
-                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | DOC_COMMENT | ATTR))
                     .map_or(Position::first_child_of(nominal.syntax()), Position::before);
 
                 editor.insert_all(

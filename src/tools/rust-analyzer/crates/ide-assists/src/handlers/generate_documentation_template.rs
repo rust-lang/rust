@@ -3,9 +3,9 @@ use ide_db::assists::AssistId;
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
 use syntax::{
-    AstNode, AstToken, Edition,
+    AstNode, Edition,
     algo::skip_whitespace_token,
-    ast::{self, HasDocComments, HasGenericArgs, HasName, edit::IndentLevel},
+    ast::{self, HasAttrs, HasGenericArgs, HasName, edit::IndentLevel},
     match_ast,
 };
 
@@ -96,11 +96,13 @@ pub(crate) fn generate_documentation_template(
 // pub fn add(a: i32, b: i32) -> i32 { a + b }
 // ```
 pub(crate) fn generate_doc_example(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
-    let tok: ast::Comment = ctx.find_token_at_offset()?;
-    let node = tok.syntax().parent()?;
-    let last_doc_token =
-        ast::AnyHasDocComments::cast(node.clone())?.doc_comments().last()?.syntax().clone();
-    let next_token = skip_whitespace_token(last_doc_token.next_token()?, syntax::Direction::Next)?;
+    let doc_at_cursor: ast::DocComment = ctx.find_node_at_offset()?;
+    let node = doc_at_cursor.syntax().parent()?;
+    let last_doc_comment = ast::AnyHasAttrs::cast(node.clone())?.doc_comments().last()?;
+    let next_token = skip_whitespace_token(
+        last_doc_comment.syntax().last_token()?.next_token()?,
+        syntax::Direction::Next,
+    )?;
 
     let example = match_ast! {
         match node {

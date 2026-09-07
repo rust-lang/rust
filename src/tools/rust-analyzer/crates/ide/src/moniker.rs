@@ -154,7 +154,9 @@ pub(crate) fn moniker(
         | T![super]
         | T![crate]
         | T![Self]
-        | COMMENT => 2,
+        | COMMENT
+        | INNER_DOC_COMMENT
+        | OUTER_DOC_COMMENT => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;

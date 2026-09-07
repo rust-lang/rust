@@ -257,9 +257,10 @@ impl fmt::Display for LangCrateOrigin {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateDisplayName {
-    // The name we use to display various paths (with `_`).
+    /// The name we use to display various paths (with `_`).
     crate_name: CrateName,
-    // The name as specified in Cargo.toml (with `-`).
+    /// The name as self-declared by the crate. For example, the name declared in the manifest of
+    /// the crate. This may contain dashes `-`.
     canonical_name: Symbol,
 }
 
@@ -936,8 +937,8 @@ impl<'a> IntoIterator for &'a Env {
 ///
 /// ## dev-dependencies
 ///
-/// Note that it's actually legal for a cargo package (i.e. a thing
-/// with a Cargo.toml) to depend on itself in dev-dependencies. This
+/// Note that it's actually legal for a Cargo package (i.e. a thing
+/// with a `Cargo.toml`) to depend on itself in dev-dependencies. This
 /// can enable additional features, and is typically used when a
 /// project wants features to be enabled in tests. Dev-dependencies
 /// are not propagated, so they aren't visible to package that depend

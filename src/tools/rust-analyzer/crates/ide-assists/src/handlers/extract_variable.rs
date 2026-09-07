@@ -89,11 +89,15 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
         }
     } else {
         match ctx.covering_element() {
-            NodeOrToken::Node(it) => it,
+            NodeOrToken::Node(it) if it.kind() == SyntaxKind::DOC_COMMENT => {
+                cov_mark::hit!(extract_var_in_comment_is_not_applicable);
+                return None;
+            }
             NodeOrToken::Token(it) if it.kind() == SyntaxKind::COMMENT => {
                 cov_mark::hit!(extract_var_in_comment_is_not_applicable);
                 return None;
             }
+            NodeOrToken::Node(it) => it,
             NodeOrToken::Token(it) => it.parent()?,
         }
     };

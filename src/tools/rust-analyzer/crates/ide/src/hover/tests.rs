@@ -9140,6 +9140,22 @@ fn main() {
     check(
         r#"
 fn main() {
+    $01f64;
+}
+"#,
+        expect![[r#"
+            *1f64*
+            ```rust
+            f64
+            ```
+            ---
+
+            value of literal: ` 1 (bits: 0x3FF0000000000000) `
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
     $00.1ea123;
 }
 "#,

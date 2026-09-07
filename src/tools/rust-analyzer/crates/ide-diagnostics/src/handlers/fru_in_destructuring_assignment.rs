@@ -18,11 +18,11 @@ pub(crate) fn fru_in_destructuring_assignment(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled};
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn spread_variable() {
-        check_diagnostics_with_disabled(
+        check_diagnostics(
             r#"
 struct Foo { bar: u32, baz: u32 }
 fn test(f: Foo, g: Foo, mut bar: u32, mut baz: u32) {
@@ -34,8 +34,6 @@ fn test(f: Foo, g: Foo, mut bar: u32, mut baz: u32) {
                    // ^ error: functional record updates are not allowed in destructuring assignments
 }
         "#,
-            // We don't end up using neither `bar` nor `baz`
-            &["unused_variables"],
         );
     }
 

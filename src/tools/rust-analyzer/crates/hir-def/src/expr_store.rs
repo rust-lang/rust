@@ -125,7 +125,7 @@ struct ExpressionOnlyStore {
 
     /// A map from an variable usages to their hygiene ID.
     ///
-    /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
+    /// Expressions (and destructuring patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
     ident_hygiene: FxHashMap<ExprOrPatIdPacked, HygieneId>,
 
@@ -321,6 +321,15 @@ struct FormatTemplate {
     implicit_capture_to_source: FxHashMap<ExprId, InFile<(ExprPtr, TextRange)>>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum MissingBodyItemKind {
+    AssocConst,
+    AssocType,
+    Const,
+    Static,
+    TypeAlias,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum ExpressionStoreDiagnostics {
     InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
@@ -330,6 +339,7 @@ pub enum ExpressionStoreDiagnostics {
     UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
     PatternArgInExternFn { node: InFile<AstPtr<ast::Pat>> },
     FruInDestructuringAssignment { node: InFile<AstPtr<ast::Expr>> },
+    MissingBody { node: InFile<SyntaxNodePtr>, kind: MissingBodyItemKind },
 }
 
 impl ExpressionStoreBuilder {
@@ -689,8 +699,7 @@ impl ExpressionStore {
                 visitor.on_pat(*pat);
                 visitor.on_expr(*expr);
             }
-            Expr::Block { statements, tail, id: _, label: _ }
-            | Expr::Unsafe { statements, tail, id: _ } => {
+            Expr::Block { statements, tail, id: _, label: _, unsafe_: _ } => {
                 for stmt in statements {
                     match stmt {
                         Statement::Let { initializer, else_branch, pat, type_ref } => {

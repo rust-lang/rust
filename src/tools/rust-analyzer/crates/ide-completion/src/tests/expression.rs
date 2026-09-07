@@ -42,7 +42,7 @@ fn baz() {
             "#,
         // This should not contain `FooDesc {…}`.
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             fn baz()                   fn()
             fn create_foo(…)   fn(&FooDesc)
@@ -141,7 +141,7 @@ impl Unit {
 "#,
         // `self` is in here twice, once as the module, once as the local
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             cp CONST_PARAM
             en Enum                    Enum
             fn function()              fn()
@@ -208,7 +208,7 @@ impl Unit {
 }
 "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             fn function()              fn()
             ma makro!(…) macro_rules! makro
@@ -907,12 +907,12 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ct ASSOC_CONST  const ASSOC_CONST: ()
-            fn assoc_fn()                    fn()
-            ta AssocType      type AssocType = ()
-            ev RecordV {…} RecordV { field: u32 }
-            ev TupleV(…)              TupleV(u32)
-            ev UnitV                        UnitV
+            ct ASSOC_CONST  = () const ASSOC_CONST: ()
+            fn assoc_fn()                         fn()
+            ta AssocType           type AssocType = ()
+            ev RecordV {…}      RecordV { field: u32 }
+            ev TupleV(…)                   TupleV(u32)
+            ev UnitV                             UnitV
         "#]],
     );
 }
@@ -2658,7 +2658,7 @@ fn main() {
 }
     "#,
         expect![[r#"
-            ct CONST                     Unit
+            ct CONST  = Unit             Unit
             en Enum                      Enum
             fn function()                fn()
             fn main()                    fn()
@@ -2990,7 +2990,7 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            ct CONST                       Unit
+            ct CONST  = Unit               Unit
             en Enum                        Enum
             fn foo()                       fn()
             fn function()                  fn()
@@ -3061,7 +3061,7 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             en Foo                      Foo
             fn foo()                   fn()

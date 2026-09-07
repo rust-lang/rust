@@ -72,7 +72,7 @@ fn run_fuzzer(sh: &Shell) -> anyhow::Result<()> {
     let _d = sh.push_dir("./crates/syntax");
     let _e = sh.push_env("RUSTUP_TOOLCHAIN", "nightly");
     if cmd!(sh, "cargo fuzz --help").read().is_err() {
-        cmd!(sh, "cargo install cargo-fuzz").run()?;
+        cmd!(sh, "cargo install --locked cargo-fuzz").run()?;
     };
 
     // Expecting nightly rustc

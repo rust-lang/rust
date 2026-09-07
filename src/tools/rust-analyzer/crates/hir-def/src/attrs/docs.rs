@@ -22,8 +22,8 @@ use hir_expand::{
 };
 use span::AstIdMap;
 use syntax::{
-    AstNode, AstToken, SyntaxNode,
-    ast::{self, AttrDocCommentIter, IsString},
+    AstNode, SyntaxNode,
+    ast::{self, IsString},
 };
 use thin_vec::ThinVec;
 use tt::{TextRange, TextSize};
@@ -213,15 +213,10 @@ impl Docs {
         ));
     }
 
-    fn extend_with_doc_comment(&mut self, comment: ast::Comment, indent: &mut Indent) {
-        let Some((doc, offset)) = comment.doc_comment() else { return };
-        let offset = comment.syntax().text_range().start() + offset;
-        self.extend_with_doc_str(
-            doc,
-            offset,
-            DocCommentKind::Sugared(comment.kind().shape),
-            indent,
-        );
+    fn extend_with_doc_comment(&mut self, comment: ast::DocComment, indent: &mut Indent) {
+        let doc = comment.text();
+        let offset = comment.syntax().text_range().start() + ast::DocComment::PREFIX_LEN;
+        self.extend_with_doc_str(doc, offset, DocCommentKind::Sugared(comment.shape()), indent);
     }
 
     fn extend_with_doc_attr(&mut self, value: ast::String, indent: &mut Indent) {
@@ -662,13 +657,13 @@ fn extend_with_attrs<'a, 'db>(
     let mut expander = None;
 
     expand_cfg_attr_with_doc_comments::<_, Infallible>(
-        AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
-            Either::Left(attr) => attr.kind().is_inner() == expect_inner_attrs,
-            Either::Right(comment) => comment
-                .kind()
-                .doc
-                .is_some_and(|kind| (kind == ast::CommentPlacement::Inner) == expect_inner_attrs),
-        }),
+        node.children()
+            .filter_map(ast::AnyAttr::cast)
+            .filter(|attr| attr.kind().is_inner() == expect_inner_attrs)
+            .map(|attr| match attr {
+                ast::AnyAttr::Attr(it) => Either::Left(it),
+                ast::AnyAttr::DocComment(it) => Either::Right(it),
+            }),
         || *cfg_options.get_or_insert_with(get_cfg_options),
         |attr| {
             match attr {
@@ -795,7 +790,7 @@ pub(crate) fn extract_docs<'a, 'db>(
 mod tests {
     use expect_test::expect;
     use hir_expand::InFile;
-    use syntax::{AstToken, ast};
+    use syntax::{AstNode, ast};
     use test_fixture::WithFixture;
     use thin_vec::ThinVec;
     use tt::{TextRange, TextSize};
@@ -1016,8 +1011,8 @@ mod tests {
         let comment = syntax::SourceFile::parse(source, span::Edition::CURRENT)
             .syntax_node()
             .descendants_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find_map(ast::Comment::cast)
+            .filter_map(|it| it.into_node())
+            .find_map(ast::DocComment::cast)
             .expect("no comment in the fixture");
         let mut docs = Docs {
             docs: String::new(),

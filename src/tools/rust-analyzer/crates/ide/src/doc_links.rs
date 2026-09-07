@@ -277,19 +277,28 @@ pub(crate) struct DocCommentToken {
 }
 
 pub(crate) fn token_as_doc_comment(doc_token: &SyntaxToken) -> Option<DocCommentToken> {
-    (match_ast! {
-        match doc_token {
-            ast::Comment(comment) => TextSize::try_from(comment.prefix().len()).ok(),
-            ast::String(string) => {
-                doc_token.parent_ancestors().find_map(ast::Attr::cast).filter(|attr| attr.simple_name().as_deref() == Some("doc"))?;
-                if doc_token.parent_ancestors().find_map(ast::MacroCall::cast).filter(|mac| mac.path().and_then(|p| p.segment()?.name_ref()).as_ref().map(|n| n.text()) == Some("include_str")).is_some() {
-                    return None;
-                }
-                string.open_quote_text_range().map(|it| it.len())
-            },
-            _ => None,
+    let prefix_len = if matches!(doc_token.kind(), INNER_DOC_COMMENT | OUTER_DOC_COMMENT) {
+        ast::DocComment::PREFIX_LEN
+    } else {
+        let string = ast::String::cast(doc_token.clone())?;
+        doc_token
+            .parent_ancestors()
+            .find_map(ast::Attr::cast)
+            .filter(|attr| attr.simple_name().as_deref() == Some("doc"))?;
+        if doc_token
+            .parent_ancestors()
+            .find_map(ast::MacroCall::cast)
+            .filter(|mac| {
+                mac.path().and_then(|p| p.segment()?.name_ref()).as_ref().map(|n| n.text())
+                    == Some("include_str")
+            })
+            .is_some()
+        {
+            return None;
         }
-    }).map(|prefix_len| DocCommentToken { prefix_len, doc_token: doc_token.clone() })
+        string.open_quote_text_range()?.len()
+    };
+    Some(DocCommentToken { prefix_len, doc_token: doc_token.clone() })
 }
 
 impl DocCommentToken {
@@ -308,8 +317,8 @@ impl DocCommentToken {
         sema.descend_into_macros(doc_token).into_iter().find_map(|t| {
             let (node, descended_prefix_len, is_inner) = match_ast!{
                 match t {
-                    ast::Comment(comment) => {
-                        (t.parent()?, TextSize::try_from(comment.prefix().len()).ok()?, comment.is_inner())
+                    ast::AnyComment(comment) => {
+                        (t.parent()?.parent()?, TextSize::try_from(comment.prefix().len()).ok()?, comment.is_inner())
                     },
                     ast::String(string) => {
                         let attr = t.parent_ancestors().find_map(ast::Attr::cast)?;

@@ -12,7 +12,7 @@ use syntax::{
 use crate::{
     expr_store::{HygieneId, lower::ExprCollector, path::Path},
     hir::{
-        Array, BindingAnnotation, Expr, ExprId, Literal, Pat, Statement,
+        Array, BindingAnnotation, Expr, ExprId, Literal, Pat, Statement, Unsafe,
         format_args::{
             self, FormatAlignment, FormatArgs, FormatArgsPiece, FormatArgument, FormatArgumentKind,
             FormatArgumentsCollector, FormatCount, FormatDebugHex, FormatSign, FormatTrait,
@@ -187,6 +187,7 @@ impl<'db> ExprCollector<'db> {
                                         .collect(),
                                     tail: Some(from_str),
                                     label: None,
+                                    unsafe_: Unsafe::No,
                                 },
                                 syntax_ptr,
                             )
@@ -378,7 +379,13 @@ impl<'db> ExprCollector<'db> {
             self.alloc_expr_desugared(Expr::Call { callee: new, args: Box::new([template, args]) })
         };
         let call = self.alloc_expr(
-            Expr::Unsafe { id: None, statements: Box::new([]), tail: Some(call) },
+            Expr::Block {
+                id: None,
+                statements: Box::new([]),
+                tail: Some(call),
+                label: None,
+                unsafe_: Unsafe::Yes,
+            },
             syntax_ptr,
         );
 
@@ -402,6 +409,7 @@ impl<'db> ExprCollector<'db> {
                     statements: statements.into_boxed_slice(),
                     tail: Some(call),
                     label: None,
+                    unsafe_: Unsafe::No,
                 },
                 syntax_ptr,
             )

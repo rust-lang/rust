@@ -335,11 +335,8 @@ impl StoreVisitor for ExprScopeVisitor<'_> {
     fn on_expr(&mut self, expr: ExprId) {
         self.scopes.set_scope(expr, self.scope);
         match &self.store[expr] {
-            Expr::Block { statements, tail, id, label } => {
+            Expr::Block { statements, tail, id, label, unsafe_: _ } => {
                 self.visit_block(expr, *id, statements, *tail, *label);
-            }
-            Expr::Unsafe { id, statements, tail } => {
-                self.visit_block(expr, *id, statements, *tail, None);
             }
             Expr::Loop { body, label, source: _ } => {
                 let scope = self.scopes.new_labeled_scope(self.scope, *label);

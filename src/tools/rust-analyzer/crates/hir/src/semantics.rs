@@ -17,7 +17,7 @@ use hir_def::{
     StructId, TraitId, VariantId,
     attrs::parse_extra_crate_attrs,
     expr_store::{Body, ExprOrPatSource, ExpressionStore, HygieneId, path::Path},
-    hir::{BindingId, Expr, ExprId, ExprOrPatId},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Unsafe},
     nameres::{ModuleOrigin, crate_def_map},
     resolver::{self, HasResolver, Resolver, TypeNs, ValueNs},
     type_ref::Mutability,
@@ -2187,13 +2187,9 @@ impl<'db> SemanticsImpl<'db> {
         def: DefWithoutBodyWithAnonConsts,
     ) -> &'a ExprToAnonConst<'db> {
         cache.entry(def).or_insert_with(|| match def {
-            Either::Left(def) => {
-                let all_anon_consts =
-                    AnonConstId::all_from_signature(self.db, def).into_iter().flatten().copied();
-                all_anon_consts
-                    .map(|anon_const| (anon_const.loc(self.db).expr, anon_const))
-                    .collect()
-            }
+            Either::Left(def) => AnonConstId::all_from_signature(self.db, def)
+                .map(|anon_const| (anon_const.loc(self.db).expr, anon_const))
+                .collect(),
             Either::Right(def) => {
                 let all_anon_consts =
                     self.db.field_types_with_diagnostics(def).defined_anon_consts().iter().copied();
@@ -2427,7 +2423,7 @@ impl<'db> SemanticsImpl<'db> {
             if let Some(parent) = ast::Expr::cast(parent.clone())
                 && let Some(ExprOrPatId::ExprId(expr_id)) =
                     source_map.node_expr(InFile { file_id, value: &parent })
-                && let Expr::Unsafe { .. } = body[expr_id]
+                && let Expr::Block { unsafe_: Unsafe::Yes, .. } = body[expr_id]
             {
                 break true;
             }

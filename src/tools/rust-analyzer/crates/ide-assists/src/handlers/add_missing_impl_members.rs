@@ -2117,7 +2117,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait { define_method!(); }
 impl AnotherTrait for () {
-    $0fn method(&mut self,params: <ty!()as SomeTrait>::Output) {
+    $0fn method(&mut self, params: <ty!()as SomeTrait>::Output) {
         todo!()
     }
 }
@@ -2154,7 +2154,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait<T: SomeTrait> { define_method!(T); }
 impl AnotherTrait<i32> for () {
-    $0fn method(&mut self,params: <ty!(T)as SomeTrait>::Output) {
+    $0fn method(&mut self, params: <ty!(T)as SomeTrait>::Output) {
         todo!()
     }
 }

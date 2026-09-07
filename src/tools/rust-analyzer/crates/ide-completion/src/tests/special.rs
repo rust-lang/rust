@@ -206,9 +206,9 @@ impl S {
 fn foo() { let _ = lib::S::$0 }
 "#,
         expect![[r#"
-            ct PUBLIC_CONST pub const PUBLIC_CONST: u32
-            fn public_method()                     fn()
-            ta PublicType     pub type PublicType = u32
+            ct PUBLIC_CONST  = 1 pub const PUBLIC_CONST: u32
+            fn public_method()                          fn()
+            ta PublicType          pub type PublicType = u32
         "#]],
     );
 }
@@ -337,14 +337,14 @@ impl<T> Sub for Wrap<T> {
 }
 "#,
         expect![[r#"
-            ct C2 (as Sub)         const C2: ()
-            ct CONST (as Super) const CONST: u8
-            fn func() (as Super)           fn()
-            fn subfunc() (as Sub)          fn()
-            me method(…) (as Super)   fn(&self)
-            me submethod(…) (as Sub)  fn(&self)
-            ta SubTy (as Sub)        type SubTy
-            ta Ty (as Super)            type Ty
+            ct C2  = () (as Sub)        const C2: ()
+            ct CONST  = 0 (as Super) const CONST: u8
+            fn func() (as Super)                fn()
+            fn subfunc() (as Sub)               fn()
+            me method(…) (as Super)        fn(&self)
+            me submethod(…) (as Sub)       fn(&self)
+            ta SubTy (as Sub)             type SubTy
+            ta Ty (as Super)                 type Ty
         "#]],
     );
 }
@@ -427,9 +427,9 @@ mod p {
 }
 "#,
         expect![[r#"
-            ct RIGHT_CONST     u32
-            fn right_fn()     fn()
-            st RightType WrongType
+            ct RIGHT_CONST  = 1 u32
+            fn right_fn()      fn()
+            st RightType  WrongType
         "#]],
     );
 
@@ -823,8 +823,8 @@ impl u8 {
 }
 "#,
         expect![[r#"
-            ct MAX pub const MAX: Self
-            me func(…)        fn(self)
+            ct MAX  = 255 pub const MAX: Self
+            me func(…)               fn(self)
         "#]],
     );
 }
@@ -1054,7 +1054,7 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct by_macro (as MyTrait) pub const by_macro: u8
+            ct by_macro  = 1 (as MyTrait) pub const by_macro: u8
         "#]],
     )
 }

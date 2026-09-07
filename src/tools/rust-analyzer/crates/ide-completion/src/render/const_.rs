@@ -26,6 +26,7 @@ fn render(ctx: RenderContext<'_, '_>, const_: hir::Const) -> Option<CompletionIt
     item.set_documentation(ctx.docs(const_))
         .set_deprecated(ctx.is_deprecated(const_, const_.as_assoc_item(db)))
         .detail(detail)
+        .const_value(Some(const_), db, ctx.completion.display_target)
         .set_relevance(ctx.completion_relevance());
 
     if let Some(actm) = const_.as_assoc_item(db)
@@ -35,5 +36,5 @@ fn render(ctx: RenderContext<'_, '_>, const_: hir::Const) -> Option<CompletionIt
     }
     item.insert_text(escaped_name);
 
-    Some(item.build(ctx.db()))
+    Some(item.build(db))
 }

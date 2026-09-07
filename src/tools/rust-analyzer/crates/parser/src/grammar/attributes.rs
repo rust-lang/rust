@@ -1,23 +1,29 @@
 use super::*;
 
-pub(super) const ATTRIBUTE_FIRST: TokenSet = TokenSet::new(&[T![#]]);
+pub(super) const OUTER_ATTR_FIRST: TokenSet = TokenSet::new(&[T![#], OUTER_DOC_COMMENT]);
 
 pub(super) fn inner_attrs(p: &mut Parser<'_>) {
-    while p.at(T![#]) && p.nth(1) == T![!] {
+    while p.at(INNER_DOC_COMMENT) || (p.at(T![#]) && p.nth_at(1, T![!])) {
         attr(p, true);
     }
 }
 
 pub(super) fn outer_attrs(p: &mut Parser<'_>) {
-    while p.at(T![#]) {
+    while p.at_ts(OUTER_ATTR_FIRST) {
         attr(p, false);
     }
 }
 
 fn attr(p: &mut Parser<'_>, inner: bool) {
-    assert!(p.at(T![#]));
+    if (inner && p.at(INNER_DOC_COMMENT)) || (!inner && p.at(OUTER_DOC_COMMENT)) {
+        let m = p.start();
+        p.bump_any();
+        m.complete(p, DOC_COMMENT);
+        return;
+    }
 
     let attr = p.start();
+
     p.bump(T![#]);
 
     if inner {

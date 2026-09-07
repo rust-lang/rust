@@ -115,7 +115,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            ct CONST
+            ct CONST  = Unit
             en Enum
             ma makro!(…)    macro_rules! makro
             md module
@@ -342,10 +342,10 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ct ASSOC_CONST const ASSOC_CONST: ()
-            bn RecordV {…} RecordV { field$1 }$0
-            bn TupleV(…)            TupleV($1)$0
-            bn UnitV                     UnitV$0
+            ct ASSOC_CONST  = () const ASSOC_CONST: ()
+            bn RecordV {…}       RecordV { field$1 }$0
+            bn TupleV(…)                  TupleV($1)$0
+            bn UnitV                           UnitV$0
         "#]],
     );
 }
@@ -360,7 +360,7 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ct CONST
+            ct CONST  = Unit
             en Enum
             ma makro!(…)      macro_rules! makro
             md module
@@ -662,7 +662,7 @@ fn f(t: Ty) {
 }
 "#,
         expect![[r#"
-            ct ABC const ABC: Self
+            ct ABC  = Ty(0) const ABC: Self
         "#]],
     );
 
@@ -683,8 +683,8 @@ fn f(e: MyEnum) {
 }
 "#,
         expect![[r#"
-            ct A pub const A: i32
-            ct B pub const B: i32
+            ct A  = 123 pub const A: i32
+            ct B  = 456 pub const B: i32
         "#]],
     );
 
@@ -708,8 +708,8 @@ fn f(u: U) {
 }
 "#,
         expect![[r#"
-            ct C pub const C: i32
-            ct D pub const D: i32
+            ct C  = 123 pub const C: i32
+            ct D  = 456 pub const D: i32
         "#]],
     );
 
@@ -729,7 +729,7 @@ fn f(v: u32) {
 }
         "#,
         expect![[r#"
-            ct MIN pub const MIN: Self
+            ct MIN  = 0 pub const MIN: Self
         "#]],
     );
 }

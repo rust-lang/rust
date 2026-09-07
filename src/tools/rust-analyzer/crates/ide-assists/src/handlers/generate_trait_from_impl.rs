@@ -1,9 +1,9 @@
 use crate::assist_context::{AssistContext, Assists};
 use ide_db::{assists::AssistId, defs::Definition, search::SearchScope};
 use syntax::{
-    AstNode, AstToken, SyntaxKind, T,
+    AstNode, SyntaxKind, T,
     ast::{
-        self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit,
+        self, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Position, SyntaxEditor},
@@ -226,7 +226,7 @@ fn remove_items_visibility(editor: &SyntaxEditor, item: &ast::AssocItem) {
 
 fn remove_doc_comments(editor: &SyntaxEditor, item: &ast::AssocItem) {
     for doc in item.doc_comments() {
-        if let Some(next) = doc.syntax().next_token()
+        if let Some(next) = doc.syntax().last_token().and_then(|it| it.next_token())
             && next.kind() == SyntaxKind::WHITESPACE
         {
             editor.delete(next);

@@ -57,12 +57,7 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
             });
         non_trivial_children.next().is_some()
     };
-    if stmt_list
-        .syntax()
-        .children_with_tokens()
-        .filter_map(NodeOrToken::into_token)
-        .any(|token| token.kind() == syntax::SyntaxKind::COMMENT)
-    {
+    if stmt_list.syntax().children_with_tokens().any(|it| ast::AnyComment::can_cast(it.kind())) {
         return None;
     }
 
@@ -272,7 +267,7 @@ pub fn add_trait_assoc_items_to_impl(
 
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
-        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | DOC_COMMENT | ATTR))
         .map(|it| it.text_range().start())
         .unwrap_or_else(|| node.text_range().start())
 }
