@@ -84,7 +84,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        prev_entries: &OpaqueTypeStorageEntries<'tcx>,
+        prev_entries: OpaqueTypeStorageEntries,
     ) -> Canonical<'tcx, QueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,

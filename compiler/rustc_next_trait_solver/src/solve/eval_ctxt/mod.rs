@@ -1796,7 +1796,7 @@ where
         //
         // Constraints for any existing opaque types are already tracked by changes
         // to the `var_values`.
-        let initial_entries = &self.initial_opaque_types_storage_num_entries;
+        let initial_entries = self.initial_opaque_types_storage_num_entries;
         let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
         let opaque_hidden_type_bounds =
             self.delegate.clone_opaque_hidden_ty_bounds_added_since(initial_entries);

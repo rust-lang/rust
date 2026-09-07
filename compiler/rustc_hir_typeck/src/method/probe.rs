@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
+use std::debug_assert_matches;
 use std::ops::Deref;
-use std::{debug_assert_matches, iter};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
@@ -421,9 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let opaque_hidden_ty_bounds_in_body = if self.next_trait_solver() {
             self.tcx.mk_opaque_hidden_ty_bounds_in_body_from_iter(
-                self.inner.borrow_mut().opaque_types().iter_opaque_hidden_ty_bounds().flat_map(
-                    |(hidden_ty, bounds)| iter::repeat(hidden_ty).zip(bounds.iter().copied()),
-                ),
+                self.inner.borrow_mut().opaque_types().iter_opaque_hidden_type_bounds(),
             )
         } else {
             ty::List::empty()
@@ -459,7 +457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self_ty: self.make_query_response_ignoring_pending_obligations(
                             var_values,
                             self_ty,
-                            &prev_opaque_entries,
+                            prev_opaque_entries,
                         ),
                         self_ty_is_hidden_ty_of_opaque: false,
                         autoderefs: 0,
@@ -722,7 +720,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                     self_ty: infcx.make_query_response_ignoring_pending_obligations(
                         inference_vars,
                         ty,
-                        &prev_opaque_entries,
+                        prev_opaque_entries,
                     ),
                     self_ty_is_hidden_ty_of_opaque: self_ty_is_hidden_ty_of_opaque(ty),
                     autoderefs: d,
@@ -746,7 +744,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                     self_ty: infcx.make_query_response_ignoring_pending_obligations(
                         inference_vars,
                         ty,
-                        &prev_opaque_entries,
+                        prev_opaque_entries,
                     ),
                     self_ty_is_hidden_ty_of_opaque: self_ty_is_hidden_ty_of_opaque(ty),
                     autoderefs: d,
@@ -771,7 +769,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                 ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
                     final_ty,
-                    &prev_opaque_entries,
+                    prev_opaque_entries,
                 ),
             })
         }
@@ -780,7 +778,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             ty: infcx.make_query_response_ignoring_pending_obligations(
                 inference_vars,
                 final_ty,
-                &prev_opaque_entries,
+                prev_opaque_entries,
             ),
         }),
         ty::Array(elem_ty, _) => {
@@ -789,7 +787,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                 self_ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
                     Ty::new_slice(infcx.tcx, *elem_ty),
-                    &prev_opaque_entries,
+                    prev_opaque_entries,
                 ),
                 self_ty_is_hidden_ty_of_opaque: false,
                 autoderefs,
