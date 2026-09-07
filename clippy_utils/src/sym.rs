@@ -477,7 +477,6 @@ generate! {
     pop_if,
     position,
     pow,
-    powi,
     process_abort,
     process_exit,
     product,
