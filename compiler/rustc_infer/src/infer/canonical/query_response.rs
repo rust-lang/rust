@@ -146,11 +146,13 @@ impl<'tcx> InferCtxt<'tcx> {
         let region_obligations = self.take_registered_region_obligations();
         let region_assumptions = self.take_registered_region_assumptions();
         debug!(?region_obligations);
+        let solver_constraints = self.clone_solver_region_constraints();
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 region_obligations,
                 region_constraints,
                 region_assumptions,
+                solver_constraints,
             )
         });
         debug!(?region_constraints);
@@ -213,6 +215,13 @@ impl<'tcx> InferCtxt<'tcx> {
             let assumption = instantiate_value(self.tcx, &result_args, *assumption);
             self.register_region_assumption(assumption);
         }
+
+        let solver_constraints = instantiate_value(
+            self.tcx,
+            &result_args,
+            query_response.value.region_constraints.solver_constraints.clone(),
+        );
+        self.register_solver_region_constraint(solver_constraints.with_spans(cause.span));
 
         let user_result: R =
             query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
@@ -346,6 +355,17 @@ impl<'tcx> InferCtxt<'tcx> {
                 .iter()
                 .map(|&r_c| instantiate_value(self.tcx, &result_args, r_c)),
         );
+
+        let solver_constraints = instantiate_value(
+            self.tcx,
+            &result_args,
+            query_response.value.region_constraints.solver_constraints.clone(),
+        );
+        output_query_region_constraints.solver_constraints =
+            ty::region_constraint::RegionConstraint::build_and(
+                std::mem::take(&mut output_query_region_constraints.solver_constraints),
+                solver_constraints,
+            );
 
         let user_result: R =
             query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
@@ -619,6 +639,7 @@ pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
+    solver_constraints: ty::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -663,5 +684,5 @@ pub fn make_query_region_constraints<'tcx>(
         ))
         .collect();
 
-    QueryRegionConstraints { constraints, assumptions }
+    QueryRegionConstraints { constraints, assumptions, solver_constraints }
 }

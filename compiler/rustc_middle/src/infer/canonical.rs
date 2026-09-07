@@ -76,12 +76,20 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Hash)]
 #[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
+    /// Region constraints emitted by the next solver under
+    /// `-Zassumptions-on-binders`.
+    ///
+    /// These stay unspanned while passing through a canonical query. The type-op
+    /// caller attaches its origin span when consuming the response.
+    pub solver_constraints: ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
 }
+
+impl Eq for QueryRegionConstraints<'_> {}
 
 impl QueryRegionConstraints<'_> {
     /// Represents an empty (trivially true) set of region constraints.
@@ -91,8 +99,23 @@ impl QueryRegionConstraints<'_> {
     /// discharge a requirement from another query, which is a potential problem if we did throw
     /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
-        let QueryRegionConstraints { constraints, assumptions } = self;
-        constraints.is_empty() && assumptions.is_empty()
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } = self;
+        constraints.is_empty() && assumptions.is_empty() && solver_constraints.is_true()
+    }
+
+    pub fn extend(&mut self, other: &Self) {
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } = self;
+        let QueryRegionConstraints {
+            constraints: other_constraints,
+            assumptions: other_assumptions,
+            solver_constraints: other_solver_constraints,
+        } = other;
+        constraints.extend(other_constraints.iter().cloned());
+        assumptions.extend(other_assumptions.iter().cloned());
+        *solver_constraints = ir::region_constraint::RegionConstraint::build_and(
+            std::mem::take(solver_constraints),
+            other_solver_constraints.clone(),
+        );
     }
 }
 

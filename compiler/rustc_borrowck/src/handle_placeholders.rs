@@ -246,6 +246,9 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         mut outlives_constraints,
         universe_causes,
         type_tests,
+        // These have already been destructured into `outlives_constraints` at the
+        // end of MIR type checking.
+        solver_constraints: _,
     } = constraints;
 
     let fr_static = universal_regions.fr_static;

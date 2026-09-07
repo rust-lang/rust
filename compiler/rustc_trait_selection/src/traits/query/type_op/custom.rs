@@ -60,8 +60,8 @@ impl<F> fmt::Debug for CustomTypeOp<F> {
     }
 }
 
-/// Executes `op` and then scrapes out all the "old style" region
-/// constraints that result, creating query-region-constraints.
+/// Executes `op` and then scrapes out all resulting region constraints,
+/// creating query-region-constraints.
 pub fn scrape_region_constraints<'tcx, Op, R>(
     infcx: &InferCtxt<'tcx>,
     root_def_id: LocalDefId,
@@ -87,6 +87,11 @@ where
     assert!(
         pre_assumptions.is_empty(),
         "scrape_region_constraints: incoming region assumptions = {pre_assumptions:#?}",
+    );
+    let pre_solver_constraints = infcx.take_solver_region_constraints();
+    assert!(
+        pre_solver_constraints.is_true(),
+        "scrape_region_constraints: incoming solver constraints = {pre_solver_constraints:#?}",
     );
 
     let value = infcx.commit_if_ok(|_| {
@@ -144,11 +149,13 @@ where
 
     let region_obligations = infcx.take_registered_region_obligations();
     let region_assumptions = infcx.take_registered_region_assumptions();
+    let solver_constraints = infcx.take_solver_region_constraints();
     let region_constraint_data = infcx.take_and_reset_region_constraints();
     let region_constraints = query_response::make_query_region_constraints(
         region_obligations,
         &region_constraint_data,
         region_assumptions,
+        solver_constraints,
     );
 
     if region_constraints.is_empty() {
