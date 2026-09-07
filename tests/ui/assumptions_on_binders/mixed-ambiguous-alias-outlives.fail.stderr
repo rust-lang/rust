@@ -11,3 +11,4 @@ LL |         forall<'a, U> {
    |         ^^^^^^
 
 error: aborting due to 2 previous errors
+
