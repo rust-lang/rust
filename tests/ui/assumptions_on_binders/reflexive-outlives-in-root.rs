@@ -6,8 +6,8 @@
 
 // Root type outlives constraints are destructured into an OR over every region the type is known
 // to outlive. The reflexive `'b: 'b` candidate makes this OR true even though the unrelated
-// `'a: 'b` candidate does not hold. Root constraints never go through the universe-pulling code,
-// so evaluation has to recognize the reflexive candidate itself.
+// `'a: 'b` candidate does not hold. Reflexive leaves are dropped when building an AND, which
+// leaves an empty, i.e. trivially true, AND as one of the candidates of the OR.
 core::test_binder_constraints! {
     impl<'a, 'b, T: 'a + 'b> {
         T: 'b
