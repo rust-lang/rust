@@ -125,7 +125,8 @@ impl Thread {
         thread
     }
 
-    /// Records the OS id of the calling thread in this handle.
+    /// Records the calling thread's OS id, as reported by
+    /// `imp::current_os_id`, in this handle.
     ///
     /// May only be called from the thread to which this handle belongs. A
     /// spawned thread does this itself once it starts running, since its handle
@@ -240,12 +241,17 @@ impl Thread {
     ///
     /// This is the id that shows up in tools like `ps` and `top`, debuggers and
     /// crash logs, unlike [`ThreadId`], which has no guaranteed relationship to
-    /// it. `None` means the platform has no such id, the thread has not started
-    /// running yet, or the id could not be read.
+    /// it. On a platform with no OS-visible thread id, such as SGX, the value
+    /// may be some other per-thread value (there, the thread's address), which
+    /// such tools will not recognize. `None` means no id could be recorded: the
+    /// thread has not started running yet, or the platform has no way to read
+    /// one.
     ///
     /// The operating system may reuse the id of a thread that has exited, and a
-    /// `Thread` handle can outlive the thread it refers to. Use the id only
-    /// where a reused id is harmless, such as logging.
+    /// `Thread` handle can outlive the thread it refers to. After a `fork`, the
+    /// id recorded in the child process still refers to the parent's thread; it
+    /// is not re-read. Use the id only where a reused or stale id is harmless,
+    /// such as logging.
     ///
     /// # Examples
     ///
