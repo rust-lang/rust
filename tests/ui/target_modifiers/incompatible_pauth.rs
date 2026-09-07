@@ -9,7 +9,7 @@
 //@ [ok_reverse_order] check-pass
 //@ [error_generated] compile-flags: -Zpointer-authentication=+calls,-init-fini
 //@ needs-llvm-components: aarch64
-//@ only-pauthtest
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![crate_type = "rlib"]
