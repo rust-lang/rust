@@ -159,7 +159,6 @@ declare_passes! {
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
-    mod large_enums : EnumSizeOpt;
     mod lint_and_remove_uninhabited : LintAndRemoveUninhabited;
     mod lower_intrinsics : LowerIntrinsics;
     mod lower_slice_len : LowerSliceLenCalls;
@@ -763,7 +762,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dest_prop::DestinationPropagation,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
-            &large_enums::EnumSizeOpt { discrepancy: 128 },
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
             // Cleanup for human readability, off by default.

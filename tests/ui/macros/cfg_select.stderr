@@ -1,5 +1,5 @@
 error: none of the predicates in this `cfg_select` evaluated to true
-  --> $DIR/cfg_select.rs:161:1
+  --> $DIR/cfg_select.rs:162:1
    |
 LL | / cfg_select! {
 LL | |
@@ -8,73 +8,73 @@ LL | | }
    | |_^
 
 error: none of the predicates in this `cfg_select` evaluated to true
-  --> $DIR/cfg_select.rs:166:1
+  --> $DIR/cfg_select.rs:167:1
    |
 LL | cfg_select! {}
    | ^^^^^^^^^^^^^^
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `=>`
-  --> $DIR/cfg_select.rs:170:5
+  --> $DIR/cfg_select.rs:171:5
    |
 LL |     => {}
    |     ^^
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
-  --> $DIR/cfg_select.rs:175:5
+  --> $DIR/cfg_select.rs:176:5
    |
 LL |     () => {}
    |     ^^ expressions are not allowed here
 
 error[E0565]: malformed `cfg_select` macro input
-  --> $DIR/cfg_select.rs:180:5
+  --> $DIR/cfg_select.rs:181:5
    |
 LL |     "str" => {}
    |     ^^^^^ expected a valid identifier here
 
 error[E0565]: malformed `cfg_select` macro input
-  --> $DIR/cfg_select.rs:185:5
+  --> $DIR/cfg_select.rs:186:5
    |
 LL |     a::b => {}
    |     ^^^^ expected a valid identifier here
 
 error[E0539]: malformed `cfg_select` macro input
-  --> $DIR/cfg_select.rs:190:5
+  --> $DIR/cfg_select.rs:191:5
    |
 LL |     a() => {}
    |     ^^^ valid arguments are `any`, `all`, `not` or `target`
 
 error: expected one of `(`, `::`, `=>`, or `=`, found `+`
-  --> $DIR/cfg_select.rs:195:7
+  --> $DIR/cfg_select.rs:196:7
    |
 LL |     a + 1 => {}
    |       ^ expected one of `(`, `::`, `=>`, or `=`
 
 error: expected one of `(`, `::`, `=>`, or `=`, found `!`
-  --> $DIR/cfg_select.rs:201:8
+  --> $DIR/cfg_select.rs:202:8
    |
 LL |     cfg!() => {}
    |        ^ expected one of `(`, `::`, `=>`, or `=`
 
 error: doc comments are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:208:5
+  --> $DIR/cfg_select.rs:209:5
    |
 LL |     /// doc comment
    |     ^^^^^^^^^^^^^^^
 
 error: doc comments are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:211:5
+  --> $DIR/cfg_select.rs:212:5
    |
 LL |     /// doc comment
    |     ^^^^^^^^^^^^^^^
 
 error: attributes are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:217:5
+  --> $DIR/cfg_select.rs:218:5
    |
 LL |     #[cfg(false)]
    |     ^^^^^^^^^^^^^
 
 error: an inner attribute is not permitted in this context
-  --> $DIR/cfg_select.rs:224:5
+  --> $DIR/cfg_select.rs:225:5
    |
 LL |     #![cfg(false)]
    |     ^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ LL |     #![cfg(false)]
    = note: outer attributes, like `#[test]`, annotate the item following them
 
 error[E0753]: expected outer doc comment
-  --> $DIR/cfg_select.rs:231:5
+  --> $DIR/cfg_select.rs:232:5
    |
 LL |     //! inner doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +96,7 @@ LL +     // inner doc comment
    |
 
 error: doc comments are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:239:5
+  --> $DIR/cfg_select.rs:240:5
    |
 LL |     /// line1
    |     ^^^^^^^^^
@@ -105,7 +105,7 @@ LL |     /// line3
    |     ^^^^^^^^^
 
 error[E0753]: expected outer doc comment
-  --> $DIR/cfg_select.rs:249:5
+  --> $DIR/cfg_select.rs:250:5
    |
 LL |     //! inner doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -118,13 +118,48 @@ LL +     // inner doc comment
    |
 
 error: doc comments are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:247:5
+  --> $DIR/cfg_select.rs:248:5
    |
 LL |     /// outer doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^
 
+error[E0425]: cannot find type `Thing1` in this scope
+  --> $DIR/cfg_select.rs:278:13
+   |
+LL |     let t1: Thing1;
+   |             ^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/cfg_select.rs:258:16
+   |
+LL |     all(true, false) => {
+   |               ----- the item is gated here
+LL |         struct Thing1;
+   |                ^^^^^^
+
+error[E0425]: cannot find type `Thing2` in this scope
+  --> $DIR/cfg_select.rs:280:13
+   |
+LL |     let t2: Thing2;
+   |             ^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/cfg_select.rs:265:16
+   |
+LL |     feature = "meow" => {
+   |     ---------------- the item is gated behind the `meow` feature
+LL |         struct Thing2;
+   |                ^^^^^^
+note: found an item that was configured out
+  --> $DIR/cfg_select.rs:272:16
+   |
+LL |     all(true, feature = "meow") => {
+   |               ---------------- the item is gated behind the `meow` feature
+LL |         struct Thing2;
+   |                ^^^^^^
+
 warning: unreachable configuration predicate
-  --> $DIR/cfg_select.rs:136:5
+  --> $DIR/cfg_select.rs:137:5
    |
 LL |     _ => {}
    |     - always matches
@@ -132,13 +167,13 @@ LL |     true => {}
    |     ^^^^ this configuration predicate is never reached
    |
 note: the lint level is defined here
-  --> $DIR/cfg_select.rs:2:9
+  --> $DIR/cfg_select.rs:3:9
    |
 LL | #![warn(unreachable_cfg_select_predicates)] // Unused warnings are disabled by default in UI tests.
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unreachable configuration predicate
-  --> $DIR/cfg_select.rs:142:5
+  --> $DIR/cfg_select.rs:143:5
    |
 LL |     true => {}
    |     ---- always matches
@@ -146,36 +181,36 @@ LL |     _ => {}
    |     ^ this configuration predicate is never reached
 
 warning: unreachable configuration predicate
-  --> $DIR/cfg_select.rs:149:5
+  --> $DIR/cfg_select.rs:150:5
    |
 LL |     _ => {}
    |     ^ this configuration predicate is never reached
 
 warning: unreachable configuration predicate
-  --> $DIR/cfg_select.rs:155:5
+  --> $DIR/cfg_select.rs:156:5
    |
 LL |     test => {}
    |     ^^^^ this configuration predicate is never reached
 
 warning: unreachable configuration predicate
-  --> $DIR/cfg_select.rs:157:5
+  --> $DIR/cfg_select.rs:158:5
    |
 LL |     _ => {}
    |     ^ this configuration predicate is never reached
 
 warning: unexpected `cfg` condition name: `a`
-  --> $DIR/cfg_select.rs:195:5
+  --> $DIR/cfg_select.rs:196:5
    |
 LL |     a + 1 => {}
    |     ^ help: found config with similar value: `target_feature = "a"`
    |
-   = help: expected names are: `FALSE` and `test` and 34 more
+   = help: expected names are: `FALSE`, `feature`, and `test` and 34 more
    = help: to expect this configuration use `--check-cfg=cfg(a)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition name: `cfg`
-  --> $DIR/cfg_select.rs:201:5
+  --> $DIR/cfg_select.rs:202:5
    |
 LL |     cfg!() => {}
    |     ^^^
@@ -183,7 +218,7 @@ LL |     cfg!() => {}
    = help: to expect this configuration use `--check-cfg=cfg(cfg)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
-error: aborting due to 17 previous errors; 7 warnings emitted
+error: aborting due to 19 previous errors; 7 warnings emitted
 
-Some errors have detailed explanations: E0539, E0565, E0753.
-For more information about an error, try `rustc --explain E0539`.
+Some errors have detailed explanations: E0425, E0539, E0565, E0753.
+For more information about an error, try `rustc --explain E0425`.
