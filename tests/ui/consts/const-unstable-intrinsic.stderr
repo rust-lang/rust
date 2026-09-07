@@ -89,12 +89,6 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
    |
 LL |         super::align_of_val(x)
    |         ^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
-   |
-LL +     #[rustc_const_unstable(feature = "...", issue = "...")]
-LL |     pub const unsafe fn align_of_val<T>(x: *const T) -> usize {
-   |
 
 error: intrinsic `non_const_fallback::size_of_val` cannot be (indirectly) exposed to stable
   --> $DIR/const-unstable-intrinsic.rs:84:18

@@ -247,7 +247,17 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     && self.enforce_recursive_const_stability()
                     && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate)
                 {
-                    emit_unstable_in_stable_exposed_error(self.ccx, span, gate, is_function_call);
+                    // Avoid suggesting to add `rustc_const_unstable` if the attribute is already
+                    // present. Need to directly check raw attributes as
+                    // `tcx.lookup_const_stability` also includes inherited stability.
+                    let already_unstable = find_attr!(self.tcx, self.def_id(), RustcConstStability { stability, .. } if stability.is_const_unstable());
+                    emit_unstable_in_stable_exposed_error(
+                        self.ccx,
+                        span,
+                        gate,
+                        is_function_call,
+                        already_unstable,
+                    );
                 }
 
                 return;
@@ -954,13 +964,14 @@ fn emit_unstable_in_stable_exposed_error(
     span: Span,
     gate: Symbol,
     is_function_call: bool,
+    already_unstable: bool,
 ) -> ErrorGuaranteed {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
     ccx.dcx().emit_err(diagnostics::UnstableInStableExposed {
         gate: gate.to_string(),
         span,
-        attr_span,
+        suggest_const_unstable: (!already_unstable).then_some(attr_span),
         is_function_call,
         is_function_call2: is_function_call,
     })

@@ -102,7 +102,7 @@ pub(crate) struct UnstableInStableExposed {
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
         applicability = "has-placeholders"
     )]
-    pub attr_span: Span,
+    pub suggest_const_unstable: Option<Span>,
 }
 
 #[derive(Diagnostic)]
