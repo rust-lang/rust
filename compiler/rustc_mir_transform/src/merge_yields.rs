@@ -99,9 +99,9 @@ use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
 use rustc_span::DUMMY_SP;
 use tracing::instrument;
 
-use crate::MirPass;
 use crate::pass_manager::PassPolicy;
 use crate::simplify::remove_dead_blocks;
+use crate::{MirPass, PassCtx};
 
 pub(super) struct MergeYields;
 
@@ -172,8 +172,8 @@ impl<'tcx> MirPass<'tcx> for MergeYields {
         remove_dead_blocks(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(true)
+    fn policy(&self, _ctx: &PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
     }
 }
 
