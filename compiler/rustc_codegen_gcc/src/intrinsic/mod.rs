@@ -40,14 +40,15 @@ use crate::type_of::LayoutGccExt;
 // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
 fn binop_libcall<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
-    typ: Type<'gcc>,
+    typl: Type<'gcc>,
+    typr: Type<'gcc>,
     name: &str,
 ) -> Function<'gcc> {
     cx.context.new_function(
         None,
         FunctionType::Extern,
-        typ,
-        &[cx.context.new_parameter(None, typ, "a"), cx.context.new_parameter(None, typ, "b")],
+        typl,
+        &[cx.context.new_parameter(None, typl, "a"), cx.context.new_parameter(None, typr, "b")],
         name,
         false,
     )
@@ -58,8 +59,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     name: Symbol,
 ) -> Option<Function<'gcc>> {
     let gcc_name = match name {
-        sym::powif32 => "__builtin_powif",
-        sym::powif64 => "__builtin_powi",
         sym::abort => "abort",
         _ => return None,
     };
@@ -163,32 +162,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::powif16 => {
-                let func = self.cx.context.get_builtin_function("__builtin_powif");
-                let arg0 = self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
-                let args = [arg0, args[1].immediate()];
-                let result = self.cx.context.new_call(None, func, &args);
-                self.cx.context.new_cast(None, result, self.cx.type_f16())
-            }
-            sym::powif128 => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, self.int_type, "b"),
-                    ],
-                    "__powitf2",
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
+
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");
@@ -317,7 +291,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => 'float_op: {
+            | sym::cos
+            | sym::powi => 'float_op: {
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
                     span_bug!(span, "expected float type for {:?} intrinsic: {:?}", name, ty);
@@ -352,15 +327,38 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     }
 
                     // FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
-                    (sym::minimum, F32) => binop_libcall(self, self.type_f32(), "fminimumf"),
-                    (sym::minimum, F64) => binop_libcall(self, self.type_f64(), "fminimum"),
-                    (sym::maximum, F32) => binop_libcall(self, self.type_f32(), "fmaximumf"),
-                    (sym::maximum, F64) => binop_libcall(self, self.type_f64(), "fmaximum"),
+                    (sym::minimum, F32) => {
+                        binop_libcall(self, self.type_f32(), self.type_f32(), "fminimumf")
+                    }
+                    (sym::minimum, F64) => {
+                        binop_libcall(self, self.type_f64(), self.type_f64(), "fminimum")
+                    }
+                    (sym::maximum, F32) => {
+                        binop_libcall(self, self.type_f32(), self.type_f32(), "fmaximumf")
+                    }
+                    (sym::maximum, F64) => {
+                        binop_libcall(self, self.type_f64(), self.type_f64(), "fmaximum")
+                    }
 
                     // `f16` has no builtin for these, use the intrinsic fallback bodies instead.
                     (sym::minimum | sym::maximum, F16) => {
                         let fallback = Instance::new_raw(instance.def_id(), instance.args);
                         return IntrinsicResult::Fallback(fallback);
+                    }
+
+                    (sym::powi, F32) => self.context.get_builtin_function("__builtin_powif"),
+                    (sym::powi, F64) => self.context.get_builtin_function("__builtin_powi"),
+                    (sym::powi, F128) => {
+                        binop_libcall(self, self.type_f128(), self.int_type, "__powitf2")
+                    }
+                    // `f16` can't go through `f16_builtin` due to the integer argument.
+                    (sym::powi, F16) => {
+                        let func = self.cx.context.get_builtin_function("__builtin_powif");
+                        let arg0 =
+                            self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
+                        let args = [arg0, args[1].immediate()];
+                        let result = self.cx.context.new_call(None, func, &args);
+                        break 'float_op self.cx.context.new_cast(None, result, self.cx.type_f16());
                     }
 
                     (sym::floor, F32) => self.context.get_builtin_function("floorf"),

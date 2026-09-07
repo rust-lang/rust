@@ -297,9 +297,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             target.expect("target for simd intrinsic"),
             source_info.span,
         );
-    } else if codegen_float_intrinsic_call(fx, intrinsic, args, destination) {
-        let ret_block = fx.get_block(target.expect("target for float intrinsic"));
-        fx.bcx.ins().jump(ret_block, &[]);
     } else {
         codegen_regular_intrinsic_call(
             fx,
@@ -313,84 +310,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         )?;
     }
     Ok(())
-}
-
-fn codegen_float_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    intrinsic: Symbol,
-    args: &[Spanned<mir::Operand<'tcx>>],
-    ret: CPlace<'tcx>,
-) -> bool {
-    let (name, arg_count, ty, clif_ty) = match intrinsic {
-        sym::powif16 => ("__powisf2", 2, fx.tcx.types.f16, types::F16), // compiler-builtins
-        sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32, types::F32), // compiler-builtins
-        sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
-        sym::powif128 => ("__powitf2", 2, fx.tcx.types.f128, types::F128), // compiler-builtins
-
-        _ => return false,
-    };
-
-    if args.len() != arg_count {
-        bug!("wrong number of args for intrinsic {:?}", intrinsic);
-    }
-
-    let (a, b, c);
-    let args = match args {
-        [x] => {
-            a = [codegen_operand(fx, &x.node).load_scalar(fx)];
-            &a as &[_]
-        }
-        [x, y] => {
-            b = [
-                codegen_operand(fx, &x.node).load_scalar(fx),
-                codegen_operand(fx, &y.node).load_scalar(fx),
-            ];
-            &b
-        }
-        [x, y, z] => {
-            c = [
-                codegen_operand(fx, &x.node).load_scalar(fx),
-                codegen_operand(fx, &y.node).load_scalar(fx),
-                codegen_operand(fx, &z.node).load_scalar(fx),
-            ];
-            &c
-        }
-        _ => unreachable!(),
-    };
-
-    let layout = fx.layout_of(ty);
-    // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift operations
-    // for `f16` and `f128` once the lowerings have been implemented in Cranelift.
-    let val = match intrinsic {
-        // These intrinsics aren't supported natively by Cranelift.
-        // Lower them to a libcall.
-        sym::powif16 | sym::powif32 | sym::powif64 | sym::powif128 => {
-            let temp;
-            let (clif_ty, args) = if intrinsic == sym::powif16 {
-                temp = [codegen_f16_f128::f16_to_f32(fx, args[0]), args[1]];
-                (types::F32, temp.as_slice())
-            } else {
-                (clif_ty, args)
-            };
-            let input_tys: Vec<_> =
-                vec![AbiParam::new(clif_ty), lib_call_arg_param(fx.tcx, types::I32, true)];
-            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
-            if intrinsic == sym::powif16 {
-                codegen_f16_f128::f32_to_f16(fx, ret_val)
-            } else {
-                ret_val
-            }
-        }
-        _ => {
-            let input_tys: Vec<_> = args.iter().map(|_| AbiParam::new(clif_ty)).collect();
-            fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0]
-        }
-    };
-
-    let res = CValue::by_val(val, layout);
-    ret.write_cvalue(fx, res);
-
-    true
 }
 
 /// Used to distinguish fallbacks of float intrinsics. For some we have a codegen fallback,
@@ -1155,7 +1074,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
         | sym::minimum
         | sym::maximum
         | sym::minimum_number_nsz
-        | sym::maximum_number_nsz => {
+        | sym::maximum_number_nsz
+        | sym::powi => {
             intrinsic_args!(fx, args => (arg1, arg2); intrinsic);
             let layout = arg1.layout();
             let ty::Float(float_ty) = layout.ty.kind() else {
@@ -1196,6 +1116,27 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
                 (sym::minimum_number_nsz, _) => Codegen(crate::num::codegen_float_min(fx, x, y)),
                 (sym::maximum_number_nsz, _) => Codegen(crate::num::codegen_float_max(fx, x, y)),
+
+                // Handle these manually because of the i32 argument
+                (sym::powi, F32 | F64 | F128) => {
+                    let ty = fx.clif_type(layout.ty).unwrap();
+                    let arg = AbiParam::new(ty);
+                    let i32 = AbiParam::new(types::I32);
+                    let name = match float_ty {
+                        F32 => "__powisf2",
+                        F64 => "__powidf2",
+                        F128 => "__powitf2",
+                        _ => unreachable!(),
+                    };
+                    Codegen(fx.lib_call(name, vec![arg, i32], vec![arg], &[x, y])[0])
+                }
+                (sym::powi, F16) => {
+                    let x = codegen_f16_f128::f16_to_f32(fx, x);
+                    let f32 = AbiParam::new(types::F32);
+                    let i32 = AbiParam::new(types::I32);
+                    let val = fx.lib_call("__powisf2", vec![f32, i32], vec![f32], &[x, y])[0];
+                    Codegen(codegen_f16_f128::f32_to_f16(fx, val))
+                }
 
                 (_, F16) => {
                     // We use the intrinsic fallback bodies for the rest

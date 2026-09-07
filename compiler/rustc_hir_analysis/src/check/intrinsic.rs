@@ -129,10 +129,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::offset_of
         | sym::overflow_checks
         | sym::powf
-        | sym::powif16
-        | sym::powif32
-        | sym::powif64
-        | sym::powif128
+        | sym::powi
         | sym::prefetch_read_data
         | sym::prefetch_read_instruction
         | sym::prefetch_write_data
@@ -368,10 +365,7 @@ pub(crate) fn check_intrinsic_type(
             tcx.types.unit,
         ),
 
-        sym::powif16 => (0, 0, vec![tcx.types.f16, tcx.types.i32], tcx.types.f16),
-        sym::powif32 => (0, 0, vec![tcx.types.f32, tcx.types.i32], tcx.types.f32),
-        sym::powif64 => (0, 0, vec![tcx.types.f64, tcx.types.i32], tcx.types.f64),
-        sym::powif128 => (0, 0, vec![tcx.types.f128, tcx.types.i32], tcx.types.f128),
+        sym::powi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
 
         sym::fma | sym::fmuladd => (1, 0, vec![param(0), param(0), param(0)], param(0)),
 

@@ -350,9 +350,6 @@ impl CodegenBackend for LlvmCodegenBackend {
             sym::round, sym::round_ties_even,
             sym::fma,
 
-            // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
-            sym::powif16,
-
             sym::copysign,
         ];
 

@@ -50,26 +50,6 @@ use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
-fn call_simple_intrinsic<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    name: Symbol,
-    args: &[OperandRef<'tcx, &'ll Value>],
-) -> Option<&'ll Value> {
-    let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
-        sym::powif16 => ("llvm.powi", &[bx.type_f16(), bx.type_i32()]),
-        sym::powif32 => ("llvm.powi", &[bx.type_f32(), bx.type_i32()]),
-        sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
-        sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
-
-        _ => return None,
-    };
-    Some(bx.call_intrinsic(
-        base_name,
-        type_params,
-        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-    ))
-}
-
 impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
     fn black_box(&mut self, result: PlaceRef<'tcx, &'ll Value>, span: Span) {
         let result_val_span = [result.val.llval];
@@ -121,9 +101,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
 
-        let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
-            _ if simple.is_some() => simple.unwrap(),
             // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
             sym::minimum_number_nsz | sym::maximum_number_nsz if llvm_version >= (22, 0, 0) => {
                 let intrinsic_name = if name == sym::minimum_number_nsz {
@@ -509,7 +487,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::sin
             | sym::cos
             | sym::minimum
-            | sym::maximum => {
+            | sym::maximum
+            | sym::powi => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -555,11 +534,18 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                     sym::minimum => "llvm.minimum",
                     sym::maximum => "llvm.maximum",
+
+                    sym::powi => "llvm.powi",
+
                     _ => bug!(),
                 };
+
+                let params: &[&'ll Type] =
+                    if name == sym::powi { &[llty, self.type_i32()] } else { &[llty] };
+
                 self.call_intrinsic(
                     llvm_name,
-                    &[llty],
+                    params,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }

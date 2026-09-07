@@ -1067,37 +1067,13 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::sqrtf128(x) }
 }
 
-/// Raises an `f16` to an integer power.
+/// Raises a floating-point value to an integer power.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::powi`](../../std/primitive.f16.html#method.powi)
-#[inline]
+/// The stabilized versions of this intrinsic are available on the float primitives via the
+/// `powi` method. For example, [`f32::powi`](../../std/primitive.f32.html#method.powi).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powif16(a: f16, x: i32) -> f16 {
-    powif32(a as f32, x) as f16
-}
-/// Raises an `f32` to an integer power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::powi`](../../std/primitive.f32.html#method.powi)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powif32(a: f32, x: i32) -> f32;
-/// Raises an `f64` to an integer power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::powi`](../../std/primitive.f64.html#method.powi)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powif64(a: f64, x: i32) -> f64;
-/// Raises an `f128` to an integer power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::powi`](../../std/primitive.f128.html#method.powi)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powif128(a: f128, x: i32) -> f128;
+pub fn powi<T: bounds::FloatPrimitive>(a: T, x: i32) -> T;
 
 intrinsic_dispatch_on_type! {
     /// Returns the sine of a floating-point value.
