@@ -360,12 +360,7 @@ impl File {
         let off = match pos {
             SeekFrom::Start(p) => p,
             SeekFrom::End(p) => {
-                // Seeking to position 0xFFFFFFFFFFFFFFFF causes the current position to be set to the end of the file.
-                if p == 0 {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    self.file_attr()?.size().checked_add_signed(p).ok_or(NEG_OFF_ERR)?
-                }
+                self.file_attr()?.size().checked_add_signed(p).ok_or(NEG_OFF_ERR)?
             }
             SeekFrom::Current(p) => self.tell()?.checked_add_signed(p).ok_or(NEG_OFF_ERR)?,
         };

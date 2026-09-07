@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/suggest-async-fn-for-returned-future-ineligible-issue-159495.rs:12:20
    |
 LL |     let _: i32 = { number() };
-   |                    ^^^^^^^^ expected `i32`, found future
+   |            ---     ^^^^^^^^ expected `i32`, found future
+   |            |
+   |            expected due to this
 
 error[E0308]: mismatched types
   --> $DIR/suggest-async-fn-for-returned-future-ineligible-issue-159495.rs:24:9

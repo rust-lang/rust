@@ -492,6 +492,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/nocontentexpr_after_item.rs");
     }
     #[test]
+    fn non_isolated_self() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/non_isolated_self.rs");
+    }
+    #[test]
     fn not_null_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/not_null_pat.rs"); }
     #[test]
     fn offset_of_parens() {
@@ -926,6 +930,10 @@ mod err {
     #[test]
     fn missing_static_type() {
         run_and_expect_errors("test_data/parser/inline/err/missing_static_type.rs");
+    }
+    #[test]
+    fn non_isolated_self_err() {
+        run_and_expect_errors("test_data/parser/inline/err/non_isolated_self_err.rs");
     }
     #[test]
     fn path_item_without_excl() {

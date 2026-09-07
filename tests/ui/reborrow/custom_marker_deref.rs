@@ -1,5 +1,8 @@
 //@ run-pass
 
+//! Test that CoerceShared of custom ZST marker type reborrows the type automatically from a
+//! `&mut CustomMarker` deref.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 

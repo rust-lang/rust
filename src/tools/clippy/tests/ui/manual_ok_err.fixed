@@ -76,7 +76,7 @@ fn no_lint() {
         Ok(v) => Some(v),
     };
 
-    let _ = match Ok::<_, std::convert::Infallible>(1) {
+    let _ = match Ok::<_, !>(1) {
         Ok(3) => None,
         Ok(v) => Some(v),
     };

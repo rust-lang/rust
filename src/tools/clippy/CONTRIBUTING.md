@@ -108,7 +108,7 @@ For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
 a lot more type hints.
 
-To have `rust-analyzer` also work in the `clippy_dev` and `lintcheck` crates, add the following configuration
+To have `rust-analyzer` also work in the `clippy-dev` and `lintcheck` crates, add the following configuration
 
 ```json
 {
@@ -257,6 +257,13 @@ changelog: Something 3
 
 [changelog]: CHANGELOG.md
 
+## LLM policy
+
+Clippy adopts the same [LLM usage policy] as `rust-lang/rust`.
+You can consult the [LLM usage chapter] in the Clippy book to see
+what that means, how it applies.
+
+
 ## License
 
 All code in this repository is under the [Apache-2.0] or the [MIT] license.
@@ -265,3 +272,5 @@ All code in this repository is under the [Apache-2.0] or the [MIT] license.
 
 [Apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
 [MIT]: https://opensource.org/licenses/MIT
+[LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
+[LLM usage chapter]: https://doc.rust-lang.org/nightly/clippy/development/llm_usage.html

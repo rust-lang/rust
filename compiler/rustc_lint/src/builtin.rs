@@ -1401,7 +1401,7 @@ declare_lint! {
     /// See [RFC 2056] for more details. This feature is currently only
     /// available on the nightly channel, see [tracking issue #48214].
     ///
-    /// [RFC 2056]: https://github.com/rust-lang/rfcs/blob/master/text/2056-allow-trivial-where-clause-constraints.md
+    /// [RFC 2056]: https://rust-lang.github.io/rfcs/2056-allow-trivial-where-clause-constraints.html
     /// [tracking issue #48214]: https://github.com/rust-lang/rust/issues/48214
     TRIVIAL_BOUNDS,
     Warn,
@@ -2509,7 +2509,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let span = cx.tcx.def_span(adt_def.did());
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
-                            .inhabited_predicate(cx.tcx, *adt_def)
+                            .inhabited_predicate(cx.tcx)
                             .instantiate(cx.tcx, args)
                             .apply_any_module(cx.tcx, cx.typing_env())
                         {

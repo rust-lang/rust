@@ -106,9 +106,8 @@ use crate::{
 pub use autoderef::autoderef;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, ByRef, ExplicitDropMethodUseKind,
-    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
-    PointerCast, ReturnKind, cast::CastError, could_coerce, could_unify, could_unify_deeply,
-    infer_query_with_inspect,
+    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast, ReturnKind,
+    cast::CastError, could_coerce, could_unify, could_unify_deeply, infer_query_with_inspect,
 };
 pub use lower::{
     FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, LifetimeElisionKind,

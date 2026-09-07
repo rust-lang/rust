@@ -101,18 +101,23 @@ pub(crate) struct EncounteredErrorWhileInstantiatingGlobalAsm {
 pub(crate) struct StartNotFound;
 
 #[derive(Diagnostic)]
-#[diag("this function {$is_call ->
-    [true] call
-    *[false] definition
-} uses {$is_scalable ->
-    [true] scalable
-    *[false] SIMD
-} vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
-    [true] {\" \"}in the caller
-    *[false] {\"\"}
-}")]
+#[diag(
+    "this function {$is_call ->
+        [true] call
+        *[false] definition
+    } requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+        [true] {\" \"}in the caller
+        *[false] {\"\"}
+    }"
+)]
+#[note(
+    "the function has type `{$ty}` in its signature, which is passed in {$is_scalable ->
+        [true] scalable
+        *[false] SIMD
+    } vector registers under the \"{$abi}\" ABI"
+)]
 #[help(
-    "consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable=\"{$required_feature}\")]`)"
+    "consider enabling the missing target feature globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable=\"{$required_feature}\")]`)"
 )]
 pub(crate) struct AbiErrorDisabledVectorType<'a> {
     #[primary_span]
@@ -124,6 +129,7 @@ pub(crate) struct AbiErrorDisabledVectorType<'a> {
     )]
     pub span: Span,
     pub required_feature: &'a str,
+    pub abi: String,
     pub ty: Ty<'a>,
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,

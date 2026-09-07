@@ -142,7 +142,8 @@ impl LateLintPass<'_> for MinIdentChars {
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
             | ItemKind::Impl(_)
-            | ItemKind::Use(..) => return,
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => return,
         };
         if let Some(missing) = self.check_sym(ident.name)
             && !(matches!(i.kind, ItemKind::Fn { .. })

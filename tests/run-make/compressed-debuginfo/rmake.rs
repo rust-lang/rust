@@ -2,6 +2,8 @@
 
 //@ only-linux
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 // FIXME: This test isn't comprehensive and isn't covering all possible combinations.
 

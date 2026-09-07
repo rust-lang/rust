@@ -53,7 +53,7 @@ fn expand<'cx>(
                     segments: cx
                         .std_path(&[sym::panic, mac])
                         .into_iter()
-                        .map(|ident| PathSegment::from_ident(ident))
+                        .map(PathSegment::from_ident)
                         .collect(),
                 },
                 args: Box::new(DelimArgs {

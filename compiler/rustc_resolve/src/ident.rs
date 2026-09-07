@@ -4,8 +4,9 @@ use Determinacy::*;
 use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PerNS};
 use rustc_lint_defs::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
+use rustc_middle::middle::resolve::PartialRes;
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
@@ -1030,11 +1031,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )
             }
             ModuleOrUniformRoot::OpenModule(sym) => {
-                let open_ns_name = format!("{}::{}", sym.as_str(), ident.name);
-                let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(&open_ns_name));
-                match self.extern_prelude_get_flag(ns_ident, ident.span, finalize.is_some()) {
-                    Some(decl) => Ok(decl),
-                    None => Err(Determinacy::Determined),
+                if ns != TypeNS {
+                    Err(Determined)
+                } else {
+                    if ident.name == kw::SelfLower {
+                        let res = Res::OpenMod(sym);
+                        return Ok(self.arenas.new_pub_def_decl(
+                            res,
+                            ident.span,
+                            LocalExpnId::ROOT,
+                        ));
+                    }
+
+                    let open_ns_name = format!("{}::{}", sym.as_str(), ident.name);
+                    let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(&open_ns_name));
+                    match self.extern_prelude_get_flag(ns_ident, ident.span, finalize.is_some()) {
+                        Some(decl) => Ok(decl),
+                        None => Err(Determined),
+                    }
                 }
             }
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
@@ -1512,7 +1526,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
                             }
                         }
-                        RibKind::ConstantItem(_, item) => {
+                        RibKind::ConstantItem(_, item, requires_type) => {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
                                 let (span, resolution_error) = match item {
@@ -1541,6 +1555,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                                 suggestion: "const",
                                                 current: "let",
                                                 type_span,
+                                                requires_type,
                                             },
                                         )
                                     }
@@ -1551,6 +1566,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             suggestion: "let",
                                             current: kind.as_str(),
                                             type_span: None,
+                                            requires_type,
                                         },
                                     ),
                                 };
@@ -1621,7 +1637,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial
                                 && !matches!(res, Res::SelfTyAlias { .. })
                             {
@@ -1715,7 +1731,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial {
                                 if let Some(span) = finalize {
                                     let error = match cause {
@@ -1907,6 +1923,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 "this `super` would go above the crate root".to_string(),
                                 None,
                                 None,
+                                None,
                             )
                         },
                     );
@@ -1983,7 +2000,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 "can only be used in path start position".to_string(),
                             )
                         };
-                        (message, label, None, None)
+                        (message, label, None, None, None)
                     },
                 );
             }
@@ -2140,7 +2157,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 } else {
                                     None
                                 };
-                                (message, label, None, note)
+                                (message, label, None, note, None)
                             },
                         );
                     }
@@ -2165,7 +2182,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module_had_parse_errors,
                         module,
                         || {
-                            let (message, label, suggestion) =
+                            let (message, label, suggestion, help) =
                                 this.get_mut().report_path_resolution_error(
                                     path,
                                     opt_ns,
@@ -2178,7 +2195,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     ident,
                                     diag_metadata,
                                 );
-                            (message, label, suggestion, None)
+                            (message, label, suggestion, None, help)
                         },
                     );
                 }

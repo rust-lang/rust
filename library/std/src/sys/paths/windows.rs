@@ -7,8 +7,8 @@ use crate::os::windows::ffi::EncodeWide;
 use crate::os::windows::prelude::*;
 use crate::path::{self, PathBuf};
 #[cfg(not(target_vendor = "uwp"))]
-use crate::sys::pal::api::WinError;
-use crate::sys::pal::{api, c, cvt, fill_utf16_buf, os2path};
+use crate::sys::pal::api::{self, WinError};
+use crate::sys::pal::{c, cvt, fill_utf16_buf, os2path};
 use crate::{fmt, io, ptr};
 
 pub struct SplitPaths<'a> {

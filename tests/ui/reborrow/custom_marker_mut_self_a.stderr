@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `a` as mutable more than once at a time
-  --> $DIR/custom_marker_mut_self_a.rs:14:20
+  --> $DIR/custom_marker_mut_self_a.rs:17:20
    |
 LL |     let b = method(a);
    |                    - first mutable borrow occurs here
@@ -10,7 +10,7 @@ LL |     let _ = (a, b);
    |                 - first borrow later used here
 
 error[E0505]: cannot move out of `a` because it is borrowed
-  --> $DIR/custom_marker_mut_self_a.rs:16:14
+  --> $DIR/custom_marker_mut_self_a.rs:19:14
    |
 LL |     let a = CustomMarker(PhantomData);
    |         - binding `a` declared here

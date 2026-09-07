@@ -23,6 +23,7 @@ impl StableTrait for UnstableType {}
 impl UnstableTrait for StableType {}
 
 #[unstable(feature = "h", issue = "none")]
+//~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
 impl StableTrait for ! {}
 
 // Note: If rust_cold_cc is stabilized, switch this to another (unstable) ABI.
@@ -39,5 +40,12 @@ impl StableTrait for fn() -> ! {}
 
 #[unstable(feature = "l", issue = "none")]
 impl StableTrait for fn() -> UnstableType {}
+
+#[unstable(feature = "m", issue = "none")]
+//~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
+impl StableTrait for fn(!) {}
+
+#[unstable(feature = "n", issue = "none")]
+impl StableTrait for fn(UnstableType) {}
 
 fn main() {}

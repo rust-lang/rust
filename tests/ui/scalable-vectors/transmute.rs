@@ -4,7 +4,7 @@
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features, dead_code, improper_ctypes)]
 #![allow(nonstandard_style, private_interfaces)]
-#![feature(abi_unadjusted, link_llvm_intrinsics, rustc_attrs)]
+#![feature(link_llvm_intrinsics, rustc_attrs)]
 
 // Tests that use of transmute between `svuint8x2_t` and `svint8x2_t` builds with optimisations
 // without any failures from LLVM.
@@ -28,11 +28,8 @@ struct svint8x2_t(svint8_t, svint8_t);
 
 #[target_feature(enable = "sve")]
 pub unsafe fn svld2_u8(pg: svbool_t, base: *const i8) -> svuint8x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld2.sret.nxv16i8"
-        )]
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv16i8")]
         fn _svld2_s8(pg: svbool_t, base: *const i8) -> svint8x2_t;
     }
     transmute(_svld2_s8(pg, base))

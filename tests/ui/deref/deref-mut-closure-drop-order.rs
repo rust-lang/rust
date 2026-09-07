@@ -1,7 +1,7 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/16774
 
 //@ run-pass
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 use std::ops::{Deref, DerefMut};
 
@@ -22,14 +22,14 @@ impl Deref for X {
     type Target = isize;
 
     fn deref(&self) -> &isize {
-        let &X(box ref x) = self;
+        let &X(ref x) = self;
         x
     }
 }
 
 impl DerefMut for X {
     fn deref_mut(&mut self) -> &mut isize {
-        let &mut X(box ref mut x) = self;
+        let &mut X(ref mut x) = self;
         x
     }
 }

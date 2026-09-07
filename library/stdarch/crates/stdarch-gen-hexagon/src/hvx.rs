@@ -213,7 +213,7 @@ fn parse_compound_expr(expr: &str) -> Option<CompoundExpr> {
         if let Some(paren_pos) = after_prefix.find(')') {
             let builtin_name = &after_prefix[..paren_pos];
             let rest = &after_prefix[paren_pos + 1..]; // Skip the closing ) of the WRAP
-                                                       // rest should now be "(args)"
+            // rest should now be "(args)"
             if rest.starts_with('(') && rest.ends_with(')') {
                 let args_str = &rest[1..rest.len() - 1];
                 let args = parse_compound_args(args_str)?;
@@ -1269,7 +1269,7 @@ fn generate_extern_block(intrinsics: &[IntrinsicInfo], mode: VectorMode) -> Stri
         mode.bytes()
     ));
     output.push_str("#[allow(improper_ctypes)]\n");
-    output.push_str("unsafe extern \"unadjusted\" {\n");
+    output.push_str("unsafe extern \"llvm-intrinsic\" {\n");
 
     for (builtin_name, instr_name, return_type, param_types) in &decls {
         let base_link = builtin_name.replace('_', ".");

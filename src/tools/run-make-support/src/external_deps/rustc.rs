@@ -76,6 +76,9 @@ pub fn rustc_path() -> String {
 fn setup_common() -> Command {
     let mut cmd = Command::new(rustc_path());
     set_host_compiler_dylib_path(&mut cmd);
+    if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
+        cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
+    }
     cmd
 }
 
@@ -394,6 +397,13 @@ impl Rustc {
     /// Specify `-C split-debuginfo={packed,unpacked,off}`.
     pub fn split_debuginfo(&mut self, split_kind: &str) -> &mut Self {
         self.cmd.arg(format!("-Csplit-debuginfo={split_kind}"));
+        self
+    }
+
+    /// Specify `-C link-self-contained={y,n}`.
+    pub fn link_self_contained(&mut self, enabled: bool) -> &mut Self {
+        let enabled = if enabled { "y" } else { "n" };
+        self.cmd.arg(format!("-Clink-self-contained={enabled}"));
         self
     }
 

@@ -1,3 +1,4 @@
+use rustc_type_ir::PredicateProxy;
 use tracing::debug;
 
 use crate::query::Providers;
@@ -79,7 +80,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserAndAnonymizerVisitor<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.has_type_flags(TypeFlags::HAS_BINDER_VARS | TypeFlags::HAS_FREE_REGIONS) {
             p.super_fold_with(self)
         } else {

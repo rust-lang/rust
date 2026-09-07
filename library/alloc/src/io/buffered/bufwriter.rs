@@ -470,6 +470,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
         let old_len = self.buf.len();
         let buf_len = buf.len();
         let src = buf.as_ptr();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let dst = self.buf.as_mut_ptr().add(old_len);
             ptr::copy_nonoverlapping(src, dst, buf_len);

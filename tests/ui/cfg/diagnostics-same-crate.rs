@@ -16,6 +16,21 @@ pub mod inner {
         pub mod hi {}
     }
 
+    cfg_select! {
+        false => { //~ NOTE the item is gated here
+            //~^ NOTE the item is gated here
+            //~| NOTE the item is gated here
+            pub mod selected_out {
+                //~^ NOTE found an item that was configured out
+                //~| NOTE found an item that was configured out
+                //~| NOTE found an item that was configured out
+                pub fn hello() {}
+                pub mod hi {}
+            }
+        }
+        _ => {}
+    }
+
     pub mod wrong {
         #[cfg(feature = "suggesting me fails the test!!")]
         pub fn meow() {}
@@ -35,6 +50,12 @@ mod placeholder {
     use super::inner::doesnt_exist::hi;
     //~^ ERROR unresolved import `super::inner::doesnt_exist`
     //~| NOTE could not find `doesnt_exist` in `inner`
+    use super::inner::selected_out;
+    //~^ ERROR unresolved import `super::inner::selected_out`
+    //~| NOTE no `selected_out` in `inner`
+    use super::inner::selected_out::hi;
+    //~^ ERROR unresolved import `super::inner::selected_out`
+    //~| NOTE could not find `selected_out` in `inner`
 }
 
 #[cfg(i_dont_exist_and_you_can_do_nothing_about_it)] //~ NOTE the item is gated here
@@ -52,6 +73,10 @@ fn main() {
     // The module isn't found - we get a diagnostic.
     inner::doesnt_exist::hello(); //~ ERROR cannot find
     //~| NOTE could not find `doesnt_exist` in `inner`
+
+    // The module isn't found - we get a diagnostic.
+    inner::selected_out::hello(); //~ ERROR cannot find
+    //~| NOTE could not find `selected_out` in `inner`
 
     // It should find the one in the right module, not the wrong one.
     inner::right::meow(); //~ ERROR cannot find function

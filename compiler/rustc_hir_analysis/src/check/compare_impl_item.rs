@@ -8,15 +8,15 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
 use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, RegionExt, Ty, TyCtxt,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, Span};
@@ -238,7 +238,7 @@ fn compare_method_clause_entailment<'tcx>(
 
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     // NOTE(-Zhigher-ranked-assumptions): The `hybrid_preds`
     // should be well-formed. However, using them may result in
     // region errors as we currently don't track placeholder
@@ -254,7 +254,7 @@ fn compare_method_clause_entailment<'tcx>(
     //
     // cc trait-system-refactor-initiative/issues/166.
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
-    debug!(caller_bounds=?param_env.caller_bounds());
+    debug!(?param_env);
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
@@ -494,7 +494,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .into_iter()
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -2157,12 +2157,10 @@ fn compare_type_const<'tcx>(
     impl_const_item: ty::AssocItem,
     trait_const_item: ty::AssocItem,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_is_type_const = tcx.is_type_const(impl_const_item.def_id);
-    let trait_type_const_span = tcx.type_const_span(trait_const_item.def_id);
+    let impl_is_type_const = tcx.is_type_const_syntax(impl_const_item.def_id);
+    let trait_is_type_const = tcx.is_type_const_syntax(trait_const_item.def_id);
 
-    if let Some(trait_type_const_span) = trait_type_const_span
-        && !impl_is_type_const
-    {
+    if trait_is_type_const && !impl_is_type_const {
         return Err(tcx
             .dcx()
             .struct_span_err(
@@ -2170,10 +2168,7 @@ fn compare_type_const<'tcx>(
                 "implementation of a `type const` must also be marked as `type const`",
             )
             .with_span_note(
-                MultiSpan::from_spans(vec![
-                    tcx.def_span(trait_const_item.def_id),
-                    trait_type_const_span,
-                ]),
+                tcx.def_span(trait_const_item.def_id),
                 "trait declaration of const is marked as `type const`",
             )
             .emit());
@@ -2230,7 +2225,7 @@ fn compare_const_clause_entailment<'tcx>(
     );
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -2380,9 +2375,9 @@ fn compare_type_clause_entailment<'tcx>(
     }
 
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
-    debug!(caller_bounds=?param_env.caller_bounds());
+    debug!(?param_env);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
@@ -2627,7 +2622,7 @@ fn param_env_with_gat_bounds<'tcx>(
 ) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    let mut clauses = param_env.caller_bounds().to_vec();
+    let mut clauses = param_env.caller_bounds().collect::<Vec<_>>();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking
@@ -2727,9 +2722,9 @@ fn param_env_with_gat_bounds<'tcx>(
             _ => clauses.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionClause {
-                        projection_term: ty::AliasTerm::new_from_def_id(
+                        projection_term: ty::AliasTerm::new(
                             tcx,
-                            trait_ty.def_id,
+                            ty::AliasTermKind::ProjectionTy { def_id: trait_ty.def_id },
                             rebased_args,
                         ),
                         term: normalize_impl_ty.into(),
@@ -2741,7 +2736,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
+    ty::ParamEnv::new(tcx, clauses)
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

@@ -24,7 +24,6 @@ use smallvec::SmallVec;
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::{IntoQueryKey, Providers};
-use crate::ty::region::RegionExt;
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitClause,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -756,9 +755,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Uint(t) => write!(self, "{}", t.name_str())?,
             ty::Float(t) => write!(self, "{}", t.name_str())?,
             ty::Pat(ty, pat) => {
-                write!(self, "(")?;
+                write!(self, "pattern_type!(")?;
                 ty.print(self)?;
-                write!(self, ") is {pat:?}")?;
+                write!(self, " is {pat:?})")?;
             }
             ty::RawPtr(ty, mutbl) => {
                 write!(self, "*{} ", mutbl.ptr_str())?;
@@ -1539,7 +1538,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::ConstKind::Alias(_, ty::AliasConst { kind, args, .. }) => {
                 match kind {
                     ty::AliasConstKind::Projection { def_id }
-                    | ty::AliasConstKind::Inherent { def_id }
+                    | ty::AliasConstKind::InherentSelf { def_id }
+                    | ty::AliasConstKind::InherentImpl { def_id }
                     | ty::AliasConstKind::Free { def_id } => {
                         self.pretty_print_value_path(def_id, args)?;
                     }
@@ -2706,15 +2706,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
+    /// Regions bound by the binder being named (and placeholders) that have
+    /// already been named.
     region_map: UnordMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>,
-    name: &'a mut (
-                dyn FnMut(
-        Option<ty::DebruijnIndex>, // Debruijn index of the folded late-bound region
-        ty::DebruijnIndex,         // Index corresponding to binder level
-        ty::BoundRegion<'tcx>,
-    ) -> ty::Region<'tcx>
-                    + 'a
-            ),
+    name: &'a mut (dyn FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx> + 'a),
 }
 
 impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
@@ -2745,8 +2740,13 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
         let region = match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db >= self.current_index => {
-                *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
+            // Only name regions bound by the binder being named. Regions bound by an
+            // enclosing binder that merely escape through this one keep their name
+            // (they were named when that binder was folded) and their index, and must
+            // not end up in `region_map`, which callers use to build `for<...>` lists
+            // (#102392, #134410).
+            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db == self.current_index => {
+                *self.region_map.entry(br).or_insert_with(|| name(br))
             }
             ty::RePlaceholder(ty::PlaceholderRegion {
                 bound: ty::BoundRegion { kind, .. },
@@ -2759,10 +2759,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind };
-                        *self
-                            .region_map
-                            .entry(br)
-                            .or_insert_with(|| name(None, self.current_index, br))
+                        *self.region_map.entry(br).or_insert_with(|| name(br))
                     }
                 }
             }
@@ -2871,29 +2868,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
             let trim_path = with_forced_trimmed_paths();
             // Closure used in `RegionFolder` to create names for anonymous late-bound
-            // regions. We use two `DebruijnIndex`es (one for the currently folded
-            // late-bound region and the other for the binder level) to determine
-            // whether a name has already been created for the currently folded region,
-            // see issue #102392.
-            let mut name = |lifetime_idx: Option<ty::DebruijnIndex>,
-                            binder_level_idx: ty::DebruijnIndex,
-                            br: ty::BoundRegion<'tcx>| {
+            // regions.
+            let mut name = |br: ty::BoundRegion<'tcx>| {
                 let (name, kind) = if let Some(name) = br.kind.get_name(tcx) {
                     (name, br.kind)
                 } else {
                     let name = next_name(self);
                     (name, ty::BoundRegionKind::NamedForPrinting(name))
                 };
-
-                if let Some(lt_idx) = lifetime_idx {
-                    if lt_idx > binder_level_idx {
-                        return ty::Region::new_bound(
-                            tcx,
-                            ty::INNERMOST,
-                            ty::BoundRegion { var: br.var, kind },
-                        );
-                    }
-                }
 
                 // Unconditionally render `unsafe<>`.
                 if !trim_path || mode == WrapBinderMode::Unsafe {
@@ -3190,7 +3172,7 @@ define_print! {
 
     ty::AliasTerm<'tcx> {
         match self.kind {
-            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConstSelf { .. } => {
                 p.pretty_print_inherent_projection(*self)?;
             }
             ty::AliasTermKind::ProjectionTy { def_id } => {
@@ -3206,7 +3188,8 @@ define_print! {
             | ty::AliasTermKind::FreeConst { def_id }
             | ty::AliasTermKind::OpaqueTy { def_id }
             | ty::AliasTermKind::AnonConst { def_id }
-            | ty::AliasTermKind::ProjectionConst { def_id } => {
+            | ty::AliasTermKind::ProjectionConst { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => {
                 p.print_def_path(def_id, self.args)?;
             }
         }

@@ -524,7 +524,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_multicast_loop_v6(false).expect("set_multicast_loop_v6 should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -541,7 +541,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_multicast_loop_v6(false).expect("set_multicast_loop_v6 should succeed");
     /// assert_eq!(socket.multicast_loop_v6().unwrap(), false);
     /// ```

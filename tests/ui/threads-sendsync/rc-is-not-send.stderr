@@ -24,11 +24,11 @@ note: required because it appears within the type `Foo`
    |
 LL | struct Foo {
    |        ^^^
-note: required because it's used within this closure
-  --> $DIR/rc-is-not-send.rs:25:19
+note: required because `x` is used within this closure
+  --> $DIR/rc-is-not-send.rs:27:17
    |
-LL |     thread::spawn(move || {
-   |                   ^^^^^^^
+LL |         let y = x;
+   |                 ^
 note: required by a bound in `spawn`
   --> $SRC_DIR/std/src/thread/functions.rs:LL:COL
 

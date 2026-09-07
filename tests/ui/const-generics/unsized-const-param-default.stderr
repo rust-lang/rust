@@ -1,0 +1,28 @@
+error[E0277]: the size for values of type `[()]` cannot be known at compilation time
+  --> $DIR/unsized-const-param-default.rs:5:26
+   |
+LL | struct S<const N: [()] = { loop {} }>;
+   |                          ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[()]`
+   = note: statics and constants must have a statically known size
+
+error: `[()]` is forbidden as the type of a const generic parameter
+  --> $DIR/unsized-const-param-default.rs:5:19
+   |
+LL | struct S<const N: [()] = { loop {} }>;
+   |                   ^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(min_adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -2,7 +2,6 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::Session;
 use rustc_span::Spanned;
 
 use crate::PassPolicy;
@@ -16,7 +15,7 @@ struct MentionedItemsVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for MentionedItems {
-    fn policy(&self, _sess: &Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // If this pass is skipped the collector assume that nothing got mentioned! We could
         // potentially skip it in opt-level 0 if we are sure that opt-level will never *remove* uses
         // of anything, but that still seems fragile. Furthermore, even debug builds use level 1, so

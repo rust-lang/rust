@@ -11,11 +11,12 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_TERM_VERBOSE: true
   LIBM_BUILD_VERBOSE: true
   RUSTDOCFLAGS: -Dwarnings
-  RUSTFLAGS: -Dwarnings
+  RUSTFLAGS: -Dwarnings -Dlinker_messages
   RUST_BACKTRACE: full
-  BENCHMARK_RUSTC: nightly-2026-08-05 # Pin the toolchain for reproducable results
+  BENCHMARK_RUSTC: nightly-2026-08-19 # Pin the toolchain for reproducable results
 
 defaults:
   run:
@@ -92,6 +93,8 @@ jobs:
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-26.04
         - target: s390x-unknown-linux-gnu
+          os: self-hosted-linux-s390x-resolute-large-rust # resolute == ubuntu-26.04
+        - target: s390x-unknown-linux-gnu
           os: ubuntu-24.04-s390x
         - target: thumbv6m-none-eabi
           os: ubuntu-26.04
@@ -111,9 +114,10 @@ jobs:
           os: windows-2025-vs2026
         - target: x86_64-pc-windows-msvc
           os: windows-2025-vs2026
-        - target: i686-pc-windows-gnu
-          os: windows-2025-vs2026
-          channel: nightly-i686-gnu
+        # FIXME(rust-lang/compiler-builtins#1306): disabled due to broken environment
+        # - target: i686-pc-windows-gnu
+        #   os: windows-2025-vs2026
+        #   channel: nightly-i686-gnu
         - target: x86_64-pc-windows-gnu
           os: windows-2025-vs2026
           channel: nightly-x86_64-gnu
@@ -132,26 +136,20 @@ jobs:
         lscpu || (sysctl -a | grep cpu) || true
         echo "home: ${HOME:-not found}"
         pwd
-
-    # Native ppc and s390x runners don't have rustup by default
-    - name: Install rustup
-      if: matrix.os == 'ubuntu-26.04-ppc64le' || matrix.os == 'ubuntu-26.04-s390x'
-      run: sudo apt-get update && sudo apt-get install -y rustup
-
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with: { persist-credentials: false }
-    - name: Install Rust (rustup)
-      run: |
-        channel="nightly"
-        # Account for channels that have required components (MinGW)
-        [ -n "$JOB_CHANNEL" ] && channel="$JOB_CHANNEL"
-        rustup update "$channel" --no-self-update
-        rustup default "$channel"
-        rustup target add "$JOB_TARGET"
+
+    - name: Set up dependencies and Rust
+      run: ./ci/install-test-deps.sh "$JOB_TARGET" "$JOB_CHANNEL" "$RUN_IN_DOCKER"
 
     - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+      continue-on-error: true
       with:
         tool: nextest@0.9.131
+        # On platforms without prebuilts, nextest can be installed system-wide
+        # or omitted. Building it probably takes longer than running tests
+        # without it
+        fallback: none
 
     - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       with:
@@ -172,7 +170,7 @@ jobs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: compiler-rt
-        key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh', 'ci/compiler-rt-patches') }}
+        key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh') }}
     - name: Download compiler-rt reference sources
       if: steps.cache-compiler-rt.outputs.cache-hit != 'true'
       run: ./ci/download-compiler-rt.sh
@@ -345,7 +343,7 @@ jobs:
   msrv:
     name: Check libm MSRV
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
@@ -358,7 +356,7 @@ jobs:
         rustup update "$msrv" --no-self-update && rustup default "$msrv"
     - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
     - run: |
-        # FIXME(msrv): Remove the workspace Cargo.toml so 1.63 cargo doesn't see
+        # FIXME(msrv): Remove the workspace Cargo.toml so MSRV cargo doesn't see
         # `edition = "2024"` and get spooked.
         rm Cargo.toml
         cargo build --manifest-path libm/Cargo.toml

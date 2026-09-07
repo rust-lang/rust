@@ -1,6 +1,6 @@
 //! Parameterized string expansion
 
-use std::iter::repeat;
+use std::iter::repeat_n;
 
 use self::Param::*;
 use self::States::*;
@@ -520,10 +520,10 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
     if flags.width > s.len() {
         let n = flags.width - s.len();
         if flags.left {
-            s.extend(repeat(b' ').take(n));
+            s.extend(repeat_n(b' ', n));
         } else {
             let mut s_ = Vec::with_capacity(flags.width);
-            s_.extend(repeat(b' ').take(n));
+            s_.extend(repeat_n(b' ', n));
             s_.extend(s);
             s = s_;
         }

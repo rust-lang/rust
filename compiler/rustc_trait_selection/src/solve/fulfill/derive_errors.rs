@@ -14,6 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GoalEvaluation, MaybeInfo, SolverDelegateEvalExt as _};
 use tracing::{instrument, trace};
 
+use super::NextSolverAmbiguityError;
 use crate::solve::delegate::SolverDelegate;
 use crate::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
 use crate::solve::{Certainty, deeply_normalize_for_diagnostics};
@@ -84,9 +85,24 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
 
 pub(super) fn fulfillment_error_for_stalled<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    root_obligation: PredicateObligation<'tcx>,
+    ambiguity: NextSolverAmbiguityError<'tcx>,
 ) -> FulfillmentError<'tcx> {
-    let (code, refine_obligation) = infcx.probe(|_| {
+    let NextSolverAmbiguityError { root_obligation, code, refine_obligation } = ambiguity;
+
+    let obligation = if refine_obligation {
+        find_best_leaf_obligation(infcx, &root_obligation, true)
+    } else {
+        root_obligation.clone()
+    };
+
+    FulfillmentError { obligation, code, root_obligation }
+}
+
+pub(super) fn try_ambiguity_error_for_stalled<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    root_obligation: PredicateObligation<'tcx>,
+) -> Option<NextSolverAmbiguityError<'tcx>> {
+    let evaluation = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
             root_obligation.as_goal(),
             root_obligation.cause.span,
@@ -100,7 +116,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                         stalled_on_coroutines: _,
                     }),
                 ..
-            }) => (FulfillmentErrorCode::Ambiguity { overflow: None }, true),
+            }) => Some((FulfillmentErrorCode::Ambiguity { overflow: None }, true)),
             Ok(GoalEvaluation {
                 certainty:
                     Certainty::Maybe(MaybeInfo {
@@ -110,7 +126,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                         stalled_on_coroutines: _,
                     }),
                 ..
-            }) => (
+            }) => Some((
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
                 // We discard the inference constraints from overflowing goals, so
@@ -119,14 +135,17 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 //
                 // FIXME: We should probably just look into overflows here.
                 false,
-            ),
+            )),
             Ok(GoalEvaluation { certainty: Certainty::Yes, .. }) => {
-                span_bug!(
+                infcx.dcx().span_delayed_bug(
                     root_obligation.cause.span,
-                    "did not expect successful goal when collecting ambiguity errors for `{:?}`",
-                    infcx.resolve_vars_if_possible(root_obligation.predicate),
-                )
-            }
+                    format!(
+                        "did not expect successful goal when collecting ambiguity errors for `{:?}`",
+                        infcx.resolve_vars_if_possible(root_obligation.predicate),
+                    ),
+                );
+                None
+            },
             Err(_) => {
                 span_bug!(
                     root_obligation.cause.span,
@@ -137,26 +156,9 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
         }
     });
 
-    FulfillmentError {
-        obligation: if refine_obligation {
-            find_best_leaf_obligation(infcx, &root_obligation, true)
-        } else {
-            root_obligation.clone()
-        },
-        code,
-        root_obligation,
-    }
-}
+    let (code, refine_obligation) = evaluation?;
 
-pub(super) fn fulfillment_error_for_overflow<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    root_obligation: PredicateObligation<'tcx>,
-) -> FulfillmentError<'tcx> {
-    FulfillmentError {
-        obligation: find_best_leaf_obligation(infcx, &root_obligation, true),
-        code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
-        root_obligation,
-    }
+    Some(NextSolverAmbiguityError { root_obligation, code, refine_obligation })
 }
 
 #[instrument(level = "debug", skip(infcx), ret)]

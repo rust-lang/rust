@@ -445,14 +445,14 @@ fn assert_failed_inner(
 
     match args {
         Some(args) => panic!(
-            r#"assertion `left {op} right` failed: {args}
+            r"assertion `left {op} right` failed: {args}
   left: {left:?}
- right: {right:?}"#
+ right: {right:?}"
         ),
         None => panic!(
-            r#"assertion `left {op} right` failed
+            r"assertion `left {op} right` failed
   left: {left:?}
- right: {right:?}"#
+ right: {right:?}"
         ),
     }
 }

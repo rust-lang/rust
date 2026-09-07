@@ -520,6 +520,11 @@ impl DisplayTarget {
         let edition = krate.data(db).edition;
         Self { krate, edition }
     }
+
+    pub fn from_crate_and_edition(db: &dyn HirDatabase, krate: Crate, edition: Edition) -> Self {
+        let _ = db;
+        Self { krate, edition }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1232,41 +1237,41 @@ fn render_variant_after_name<'db>(
     memory_map: &MemoryMap<'db>,
 ) -> Result {
     let param_env = ParamEnvAndCrate { param_env, krate: f.krate() };
+    let render_field = |f: &mut HirFormatter<'_, 'db>, id: LocalFieldId| {
+        let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
+        let ty = field_types[id].ty().instantiate(f.interner, args).skip_norm_wip();
+        let Ok(layout) = f.db.layout_of_ty(ty.store(), param_env.store()) else {
+            return f.write_str("<layout-error>");
+        };
+        let size = layout.size.bytes_usize();
+        render_const_scalar(f, &b[offset..offset + size], memory_map, ty)
+    };
     match data.shape {
-        FieldsShape::Record | FieldsShape::Tuple => {
-            let render_field = |f: &mut HirFormatter<'_, 'db>, id: LocalFieldId| {
-                let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
-                let ty = field_types[id].ty().instantiate(f.interner, args).skip_norm_wip();
-                let Ok(layout) = f.db.layout_of_ty(ty.store(), param_env.store()) else {
-                    return f.write_str("<layout-error>");
-                };
-                let size = layout.size.bytes_usize();
-                render_const_scalar(f, &b[offset..offset + size], memory_map, ty)
-            };
+        FieldsShape::Record => {
             let mut it = data.fields().iter();
-            if matches!(data.shape, FieldsShape::Record) {
-                write!(f, " {{")?;
-                if let Some((id, data)) = it.next() {
-                    write!(f, " {}: ", data.name.display(f.db, f.edition()))?;
-                    render_field(f, id)?;
-                }
-                for (id, data) in it {
-                    write!(f, ", {}: ", data.name.display(f.db, f.edition()))?;
-                    render_field(f, id)?;
-                }
-                write!(f, " }}")?;
-            } else {
-                let mut it = it.map(|it| it.0);
-                write!(f, "(")?;
-                if let Some(id) = it.next() {
-                    render_field(f, id)?;
-                }
-                for id in it {
-                    write!(f, ", ")?;
-                    render_field(f, id)?;
-                }
-                write!(f, ")")?;
+            write!(f, " {{")?;
+            if let Some((id, data)) = it.next() {
+                write!(f, " {}: ", data.name.display(f.db, f.edition()))?;
+                render_field(f, id)?;
             }
+            for (id, data) in it {
+                write!(f, ", {}: ", data.name.display(f.db, f.edition()))?;
+                render_field(f, id)?;
+            }
+            write!(f, " }}")?;
+            Ok(())
+        }
+        FieldsShape::Tuple => {
+            let mut it = data.fields().iter().map(|it| it.0);
+            write!(f, "(")?;
+            if let Some(id) = it.next() {
+                render_field(f, id)?;
+            }
+            for id in it {
+                write!(f, ", ")?;
+                render_field(f, id)?;
+            }
+            write!(f, ")")?;
             Ok(())
         }
         FieldsShape::Unit => Ok(()),
@@ -1709,11 +1714,13 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 write!(f, "?c.{}", ty.var.as_usize())?
             }
             TyKind::Dynamic(bounds, region) => {
+                let self_ty = interner.default_types().types.dyn_trait_dummy_self;
+
                 // We want to put auto traits after principal traits, regardless of their written order.
                 let mut bounds_to_display = SmallVec::<[_; 4]>::new();
                 let mut auto_trait_bounds = SmallVec::<[_; 4]>::new();
                 for bound in bounds.iter() {
-                    let clause = bound.with_self_ty(interner, *self);
+                    let clause = bound.with_self_ty(interner, self_ty);
                     match bound.skip_binder() {
                         ExistentialPredicate::Trait(_) | ExistentialPredicate::Projection(_) => {
                             bounds_to_display.push(clause);
@@ -1725,13 +1732,13 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
 
                 if f.render_region(region) {
                     bounds_to_display
-                        .push(rustc_type_ir::OutlivesPredicate(*self, region).upcast(interner));
+                        .push(rustc_type_ir::OutlivesPredicate(self_ty, region).upcast(interner));
                 }
 
                 write_bounds_like_dyn_trait_with_prefix(
                     f,
                     "dyn",
-                    Either::Left(*self),
+                    Either::Left(self_ty),
                     &bounds_to_display,
                     SizedByDefault::NotSized,
                     trait_bounds_need_parens,
@@ -1974,12 +1981,12 @@ impl<'db> HirDisplay<'db> for PolyFnSig<'db> {
         if let Safety::Unsafe = fn_sig_kind.safety() {
             write!(f, "unsafe ")?;
         }
-        // FIXME: Enable this when the FIXME on FnAbi regarding PartialEq is fixed.
-        // if !matches!(abi, FnAbi::Rust) {
-        //     f.write_str("extern \"")?;
-        //     f.write_str(abi.as_str())?;
-        //     f.write_str("\" ")?;
-        // }
+        let abi = self.abi();
+        if !matches!(abi, ExternAbi::Rust) {
+            f.write_str("extern \"")?;
+            f.write_str(abi.as_str())?;
+            f.write_str("\" ")?;
+        }
         write!(f, "fn(")?;
         f.write_joined(inputs_and_output.inputs(), ", ")?;
         if fn_sig_kind.c_variadic() {

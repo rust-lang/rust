@@ -82,7 +82,44 @@ fn test2() {
     assert_eq!(42, with_dyn.hello());
 }
 
+fn test3() {
+    use std::ptr::{NonNull, slice_from_raw_parts_mut};
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    static mut ALLOCATION: usize = 0;
+    static ALLOCATED: AtomicBool = AtomicBool::new(false);
+
+    #[derive(Clone, Copy)]
+    struct A;
+    unsafe impl Allocator for A {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            if layout != Layout::new::<usize>() {
+                return Err(AllocError);
+            }
+            if ALLOCATED.swap(true, Ordering::Acquire) {
+                return Err(AllocError);
+            }
+            NonNull::new(slice_from_raw_parts_mut(&raw mut ALLOCATION as *mut u8, 8))
+                .ok_or(AllocError)
+        }
+        unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {
+            ALLOCATED.store(false, Ordering::Release);
+        }
+    }
+
+    fn foo<A: Allocator>(a: A, b1: Box<usize, A>) {
+        assert_eq!(*b1, 1);
+        drop(b1);
+        let b3 = Box::new_in(3usize, a);
+        assert_eq!(*b3, 3);
+    }
+
+    let b1 = Box::new_in(1usize, A);
+    foo(A, b1);
+}
+
 fn main() {
     test1();
     test2();
+    test3();
 }

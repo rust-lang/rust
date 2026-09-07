@@ -2610,3 +2610,30 @@ fn test_shift_right() {
     case([1, 2, 3, 4], [5], [1], [2, 3, 4, 5]);
     case([1, 2, 3, 4, 5], [], [], [1, 2, 3, 4, 5]);
 }
+
+#[test]
+fn test_split_ascii_whitespace_non_ascii() {
+    let bytes = b"\xff \x80 \xc2\xa0";
+
+    assert_eq!(
+        bytes.split_ascii_whitespace().collect::<Vec<_>>(),
+        vec![&b"\xff"[..], &b"\x80"[..], &b"\xc2\xa0"[..]],
+    );
+}
+
+#[test]
+fn test_split_ascii_whitespace_remainder() {
+    let bytes = b"  Mary \t had  ";
+    let mut split = bytes.split_ascii_whitespace();
+
+    assert_eq!(split.remainder(), Some(&bytes[..]));
+
+    assert_eq!(split.next(), Some(&b"Mary"[..]));
+    assert_eq!(split.remainder(), Some(&b"\t had  "[..]));
+
+    assert_eq!(split.next(), Some(&b"had"[..]));
+    assert_eq!(split.remainder(), Some(&b" "[..]));
+
+    assert_eq!(split.next(), None);
+    assert_eq!(split.remainder(), None);
+}

@@ -340,7 +340,7 @@ fn expand_preparsed_asm(
                     if let Some(pos) = snippet.find(needle) {
                         let end = pos
                             + snippet[pos..]
-                                .find(|c| matches!(c, '\n' | ';' | '\\' | '"'))
+                                .find(['\n', ';', '\\', '"'])
                                 .unwrap_or(snippet[pos..].len() - 1);
                         let inner = InnerSpan::new(pos, end);
                         return template_sp.from_inner(inner);
@@ -437,7 +437,7 @@ fn expand_preparsed_asm(
 
                                 let positional_args = args.operands.len()
                                     - args.named_args.len()
-                                    - args.reg_args.len();
+                                    - args.reg_args.count();
                                 let positional = if positional_args != args.operands.len() {
                                     "positional "
                                 } else {

@@ -14,6 +14,6 @@ fn main() {
     let c_path = CString::new(OsStr::new("./text").as_bytes()).expect("CString::new failed");
     let _fd = unsafe {
         open(c_path.as_ptr(), /* value does not matter */ 0)
-        //~^ ERROR: incorrect number of fixed arguments for variadic function
+        //~^ ERROR: takes 2 fixed (non-variadic) arguments, but 1 argument was given
     };
 }

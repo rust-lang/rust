@@ -11,8 +11,8 @@ use regex::Regex;
 struct Cli {
     /// File or directory to check
     path: PathBuf,
-    #[arg(long)]
     /// Modify files that do not comply
+    #[arg(long)]
     overwrite: bool,
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
@@ -40,22 +40,19 @@ fn main() -> Result<()> {
             continue;
         }
         let path = entry.into_path();
-        if let Some(extension) = path.extension() {
-            if extension != "md" {
-                continue;
-            }
-            let old = fs::read_to_string(&path)?;
-            let new = comply(&old);
-            if new == old {
-                compliant.push(path.clone());
-            } else {
-                if cli.overwrite {
-                    fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
-                    made_compliant.push(path.clone());
-                } else {
-                    not_compliant.push(path.clone());
-                }
-            }
+        let Some(extension) = path.extension() else { continue };
+        if extension != "md" {
+            continue;
+        }
+        let old = fs::read_to_string(&path)?;
+        let new = comply(&old);
+        if new == old {
+            compliant.push(path.clone());
+        } else if cli.overwrite {
+            fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+            made_compliant.push(path.clone());
+        } else {
+            not_compliant.push(path.clone());
         }
     }
     if !compliant.is_empty() {
@@ -78,8 +75,8 @@ fn display(header: &str, paths: &[PathBuf]) {
     }
 }
 
-fn ignore(line: &str, in_code_block: bool) -> bool {
-    in_code_block
+fn ignore(line: &str) -> bool {
+    REGEX_IGNORE_LINK_TARGETS.is_match(line)
         || line.to_lowercase().contains("e.g.")
         || line.to_lowercase().contains("n.b.")
         || line.contains(" etc.")
@@ -91,7 +88,6 @@ fn ignore(line: &str, in_code_block: bool) -> bool {
         || line.trim_start().starts_with('>')
         || line.starts_with('#')
         || line.trim().is_empty()
-        || REGEX_IGNORE_LINK_TARGETS.is_match(line)
 }
 
 fn comply(content: &str) -> String {
@@ -107,7 +103,7 @@ fn comply(content: &str) -> String {
             in_code_block = !in_code_block;
             continue;
         }
-        if ignore(&line, in_code_block) {
+        if in_code_block || ignore(&line) {
             continue;
         }
         if REGEX_SPLIT.is_match(&line) {
@@ -150,12 +146,15 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             in_code_block = !in_code_block;
             continue;
         }
-        if line.trim_start().starts_with("<div") {
-            in_html_div = true;
+        if in_code_block {
             continue;
         }
-        if line.trim_start().starts_with("</div") {
+        if line.trim_end().ends_with("</div>") {
             in_html_div = false;
+            continue;
+        }
+        if line.trim_start().starts_with("<div") {
+            in_html_div = true;
             continue;
         }
         if in_html_div {
@@ -164,7 +163,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if line.trim_end().ends_with("<br>") {
             continue;
         }
-        if ignore(line, in_code_block) || REGEX_SPLIT.is_match(line) {
+        if ignore(line) || REGEX_SPLIT.is_match(line) {
             continue;
         }
         let Some(next_line) = content.get(n + 1) else {
@@ -173,7 +172,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if next_line.trim_start().starts_with("```") {
             continue;
         }
-        if ignore(next_line, in_code_block)
+        if ignore(next_line)
             || REGEX_LIST_ENTRY.is_match(next_line)
             || REGEX_IGNORE_END.is_match(line)
         {
@@ -183,6 +182,15 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             new_content[new_n] = format!("{line} {}", next_line.trim_start());
             new_content.remove(new_n + 1);
             skip_next = true;
+        } else {
+            const SEP: &str = ", ";
+            let Some((before_comma, after_comma)) = next_line.split_once(SEP) else { continue };
+            if line.len() + before_comma.len() < limit - SEP.len() {
+                new_content[new_n] = format!("{line} {before_comma}{}", SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] = after_comma.to_owned();
+                skip_next = true;
+            }
         }
     }
     new_content.join("\n") + "\n"
@@ -257,6 +265,7 @@ short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+<div></div>
 preserve next line
 1. one
 
@@ -288,6 +297,7 @@ do not split short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+<div></div>
 preserve next line
 1. one
 
@@ -321,4 +331,39 @@ html comment closing
 fn should_pass() {
     let original = "if you see `input isn't interesting! verify interesting-ness test`.";
     assert_eq!(original, comply(original));
+}
+
+#[test]
+#[ignore]
+fn split_on_comma_of_current_line() {
+    let original = "
+Each derived value has a dependency on other values, which could themselves be either base or
+derived.
+";
+    let expected = "
+Each derived value has a dependency on other values,
+which could themselves be either base or derived.
+";
+    assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+fn split_on_comma_of_next_line() {
+    let original = "
+Because of canonicalization of regions and
+inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
+";
+    let expected = "
+Because of canonicalization of regions and inference variables,
+encountering a cycle doesn't mean that we would get an infinite proof tree.
+";
+    assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+#[ignore]
+fn should_split() {
+    let original = "the queries that we do, as well as the **query DAG**. The";
+    let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
+    assert_eq!(expected, comply(original));
 }

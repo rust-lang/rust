@@ -13,7 +13,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PointeeSized;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
-use std::{fmt, iter, mem};
+use std::{debug_assert_matches, fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
@@ -33,7 +33,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_lint_defs::Lint;
@@ -55,17 +55,19 @@ use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
-use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
+use crate::middle::resolve::{ModChild, ResolverAstLowering};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
-use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
+use crate::traits::solve::{
+    CanonicalInput, CanonicalInputData, ExternalConstraints, ExternalConstraintsData,
+    PredefinedOpaques,
+};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
-use crate::ty::region::RegionExt;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, FnSigKind,
     GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo,
@@ -162,6 +164,7 @@ pub struct CtxtInterners<'tcx> {
     valtree: InternedSet<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesClause<'tcx>>>,
+    canonical_inputs: InternedSet<'tcx, CanonicalInputData<TyCtxt<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -200,6 +203,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
+            canonical_inputs: InternedSet::with_capacity(N),
         }
     }
 
@@ -1024,15 +1028,26 @@ impl<'tcx> TyCtxt<'tcx> {
         self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }
 
-    pub fn type_const_span(self, def_id: DefId) -> Option<Span> {
-        if !self.is_type_const(def_id) {
-            return None;
-        }
-        Some(self.def_span(def_id))
+    /// Returns true if the const is guaranteed to have a directly represented RHS. This is either
+    /// because it has a directly represented RHS, or is a trait definition that is marked as
+    /// requiring its implementation to have a directly represented RHS.
+    ///
+    /// Note: Be very careful with using this method - under `generic_const_args`, a trait can
+    /// declare a regular const, but an `impl` could implement it with a directly represented const
+    /// (a la refinement). This method would return false in such a case.
+    pub fn is_direct_const(self, def_id: DefId) -> bool {
+        debug_assert_matches!(
+            self.def_kind(def_id),
+            DefKind::Const { .. } | DefKind::AssocConst { .. }
+        );
+        self.is_type_const_syntax(def_id) || self.const_of_item(def_id).is_some()
     }
 
-    /// Check if the given `def_id` is a `type const` (mgca)
-    pub fn is_type_const(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+    /// Check if the given `def_id` is declared with `type const` syntax (mgca)
+    ///
+    /// This is NOT the same as whether the `def_id` can be represented in/used by the type system.
+    /// For that, you probably want to ask `is_direct_const()` or `const_of_item().is_some()`.
+    pub fn is_type_const_syntax(self, def_id: impl IntoQueryKey<DefId>) -> bool {
         let def_id = def_id.into_query_key();
         match self.def_kind(def_id) {
             DefKind::Const { is_type_const } | DefKind::AssocConst { is_type_const } => {
@@ -1267,6 +1282,10 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(value) => value.to_str().ok_or_else(|| VarError::NotUnicode(value.to_os_string())),
             None => Err(VarError::NotPresent),
         }
+    }
+
+    pub fn is_method(self, id: DefId) -> bool {
+        self.opt_associated_item(id).is_some_and(|item| item.is_method())
     }
 }
 
@@ -1990,6 +2009,7 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+    canonical_inputs: intern_canonical_input(CanonicalInputData<TyCtxt<'tcx>>): CanonicalInput -> CanonicalInput<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2117,27 +2137,44 @@ impl<'tcx> TyCtxt<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
     }
 
+    /// If you have a [`ty::Alias`], you should almost certainly be calling
+    /// [`Self::check_alias_term_args_compatible`] instead. This method assumes that inherent alias
+    /// consts always have `impl`-form args, and will return an invalid result if the `def_id` comes
+    /// from a [`ty::AliasConstKind::InherentSelf`] (see the doc on that for what "impl form args"
+    /// means).
     pub fn check_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) -> bool {
-        self.check_args_compatible_inner(def_id, args, false)
+        let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
+            && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
+        self.check_args_compatible_inner(def_id, args, is_inherent_assoc_ty)
+    }
+
+    pub fn check_alias_term_args_compatible(
+        self,
+        kind: ty::AliasTermKind<'tcx>,
+        args: &'tcx [ty::GenericArg<'tcx>],
+    ) -> bool {
+        let (def_id, is_self_args) = match kind {
+            ty::AliasTermKind::ProjectionTy { def_id }
+            | ty::AliasTermKind::OpaqueTy { def_id }
+            | ty::AliasTermKind::FreeTy { def_id }
+            | ty::AliasTermKind::AnonConst { def_id }
+            | ty::AliasTermKind::ProjectionConst { def_id }
+            | ty::AliasTermKind::FreeConst { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => (def_id, false),
+            ty::AliasTermKind::InherentTy { def_id }
+            | ty::AliasTermKind::InherentConstSelf { def_id } => (def_id, true),
+        };
+        self.check_args_compatible_inner(def_id, args, is_self_args)
     }
 
     fn check_args_compatible_inner(
         self,
         def_id: DefId,
         args: &'tcx [ty::GenericArg<'tcx>],
-        nested: bool,
+        is_self_args: bool,
     ) -> bool {
         let generics = self.generics_of(def_id);
-
-        // IATs and IACs (inherent associated types/consts with `type const`) themselves have a
-        // weird arg setup (self + own args), but nested items *in* IATs (namely: opaques, i.e.
-        // ATPITs) do not.
-        let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
-            && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-        let is_inherent_assoc_type_const =
-            matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
-                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-        let own_args = if !nested && (is_inherent_assoc_ty || is_inherent_assoc_type_const) {
+        let own_args = if is_self_args {
             if generics.own_params.len() + 1 != args.len() {
                 return false;
             }
@@ -2154,8 +2191,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
             let (parent_args, own_args) = args.split_at(generics.parent_count);
 
+            // In the type system, IATs and IACs (inherent associated types/consts) themselves have a
+            // weird arg setup (self + own args), but nested items *in* IATs (namely: opaques, i.e.
+            // ATPITs) do not. So, set `is_self_args` to false for the parent generic check.
             if let Some(parent) = generics.parent
-                && !self.check_args_compatible_inner(parent, parent_args, true)
+                && !self.check_args_compatible_inner(parent, parent_args, false)
             {
                 return false;
             }
@@ -2177,39 +2217,116 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// With `cfg(debug_assertions)`, assert that args are compatible with their generics,
     /// and print out the args if not.
+    ///
+    /// If you have a [`ty::Alias`], you should use
+    /// [`Self::debug_assert_alias_term_args_compatible`] instead. See note on
+    /// [`Self::check_args_compatible`].
     pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
         if cfg!(debug_assertions) && !self.check_args_compatible(def_id, args) {
             let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
                 && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-            let is_inherent_assoc_type_const =
-                matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
-                    && matches!(
-                        self.def_kind(self.parent(def_id)),
-                        DefKind::Impl { of_trait: false }
-                    );
-            if is_inherent_assoc_ty || is_inherent_assoc_type_const {
-                bug!(
-                    "args not compatible with generics for {}: args={:#?}, generics={:#?}",
-                    self.def_path_str(def_id),
-                    args,
-                    // Make `[Self, GAT_ARGS...]` (this could be simplified)
-                    self.mk_args_from_iter(
-                        [self.types.self_param.into()].into_iter().chain(
-                            self.generics_of(def_id)
-                                .own_args(ty::GenericArgs::identity_for_item(self, def_id))
-                                .iter()
-                                .copied()
-                        )
-                    )
-                );
-            } else {
-                bug!(
-                    "args not compatible with generics for {}: args={:#?}, generics={:#?}",
-                    self.def_path_str(def_id),
-                    args,
-                    ty::GenericArgs::identity_for_item(self, def_id)
+            self.emit_bug_args_compatible(def_id, args, is_inherent_assoc_ty);
+        }
+    }
+
+    pub fn debug_assert_alias_term_args_compatible(
+        self,
+        kind: ty::AliasTermKind<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) {
+        if cfg!(debug_assertions) {
+            self.debug_assert_alias_term_kind_matches_def_kind(kind);
+            if !self.check_alias_term_args_compatible(kind, args) {
+                let (def_id, is_self_args) = match kind {
+                    ty::AliasTermKind::ProjectionTy { def_id }
+                    | ty::AliasTermKind::OpaqueTy { def_id }
+                    | ty::AliasTermKind::FreeTy { def_id }
+                    | ty::AliasTermKind::AnonConst { def_id }
+                    | ty::AliasTermKind::ProjectionConst { def_id }
+                    | ty::AliasTermKind::FreeConst { def_id }
+                    | ty::AliasTermKind::InherentConstImpl { def_id } => (def_id, false),
+                    ty::AliasTermKind::InherentTy { def_id }
+                    | ty::AliasTermKind::InherentConstSelf { def_id } => (def_id, true),
+                };
+                self.emit_bug_args_compatible(def_id, args, is_self_args);
+            }
+        }
+    }
+
+    fn debug_assert_alias_term_kind_matches_def_kind(self, kind: ty::AliasTermKind<'tcx>) {
+        match kind {
+            ty::AliasTermKind::ProjectionTy { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy);
+                debug_assert_matches!(
+                    self.def_kind(self.parent(def_id)),
+                    DefKind::Trait | DefKind::Impl { of_trait: true }
                 );
             }
+            ty::AliasTermKind::InherentTy { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy);
+                debug_assert_matches!(
+                    self.def_kind(self.parent(def_id)),
+                    DefKind::Impl { of_trait: false }
+                );
+            }
+            ty::AliasTermKind::OpaqueTy { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::OpaqueTy);
+            }
+            ty::AliasTermKind::FreeTy { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::TyAlias);
+            }
+            ty::AliasTermKind::AnonConst { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AnonConst);
+            }
+            ty::AliasTermKind::ProjectionConst { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst { .. });
+                debug_assert_matches!(
+                    self.def_kind(self.parent(def_id)),
+                    DefKind::Trait | DefKind::Impl { of_trait: true }
+                );
+            }
+            ty::AliasTermKind::InherentConstSelf { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst { .. });
+                debug_assert_matches!(
+                    self.def_kind(self.parent(def_id)),
+                    DefKind::Impl { of_trait: false }
+                );
+            }
+            ty::AliasTermKind::FreeConst { def_id } => {
+                debug_assert_matches!(self.def_kind(def_id), DefKind::Const { .. });
+            }
+        }
+    }
+
+    fn emit_bug_args_compatible(
+        self,
+        def_id: DefId,
+        args: &'tcx [ty::GenericArg<'tcx>],
+        is_self_args: bool,
+    ) -> ! {
+        if is_self_args {
+            bug!(
+                "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                self.def_path_str(def_id),
+                args,
+                // Make `[Self, GAT_ARGS...]` (this could be simplified)
+                self.mk_args_from_iter(
+                    [self.types.self_param.into()].into_iter().chain(
+                        self.generics_of(def_id)
+                            .own_args(ty::GenericArgs::identity_for_item(self, def_id))
+                            .iter()
+                            .copied()
+                    )
+                )
+            );
+        } else {
+            bug!(
+                "args not compatible with generics for {}: args={:#?}, generics={:#?}",
+                self.def_path_str(def_id),
+                args,
+                ty::GenericArgs::identity_for_item(self, def_id)
+            );
         }
     }
 
@@ -2775,7 +2892,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn resolver_for_lowering(
         self,
-    ) -> (&'tcx Steal<ty::ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
+    ) -> (&'tcx Steal<ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
         let (resolver, krate, _) = self.resolver_for_lowering_raw(());
         (resolver, krate)
     }

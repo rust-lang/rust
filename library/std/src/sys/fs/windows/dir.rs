@@ -30,7 +30,7 @@ fn to_u16s_without_nul(path: &Path) -> io::Result<Vec<u16>> {
 unsafe fn nt_create_file(
     opts: &OpenOptions,
     object_attributes: &c::OBJECT_ATTRIBUTES,
-    create_options: c::NTCREATEFILE_CREATE_OPTIONS,
+    create_options: u32,
 ) -> io::Result<Handle> {
     let mut handle = ptr::null_mut();
     let mut io_status = c::IO_STATUS_BLOCK::PENDING;
@@ -66,6 +66,12 @@ impl Dir {
         with_native_path(path, &|path| Self::open_with_native(path, opts))
     }
 
+    pub fn open_for_traversal(path: &Path) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::FILE_TRAVERSE);
+        with_native_path(path, &|path| Self::open_with_native(path, &opts))
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         // NtCreateFile will fail if given an absolute path and a non-null RootDirectory
         if path.is_absolute() {
@@ -85,6 +91,24 @@ impl Dir {
         let from = to_u16s_without_nul(from)?;
         let to = to_u16s_without_nul(to)?;
         self.rename_native(&from, to_dir, &to, is_dir)
+    }
+
+    pub fn create_dir(&self, path: &Path) -> io::Result<()> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        opts.write(true);
+        opts.create_new(true);
+        self.open_dir(path, &opts).map(|_| ())
+    }
+
+    pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
+        let path = to_u16s_without_nul(&path)?;
+        self.open_file_native(&path, &opts, true).map(|handle| Self { handle })
+    }
+
+    pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
+        let path = to_u16s_without_nul(&path)?;
+        self.remove_native(&path, true)
     }
 
     fn open_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -116,7 +140,7 @@ impl Dir {
         let name = UnicodeStrRef::from_slice(path);
         let object_attributes = c::OBJECT_ATTRIBUTES {
             RootDirectory: self.handle.as_raw_handle(),
-            ObjectName: name.as_ptr(),
+            ObjectName: name.as_ptr().cast_mut(),
             ..c::OBJECT_ATTRIBUTES::with_length()
         };
         let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };

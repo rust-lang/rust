@@ -140,7 +140,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
-            | ItemKind::Use(..) => return,
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => return,
 
             ItemKind::Mod(ident, ..) => {
                 if item.span.from_expansion() && item.span.eq_ctxt(ident.span) {

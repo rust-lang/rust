@@ -6,7 +6,7 @@ use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{DiagMessage, msg};
 use rustc_hir::def::CtorKind;
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::bug;
@@ -1257,7 +1257,8 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Use(..)
-            | hir::ItemKind::ExternCrate(..) => {}
+            | hir::ItemKind::ExternCrate(..)
+            | hir::ItemKind::TestBinderConstraints { .. } => {}
         }
     }
 

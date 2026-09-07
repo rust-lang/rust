@@ -926,7 +926,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::SyntheticCoroutineBody => true,
-        DefKind::ForeignMod | DefKind::GlobalAsm => false,
+        DefKind::ForeignMod | DefKind::GlobalAsm | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -969,7 +969,8 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::LifetimeParam
         | DefKind::Static { nested: true, .. }
-        | DefKind::GlobalAsm => false,
+        | DefKind::GlobalAsm
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1004,7 +1005,8 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1040,7 +1042,8 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::ExternCrate
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1075,7 +1078,8 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::ExternCrate
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1165,7 +1169,8 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::ExternCrate
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1200,7 +1205,8 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1260,7 +1266,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1295,7 +1302,8 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::ExternCrate
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1333,7 +1341,8 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::ExternCrate
         | DefKind::Ctor(_, CtorKind::Const)
         | DefKind::Variant
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1368,21 +1377,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::ExternCrate
-        | DefKind::SyntheticCoroutineBody => false,
-    }
-}
-
-fn should_encode_const_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
-    // AssocConst ==> assoc item has value
-    tcx.is_type_const(def_id)
-        && (!matches!(def_kind, DefKind::AssocConst { .. }) || assoc_item_has_value(tcx, def_id))
-}
-
-fn assoc_item_has_value<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    let assoc_item = tcx.associated_item(def_id);
-    match assoc_item.container {
-        ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
-        ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -1575,8 +1571,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Static { .. } = def_kind {
                 if !self.tcx.is_foreign_item(def_id) {
-                    let data = self.tcx.eval_static_initializer(def_id).unwrap();
-                    record!(self.tables.eval_static_initializer[def_id] <- data);
+                    match self.tcx.eval_static_initializer(def_id) {
+                        Ok(data) => record!(self.tables.eval_static_initializer[def_id] <- data),
+                        Err(err) => match err {
+                            interpret::ErrorHandled::Reported(_, _) => {
+                                self.tcx.dcx().delayed_bug(format!(
+                                    "eval_static_initializer returned an error in metadata emission"
+                                ));
+                            }
+                            interpret::ErrorHandled::TooGeneric(span) => {
+                                span_bug!(span, "generic static???");
+                            }
+                        },
+                    };
                 }
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
@@ -1622,7 +1629,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::AnonConst = def_kind {
                 record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));
             }
-            if should_encode_const_of_item(self.tcx, def_id, def_kind) {
+            if let DefKind::Const { .. } | DefKind::AssocConst { .. } = def_kind {
                 record!(self.tables.const_of_item[def_id] <- self.tcx.const_of_item(def_id));
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
@@ -2095,7 +2102,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.crate_dep_kind(cnum),
-                    extra_filename: self.tcx.extra_filename(cnum).clone(),
+                    extra_filename: self.tcx.extra_filename(cnum).to_owned(),
                     is_private: self.tcx.is_private_dep(cnum),
                 };
                 (cnum, dep)

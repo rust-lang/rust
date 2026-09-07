@@ -227,37 +227,37 @@ intrinsics! {
 
 #[cfg(f128_enabled)]
 intrinsics! {
-    #[ppc_alias = __lekf2]
+    #[ppc_name = __lekf2]
     pub extern "C" fn __letf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __gekf2]
+    #[ppc_name = __gekf2]
     pub extern "C" fn __getf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_gt_ge_cmp_result()
     }
 
-    #[ppc_alias = __unordkf2]
+    #[ppc_name = __unordkf2]
     pub extern "C" fn __unordtf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         unord(a, b) as crate::float::cmp::CmpResult
     }
 
-    #[ppc_alias = __eqkf2]
+    #[ppc_name = __eqkf2]
     pub extern "C" fn __eqtf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __ltkf2]
+    #[ppc_name = __ltkf2]
     pub extern "C" fn __lttf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __nekf2]
+    #[ppc_name = __nekf2]
     pub extern "C" fn __netf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __gtkf2]
+    #[ppc_name = __gtkf2]
     pub extern "C" fn __gttf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_gt_ge_cmp_result()
     }

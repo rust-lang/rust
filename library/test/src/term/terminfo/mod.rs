@@ -67,7 +67,7 @@ impl TermInfo {
             Err(..) => return Err(Error::TermUnset),
         };
 
-        if term.is_err() && env::var("MSYSCON").map_or(false, |s| "mintty.exe" == s) {
+        if term.is_err() && env::var("MSYSCON").is_ok_and(|s| "mintty.exe" == s) {
             // msys terminal
             Ok(msys_terminfo())
         } else {

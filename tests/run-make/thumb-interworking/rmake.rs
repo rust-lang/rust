@@ -1,5 +1,7 @@
 //@ needs-llvm-components: arm
 //@ needs-rust-lld
+//@ ignore-backends: gcc
+
 use run_make_support::{
     llvm_filecheck, llvm_objdump, path, rfs, run, rustc, rustc_minicore, source_root,
 };

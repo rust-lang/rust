@@ -10,7 +10,7 @@ use crate::mem::transmute;
 use super::super::*;
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.loongarch.lsx.vsrar.b"]
     fn __lsx_vsrar_b(a: __v16i8, b: __v16i8) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vsrar.h"]

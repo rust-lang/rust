@@ -1,75 +1,186 @@
-error[E0425]: cannot find function `by_value` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:22:25
-   |
-LL |     reuse S::<(), 123>::by_value { self.get_s() }
-   |                         ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `by_ref` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:25:25
-   |
-LL |     reuse S::<(), 123>::by_ref { self.get_s() }
-   |                         ^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `by_mut_ref` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:28:25
-   |
-LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
-   |                         ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `by_box` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:31:25
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-self-replacement.rs:30:34
    |
 LL |     reuse S::<(), 123>::by_box { self.get_s() }
-   |                         ^^^^^^ not found in `S`
+   |                         ------   ^^^^^^^^^^^^ expected `Box<S<(), 123>>`, found `S<(), 123>`
+   |                         |
+   |                         arguments to this function are incorrect
+   |
+   = note: expected struct `Box<S<_, _>>`
+              found struct `S<_, _>`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+note: method defined here
+  --> $DIR/inherent-impls-self-replacement.rs:14:8
+   |
+LL |     fn by_box<'d: 'd, 'e, T, const B: bool>(self: Box<Self>) {}
+   |        ^^^^^^                               ----
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse S::<(), 123>::by_box { Box::new(self.get_s()) }
+   |                                  +++++++++            +
 
-error[E0425]: cannot find function `by_rc` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:34:25
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-self-replacement.rs:33:33
    |
 LL |     reuse S::<(), 123>::by_rc { self.get_s() }
-   |                         ^^^^^ not found in `S`
+   |                         -----   ^^^^^^^^^^^^ expected `Rc<S<(), 123>>`, found `S<(), 123>`
+   |                         |
+   |                         arguments to this function are incorrect
+   |
+   = note: expected struct `Rc<S<_, _>>`
+              found struct `S<_, _>`
+note: method defined here
+  --> $DIR/inherent-impls-self-replacement.rs:15:8
+   |
+LL |     fn by_rc<'d: 'd, 'e, T, const B: bool>(self: Rc<Self>) {}
+   |        ^^^^^                               ----
+help: call `Into::into` on this expression to convert `S<(), 123>` into `Rc<S<(), 123>>`
+   |
+LL |     reuse S::<(), 123>::by_rc { self.get_s().into() }
+   |                                             +++++++
 
-error[E0425]: cannot find function `by_pin` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:37:25
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-self-replacement.rs:36:34
    |
 LL |     reuse S::<(), 123>::by_pin { self.get_s() }
-   |                         ^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `by_value` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:42:25
+   |                         ------   ^^^^^^^^^^^^ expected `Pin<Box<S<(), 123>>>`, found `S<(), 123>`
+   |                         |
+   |                         arguments to this function are incorrect
    |
-LL |     reuse S::<(), 123>::by_value { self.get_s() }
-   |                         ^^^^^^^^ not found in `S`
+   = note: expected struct `Pin<Box<S<(), 123>>>`
+              found struct `S<(), 123>`
+note: method defined here
+  --> $DIR/inherent-impls-self-replacement.rs:16:8
+   |
+LL |     fn by_pin<'d: 'd, 'e, T, const B: bool>(self: Pin<Box<Self>>) {}
+   |        ^^^^^^                               ----
+help: you need to pin and box this expression
+   |
+LL |     reuse S::<(), 123>::by_pin { Box::pin(self.get_s()) }
+   |                                  +++++++++            +
 
-error[E0425]: cannot find function `by_ref` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:44:25
+error[E0599]: no method named `get_s` found for type parameter `Self` in the current scope
+  --> $DIR/inherent-impls-self-replacement.rs:41:41
+   |
+LL | trait Trait2: Sized {
+   | ------------------- method `get_s` not found for this type parameter
+LL |     reuse S::<(), 123>::by_value { self.get_s() }
+   |                                         ^^^^^ method not found in `Self`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `get_s`, perhaps you need to add another supertrait for it:
+   |
+LL | trait Trait2: Sized + Trait {
+   |                     +++++++
+
+error[E0599]: no method named `get_s` found for reference `&Self` in the current scope
+  --> $DIR/inherent-impls-self-replacement.rs:43:39
    |
 LL |     reuse S::<(), 123>::by_ref { self.get_s() }
-   |                         ^^^^^^ not found in `S`
+   |                                       ^^^^^ method not found in `&Self`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `get_s`, perhaps you need to add another supertrait for it:
+   |
+LL | trait Trait2: Sized + Trait {
+   |                     +++++++
 
-error[E0425]: cannot find function `by_mut_ref` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:46:25
+error[E0599]: no method named `get_s` found for mutable reference `&mut Self` in the current scope
+  --> $DIR/inherent-impls-self-replacement.rs:45:43
    |
 LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
-   |                         ^^^^^^^^^^ not found in `S`
+   |                                           ^^^^^ method not found in `&mut Self`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `get_s`, perhaps you need to add another supertrait for it:
+   |
+LL | trait Trait2: Sized + Trait {
+   |                     +++++++
 
-error[E0425]: cannot find function `by_box` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:48:25
+error[E0599]: no method named `get_s` found for struct `Box<Self>` in the current scope
+  --> $DIR/inherent-impls-self-replacement.rs:47:39
    |
 LL |     reuse S::<(), 123>::by_box { self.get_s() }
-   |                         ^^^^^^ not found in `S`
+   |                                       ^^^^^ method not found in `Box<Self>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Trait` defines an item `get_s`, perhaps you need to implement it
+  --> $DIR/inherent-impls-self-replacement.rs:19:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^
 
-error[E0425]: cannot find function `by_rc` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:50:25
+error[E0599]: no method named `get_s` found for struct `Rc<Self>` in the current scope
+  --> $DIR/inherent-impls-self-replacement.rs:49:38
    |
 LL |     reuse S::<(), 123>::by_rc { self.get_s() }
-   |                         ^^^^^ not found in `S`
+   |                                      ^^^^^ method not found in `Rc<Self>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Trait` defines an item `get_s`, perhaps you need to implement it
+  --> $DIR/inherent-impls-self-replacement.rs:19:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^
 
-error[E0425]: cannot find function `by_pin` in `S`
-  --> $DIR/inherent-impls-self-replacement.rs:52:25
+error[E0599]: no method named `get_s` found for struct `Pin<Box<Self>>` in the current scope
+  --> $DIR/inherent-impls-self-replacement.rs:51:39
    |
 LL |     reuse S::<(), 123>::by_pin { self.get_s() }
-   |                         ^^^^^^ not found in `S`
+   |                                       ^^^^^ method not found in `Pin<Box<Self>>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Trait` defines an item `get_s`, perhaps you need to implement it
+  --> $DIR/inherent-impls-self-replacement.rs:19:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error[E0507]: cannot move out of `*self` which is behind a shared reference
+  --> $DIR/inherent-impls-self-replacement.rs:24:34
+   |
+LL |     reuse S::<(), 123>::by_ref { self.get_s() }
+   |                                  ^^^^ ------- `*self` moved due to this method call
+   |                                  |
+   |                                  move occurs because `*self` has type `Self`, which does not implement the `Copy` trait
+   |
+note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
+  --> $DIR/inherent-impls-self-replacement.rs:20:14
+   |
+LL |     fn get_s(self) -> S<(), 123>;
+   |              ^^^^
+help: if `Self` implemented `Clone`, you could clone the value
+  --> $DIR/inherent-impls-self-replacement.rs:19:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     reuse S::<(), 123>::by_ref { self.get_s() }
+   |                                  ---- you could clone this value
 
-For more information about this error, try `rustc --explain E0425`.
+error[E0507]: cannot move out of `*self` which is behind a mutable reference
+  --> $DIR/inherent-impls-self-replacement.rs:27:38
+   |
+LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
+   |                                      ^^^^ ------- `*self` moved due to this method call
+   |                                      |
+   |                                      move occurs because `*self` has type `Self`, which does not implement the `Copy` trait
+   |
+note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
+  --> $DIR/inherent-impls-self-replacement.rs:20:14
+   |
+LL |     fn get_s(self) -> S<(), 123>;
+   |              ^^^^
+help: if `Self` implemented `Clone`, you could clone the value
+  --> $DIR/inherent-impls-self-replacement.rs:19:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^ consider constraining this type parameter with `Clone`
+...
+LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
+   |                                      ---- you could clone this value
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0308, E0507, E0599.
+For more information about an error, try `rustc --explain E0308`.

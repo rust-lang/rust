@@ -2,7 +2,7 @@
 # Content that triggers the lint goes here
 
 [package]
-name = "feature_name"
+name = "feature-name"
 version = "0.1.0"
 publish = false
 

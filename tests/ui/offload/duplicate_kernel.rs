@@ -5,7 +5,7 @@
 // An offload kernel whose mangled symbol collides with another item in the
 // same crate must be rejected, just like any other symbol collision.
 
-#![feature(core_intrinsics, rustc_attrs)]
+#![feature(rustc_attrs, gpu_offload)]
 #![allow(internal_features)]
 
 #[allow(non_snake_case)]
@@ -18,5 +18,5 @@ fn kernel(_x: f32) {}
 
 fn main() {
     _RNvC19collision_kernels_a6kernel(0.0);
-    core::intrinsics::offload::<_, _, ()>(kernel, [1, 1, 1], [1, 1, 1], 0, -1, (0.0f32,));
+    core::offload::offload! { kernel = kernel, args = (0.0f32,) }
 }

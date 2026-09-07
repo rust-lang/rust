@@ -4,7 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
@@ -13,11 +13,12 @@ use rustc_span::{BytePos, ExpnKind};
 use crate::clean::{self, PrimitiveType, rustc_span};
 use crate::html::sources;
 
-/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end byte positions of the span.
+/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end
+/// byte positions of the span.
 ///
-/// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting, and since we
-/// never actually use the context and parent that are stored in a normal `Span`, we can replace its usages with this
-/// one, which is much cheaper to construct.
+/// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting,
+/// and since we never actually use the context and parent that are stored in a normal `Span`, we
+/// can replace its usages with this one, which is much cheaper to construct.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Span {
     lo: BytePos,
@@ -366,6 +367,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
+            | ItemKind::TestBinderConstraints { .. }
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(..) => {}
         }

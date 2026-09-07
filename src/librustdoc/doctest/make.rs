@@ -33,8 +33,11 @@ struct ParseSourceInfo {
     has_macro_def: bool,
     everything_else: String,
     crates: String,
+    /// Inner attributes (`#![...]`) from the source that have to be put at the crate level.
     crate_attrs: String,
-    maybe_crate_attrs: String,
+    /// Inner attributes (`#![...]`) from the source that can be put into a module and therefore do
+    /// not inhibit merging: even in the merged test, the attributes can be isolated to the test.
+    module_attrs: String,
 }
 
 /// Builder type for `DocTestBuilder`.
@@ -143,7 +146,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             everything_else,
             crates,
             crate_attrs,
-            maybe_crate_attrs,
+            module_attrs,
         })) = result
         else {
             // If the AST returned an error, we don't want this doctest to be merged with the
@@ -158,7 +161,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             );
         };
 
-        debug!("crate_attrs:\n{crate_attrs}{maybe_crate_attrs}");
+        debug!("crate_attrs:\n{crate_attrs}{module_attrs}");
         debug!("crates:\n{crates}");
         debug!("after:\n{everything_else}");
         debug!("merge-doctests: {can_merge_doctests:?}");
@@ -187,7 +190,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             has_main_fn,
             global_crate_attrs,
             crate_attrs,
-            maybe_crate_attrs,
+            module_attrs,
             crates,
             everything_else,
             already_has_extern_crate,
@@ -208,7 +211,7 @@ pub(crate) struct DocTestBuilder {
     pub(crate) crate_attrs: String,
     /// If this is a merged doctest, it will be put into `everything_else`, otherwise it will
     /// put into `crate_attrs`.
-    pub(crate) maybe_crate_attrs: String,
+    pub(crate) module_attrs: String,
     pub(crate) crates: String,
     pub(crate) everything_else: String,
     pub(crate) test_id: Option<String>,
@@ -294,7 +297,7 @@ impl DocTestBuilder {
     fn invalid(
         global_crate_attrs: Vec<String>,
         crate_attrs: String,
-        maybe_crate_attrs: String,
+        module_attrs: String,
         crates: String,
         everything_else: String,
         test_id: Option<String>,
@@ -304,7 +307,7 @@ impl DocTestBuilder {
             has_main_fn: false,
             global_crate_attrs,
             crate_attrs,
-            maybe_crate_attrs,
+            module_attrs,
             crates,
             everything_else,
             already_has_extern_crate: false,
@@ -347,17 +350,16 @@ impl DocTestBuilder {
             line_offset += 1;
         }
 
-        // Now push any outer attributes from the example, assuming they
-        // are intended to be crate attributes.
+        // Now push any outer attributes from the example (both crate and module attributes).
         if !self.crate_attrs.is_empty() {
             crate_level_code.push_str(&self.crate_attrs);
             if !self.crate_attrs.ends_with('\n') {
                 crate_level_code.push('\n');
             }
         }
-        if !self.maybe_crate_attrs.is_empty() {
-            crate_level_code.push_str(&self.maybe_crate_attrs);
-            if !self.maybe_crate_attrs.ends_with('\n') {
+        if !self.module_attrs.is_empty() {
+            crate_level_code.push_str(&self.module_attrs);
+            if !self.module_attrs.ends_with('\n') {
                 crate_level_code.push('\n');
             }
         }
@@ -590,12 +592,7 @@ fn parse_source(
                     {
                         push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
                     } else {
-                        push_to_s(
-                            &mut info.maybe_crate_attrs,
-                            source,
-                            attr.span,
-                            &mut prev_span_hi,
-                        );
+                        push_to_s(&mut info.module_attrs, source, attr.span, &mut prev_span_hi);
                     }
                 } else {
                     push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
@@ -657,7 +654,7 @@ fn parse_source(
                     span = span.with_lo(attr.span.lo());
                 }
                 if info.everything_else.is_empty()
-                    && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
+                    && (!info.module_attrs.is_empty() || !info.crate_attrs.is_empty())
                 {
                     // To keep the doctest code "as close as possible" to the original, we insert
                     // all the code located between this new span and the previous span which

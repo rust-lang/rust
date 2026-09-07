@@ -1,7 +1,5 @@
-use crate::cmp::Ordering;
-use crate::hash::{Hash, Hasher};
-use crate::marker::{Destruct, StructuralPartialEq};
-use crate::mem::MaybeDangling;
+use crate::hash::Hash;
+use crate::marker::Destruct;
 use crate::ops::{Deref, DerefMut, DerefPure};
 use crate::ptr;
 
@@ -152,11 +150,11 @@ use crate::ptr;
 /// [`MaybeUninit`]: crate::mem::MaybeUninit
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[rustc_pub_transparent]
 pub struct ManuallyDrop<T: ?Sized> {
-    value: MaybeDangling<T>,
+    value: T,
 }
 
 impl<T> ManuallyDrop<T> {
@@ -180,7 +178,7 @@ impl<T> ManuallyDrop<T> {
     #[inline(always)]
     #[rustc_no_writable]
     pub const fn new(value: T) -> ManuallyDrop<T> {
-        ManuallyDrop { value: MaybeDangling::new(value) }
+        ManuallyDrop { value }
     }
 
     /// Extracts the value from the `ManuallyDrop` container.
@@ -198,9 +196,7 @@ impl<T> ManuallyDrop<T> {
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
-        // Cannot use `MaybeDangling::into_inner` as that does not yet have the desired semantics.
-        // SAFETY: We know this is a valid `T`. `slot` will not be dropped.
-        unsafe { (&raw const slot).cast::<T>().read() }
+        slot.value
     }
 
     /// Takes the value from the `ManuallyDrop<T>` container out.
@@ -225,7 +221,7 @@ impl<T> ManuallyDrop<T> {
     pub const unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
         // SAFETY: we are reading from a reference, which is guaranteed
         // to be valid for reads.
-        unsafe { ptr::read(slot.value.as_ref()) }
+        unsafe { ptr::read(&slot.value) }
     }
 }
 
@@ -262,7 +258,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
         // SAFETY: we are dropping the value pointed to by a mutable reference
         // which is guaranteed to be valid for writes.
         // It is up to the caller to make sure that `slot` isn't dropped again.
-        unsafe { ptr::drop_in_place(slot.value.as_mut()) }
+        unsafe { ptr::drop_in_place(&mut slot.value) }
     }
 }
 
@@ -272,7 +268,7 @@ const impl<T: ?Sized> Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline(always)]
     fn deref(&self) -> &T {
-        self.value.as_ref()
+        &self.value
     }
 }
 
@@ -281,43 +277,9 @@ const impl<T: ?Sized> Deref for ManuallyDrop<T> {
 const impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
-        self.value.as_mut()
+        &mut self.value
     }
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized> DerefPure for ManuallyDrop<T> {}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + Eq> Eq for ManuallyDrop<T> {}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + PartialEq> PartialEq for ManuallyDrop<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.value.as_ref().eq(other.value.as_ref())
-    }
-}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized> StructuralPartialEq for ManuallyDrop<T> {}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + Ord> Ord for ManuallyDrop<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.value.as_ref().cmp(other.value.as_ref())
-    }
-}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + PartialOrd> PartialOrd for ManuallyDrop<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.value.as_ref().partial_cmp(other.value.as_ref())
-    }
-}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: ?Sized + Hash> Hash for ManuallyDrop<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.value.as_ref().hash(state);
-    }
-}

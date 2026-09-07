@@ -315,11 +315,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         Self { impl_trait_mode: ImplTraitLoweringState::new(impl_trait_mode), ..self }
     }
 
-    pub(crate) fn impl_trait_mode(&mut self, impl_trait_mode: ImplTraitLoweringMode) -> &mut Self {
-        self.impl_trait_mode = ImplTraitLoweringState::new(impl_trait_mode);
-        self
-    }
-
     pub(crate) fn forbid_params_after(&mut self, index: u32, reason: ForbidParamsAfterReason) {
         self.forbid_params_after = Some(index);
         self.forbid_params_after_reason = reason;
@@ -788,7 +783,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         )
     }
 
-    /// This is only for `generic_predicates_for_param`, where we can't just
+    /// This is only for [`resolve_type_param_assoc_type_shorthand`], where we can't just
     /// lower the self types of the predicates since that could lead to cycles.
     /// So we just check here if the `type_ref` resolves to a generic param, and which.
     fn lower_ty_only_param(&self, type_ref: TypeRefId) -> Option<TypeOrConstParamId> {

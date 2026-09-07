@@ -1,5 +1,8 @@
 //@ check-pass
 
+//! Test that a type implementing Reborrow and CoerceShared can be reborrowed and coerced as shared
+//! multiple times in the same function.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};

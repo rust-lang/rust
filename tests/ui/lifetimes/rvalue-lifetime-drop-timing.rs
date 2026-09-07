@@ -3,8 +3,6 @@
 
 //@ run-pass
 
-#![feature(box_patterns)]
-
 static mut FLAGS: u64 = 0;
 
 struct Box<T> {
@@ -85,8 +83,6 @@ fn main() {
     end_of_block!(AddFlags { bits: ref _x }, add_flags(1));
     end_of_block!(&AddFlags { bits: _ }, &add_flags(1));
     end_of_block!((_, ref _y), (add_flags(1), 22));
-    end_of_block!(box ref _x, std::boxed::Box::new(add_flags(1)));
-    end_of_block!(box _x, std::boxed::Box::new(add_flags(1)));
     end_of_block!(_, {
         {
             check_flags(0);

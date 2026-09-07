@@ -116,7 +116,7 @@ commit message template](#rust-toolchain-bump-commit-message-template).
 
 #### `rust-toolchain` bump commit message template
 
-```text
+````text
 chore: bump rustfmt toolchain to nightly-$LATEST_NIGHTLY_DATE
 
 Bumping the toolchain version as part of a git subtree push.
@@ -132,6 +132,7 @@ After:
 ```
 $LATEST_NIGHTLY_VERSION-nightly ($LATEST_NIGHTLY_HASH $LATEST_NIGHTLY_DATE)
 ```
+````
 
 Substituting the placeholders with the right information.
 

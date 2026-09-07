@@ -2,44 +2,44 @@ error[E0308]: mismatched types
   --> $DIR/or_patterns.rs:27:24
    |
 LL |     let _: NonNullI8 = 0;
-   |            ---------   ^ expected `(i8) is (i8::MIN..=-1 | 1..)`, found integer
+   |            ---------   ^ expected `pattern_type!(i8 is (i8::MIN..=-1 | 1..))`, found integer
    |            |
    |            expected due to this
    |
-   = note: expected pattern type `(i8) is (i8::MIN..=-1 | 1..)`
+   = note: expected pattern type `pattern_type!(i8 is (i8::MIN..=-1 | 1..))`
                       found type `{integer}`
 
-error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-1 | 1..)`
+error[E0600]: cannot apply unary operator `-` to type `pattern_type!(i8 is (i8::MIN..=-1 | 1..))`
   --> $DIR/or_patterns.rs:29:24
    |
 LL |     let _: NonNullI8 = -1;
    |                        ^^ cannot apply unary operator `-`
 
-error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-1 | 1..)`
+error[E0600]: cannot apply unary operator `-` to type `pattern_type!(i8 is (i8::MIN..=-1 | 1..))`
   --> $DIR/or_patterns.rs:31:24
    |
 LL |     let _: NonNullI8 = -128;
    |                        ^^^^ cannot apply unary operator `-`
 
-error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-2 | 0..)`
+error[E0600]: cannot apply unary operator `-` to type `pattern_type!(i8 is (i8::MIN..=-2 | 0..))`
   --> $DIR/or_patterns.rs:38:26
    |
 LL |     let _: NonNegOneI8 = -1;
    |                          ^^ cannot apply unary operator `-`
 
-error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-2 | 0..)`
+error[E0600]: cannot apply unary operator `-` to type `pattern_type!(i8 is (i8::MIN..=-2 | 0..))`
   --> $DIR/or_patterns.rs:40:26
    |
 LL |     let _: NonNegOneI8 = -2;
    |                          ^^ cannot apply unary operator `-`
 
-error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-2 | 0..)`
+error[E0600]: cannot apply unary operator `-` to type `pattern_type!(i8 is (i8::MIN..=-2 | 0..))`
   --> $DIR/or_patterns.rs:42:26
    |
 LL |     let _: NonNegOneI8 = -128;
    |                          ^^^^ cannot apply unary operator `-`
 
-error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
+error: layout_of(pattern_type!(i8 is (i8::MIN..=-1 | 1..))) = Layout {
            size: Size(1 bytes),
            align: AbiAlign {
                abi: Align(1 bytes),
@@ -75,7 +75,7 @@ error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
 LL | type NonNullI8 = pattern_type!(i8 is ..0 | 1..);
    | ^^^^^^^^^^^^^^
 
-error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
+error: layout_of(pattern_type!(i8 is (i8::MIN..=-2 | 0..))) = Layout {
            size: Size(1 bytes),
            align: AbiAlign {
                abi: Align(1 bytes),

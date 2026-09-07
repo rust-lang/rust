@@ -9,5 +9,6 @@ use crate::source_root;
 pub fn htmldocck() -> Command {
     let mut python = python_command();
     python.arg(source_root().join("src/etc/htmldocck.py"));
+    python.env("IS_RMAKE", "1");
     python
 }

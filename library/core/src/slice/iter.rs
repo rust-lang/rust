@@ -1892,9 +1892,9 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        self.v.split_at_checked(self.chunk_size).and_then(|(chunk, rest)| {
+        self.v.split_at_checked(self.chunk_size).map(|(chunk, rest)| {
             self.v = rest;
-            Some(chunk)
+            chunk
         })
     }
 
@@ -2048,9 +2048,9 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         // SAFETY: we have `&mut self`, so are allowed to temporarily materialize a mut slice
-        unsafe { &mut *self.v }.split_at_mut_checked(self.chunk_size).and_then(|(chunk, rest)| {
+        unsafe { &mut *self.v }.split_at_mut_checked(self.chunk_size).map(|(chunk, rest)| {
             self.v = rest;
-            Some(chunk)
+            chunk
         })
     }
 

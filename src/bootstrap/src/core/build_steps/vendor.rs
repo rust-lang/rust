@@ -71,13 +71,21 @@ impl CommandLineStep for Vendor {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Vendor {
+        let vendor = run.builder.ensure(Vendor {
             sync_args: run.builder.config.cmd.vendor_sync_args(),
             versioned_dirs: run.builder.config.cmd.vendor_versioned_dirs(),
             root_dir: run.builder.src.clone(),
             output_dir: None,
             only_library_workspace: false,
         });
+        // Print the config.toml contents, so that the user can manually copy it
+        if !run.builder.config.dry_run() {
+            println!("Put the following config into .cargo/config.toml:\n{}", vendor.config);
+            println!(
+                "Put the following config into library/.cargo/config.toml:\n{}",
+                vendor.config_library
+            );
+        }
     }
 
     /// Executes the vendoring process.

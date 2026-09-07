@@ -17,7 +17,7 @@ help: ALLOC was deallocated here:
 LL | /             __rust_dealloc(
 LL | |                 ptr.0 as *mut _,
 LL | |                 std::mem::size_of::<usize>(),
-LL | |                 std::mem::align_of::<usize>(),
+LL | |                 std::mem::align_of::<usize>().try_into().unwrap(),
 LL | |             )
    | |_____________^
    = note: this is on thread `unnamed-ID`

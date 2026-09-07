@@ -692,7 +692,9 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(
+            AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "Sg",
@@ -733,7 +735,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
-        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg) => "f",
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
         // https://github.com/gcc-mirror/gcc/blob/master/gcc/config/nvptx/nvptx.md -> look for
         // "define_constraint".
@@ -807,7 +809,9 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             cx.type_vector(cx.type_i64(), 2)
         }
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(
+            AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(_) => cx.type_i32(),
@@ -846,6 +850,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         }
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => cx.type_vector(cx.type_i32(), 4),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
@@ -928,6 +933,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        _extra_rust_target_features: &[String],
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -1054,7 +1060,9 @@ fn modifier_to_gcc(
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             if modifier == Some('v') { None } else { modifier }
         }
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(
+            AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(_) => None,
@@ -1090,7 +1098,9 @@ fn modifier_to_gcc(
                 modifier
             }
         }
-        InlineAsmRegClass::Mips(_) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => modifier,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => Some('w'),
         InlineAsmRegClass::Nvptx(_) => None,
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vsreg) => {
             if modifier.is_none() {

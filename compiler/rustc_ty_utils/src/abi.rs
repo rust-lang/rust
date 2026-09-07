@@ -626,7 +626,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 ) {
     assert_ne!(
         abi,
-        ExternAbi::Unadjusted,
+        ExternAbi::LlvmIntrinsic,
         "fn_abi_of_instance should not be called on LLVM intrinsics"
     );
 

@@ -1,20 +1,20 @@
 use super::super::cvt_nz;
-use crate::cell::UnsafeCell;
 use crate::io::Error;
-use crate::mem::MaybeUninit;
-use crate::pin::Pin;
+use crate::pin::{Pin, pin};
+use crate::sys::helpers::COpaque;
 
 pub struct Mutex {
-    inner: UnsafeCell<libc::pthread_mutex_t>,
+    inner: COpaque<libc::pthread_mutex_t>,
 }
 
 impl Mutex {
     pub fn new() -> Mutex {
-        Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
+        Mutex { inner: COpaque::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
 
-    pub(super) fn raw(&self) -> *mut libc::pthread_mutex_t {
-        self.inner.get()
+    pub(super) fn raw(self: Pin<&Self>) -> *mut libc::pthread_mutex_t {
+        let inner = unsafe { self.map_unchecked(|m| &m.inner) };
+        inner.get()
     }
 
     /// # Safety
@@ -45,15 +45,14 @@ impl Mutex {
         // PTHREAD_MUTEX_NORMAL which is guaranteed to deadlock if we try to
         // re-lock it from the same thread, thus avoiding undefined behavior.
         unsafe {
-            let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
-            cvt_nz(libc::pthread_mutexattr_init(attr.as_mut_ptr())).unwrap();
-            let attr = AttrGuard(&mut attr);
-            cvt_nz(libc::pthread_mutexattr_settype(
-                attr.0.as_mut_ptr(),
-                libc::PTHREAD_MUTEX_NORMAL,
-            ))
-            .unwrap();
-            cvt_nz(libc::pthread_mutex_init(self.raw(), attr.0.as_ptr())).unwrap();
+            let attr = pin!(COpaque::<libc::pthread_mutexattr_t>::uninit());
+            // FIXME(pin-ergonomics): remove the next line.
+            let attr = attr.into_ref();
+            cvt_nz(libc::pthread_mutexattr_init(attr.get())).unwrap();
+            let attr = AttrGuard(attr);
+            cvt_nz(libc::pthread_mutexattr_settype(attr.0.get(), libc::PTHREAD_MUTEX_NORMAL))
+                .unwrap();
+            cvt_nz(libc::pthread_mutex_init(self.as_ref().raw(), attr.0.get())).unwrap();
         }
     }
 
@@ -105,12 +104,13 @@ unsafe impl Sync for Mutex {}
 
 impl Drop for Mutex {
     fn drop(&mut self) {
+        let inner = unsafe { Pin::new_unchecked(&self.inner) };
         // SAFETY:
         // If `lock` or `init` was called, the mutex must have been pinned, so
         // it is still at the same location. Otherwise, `inner` must contain
         // `PTHREAD_MUTEX_INITIALIZER`, which is valid at all locations. Thus,
         // this call always destroys a valid mutex.
-        let r = unsafe { libc::pthread_mutex_destroy(self.raw()) };
+        let r = unsafe { libc::pthread_mutex_destroy(inner.get()) };
         if cfg!(any(target_os = "aix", target_os = "dragonfly")) {
             // On AIX and DragonFly pthread_mutex_destroy() returns EINVAL if called
             // on a mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
@@ -123,12 +123,12 @@ impl Drop for Mutex {
     }
 }
 
-struct AttrGuard<'a>(pub &'a mut MaybeUninit<libc::pthread_mutexattr_t>);
+struct AttrGuard<'a>(pub Pin<&'a COpaque<libc::pthread_mutexattr_t>>);
 
 impl Drop for AttrGuard<'_> {
     fn drop(&mut self) {
         unsafe {
-            let result = libc::pthread_mutexattr_destroy(self.0.as_mut_ptr());
+            let result = libc::pthread_mutexattr_destroy(self.0.get());
             assert_eq!(result, 0);
         }
     }

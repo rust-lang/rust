@@ -114,11 +114,11 @@ struct Footer {
 struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
-pub struct AbsoluteBytePos(u64);
+struct AbsoluteBytePos(u64);
 
 impl AbsoluteBytePos {
     #[inline]
-    pub fn new(pos: usize) -> AbsoluteBytePos {
+    fn new(pos: usize) -> AbsoluteBytePos {
         AbsoluteBytePos(pos.try_into().expect("Incremental cache file size overflowed u64."))
     }
 
@@ -333,13 +333,6 @@ impl OnDiskCache {
         let side_effect: Option<QuerySideEffect> =
             self.load_indexed(tcx, dep_node_index, &self.side_effects_index);
         side_effect
-    }
-
-    /// Returns true if there is a disk-cached query return value for the given node.
-    #[inline]
-    pub fn loadable_from_disk(&self, dep_node_index: SerializedDepNodeIndex) -> bool {
-        self.query_values_index.contains_key(&dep_node_index)
-        // with_decoder is infallible, so we can stop here
     }
 
     /// Returns the disk-cached query return value for the given node, if there is one.

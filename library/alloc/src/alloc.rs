@@ -122,6 +122,7 @@ unsafe impl core::alloc::StaticAllocator for Global {}
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    // SAFETY: Upheld by caller.
     unsafe {
         // Make sure we don't accidentally allow omitting the allocator shim in
         // stable code until it is actually stabilized.
@@ -165,6 +166,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+    // SAFETY: Upheld by caller.
     unsafe { dealloc_nonnull(NonNull::new_unchecked(ptr), layout) }
 }
 
@@ -172,6 +174,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn dealloc_nonnull(ptr: NonNull<u8>, layout: Layout) {
+    // SAFETY: Upheld by caller.
     unsafe { __rust_dealloc(ptr, layout.size(), layout.alignment()) }
 }
 
@@ -218,6 +221,7 @@ unsafe fn dealloc_nonnull(ptr: NonNull<u8>, layout: Layout) {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    // SAFETY: Upheld by caller.
     unsafe { realloc_nonnull(NonNull::new_unchecked(ptr), layout, new_size) }
 }
 
@@ -225,6 +229,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn realloc_nonnull(ptr: NonNull<u8>, layout: Layout, new_size: usize) -> *mut u8 {
+    // SAFETY: Upheld by caller.
     unsafe { __rust_realloc(ptr, layout.size(), layout.alignment(), new_size) }
 }
 
@@ -282,6 +287,7 @@ unsafe fn realloc_nonnull(ptr: NonNull<u8>, layout: Layout, new_size: usize) -> 
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+    // SAFETY: Upheld by caller.
     unsafe {
         // Make sure we don't accidentally allow omitting the allocator shim in
         // stable code until it is actually stabilized.
@@ -525,6 +531,7 @@ impl Global {
                 cmp::min(old_layout.size(), new_layout.size()),
             );
         }
+        // SAFETY: Caller ensures the ptr & layout are correct.
         unsafe {
             self.deallocate_impl(ptr, old_layout);
         }
@@ -639,6 +646,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
 
     #[inline]
     fn rt_error(layout: Layout) -> ! {
+        // SAFETY: Safe to call; we control this function.
         unsafe {
             __rust_alloc_error_handler(layout.size(), layout.align());
         }

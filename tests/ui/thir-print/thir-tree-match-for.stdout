@@ -345,7 +345,7 @@ body:
                                                         temp_scope_id: 44
                                                         span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
                                                         kind: 
-                                                            Use {
+                                                            ValueExpr {
                                                                 source:
                                                                     Expr {
                                                                         ty: ()

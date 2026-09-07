@@ -265,7 +265,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Union,
                 Trait,
                 TraitAlias,
-                Impl
+                Impl,
+                TestBinderConstraints
             ]
         );
         hir_visit::walk_item(self, i)
@@ -324,7 +325,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Or,
                 Never,
                 Tuple,
-                Box,
                 Deref,
                 Ref,
                 Expr,
@@ -589,7 +589,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 MacCall,
                 MacroDef,
                 Delegation,
-                DelegationMac
+                DelegationMac,
+                TestBinderConstraints
             ]
         );
         ast_visit::walk_item(self, i)
@@ -635,7 +636,6 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Or,
                 Path,
                 Tuple,
-                Box,
                 Deref,
                 Ref,
                 Expr,

@@ -1,6 +1,10 @@
 //! Check that unstable print requests are omitted from help if compiler is in stable channel.
 //!
 //! Issue: <https://github.com/rust-lang/rust/issues/138698>
+
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use run_make_support::{diff, rustc, similar};
 
 fn main() {

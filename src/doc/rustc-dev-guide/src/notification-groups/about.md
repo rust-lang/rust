@@ -108,3 +108,7 @@ or contributors, and is typically done as part of compiler team triage.**
 [rustbot]: https://github.com/rust-lang/triagebot/
 [`ping`]: https://forge.rust-lang.org/triagebot/pinging.html
 [`triagebot.toml`]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
+
+## Adding a notification group
+
+See [Forge](https://forge.rust-lang.org/compiler/notification-groups.html#creating-a-notification-group).

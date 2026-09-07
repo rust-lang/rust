@@ -1,13 +1,18 @@
 // Verifies that type metadata identifiers for functions are emitted correctly
 // for primitive types.
 //
+//@ add-minicore
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Cno-prepopulate-passes -Copt-level=0 -C link-dead-code
+//@ compile-flags: -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ minicore-compile-flags: -Ccodegen-units=1
 
 #![crate_type = "lib"]
+#![feature(no_core, f16, f128)]
+#![no_core]
 
-extern crate core;
-use core::ffi::*;
+extern crate minicore;
+use minicore::*;
 
 pub fn foo1(_: ()) {}
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
@@ -15,120 +20,153 @@ pub fn foo2(_: (), _: c_void) {}
 // CHECK: define{{.*}}4foo2{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo3(_: (), _: c_void, _: c_void) {}
 // CHECK: define{{.*}}4foo3{{.*}}!type ![[TYPE2:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo4(_: *mut ()) {}
 // CHECK: define{{.*}}4foo4{{.*}}!type ![[TYPE4:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo5(_: *mut (), _: *mut c_void) {}
 // CHECK: define{{.*}}4foo5{{.*}}!type ![[TYPE5:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo6(_: *mut (), _: *mut c_void, _: *mut c_void) {}
 // CHECK: define{{.*}}4foo6{{.*}}!type ![[TYPE6:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo7(_: *const ()) {}
 // CHECK: define{{.*}}4foo7{{.*}}!type ![[TYPE7:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo8(_: *const (), _: *const c_void) {}
 // CHECK: define{{.*}}4foo8{{.*}}!type ![[TYPE8:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo9(_: *const (), _: *const c_void, _: *const c_void) {}
 // CHECK: define{{.*}}4foo9{{.*}}!type ![[TYPE9:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo10(_: bool) {}
 // CHECK: define{{.*}}5foo10{{.*}}!type ![[TYPE10:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo11(_: bool, _: bool) {}
 // CHECK: define{{.*}}5foo11{{.*}}!type ![[TYPE11:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo12(_: bool, _: bool, _: bool) {}
 // CHECK: define{{.*}}5foo12{{.*}}!type ![[TYPE12:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo13(_: i8) {}
 // CHECK: define{{.*}}5foo13{{.*}}!type ![[TYPE13:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo14(_: i8, _: i8) {}
 // CHECK: define{{.*}}5foo14{{.*}}!type ![[TYPE14:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo15(_: i8, _: i8, _: i8) {}
 // CHECK: define{{.*}}5foo15{{.*}}!type ![[TYPE15:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo16(_: i16) {}
 // CHECK: define{{.*}}5foo16{{.*}}!type ![[TYPE16:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo17(_: i16, _: i16) {}
 // CHECK: define{{.*}}5foo17{{.*}}!type ![[TYPE17:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo18(_: i16, _: i16, _: i16) {}
 // CHECK: define{{.*}}5foo18{{.*}}!type ![[TYPE18:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo19(_: i32) {}
 // CHECK: define{{.*}}5foo19{{.*}}!type ![[TYPE19:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo20(_: i32, _: i32) {}
 // CHECK: define{{.*}}5foo20{{.*}}!type ![[TYPE20:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo21(_: i32, _: i32, _: i32) {}
 // CHECK: define{{.*}}5foo21{{.*}}!type ![[TYPE21:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo22(_: i64) {}
 // CHECK: define{{.*}}5foo22{{.*}}!type ![[TYPE22:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo23(_: i64, _: i64) {}
 // CHECK: define{{.*}}5foo23{{.*}}!type ![[TYPE23:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo24(_: i64, _: i64, _: i64) {}
 // CHECK: define{{.*}}5foo24{{.*}}!type ![[TYPE24:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo25(_: i128) {}
 // CHECK: define{{.*}}5foo25{{.*}}!type ![[TYPE25:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo26(_: i128, _: i128) {}
 // CHECK: define{{.*}}5foo26{{.*}}!type ![[TYPE26:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo27(_: i128, _: i128, _: i128) {}
 // CHECK: define{{.*}}5foo27{{.*}}!type ![[TYPE27:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo28(_: isize) {}
 // CHECK: define{{.*}}5foo28{{.*}}!type ![[TYPE28:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo29(_: isize, _: isize) {}
 // CHECK: define{{.*}}5foo29{{.*}}!type ![[TYPE29:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo30(_: isize, _: isize, _: isize) {}
 // CHECK: define{{.*}}5foo30{{.*}}!type ![[TYPE30:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo31(_: u8) {}
 // CHECK: define{{.*}}5foo31{{.*}}!type ![[TYPE31:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo32(_: u8, _: u8) {}
 // CHECK: define{{.*}}5foo32{{.*}}!type ![[TYPE32:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo33(_: u8, _: u8, _: u8) {}
 // CHECK: define{{.*}}5foo33{{.*}}!type ![[TYPE33:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo34(_: u16) {}
 // CHECK: define{{.*}}5foo34{{.*}}!type ![[TYPE34:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo35(_: u16, _: u16) {}
 // CHECK: define{{.*}}5foo35{{.*}}!type ![[TYPE35:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo36(_: u16, _: u16, _: u16) {}
 // CHECK: define{{.*}}5foo36{{.*}}!type ![[TYPE36:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo37(_: u32) {}
 // CHECK: define{{.*}}5foo37{{.*}}!type ![[TYPE37:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo38(_: u32, _: u32) {}
 // CHECK: define{{.*}}5foo38{{.*}}!type ![[TYPE38:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo39(_: u32, _: u32, _: u32) {}
 // CHECK: define{{.*}}5foo39{{.*}}!type ![[TYPE39:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo40(_: u64) {}
 // CHECK: define{{.*}}5foo40{{.*}}!type ![[TYPE40:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo41(_: u64, _: u64) {}
 // CHECK: define{{.*}}5foo41{{.*}}!type ![[TYPE41:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo42(_: u64, _: u64, _: u64) {}
 // CHECK: define{{.*}}5foo42{{.*}}!type ![[TYPE42:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo43(_: u128) {}
 // CHECK: define{{.*}}5foo43{{.*}}!type ![[TYPE43:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo44(_: u128, _: u128) {}
 // CHECK: define{{.*}}5foo44{{.*}}!type ![[TYPE44:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo45(_: u128, _: u128, _: u128) {}
 // CHECK: define{{.*}}5foo45{{.*}}!type ![[TYPE45:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo46(_: usize) {}
 // CHECK: define{{.*}}5foo46{{.*}}!type ![[TYPE46:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo47(_: usize, _: usize) {}
 // CHECK: define{{.*}}5foo47{{.*}}!type ![[TYPE47:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo48(_: usize, _: usize, _: usize) {}
 // CHECK: define{{.*}}5foo48{{.*}}!type ![[TYPE48:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo49(_: f32) {}
 // CHECK: define{{.*}}5foo49{{.*}}!type ![[TYPE49:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo50(_: f32, _: f32) {}
 // CHECK: define{{.*}}5foo50{{.*}}!type ![[TYPE50:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo51(_: f32, _: f32, _: f32) {}
 // CHECK: define{{.*}}5foo51{{.*}}!type ![[TYPE51:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo52(_: f64) {}
 // CHECK: define{{.*}}5foo52{{.*}}!type ![[TYPE52:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo53(_: f64, _: f64) {}
 // CHECK: define{{.*}}5foo53{{.*}}!type ![[TYPE53:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo54(_: f64, _: f64, _: f64) {}
 // CHECK: define{{.*}}5foo54{{.*}}!type ![[TYPE54:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo55(_: char) {}
 // CHECK: define{{.*}}5foo55{{.*}}!type ![[TYPE55:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo56(_: char, _: char) {}
 // CHECK: define{{.*}}5foo56{{.*}}!type ![[TYPE56:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo57(_: char, _: char, _: char) {}
 // CHECK: define{{.*}}5foo57{{.*}}!type ![[TYPE57:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 pub fn foo58(_: &str) {}
 // CHECK: define{{.*}}5foo58{{.*}}!type ![[TYPE58:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo59(_: &str, _: &str) {}
 // CHECK: define{{.*}}5foo59{{.*}}!type ![[TYPE59:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo60(_: &str, _: &str, _: &str) {}
 // CHECK: define{{.*}}5foo60{{.*}}!type ![[TYPE60:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
+pub fn foo61(_: f16) {}
+// CHECK: define{{.*}}5foo61{{.*}}!type ![[TYPE61:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo62(_: f16, _: f16) {}
+// CHECK: define{{.*}}5foo62{{.*}}!type ![[TYPE62:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo63(_: f16, _: f16, _: f16) {}
+// CHECK: define{{.*}}5foo63{{.*}}!type ![[TYPE63:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
+pub fn foo64(_: f128) {}
+// CHECK: define{{.*}}5foo64{{.*}}!type ![[TYPE64:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo65(_: f128, _: f128) {}
+// CHECK: define{{.*}}5foo65{{.*}}!type ![[TYPE65:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo66(_: f128, _: f128, _: f128) {}
+// CHECK: define{{.*}}5foo66{{.*}}!type ![[TYPE66:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvvE"}
 // CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvPvE"}
@@ -188,3 +226,9 @@ pub fn foo60(_: &str, _: &str, _: &str) {}
 // CHECK: ![[TYPE58]] = !{i64 0, !"_ZTSFvu3refIu3strEE"}
 // CHECK: ![[TYPE59]] = !{i64 0, !"_ZTSFvu3refIu3strES0_E"}
 // CHECK: ![[TYPE60]] = !{i64 0, !"_ZTSFvu3refIu3strES0_S0_E"}
+// CHECK: ![[TYPE61]] = !{i64 0, !"_ZTSFvDhE"}
+// CHECK: ![[TYPE62]] = !{i64 0, !"_ZTSFvDhDhE"}
+// CHECK: ![[TYPE63]] = !{i64 0, !"_ZTSFvDhDhDhE"}
+// CHECK: ![[TYPE64]] = !{i64 0, !"_ZTSFvgE"}
+// CHECK: ![[TYPE65]] = !{i64 0, !"_ZTSFvggE"}
+// CHECK: ![[TYPE66]] = !{i64 0, !"_ZTSFvgggE"}

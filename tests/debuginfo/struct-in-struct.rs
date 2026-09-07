@@ -50,34 +50,40 @@ struct Simple {
     x: i32
 }
 
+#[repr(C)]
 struct InternalPadding {
     x: i32,
     y: i64
 }
 
+#[repr(C)]
 struct PaddingAtEnd {
     x: i64,
     y: i32
 }
 
+#[repr(C)]
 struct ThreeSimpleStructs {
     x: Simple,
     y: Simple,
     z: Simple
 }
 
+#[repr(C)]
 struct InternalPaddingParent {
     x: InternalPadding,
     y: InternalPadding,
     z: InternalPadding
 }
 
+#[repr(C)]
 struct PaddingAtEndParent {
     x: PaddingAtEnd,
     y: PaddingAtEnd,
     z: PaddingAtEnd
 }
 
+#[repr(C)]
 struct Mixed {
     x: PaddingAtEnd,
     y: InternalPadding,
@@ -97,6 +103,7 @@ struct ThatsJustOverkill {
     x: BagInBag
 }
 
+#[repr(C)]
 struct Tree {
     x: Simple,
     y: InternalPaddingParent,

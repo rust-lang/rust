@@ -73,7 +73,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             //  the outermost `Box` is what determines the permission that gets created.
             ty::Adt(adt, _) if adt.is_box() => Self::visit_box(bx, layout, is_fn_entry),
             // Skip traversing for everything inside of `MaybeDangling`
-            ty::Adt(adt, _) if adt.is_maybe_dangling() => None,
+            _ if layout.ty.is_like_maybe_dangling() => None,
             _ => Self::walk_value(bx, layout, is_fn_entry),
         }
     }

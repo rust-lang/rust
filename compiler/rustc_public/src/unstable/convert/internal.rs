@@ -614,7 +614,7 @@ impl RustcInternal for Abi {
             Abi::AvrNonBlockingInterrupt => rustc_abi::ExternAbi::AvrNonBlockingInterrupt,
             Abi::System { unwind } => rustc_abi::ExternAbi::System { unwind },
             Abi::RustCall => rustc_abi::ExternAbi::RustCall,
-            Abi::Unadjusted => rustc_abi::ExternAbi::Unadjusted,
+            Abi::LlvmIntrinsic => rustc_abi::ExternAbi::LlvmIntrinsic,
             Abi::RustCold => rustc_abi::ExternAbi::RustCold,
             Abi::RustInvalid => rustc_abi::ExternAbi::RustInvalid,
             Abi::RiscvInterruptM => rustc_abi::ExternAbi::RiscvInterruptM,

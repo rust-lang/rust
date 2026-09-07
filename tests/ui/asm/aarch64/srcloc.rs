@@ -1,7 +1,7 @@
 //@ add-minicore
 //@ build-fail
 //@ needs-asm-support
-//@ compile-flags: --target aarch64-unknown-linux-gnu -Ccodegen-units=1
+//@ compile-flags: --target aarch64-unknown-linux-gnu -Ccodegen-units=1 -Cembed-bitcode=false -Clto=no
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
 #![crate_type = "lib"]

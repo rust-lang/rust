@@ -66,10 +66,8 @@ using namespace llvm;
 
 static codegen::RegisterCodeGenFlags CGF;
 
-typedef struct LLVMOpaquePass *LLVMPassRef;
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
-DEFINE_STDCXX_CONVERSION_FUNCTIONS(Pass, LLVMPassRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
 
 extern "C" void LLVMRustTimeTraceProfilerInitialize() {
@@ -1167,7 +1165,9 @@ extern "C" LLVMRustResult LLVMRustPrintModule(LLVMModuleRef M, const char *Path,
     LLVMRustSetLastError(ErrorInfo.c_str());
     return LLVMRustResult::Failure;
   }
-
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(M)->renumberMetadataForAssembly();
+#endif
   auto AAW = RustAssemblyAnnotationWriter(Demangle);
   auto FOS = formatted_raw_ostream(OS);
   unwrap(M)->print(FOS, &AAW);

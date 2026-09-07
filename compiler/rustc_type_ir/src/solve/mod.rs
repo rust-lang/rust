@@ -22,8 +22,8 @@ use crate::{
     InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
-pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
-    ty::CanonicalQueryInput<I, QueryInput<I, T>>;
+pub type CanonicalInputData<I> =
+    ty::CanonicalQueryInput<I, QueryInput<I, <I as Interner>::Predicate>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///
@@ -577,10 +577,12 @@ pub enum BuiltinImplSource {
     /// unless more specific information is necessary.
     Misc,
     /// A built-in impl for trait objects. The index is only used in winnowing.
+    // FIXME(-Znext-solver=no): The new solver does not need this index, remove!
     Object(usize),
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
     /// The index is only used for winnowing.
+    // FIXME(-Znext-solver=no): The new solver does not need this index, remove!
     TraitUpcasting(usize),
 }
 

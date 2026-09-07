@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::attrs::lang_items;
 use rustc_hir::intravisit::{
-    IgnoreNested, NestedFilter, Visitor, VisitorExt as _, walk_fn_decl, walk_generic_args, walk_generic_param,
+    IgnoreNested, NestedFilter, Visitor, walk_fn_decl, walk_generic_args, walk_generic_param,
     walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
     walk_where_predicate,
 };
@@ -376,8 +376,8 @@ fn could_use_elision<'tcx>(
 
     // A lifetime can be newly elided if:
     // - It occurs only once among the inputs.
-    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the
-    //   outputs (because eliding such an lifetime would create an ambiguity).
+    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the outputs (because
+    //   eliding such an lifetime would create an ambiguity).
     let elidable_lts = named_lifetime_occurrences(&input_lts)
         .into_iter()
         .filter_map(|(def_id, occurrences)| {
@@ -914,10 +914,10 @@ fn elision_suggestions(
         vec![(generics.span, String::new())]
     } else {
         // 1. Start from the last elidable lifetime
-        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current
-        //    lifetime to the comma before it
-        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the
-        //    current lifetime to the comma _after_ it
+        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current lifetime to the
+        //    comma before it
+        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the current lifetime
+        //    to the comma _after_ it
         let mut end: Option<LocalDefId> = None;
         elidable_lts
             .iter()

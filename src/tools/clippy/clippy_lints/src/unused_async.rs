@@ -284,6 +284,23 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                 && let ExprKind::Block(block, _) = inner.kind
                 && let Some(tail_expr) = block.expr
             {
+                // check the impl method self type/item
+                if let Ok(args) = cx.tcx.try_normalize_erasing_regions(
+                    cx.typing_env(),
+                    cx.tcx
+                        .fn_sig(impl_item.owner_id.def_id)
+                        .instantiate_identity()
+                        .map(|x| cx.tcx.instantiate_bound_regions_with_erased(x.inputs_and_output())),
+                ) && args[..args.len() - 1].iter().any(|&x| {
+                    !x.peel_refs().is_inhabited_from(
+                        cx.tcx,
+                        cx.tcx.parent_module_from_def_id(impl_item.owner_id.def_id),
+                        cx.typing_env(),
+                    )
+                }) {
+                    return;
+                }
+
                 span_lint_and_then(
                     cx,
                     UNUSED_ASYNC_TRAIT_IMPL,

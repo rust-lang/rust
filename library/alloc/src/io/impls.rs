@@ -92,7 +92,7 @@ impl<B: BufRead + ?Sized> BufRead for &mut B {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<R: Read + ?Sized> Read for Box<R> {
+impl<R: Read + ?Sized, A: Allocator> Read for Box<R, A> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
@@ -148,7 +148,7 @@ impl<T> SizeHint for Box<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Write + ?Sized> Write for Box<W> {
+impl<W: Write + ?Sized, A: Allocator> Write for Box<W, A> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (**self).write(buf)
@@ -185,7 +185,7 @@ impl<W: Write + ?Sized> Write for Box<W> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<S: Seek + ?Sized> Seek for Box<S> {
+impl<S: Seek + ?Sized, A: Allocator> Seek for Box<S, A> {
     #[inline]
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (**self).seek(pos)
@@ -212,7 +212,7 @@ impl<S: Seek + ?Sized> Seek for Box<S> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: BufRead + ?Sized> BufRead for Box<B> {
+impl<B: BufRead + ?Sized, A: Allocator> BufRead for Box<B, A> {
     #[inline]
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         (**self).fill_buf()

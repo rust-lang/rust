@@ -153,6 +153,12 @@ pub trait Float:
     /// Returns true if the value is +inf or -inf.
     fn is_infinite(self) -> bool;
 
+    /// Returns true if this number is neither infinite nor NaN.
+    #[allow(dead_code)]
+    fn is_finite(self) -> bool {
+        self.abs() < Self::INFINITY
+    }
+
     /// Returns true if the sign is negative. Extracts the sign bit regardless of zero or NaN.
     fn is_sign_negative(self) -> bool;
 

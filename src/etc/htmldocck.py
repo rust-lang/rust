@@ -624,8 +624,16 @@ def check_command(c, cache):
 
 def check(target, commands):
     cache = CachedFiles(target)
+    run_commands = 0
     for c in commands:
         check_command(c, cache)
+        run_commands += 1
+    if run_commands == 0 and os.environ.get("IS_RMAKE") is None:
+        stderr(
+            "\nNo check, move this file in `rustdoc-ui` testsuite if you want to check "
+            + "it doesn't crash"
+        )
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

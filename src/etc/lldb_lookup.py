@@ -39,6 +39,7 @@ from lldb_providers import (
     MSVCTupleSyntheticProvider,
     ClangEncodedEnumSummaryProvider,
     StructSummaryProvider,
+    f16SummaryProvider,
     # re-exports
     get_template_args as get_template_args,
     resolve_msvc_template_arg as resolve_msvc_template_arg,
@@ -125,6 +126,38 @@ def register_providers_compatibility():
 
     global RUST_CATEGORY
 
+    # Don't format 8-bit builtins as chars
+    unsigned_format = lldb.SBTypeFormat(
+        lldb.eFormatUnsigned,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
+    )
+
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("u8", False), unsigned_format)
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("unsigned char", False),
+        unsigned_format,
+    )
+
+    signed_format = lldb.SBTypeFormat(
+        lldb.eFormatDecimal,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
+    )
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("i8", False), lldb.SBTypeFormat(lldb.eFormatDecimal)
+    )
+
+    # i8 translates to signed char on msvc
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("signed char", False),
+        signed_format,
+    )
+    # Does not conflict with rust char, which ends up with the type name `char32_t`
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("char", False), signed_format)
+
     if LLDBFeature.TypeRecognizers in FEATURE_FLAGS:
         # enforce uniform aggregate formatting
         register_summary(
@@ -136,6 +169,16 @@ def register_providers_compatibility():
             lldb.eTypeOptionCascade
             | lldb.eTypeOptionHideEmptyAggregates
             | lldb.eTypeOptionHideChildren,
+        )
+
+        # Force f16 summary on windows-msvc since PDB does not have a node for f16
+        register_summary(
+            f16SummaryProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_msvc_f16.__name__,
+                lldb.eFormatterMatchCallback,
+            ),
+            DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
         )
 
         # Tuple-structs
@@ -346,6 +389,7 @@ def register_providers_compatibility():
         MSVCTupleSyntheticProvider,
         TupleSummaryProvider,
         r"^tuple\$<.+>$",
+        type_options=DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
     )
 
 
@@ -450,6 +494,11 @@ def is_gnu_enum(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
 def is_tuple_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
     fields = type.fields
     return len(fields) != 0 and is_tuple_fields(fields)
+
+
+def is_msvc_f16(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    # DWARF has a proper tag for f16, PDB does not.
+    return type.GetName() == "f16" and type.IsAggregateType()
 
 
 def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:

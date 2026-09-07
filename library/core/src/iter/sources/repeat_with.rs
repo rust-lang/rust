@@ -62,6 +62,7 @@ use crate::ops::Try;
 /// ```
 #[inline]
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
+#[rustc_diagnostic_item = "iter_repeat_with"]
 pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
     RepeatWith { repeater }
 }

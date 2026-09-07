@@ -1,5 +1,5 @@
 use crate::sys::pal::{api, c};
-use crate::{io, ptr};
+use crate::{fmt, io, ptr};
 
 #[cfg(test)]
 mod tests;
@@ -95,7 +95,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 }
 
 /// Gets a detailed string description for the given error number.
-pub fn error_string(mut errnum: i32) -> String {
+pub fn format_error(mut errnum: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let mut buf = [0 as c::WCHAR; 2048];
 
     unsafe {
@@ -131,21 +131,15 @@ pub fn error_string(mut errnum: i32) -> String {
         if res == 0 {
             // Sometimes FormatMessageW can fail e.g., system doesn't like 0 as langId,
             let fm_err = errno();
-            return format!("OS Error {errnum} (FormatMessageW() returned error {fm_err})");
+            return write!(f, "OS Error {errnum} (FormatMessageW() returned error {fm_err})");
         }
 
         match String::from_utf16(&buf[..res]) {
-            Ok(mut msg) => {
+            Ok(msg) => {
                 // Trim trailing CRLF inserted by FormatMessageW
-                let len = msg.trim_ascii_end().len();
-                msg.truncate(len);
-                msg
+                f.write_str(msg.trim_ascii_end())
             }
-            Err(..) => format!(
-                "OS Error {} (FormatMessageW() returned \
-                 invalid UTF-16)",
-                errnum
-            ),
+            Err(..) => write!(f, "OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
         }
     }
 }

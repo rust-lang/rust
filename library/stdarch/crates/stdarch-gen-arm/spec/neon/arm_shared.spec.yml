@@ -5,7 +5,7 @@ arch_cfgs:
 # Generate big endian shuffles
 auto_big_endian: true
 
-# Repeatedly used anchors 
+# Repeatedly used anchors
 # #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 neon-stable: &neon-stable
   FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
@@ -6240,7 +6240,7 @@ intrinsics:
       - Let:
           - c
           - FnCall: ['vdup{neon_type[3].lane_nox}', [c], [LANE]]
-      - FnCall: 
+      - FnCall:
           - "vusdot{neon_type[0].no}"
           - - a
             - FnCall: ['vreinterpret{type[4]}_u8_u32', [c]]
@@ -7010,7 +7010,7 @@ intrinsics:
       - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
       - Let: [c, {FnCall: [vreinterpretq_s32_s8, [c]]}]
       - Let: [c, {FnCall: ['vdup{neon_type[0].laneq_nox}', [c], [LANE]]}]
-      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[3]}_s8_s32', [c]]}]] 
+      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[3]}_s8_s32', [c]]}]]
 
   - name: "vsudot{neon_type[0].laneq_nox}"
     doc: "Dot product index form with signed and unsigned integers"
@@ -7036,7 +7036,7 @@ intrinsics:
       - Let:
           - c
           - FnCall: ['vdup{neon_type[3].laneq_nox}', [c], [LANE]]
-      - FnCall: 
+      - FnCall:
           - "vusdot{neon_type[0].no}"
           - - a
             - FnCall: ['vreinterpret{type[4]}_u8_u32', [c]]
@@ -12103,7 +12103,7 @@ intrinsics:
       # Inlining seems broken for 'fn vld1_v1i64', this "fixes" it
       - Let: [a, '*const i8', 'ptr as *const i8']
       - Let: [b, i32, 'crate::mem::align_of::<p64>() as i32']
-      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v1i64")] fn _vld1_v1i64(a: *const i8, b: i32) -> int64x1_t; }} transmute(_vld1_v1i64(a, b))'
+      - 'unsafe extern "llvm-intrinsic" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v1i64")] fn _vld1_v1i64(a: *const i8, b: i32) -> int64x1_t; }} transmute(_vld1_v1i64(a, b))'
 
   - name: "vtbx1"
     visibility: private
@@ -12154,9 +12154,9 @@ intrinsics:
       - uint8x8_t
       - poly8x8_t
     compose:
-      - FnCall: 
+      - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - vtbx1
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, [b]]
@@ -12211,9 +12211,9 @@ intrinsics:
       - [uint8x8_t, uint8x8x2_t, uint8x8_t]
       - [poly8x8_t, poly8x8x2_t, uint8x8_t]
     compose:
-      - FnCall: 
+      - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - vtbx2
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, ['b.0']]
@@ -12269,9 +12269,9 @@ intrinsics:
       - [uint8x8_t, uint8x8x3_t, uint8x8_t]
       - [poly8x8_t, poly8x8x3_t, uint8x8_t]
     compose:
-      - FnCall: 
+      - FnCall:
           - transmute
-          - - FnCall: 
+          - - FnCall:
                 - vtbx3
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, ['b.0']]
@@ -12313,7 +12313,7 @@ intrinsics:
       - ["uint8x8_t", "uint8x8x4_t", "uint8x8_t"]
       - ["poly8x8_t", "poly8x8x4_t", "uint8x8_t"]
     compose:
-      - FnCall: 
+      - FnCall:
           - "transmute"
           - - FnCall:
                - vtbx4
@@ -13057,11 +13057,11 @@ intrinsics:
       - [u32, u64]
     compose:
       # As the call to `__crc32` does not get inlined, we define an LLVM binding
-      # here, which is the same as above, and call it directly which results 
+      # here, which is the same as above, and call it directly which results
       # in the correct instructions being generated
       - Let: [b, u32, '(data & 0xFFFFFFFF) as u32']
       - Let: [c, u32, '(data >> 32) as u32']
-      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")] fn ___crc32w(crc: u32, data: u32) -> u32;}} unsafe {{ ___crc32w(___crc32w(crc, b), c) }}'
+      - 'unsafe extern "llvm-intrinsic" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")] fn ___crc32w(crc: u32, data: u32) -> u32;}} unsafe {{ ___crc32w(___crc32w(crc, b), c) }}'
 
   - name: "__crc32cd"
     doc: "CRC32-C single round checksum for quad words (64 bits)."
@@ -13078,7 +13078,7 @@ intrinsics:
     compose:
       - Let: [b, u32, '(data & 0xFFFFFFFF) as u32']
       - Let: [c, u32, '(data >> 32) as u32']
-      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")] fn ___crc32cw(crc: u32, data: u32) -> u32;}} unsafe {{ ___crc32cw(___crc32cw(crc, b), c) }}'
+      - 'unsafe extern "llvm-intrinsic" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")] fn ___crc32cw(crc: u32, data: u32) -> u32;}} unsafe {{ ___crc32cw(___crc32cw(crc, b), c) }}'
 
   - name: "vabs{neon_type.no}"
     doc: "Absolute value (wrapping)."
@@ -13268,9 +13268,9 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [int16x8_t, int8x8_t, 'vraddhn.i16'] 
-      - [int32x4_t, int16x4_t, 'vraddhn.i32'] 
-      - [int64x2_t, int32x2_t, 'vraddhn.i64'] 
+      - [int16x8_t, int8x8_t, 'vraddhn.i16']
+      - [int32x4_t, int16x4_t, 'vraddhn.i32']
+      - [int64x2_t, int32x2_t, 'vraddhn.i64']
     compose:
       - LLVMLink:
           name: "vraddhn{neon_type[0].noq}"
@@ -13292,9 +13292,9 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [uint16x8_t, uint8x8_t, 'vraddhn.i16', int16x8_t] 
-      - [uint32x4_t, uint16x4_t, 'vraddhn.i32', int32x4_t]  
-      - [uint64x2_t, uint32x2_t, 'vraddhn.i64', int64x2_t]  
+      - [uint16x8_t, uint8x8_t, 'vraddhn.i16', int16x8_t]
+      - [uint32x4_t, uint16x4_t, 'vraddhn.i32', int32x4_t]
+      - [uint64x2_t, uint32x2_t, 'vraddhn.i64', int64x2_t]
     compose:
       - FnCall:
           - transmute
@@ -13404,7 +13404,7 @@ intrinsics:
 
   # This was not publically exposed
   - name: "priv_vpadal{neon_type[1].no}"
-    visibility: private 
+    visibility: private
     doc: "Signed Add and Accumulate Long Pairwise."
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
@@ -13430,7 +13430,7 @@ intrinsics:
 
   # This was not publically exposed
   - name: "priv_vpadal{neon_type[1].no}"
-    visibility: private 
+    visibility: private
     doc: "Signed Add and Accumulate Long Pairwise."
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
@@ -13682,7 +13682,7 @@ intrinsics:
           links:
             - link: "llvm.arm.neon.vtbl1"
               arch: arm
-  
+
   - name: "vtbl1_s8"
     doc: "Table look-up"
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -14027,7 +14027,7 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
     static_defs: ['const N: i32']
     types:
-      - ['_v8i8',  'int8x8_t',  '8',  'int8x8_t([N as i8; 8 ])' ] 
+      - ['_v8i8',  'int8x8_t',  '8',  'int8x8_t([N as i8; 8 ])' ]
       - ['_v16i8', 'int8x16_t', '8',  'int8x16_t([N as i8; 16])']
       - ['_v4i16', 'int16x4_t', '16', 'int16x4_t([N as i16; 4])']
       - ['_v8i16', 'int16x8_t', '16', 'int16x8_t([N as i16; 8])']
@@ -14175,7 +14175,7 @@ intrinsics:
                 - "vshiftlins_{type[5]}::<N>"
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, [b]]
-  
+
   - name: "vsli{neon_type[0].N}"
     doc: "Shift Left and Insert (immediate)"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -14725,7 +14725,7 @@ intrinsics:
       - FnCall: [simd_cast, [a]]
 
   - name: "{type[0]}"
-    doc: "Vector long move." 
+    doc: "Vector long move."
     arguments: ['a: {neon_type[1]}']
     return_type: "{neon_type[2]}"
     attr:
@@ -14746,7 +14746,7 @@ intrinsics:
       - FnCall: [simd_cast, [a]]
 
   - name: "{type[0]}"
-    doc: "Vector bitwise not." 
+    doc: "Vector bitwise not."
     arguments: ['a: {neon_type[1]}']
     return_type: "{neon_type[1]}"
     attr:
@@ -14776,7 +14776,7 @@ intrinsics:
       - FnCall: [simd_xor, [a, b]]
 
   - name: "{type[0]}"
-    doc: "Vector bitwise bit clear." 
+    doc: "Vector bitwise bit clear."
     arguments: ['a: {neon_type[1]}', 'b: {neon_type[1]}']
     return_type: "{neon_type[1]}"
     attr:
@@ -14803,7 +14803,7 @@ intrinsics:
           - a
 
   - name: "{type[0]}"
-    doc: "Vector bitwise bit clear." 
+    doc: "Vector bitwise bit clear."
     arguments: ['a: {neon_type[1]}', 'b: {neon_type[1]}']
     return_type: "{neon_type[1]}"
     attr:

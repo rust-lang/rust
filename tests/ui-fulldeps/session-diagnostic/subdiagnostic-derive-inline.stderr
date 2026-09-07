@@ -439,19 +439,15 @@ error: derive(Diagnostic): `#[suggestion_hidden(...)]` is not a valid attribute
    |
 LL | #[suggestion_hidden("example message", code = "")]
    | ^
-   |
-   = help: Use `#[suggestion(..., style = "hidden")]` instead
 
 error: derive(Diagnostic): `#[suggestion_hidden(...)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive-inline.rs:756:1
+  --> $DIR/subdiagnostic-derive-inline.rs:757:1
    |
 LL | #[suggestion_hidden("example message", code = "", style = "normal")]
    | ^
-   |
-   = help: Use `#[suggestion(..., style = "hidden")]` instead
 
 error: derive(Diagnostic): invalid suggestion style
-  --> $DIR/subdiagnostic-derive-inline.rs:764:52
+  --> $DIR/subdiagnostic-derive-inline.rs:766:52
    |
 LL | #[suggestion("example message", code = "", style = "foo")]
    |                                                    ^^^^^
@@ -459,25 +455,25 @@ LL | #[suggestion("example message", code = "", style = "foo")]
    = help: valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`
 
 error: expected string literal
-  --> $DIR/subdiagnostic-derive-inline.rs:772:52
+  --> $DIR/subdiagnostic-derive-inline.rs:774:52
    |
 LL | #[suggestion("example message", code = "", style = 42)]
    |                                                    ^^
 
 error: expected `=`
-  --> $DIR/subdiagnostic-derive-inline.rs:780:49
+  --> $DIR/subdiagnostic-derive-inline.rs:782:49
    |
 LL | #[suggestion("example message", code = "", style)]
    |                                                 ^
 
 error: expected `=`
-  --> $DIR/subdiagnostic-derive-inline.rs:788:49
+  --> $DIR/subdiagnostic-derive-inline.rs:790:49
    |
 LL | #[suggestion("example message", code = "", style("foo"))]
    |                                                 ^
 
 error: derive(Diagnostic): `#[primary_span]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive-inline.rs:799:5
+  --> $DIR/subdiagnostic-derive-inline.rs:801:5
    |
 LL |     #[primary_span]
    |     ^
@@ -486,7 +482,7 @@ LL |     #[primary_span]
    = help: to create a suggestion with multiple spans, use `#[multipart_suggestion]` instead
 
 error: derive(Diagnostic): suggestion without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive-inline.rs:796:1
+  --> $DIR/subdiagnostic-derive-inline.rs:798:1
    |
 LL | #[suggestion("example message", code = "")]
    | ^
@@ -545,5 +541,17 @@ error: cannot find attribute `bar` in this scope
 LL |     #[bar("...")]
    |       ^^^
 
-error: aborting due to 82 previous errors
+error: cannot find attribute `suggestion_hidden` in this scope
+  --> $DIR/subdiagnostic-derive-inline.rs:748:3
+   |
+LL | #[suggestion_hidden("example message", code = "")]
+   |   ^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `suggestion_hidden` in this scope
+  --> $DIR/subdiagnostic-derive-inline.rs:757:3
+   |
+LL | #[suggestion_hidden("example message", code = "", style = "normal")]
+   |   ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 84 previous errors
 
