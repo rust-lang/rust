@@ -1018,9 +1018,9 @@ impl Builder<'_> {
         // Avoid doing this during dry run as that usually means the relevant
         // compiler is not yet linked/copied properly.
         //
-        // Only clear out the directory if we're compiling std; otherwise, we
+        // Only clear out the directory if we're running Cargo on std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
-        if !self.config.dry_run() && mode == Mode::Std && cmd_kind == Kind::Build {
+        if !self.config.dry_run() && mode == Mode::Std {
             build_stamp::clear_if_dirty(self, &out_dir, &self.rustc(compiler));
         }
 
