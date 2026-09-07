@@ -44,71 +44,49 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
 ///
 /// # Safety
 /// Must actually *be* such a type.
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-pub const unsafe trait FloatPrimitive: Sized + Copy {
-    type UInt: const core::ops::BitOr<Output = Self::UInt>
-        + const core::ops::BitAnd<Output = Self::UInt>
-        + const core::ops::Not<Output = Self::UInt>;
+pub unsafe trait FloatPrimitive:
+    Sized + Copy + PartialOrd + core::ops::Add<Output = Self>
+{
+    type UInt: core::ops::BitOr<Output = Self::UInt>
+        + core::ops::BitAnd<Output = Self::UInt>
+        + core::ops::Not<Output = Self::UInt>;
     const SIGN_MASK: Self::UInt;
     fn to_bits(self) -> Self::UInt;
     fn from_bits(bits: Self::UInt) -> Self;
+    fn is_nan(self) -> bool;
+    fn is_sign_positive(self) -> bool;
+    fn is_sign_negative(self) -> bool;
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f16 {
-    type UInt = u16;
-    const SIGN_MASK: Self::UInt = f16::SIGN_MASK;
-    #[inline]
-    fn to_bits(self) -> Self::UInt {
-        f16::to_bits(self)
-    }
-    #[inline]
-    fn from_bits(bits: Self::UInt) -> Self {
-        f16::from_bits(bits)
-    }
+macro_rules! impl_float_primitive {
+    ($($float:ident => $bits:ident),+) => {$(
+        unsafe impl FloatPrimitive for $float {
+            type UInt = $bits;
+            const SIGN_MASK: Self::UInt = $float::SIGN_MASK;
+            #[inline]
+            fn to_bits(self) -> Self::UInt {
+                $float::to_bits(self)
+            }
+            #[inline]
+            fn from_bits(bits: Self::UInt) -> Self {
+                $float::from_bits(bits)
+            }
+            #[inline]
+            fn is_nan(self) -> bool {
+                $float::is_nan(self)
+            }
+            #[inline]
+            fn is_sign_positive(self) -> bool {
+                $float::is_sign_positive(self)
+            }
+            #[inline]
+            fn is_sign_negative(self) -> bool {
+                $float::is_sign_negative(self)
+            }
+        }
+    )+};
 }
-
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f32 {
-    type UInt = u32;
-    const SIGN_MASK: Self::UInt = f32::SIGN_MASK;
-    #[inline]
-    fn to_bits(self) -> Self::UInt {
-        f32::to_bits(self)
-    }
-    #[inline]
-    fn from_bits(bits: Self::UInt) -> Self {
-        f32::from_bits(bits)
-    }
-}
-
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f64 {
-    type UInt = u64;
-    const SIGN_MASK: Self::UInt = f64::SIGN_MASK;
-    #[inline]
-    fn to_bits(self) -> Self::UInt {
-        f64::to_bits(self)
-    }
-    #[inline]
-    fn from_bits(bits: Self::UInt) -> Self {
-        f64::from_bits(bits)
-    }
-}
-
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f128 {
-    type UInt = u128;
-    const SIGN_MASK: Self::UInt = f128::SIGN_MASK;
-    #[inline]
-    fn to_bits(self) -> Self::UInt {
-        f128::to_bits(self)
-    }
-    #[inline]
-    fn from_bits(bits: Self::UInt) -> Self {
-        f128::from_bits(bits)
-    }
-}
+impl_float_primitive!(f16 => u16, f32 => u32, f64 => u64, f128 => u128);
 
 /// Built-in integer types (i8, i16, .., i128, isize, u8, u16, .., u128, usize).
 ///

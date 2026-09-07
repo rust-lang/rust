@@ -352,7 +352,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             sym::sqrtf16, sym::powif16,
             sym::fmaf16,
 
-            sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
+            sym::copysign,
         ];
 
         if llvm_util::get_version() >= (22, 0, 0) {
