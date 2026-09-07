@@ -74,7 +74,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
         // opaque type and instead return `None` in `fn overloaded_deref_ty` if the
         // opaque does not have a `Deref` item-bound.
         if let &ty::Infer(ty::TyVar(vid)) = self.state.cur_ty.kind()
-            && !self.infcx.has_opaques_with_sub_unified_hidden_type(vid)
+            && !self.infcx.has_hidden_types_of_opaques_modulo_sub_unification(vid)
         {
             return None;
         }

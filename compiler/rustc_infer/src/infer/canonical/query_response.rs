@@ -160,6 +160,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .borrow_mut()
             .opaque_type_storage
             .take_opaque_types()
+            .0
             .map(|(k, v)| (k, v.ty))
             .collect();
 
