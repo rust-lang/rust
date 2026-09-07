@@ -1133,7 +1133,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         }
 
-        sym::powf | sym::powi => {
+        sym::powf => {
             intrinsic_args!(fx, args => (arg1, arg2); intrinsic);
             let layout = arg1.layout();
             let ty::Float(float_ty) = layout.ty.kind() else {
@@ -1152,27 +1152,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 (sym::powf, F32) => Fallback("powf"),
                 (sym::powf, F64) => Fallback("pow"),
                 (sym::powf, F128) => Fallback("powf128"),
-
-                // Handle these manually because of the i32 argument
-                (sym::powi, F32 | F64 | F128) => {
-                    let ty = fx.clif_type(layout.ty).unwrap();
-                    let arg = AbiParam::new(ty);
-                    let i32 = AbiParam::new(types::I32);
-                    let name = match float_ty {
-                        F32 => "__powisf2",  // compiler-builtins
-                        F64 => "__powidf2",  // compiler-builtins
-                        F128 => "__powitf2", // compiler-builtins
-                        _ => unreachable!(),
-                    };
-                    Codegen(fx.lib_call(name, vec![arg, i32], vec![arg], &[x, y])[0])
-                }
-                (sym::powi, F16) => {
-                    let x = codegen_f16_f128::f16_to_f32(fx, x);
-                    let f32 = AbiParam::new(types::F32);
-                    let i32 = AbiParam::new(types::I32);
-                    let val = fx.lib_call("__powisf2", vec![f32, i32], vec![f32], &[x, y])[0];
-                    Codegen(codegen_f16_f128::f32_to_f16(fx, val))
-                }
 
                 (_, F16) => {
                     // We use the intrinsic fallback bodies for the rest

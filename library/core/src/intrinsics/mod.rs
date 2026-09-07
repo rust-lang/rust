@@ -55,7 +55,7 @@
 
 use crate::ffi::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
-use crate::num::imp::libm;
+use crate::num::imp::{builtins, libm};
 use crate::{mem, ptr};
 
 mod bounds;
@@ -1067,13 +1067,21 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::sqrtf128(x) }
 }
 
-/// Raises a floating-point value to an integer power.
-///
-/// The stabilized versions of this intrinsic are available on the float primitives via the
-/// `powi` method. For example, [`f32::powi`](../../std/primitive.f32.html#method.powi).
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powi<T: bounds::FloatPrimitive>(a: T, x: i32) -> T;
+intrinsic_dispatch_on_type! {
+    /// Raises a floating-point value to an integer power.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `powi` method. For example, [`f32::powi`](../../std/primitive.f32.html#method.powi).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn powi<T: bounds::FloatPrimitive>(a: T, x: i32) -> T;
+
+    f16 => { powi(a as f32, x) as f16 }
+    f32 => { builtins::__powisf2(a, x) }
+    f64 => { builtins::__powidf2(a, x) }
+    f128 => { builtins::__powitf2(a, x) }
+}
 
 intrinsic_dispatch_on_type! {
     /// Returns the sine of a floating-point value.

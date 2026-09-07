@@ -371,20 +371,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                     (sym::powi, F32) => self.context.get_builtin_function("__builtin_powif"),
                     (sym::powi, F64) => self.context.get_builtin_function("__builtin_powi"),
-                    // Provided by `compiler-builtins`.
+                    // No GCC builtin; the intrinsic's fallback uses `compiler-builtins`.
                     (sym::powi, F128) => {
-                        let f128_type = self.cx.type_f128();
-                        self.cx.context.new_function(
-                            None,
-                            FunctionType::Extern,
-                            f128_type,
-                            &[
-                                self.cx.context.new_parameter(None, f128_type, "a"),
-                                self.cx.context.new_parameter(None, self.int_type, "b"),
-                            ],
-                            "__powitf2",
-                            false,
-                        )
+                        let fallback = Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
                     }
                     // `f16` can't go through `f16_builtin` due to the integer argument.
                     (sym::powi, F16) => {

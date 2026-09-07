@@ -336,10 +336,11 @@ impl CodegenBackend for LlvmCodegenBackend {
             sym::integer_max,
             sym::integer_min,
 
-            // Fallback via libm, but the LLVM intrinsic is used instead.
+            // Fallback via libm/compiler-builtins, but the LLVM intrinsic is used instead.
             sym::sin,
             sym::cos,
             sym::powf,
+            sym::powi,
             sym::sqrt,
             sym::exp,
             sym::exp2,
