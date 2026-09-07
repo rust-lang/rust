@@ -230,4 +230,11 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
 
 pub trait FromSolverError<'tcx, E>: Debug + 'tcx {
     fn from_solver_error(infcx: &InferCtxt<'tcx>, error: E) -> Self;
+
+    fn try_from_solver_error(infcx: &InferCtxt<'tcx>, error: E) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        Some(Self::from_solver_error(infcx, error))
+    }
 }
