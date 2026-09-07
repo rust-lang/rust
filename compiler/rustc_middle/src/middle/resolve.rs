@@ -133,10 +133,11 @@ impl Reexport {
     }
 }
 
-/// A different item that a module child resolves to on or before a given edition.
+/// A different item that a module child resolves to within an inclusive edition range.
 #[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct EditionRedirect {
-    pub edition: Edition,
+    pub start: Edition,
+    pub end: Edition,
     pub target: Res<!>,
 }
 
@@ -157,7 +158,7 @@ pub struct ModChild {
     /// Reexport chain linking this module child to its original reexported item.
     /// Empty if the module child is a proper item.
     pub reexport_chain: SmallVec<[Reexport; 2]>,
-    /// Edition-dependent alternatives, sorted from the earliest boundary to the latest.
+    /// Edition-dependent alternatives, sorted by their range.
     pub edition_redirects: SmallVec<[EditionRedirect; 1]>,
 }
 

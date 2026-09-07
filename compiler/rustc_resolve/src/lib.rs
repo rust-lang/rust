@@ -1058,7 +1058,8 @@ struct DeclData<'ra> {
 
 #[derive(Clone, Copy, Debug)]
 struct EditionRedirectDecl<'ra> {
-    edition: Edition,
+    start: Edition,
+    end: Edition,
     target: Decl<'ra>,
 }
 
@@ -1067,7 +1068,8 @@ struct EditionRedirectDecl<'ra> {
 struct LocalEditionRedirect<'ra> {
     module: LocalModule<'ra>,
     key: BindingKey,
-    edition: Edition,
+    start: Edition,
+    end: Edition,
     import_decl: Decl<'ra>,
     default_decl: Option<Decl<'ra>>,
     span: Span,

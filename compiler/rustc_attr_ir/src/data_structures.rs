@@ -122,7 +122,8 @@ pub enum InstrumentFnAttr {
 
 #[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct EditionRedirect {
-    pub edition: Edition,
+    pub start: Edition,
+    pub end: Edition,
     pub span: Span,
 }
 

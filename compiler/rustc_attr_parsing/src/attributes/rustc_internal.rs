@@ -348,21 +348,26 @@ pub(crate) struct RustcEditionRedirectParser;
 impl SingleAttributeParser for RustcEditionRedirectParser {
     const PATH: &[Symbol] = &[sym::rustc_edition_redirect];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Use)]);
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "2024");
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "2021..=2024");
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let value = cx.expect_name_value(args, cx.attr_span, Some(sym::rustc_edition_redirect))?;
         let value = cx.expect_string_literal(value)?;
-        let edition = match value.as_str().parse::<Edition>() {
-            Ok(edition) => edition,
-            Err(()) => {
-                cx.emit_err(diagnostics::InvalidEditionRedirect { span: cx.attr_span });
-                return None;
-            }
+        let Some((start, end)) = value.as_str().split_once("..=").and_then(|(start, end)| {
+            let start = if start.is_empty() { Edition::Edition2015 } else { start.parse().ok()? };
+            let end = end.parse().ok()?;
+            (start <= end).then_some((start, end))
+        }) else {
+            cx.emit_err(diagnostics::InvalidEditionRedirect { span: cx.attr_span });
+            return None;
         };
 
-        Some(AttributeKind::RustcEditionRedirect(EditionRedirect { edition, span: cx.attr_span }))
+        Some(AttributeKind::RustcEditionRedirect(EditionRedirect {
+            start,
+            end,
+            span: cx.attr_span,
+        }))
     }
 }
 

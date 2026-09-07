@@ -322,7 +322,11 @@ mod name_resolution {
                     return decl;
                 }
                 let edition = span.edition();
-                match self.edition_redirects.iter().find(|redirect| edition <= redirect.edition) {
+                match self
+                    .edition_redirects
+                    .iter()
+                    .find(|redirect| redirect.start <= edition && edition <= redirect.end)
+                {
                     Some(redirect) => redirect.target,
                     None => decl,
                 }
@@ -932,7 +936,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     this.local_edition_redirects.push(LocalEditionRedirect {
                                         module: import.parent_scope.module.expect_local(),
                                         key: BindingKey::new(ident, ns),
-                                        edition: redirect.edition,
+                                        start: redirect.start,
+                                        end: redirect.end,
                                         import_decl,
                                         default_decl: None,
                                         span: redirect.span,
@@ -1971,7 +1976,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // cases.
         let mut diagnosed_missing_default = FxHashSet::default();
         let mut diagnosed_visibility = FxHashSet::default();
-        let mut diagnosed_duplicate = FxHashSet::default();
+        let mut diagnosed_overlap = FxHashSet::default();
 
         // Group redirects by the base decl that they are attached to.
         let mut groups = FxIndexMap::<_, SmallVec<[usize; 2]>>::default();
@@ -2003,18 +2008,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.local_edition_redirects[index].default_decl = Some(default_decl);
             }
 
-            // Check that there are no duplicate editions in the group.
-            indices.sort_by_key(|&index| self.local_edition_redirects[index].edition);
+            // Check that the edition ranges in the group do not overlap.
+            indices.sort_by_key(|&index| self.local_edition_redirects[index].start);
             for &[previous, redirect] in indices.array_windows() {
                 let previous = &self.local_edition_redirects[previous];
                 let redirect = &self.local_edition_redirects[redirect];
-                if previous.edition == redirect.edition && diagnosed_duplicate.insert(redirect.span)
-                {
+                if previous.end >= redirect.start && diagnosed_overlap.insert(redirect.span) {
                     self.dcx().span_err(
                         redirect.span,
                         format!(
-                            "multiple edition redirects with edition {} for `{}`",
-                            redirect.edition, redirect.key.ident.name
+                            "edition redirect range {}..={} overlaps with another range for `{}`",
+                            redirect.start, redirect.end, redirect.key.ident.name
                         ),
                     );
                 }
@@ -2049,11 +2053,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .filter(|redirect| redirect.default_decl == Some(decl))
             .collect::<SmallVec<[_; 1]>>();
-        redirects.sort_by_key(|redirect| redirect.edition);
+        redirects.sort_by_key(|redirect| (redirect.start, redirect.end));
         redirects
             .into_iter()
             .map(|redirect| MetadataEditionRedirect {
-                edition: redirect.edition,
+                start: redirect.start,
+                end: redirect.end,
                 target: redirect.import_decl.res().expect_non_local(),
             })
             .collect()

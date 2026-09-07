@@ -403,7 +403,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let edition_redirects = edition_redirects
                 .iter()
                 .map(|redirect| EditionRedirectDecl {
-                    edition: redirect.edition,
+                    start: redirect.start,
+                    end: redirect.end,
                     // Model this as a one-step reexport under the original child's name: the
                     // target supplies the resolution, while the child supplies its visibility,
                     // span, and parent module.
