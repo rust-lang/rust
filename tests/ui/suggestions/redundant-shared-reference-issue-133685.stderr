@@ -1,0 +1,120 @@
+error[E0277]: `&&Vec<i32>` is not an iterator
+  --> $DIR/redundant-shared-reference-issue-133685.rs:14:14
+   |
+LL |     b.extend(&ref_a);
+   |       ------ ^^^^^^ `&&Vec<i32>` is not an iterator
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&&Vec<i32>`
+   = note: required for `&&Vec<i32>` to implement `IntoIterator`
+note: required by a bound in `extend`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider dereferencing here
+   |
+LL |     b.extend(&*ref_a);
+   |               +
+
+error[E0277]: `&&Vec<i32>` is not an iterator
+  --> $DIR/redundant-shared-reference-issue-133685.rs:17:13
+   |
+LL |     consume(&ref_a);
+   |     ------- ^^^^^^ `&&Vec<i32>` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&&Vec<i32>`
+   = note: required for `&&Vec<i32>` to implement `IntoIterator`
+note: required by a bound in `consume`
+  --> $DIR/redundant-shared-reference-issue-133685.rs:8:24
+   |
+LL | fn consume<'a>(_: impl IntoIterator<Item = &'a i32>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `consume`
+help: consider dereferencing here
+   |
+LL |     consume(&*ref_a);
+   |              +
+
+error[E0277]: `&&Vec<i32>` is not an iterator
+  --> $DIR/redundant-shared-reference-issue-133685.rs:19:13
+   |
+LL |     consume((&ref_a));
+   |     ------- ^^^^^^^^ `&&Vec<i32>` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&&Vec<i32>`
+   = note: required for `&&Vec<i32>` to implement `IntoIterator`
+note: required by a bound in `consume`
+  --> $DIR/redundant-shared-reference-issue-133685.rs:8:24
+   |
+LL | fn consume<'a>(_: impl IntoIterator<Item = &'a i32>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `consume`
+help: consider dereferencing here
+   |
+LL |     consume((&*ref_a));
+   |               +
+
+error[E0277]: `&&[i32]` is not an iterator
+  --> $DIR/redundant-shared-reference-issue-133685.rs:23:13
+   |
+LL |     consume(&slice);
+   |     ------- ^^^^^^ `&&[i32]` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&&[i32]`
+   = note: required for `&&[i32]` to implement `IntoIterator`
+note: required by a bound in `consume`
+  --> $DIR/redundant-shared-reference-issue-133685.rs:8:24
+   |
+LL | fn consume<'a>(_: impl IntoIterator<Item = &'a i32>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `consume`
+help: consider dereferencing here
+   |
+LL |     consume(&*slice);
+   |              +
+
+error[E0277]: `&Box<Vec<i32>>` is not an iterator
+  --> $DIR/redundant-shared-reference-issue-133685.rs:28:13
+   |
+LL |     consume(&boxed);
+   |     ------- ^^^^^^ `&Box<Vec<i32>>` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&Box<Vec<i32>>`
+   = note: required for `&Box<Vec<i32>>` to implement `IntoIterator`
+note: required by a bound in `consume`
+  --> $DIR/redundant-shared-reference-issue-133685.rs:8:24
+   |
+LL | fn consume<'a>(_: impl IntoIterator<Item = &'a i32>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `consume`
+help: consider dereferencing here
+   |
+LL |     consume(&*boxed);
+   |              +
+
+error[E0277]: `&&mut Vec<i32>` is not an iterator
+  --> $DIR/redundant-shared-reference-issue-133685.rs:33:13
+   |
+LL |     consume(&mut_ref);
+   |     ------- ^^^^^^^^ `&&mut Vec<i32>` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&&mut Vec<i32>`
+   = note: required for `&&mut Vec<i32>` to implement `IntoIterator`
+note: required by a bound in `consume`
+  --> $DIR/redundant-shared-reference-issue-133685.rs:8:24
+   |
+LL | fn consume<'a>(_: impl IntoIterator<Item = &'a i32>) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `consume`
+help: consider dereferencing here
+   |
+LL |     consume(&*mut_ref);
+   |              +
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
