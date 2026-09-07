@@ -8,10 +8,7 @@ LL |     ().hello();
    |        ^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-help: trait `Hello` which provides `hello` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use main::Hello;
-   |
+   = help: trait `main::Hello` which provides `hello` is implemented but not reachable
 
 error[E0599]: no method named `nested` found for unit type `()` in the current scope
   --> $DIR/block-scoped-trait-import-issue-134146.rs:30:8
@@ -23,10 +20,7 @@ LL |     ().nested();
    |        ^^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-help: trait `Nested` which provides `nested` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use nested_module::inner::Nested;
-   |
+   = help: trait `nested_module::inner::Nested` which provides `nested` is implemented but not reachable
 
 error[E0599]: no method named `in_const` found for unit type `()` in the current scope
   --> $DIR/block-scoped-trait-import-issue-134146.rs:42:8
@@ -38,10 +32,7 @@ LL |     ().in_const();
    |        ^^^^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-help: trait `InConst` which provides `in_const` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use _::InConst;
-   |
+   = help: trait `_::InConst` which provides `in_const` is implemented but not reachable
 
 error[E0599]: no method named `several` found for unit type `()` in the current scope
   --> $DIR/block-scoped-trait-import-issue-134146.rs:57:8
@@ -50,12 +41,9 @@ LL |     ().several();
    |        ^^^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following traits which provide `several` are implemented but not in scope; perhaps you want to import one of them
-   |
-LL + use multiple_candidates::First;
-   |
-LL + use multiple_candidates::Second;
-   |
+   = help: the following traits which provide `several` are implemented but not reachable:
+           multiple_candidates::First
+           multiple_candidates::Second
 
 error: aborting due to 4 previous errors
 
