@@ -739,6 +739,11 @@ impl Subcommand {
             _ => false,
         }
     }
+
+    /// Are we executing a `check --all-targets` command?
+    pub(crate) fn check_all_targets(&self) -> bool {
+        matches!(self, Subcommand::Check { all_targets: true, .. })
+    }
 }
 
 /// Returns the shell completion for a given shell, if the result differs from the current
