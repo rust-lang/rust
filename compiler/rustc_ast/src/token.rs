@@ -758,8 +758,6 @@ impl Token {
             OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Ty { .. } | MetaVarKind::Path)) => {
                 true
             }
-            // For anonymous structs or unions, which only appear in specific positions
-            // (type of struct fields or union fields), we don't consider them as regular types
             _ => false,
         }
     }

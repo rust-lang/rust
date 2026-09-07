@@ -1827,60 +1827,6 @@ pub(crate) struct ParenthesesInMatchPatSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag("documentation comments cannot be applied to a function parameter's type")]
-pub(crate) struct DocCommentOnParamType {
-    #[primary_span]
-    #[label("doc comments are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied to a function parameter's type")]
-pub(crate) struct AttributeOnParamType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied to types")]
-pub(crate) struct AttributeOnType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-    #[suggestion(
-        "remove attribute from here",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub fix_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied to generic arguments")]
-pub(crate) struct AttributeOnGenericArg {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-    #[suggestion(
-        "remove attribute from here",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub fix_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied here")]
-pub(crate) struct AttributeOnEmptyType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("patterns aren't allowed in {$target}", code = E0642)]
 pub(crate) struct PatternMethodParamWithoutBody {
     #[primary_span]
