@@ -1163,10 +1163,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
-        let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
+        let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item: Ident| {
             for resolution in r.resolutions(m).values() {
-                let Some(did) =
-                    resolution.borrow(r).best_decl().and_then(|binding| binding.res().opt_def_id())
+                let Some(did) = resolution
+                    .borrow(r)
+                    .best_decl_redir(item.span)
+                    .and_then(|binding| binding.res().opt_def_id())
                 else {
                     continue;
                 };
@@ -1177,7 +1179,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     continue;
                 }
                 if let Some(d) = hir::find_attr!(r.tcx, did, Doc(d) => d)
-                    && d.aliases.contains_key(&item_name)
+                    && d.aliases.contains_key(&item.name)
                 {
                     return Some(did);
                 }
@@ -1189,7 +1191,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             for rib in self.ribs[ns].iter().rev() {
                 let item = path[0].ident;
                 if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind
-                    && let Some(did) = find_doc_alias_name(self.r, module.to_module(), item.name)
+                    && let Some(did) = find_doc_alias_name(self.r, module.to_module(), item)
                 {
                     return Some((did, item));
                 }
@@ -1213,7 +1215,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let Res::Def(DefKind::Mod, module) = res.expect_full_res()
                     && let module = self.r.expect_module(module)
                     && let item = path[idx + 1].ident
-                    && let Some(did) = find_doc_alias_name(self.r, module, item.name)
+                    && let Some(did) = find_doc_alias_name(self.r, module, item)
                 {
                     return Some((did, item));
                 }
@@ -2930,6 +2932,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let RibKind::Block(Some(module)) = rib.kind {
                     self.r.add_module_candidates(
                         module.to_module(),
+                        segment.ident.span.with_ctxt(ctxt),
                         &mut names,
                         &filter_fn,
                         Some(ctxt),
@@ -2962,7 +2965,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, Some(TypeNS), None, PathSource::Type)
             {
-                self.r.add_module_candidates(module, &mut names, &filter_fn, None);
+                self.r.add_module_candidates(
+                    module,
+                    path[path.len() - 1].ident.span,
+                    &mut names,
+                    &filter_fn,
+                    None,
+                );
             }
         }
 
@@ -3074,7 +3083,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         false
     }
 
-    fn find_module(&self, def_id: DefId) -> Option<(Module<'ra>, ImportSuggestion)> {
+    fn find_module(&self, def_id: DefId, span: Span) -> Option<(Module<'ra>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
         let mut worklist = vec![(self.r.graph_root.to_module(), ThinVec::new(), true)];
@@ -3085,48 +3094,57 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 break;
             }
 
-            in_module.for_each_child(self.r, |r, ident, orig_ident_span, _, name_binding| {
-                // abort if the module is already found or if name_binding is private external
-                if result.is_some() || !name_binding.vis().is_visible_locally() {
-                    return;
-                }
-                if let Some(module_def_id) = name_binding.res().module_like_def_id() {
-                    // form the path
-                    let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let doc_visible = doc_visible
-                        && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
-                    if module_def_id == def_id {
-                        let path = Path { span: name_binding.span, segments: path_segments };
-                        result = Some((
-                            r.expect_module(module_def_id),
-                            ImportSuggestion {
-                                did: Some(def_id),
-                                descr: "module",
-                                path,
-                                accessible: true,
-                                doc_visible,
-                                note: None,
-                                via_import: false,
-                                is_stable: true,
-                            },
-                        ));
-                    } else {
-                        // add the module to the lookup
-                        if seen_modules.insert(module_def_id) {
-                            let module = r.expect_module(module_def_id);
-                            worklist.push((module, path_segments, doc_visible));
+            in_module.for_each_child_redir(
+                self.r,
+                span,
+                |r, ident, orig_ident_span, _, name_binding| {
+                    // abort if the module is already found or if name_binding is private external
+                    if result.is_some() || !name_binding.vis().is_visible_locally() {
+                        return;
+                    }
+                    if let Some(module_def_id) = name_binding.res().module_like_def_id() {
+                        // form the path
+                        let mut path_segments = path_segments.clone();
+                        path_segments
+                            .push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
+                        let doc_visible = doc_visible
+                            && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
+                        if module_def_id == def_id {
+                            let path = Path { span: name_binding.span, segments: path_segments };
+                            result = Some((
+                                r.expect_module(module_def_id),
+                                ImportSuggestion {
+                                    did: Some(def_id),
+                                    descr: "module",
+                                    path,
+                                    accessible: true,
+                                    doc_visible,
+                                    note: None,
+                                    via_import: false,
+                                    is_stable: true,
+                                },
+                            ));
+                        } else {
+                            // add the module to the lookup
+                            if seen_modules.insert(module_def_id) {
+                                let module = r.expect_module(module_def_id);
+                                worklist.push((module, path_segments, doc_visible));
+                            }
                         }
                     }
-                }
-            });
+                },
+            );
         }
 
         result
     }
 
-    fn collect_enum_ctors(&self, def_id: DefId) -> Option<Vec<(Path, DefId, CtorKind)>> {
-        self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
+    fn collect_enum_ctors(
+        &self,
+        def_id: DefId,
+        span: Span,
+    ) -> Option<Vec<(Path, DefId, CtorKind)>> {
+        self.find_module(def_id, span).map(|(enum_module, enum_import_suggestion)| {
             let mut variants = Vec::new();
             enum_module.for_each_child(self.r, |_, ident, orig_ident_span, _, name_binding| {
                 if let Res::Def(DefKind::Ctor(CtorOf::Variant, kind), def_id) = name_binding.res() {
@@ -3148,7 +3166,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         def_id: DefId,
         span: Span,
     ) {
-        let Some(variant_ctors) = self.collect_enum_ctors(def_id) else {
+        let Some(variant_ctors) = self.collect_enum_ctors(def_id, span) else {
             err.note("you might have meant to use one of the enum's variants");
             return;
         };

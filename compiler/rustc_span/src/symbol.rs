@@ -1806,6 +1806,7 @@ symbols! {
         rustc_dump_variances_of_opaques,
         rustc_dump_vtable,
         rustc_dyn_incompatible_trait,
+        rustc_edition_redirect,
         rustc_effective_visibility,
         rustc_eii_foreign_item,
         rustc_evaluate_where_clauses,
