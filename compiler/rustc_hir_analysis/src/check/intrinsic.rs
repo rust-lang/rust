@@ -82,19 +82,13 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::caller_location
         | sym::carrying_mul_add
         | sym::carryless_mul
-        | sym::ceilf16
-        | sym::ceilf32
-        | sym::ceilf64
-        | sym::ceilf128
+        | sym::ceil
         | sym::cold_path
         | sym::const_eval_select
         | sym::contract_check_ensures
         | sym::contract_check_requires
         | sym::contract_checks
-        | sym::copysignf16
-        | sym::copysignf32
-        | sym::copysignf64
-        | sym::copysignf128
+        | sym::copysign
         | sym::cos
         | sym::ctlz
         | sym::ctpop
@@ -109,19 +103,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::field_representing_type_actual_type_id
         | sym::field_representing_type_name
         | sym::field_representing_type_offset
-        | sym::floorf16
-        | sym::floorf32
-        | sym::floorf64
-        | sym::floorf128
-        | sym::fmaf16
-        | sym::fmaf32
-        | sym::fmaf64
-        | sym::fmaf128
+        | sym::floor
+        | sym::fma
         | sym::fmul_algebraic
-        | sym::fmuladdf16
-        | sym::fmuladdf32
-        | sym::fmuladdf64
-        | sym::fmuladdf128
+        | sym::fmuladd
         | sym::forget
         | sym::frem_algebraic
         | sym::fsub_algebraic
@@ -132,22 +117,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::log
         | sym::log2
         | sym::log10
-        | sym::maximum_number_nsz_f16
-        | sym::maximum_number_nsz_f32
-        | sym::maximum_number_nsz_f64
-        | sym::maximum_number_nsz_f128
-        | sym::maximumf16
-        | sym::maximumf32
-        | sym::maximumf64
-        | sym::maximumf128
-        | sym::minimum_number_nsz_f16
-        | sym::minimum_number_nsz_f32
-        | sym::minimum_number_nsz_f64
-        | sym::minimum_number_nsz_f128
-        | sym::minimumf16
-        | sym::minimumf32
-        | sym::minimumf64
-        | sym::minimumf128
+        | sym::maximum
+        | sym::maximum_number_nsz
+        | sym::minimum
+        | sym::minimum_number_nsz
         | sym::mul_with_overflow
         | sym::needs_drop
         | sym::non_exhaustive
@@ -155,14 +128,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::offload_get_num_devices
         | sym::offset_of
         | sym::overflow_checks
-        | sym::powf16
-        | sym::powf32
-        | sym::powf64
-        | sym::powf128
-        | sym::powif16
-        | sym::powif32
-        | sym::powif64
-        | sym::powif128
+        | sym::powf
+        | sym::powi
         | sym::prefetch_read_data
         | sym::prefetch_read_instruction
         | sym::prefetch_write_data
@@ -173,14 +140,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::return_address
         | sym::rotate_left
         | sym::rotate_right
-        | sym::round_ties_even_f16
-        | sym::round_ties_even_f32
-        | sym::round_ties_even_f64
-        | sym::round_ties_even_f128
-        | sym::roundf16
-        | sym::roundf32
-        | sym::roundf64
-        | sym::roundf128
+        | sym::round
+        | sym::round_ties_even
         | sym::rustc_peek
         | sym::saturating_add
         | sym::saturating_sub
@@ -188,16 +149,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::sin
         | sym::size_of
         | sym::size_of_type_id
-        | sym::sqrtf16
-        | sym::sqrtf32
-        | sym::sqrtf64
-        | sym::sqrtf128
+        | sym::sqrt
         | sym::sub_with_overflow
         | sym::three_way_compare
-        | sym::truncf16
-        | sym::truncf32
-        | sym::truncf64
-        | sym::truncf128
+        | sym::trunc
         | sym::type_id
         | sym::type_id_eq
         | sym::type_id_field_representing_type
@@ -410,34 +365,9 @@ pub(crate) fn check_intrinsic_type(
             tcx.types.unit,
         ),
 
-        sym::sqrtf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::sqrtf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::sqrtf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::sqrtf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+        sym::powi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
 
-        sym::powif16 => (0, 0, vec![tcx.types.f16, tcx.types.i32], tcx.types.f16),
-        sym::powif32 => (0, 0, vec![tcx.types.f32, tcx.types.i32], tcx.types.f32),
-        sym::powif64 => (0, 0, vec![tcx.types.f64, tcx.types.i32], tcx.types.f64),
-        sym::powif128 => (0, 0, vec![tcx.types.f128, tcx.types.i32], tcx.types.f128),
-
-        sym::powf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::powf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::powf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::powf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
-
-        sym::fmaf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::fmaf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::fmaf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::fmaf128 => {
-            (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
-        }
-
-        sym::fmuladdf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::fmuladdf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::fmuladdf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::fmuladdf128 => {
-            (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
-        }
+        sym::fma | sym::fmuladd => (1, 0, vec![param(0), param(0), param(0)], param(0)),
 
         sym::exp
         | sym::exp2
@@ -446,61 +376,20 @@ pub(crate) fn check_intrinsic_type(
         | sym::log10
         | sym::fabs
         | sym::sin
-        | sym::cos => (1, 0, vec![param(0)], param(0)),
+        | sym::cos
+        | sym::floor
+        | sym::ceil
+        | sym::trunc
+        | sym::round_ties_even
+        | sym::round
+        | sym::sqrt => (1, 0, vec![param(0)], param(0)),
 
-        sym::minimum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::minimum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::minimum_number_nsz_f64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::minimum_number_nsz_f128 => {
-            (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128)
-        }
-
-        sym::minimumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::minimumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::minimumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::minimumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
-
-        sym::maximum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::maximum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::maximum_number_nsz_f64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::maximum_number_nsz_f128 => {
-            (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128)
-        }
-
-        sym::maximumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::maximumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::maximumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::maximumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
-
-        sym::copysignf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::copysignf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::copysignf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::copysignf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
-
-        sym::floorf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::floorf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::floorf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::floorf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::ceilf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::ceilf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::ceilf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::ceilf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::truncf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::truncf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::truncf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::truncf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::round_ties_even_f16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::round_ties_even_f32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::round_ties_even_f64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::round_ties_even_f128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::roundf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::roundf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::roundf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::roundf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+        sym::copysign
+        | sym::powf
+        | sym::minimum
+        | sym::maximum
+        | sym::minimum_number_nsz
+        | sym::maximum_number_nsz => (1, 0, vec![param(0), param(0)], param(0)),
 
         sym::volatile_load | sym::unaligned_volatile_load => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0))

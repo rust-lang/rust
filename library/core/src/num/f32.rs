@@ -1056,7 +1056,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f32) -> f32 {
-        intrinsics::maximum_number_nsz_f32(self, other)
+        intrinsics::maximum_number_nsz(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -1083,7 +1083,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f32) -> f32 {
-        intrinsics::minimum_number_nsz_f32(self, other)
+        intrinsics::minimum_number_nsz(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1110,7 +1110,7 @@ impl f32 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn maximum(self, other: f32) -> f32 {
-        intrinsics::maximumf32(self, other)
+        intrinsics::maximum(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -1137,7 +1137,7 @@ impl f32 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn minimum(self, other: f32) -> f32 {
-        intrinsics::minimumf32(self, other)
+        intrinsics::minimum(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.
@@ -1822,7 +1822,7 @@ impl f32 {
     #[stable(feature = "copysign", since = "1.35.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     pub const fn copysign(self, sign: f32) -> f32 {
-        intrinsics::copysignf32(self, sign)
+        intrinsics::copysign(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1940,7 +1940,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(x: f32) -> f32 {
-        intrinsics::floorf32(x)
+        intrinsics::floor(x)
     }
 
     /// Experimental version of `ceil` in `core`. See [`f32::ceil`] for details.
@@ -1968,7 +1968,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn ceil(x: f32) -> f32 {
-        intrinsics::ceilf32(x)
+        intrinsics::ceil(x)
     }
 
     /// Experimental version of `round` in `core`. See [`f32::round`] for details.
@@ -2001,7 +2001,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(x: f32) -> f32 {
-        intrinsics::roundf32(x)
+        intrinsics::round(x)
     }
 
     /// Experimental version of `round_ties_even` in `core`. See [`f32::round_ties_even`] for
@@ -2033,7 +2033,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(x: f32) -> f32 {
-        intrinsics::round_ties_even_f32(x)
+        intrinsics::round_ties_even(x)
     }
 
     /// Experimental version of `trunc` in `core`. See [`f32::trunc`] for details.
@@ -2063,7 +2063,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn trunc(x: f32) -> f32 {
-        intrinsics::truncf32(x)
+        intrinsics::trunc(x)
     }
 
     /// Experimental version of `fract` in `core`. See [`f32::fract`] for details.
@@ -2138,7 +2138,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn mul_add(x: f32, y: f32, z: f32) -> f32 {
-        intrinsics::fmaf32(x, y, z)
+        intrinsics::fma(x, y, z)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f32::div_euclid`] for details.
@@ -2229,7 +2229,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub fn powi(x: f32, n: i32) -> f32 {
-        intrinsics::powif32(x, n)
+        intrinsics::powi(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f32::sqrt`] for details.
@@ -2259,7 +2259,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(x: f32) -> f32 {
-        intrinsics::sqrtf32(x)
+        intrinsics::sqrt(x)
     }
 
     /// Experimental version of `abs_sub` in `core`. See [`f32::abs_sub`] for details.

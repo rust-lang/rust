@@ -339,20 +339,18 @@ impl CodegenBackend for LlvmCodegenBackend {
             // Fallback via libm, but the LLVM intrinsic is used instead.
             sym::sin,
             sym::cos,
-            sym::powf16, sym::powf32, sym::powf64,
+            sym::powf,
+            sym::sqrt,
             sym::exp,
             sym::exp2,
             sym::log,
             sym::log10,
             sym::log2,
+            sym::floor, sym::ceil, sym::trunc,
+            sym::round, sym::round_ties_even,
+            sym::fma,
 
-            // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
-            sym::floorf16, sym::ceilf16, sym::truncf16,
-            sym::round_ties_even_f16, sym::roundf16,
-            sym::sqrtf16, sym::powif16,
-            sym::fmaf16,
-
-            sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
+            sym::copysign,
         ];
 
         if llvm_util::get_version() >= (22, 0, 0) {

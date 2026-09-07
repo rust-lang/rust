@@ -1056,7 +1056,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f64) -> f64 {
-        intrinsics::maximum_number_nsz_f64(self, other)
+        intrinsics::maximum_number_nsz(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -1083,7 +1083,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f64) -> f64 {
-        intrinsics::minimum_number_nsz_f64(self, other)
+        intrinsics::minimum_number_nsz(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1110,7 +1110,7 @@ impl f64 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn maximum(self, other: f64) -> f64 {
-        intrinsics::maximumf64(self, other)
+        intrinsics::maximum(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -1137,7 +1137,7 @@ impl f64 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn minimum(self, other: f64) -> f64 {
-        intrinsics::minimumf64(self, other)
+        intrinsics::minimum(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.
@@ -1800,7 +1800,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn copysign(self, sign: f64) -> f64 {
-        intrinsics::copysignf64(self, sign)
+        intrinsics::copysign(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1918,7 +1918,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(x: f64) -> f64 {
-        intrinsics::floorf64(x)
+        intrinsics::floor(x)
     }
 
     /// Experimental version of `ceil` in `core`. See [`f64::ceil`] for details.
@@ -1946,7 +1946,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(x: f64) -> f64 {
-        intrinsics::ceilf64(x)
+        intrinsics::ceil(x)
     }
 
     /// Experimental version of `round` in `core`. See [`f64::round`] for details.
@@ -1979,7 +1979,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(x: f64) -> f64 {
-        intrinsics::roundf64(x)
+        intrinsics::round(x)
     }
 
     /// Experimental version of `round_ties_even` in `core`. See [`f64::round_ties_even`] for
@@ -2011,7 +2011,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(x: f64) -> f64 {
-        intrinsics::round_ties_even_f64(x)
+        intrinsics::round_ties_even(x)
     }
 
     /// Experimental version of `trunc` in `core`. See [`f64::trunc`] for details.
@@ -2041,7 +2041,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(x: f64) -> f64 {
-        intrinsics::truncf64(x)
+        intrinsics::trunc(x)
     }
 
     /// Experimental version of `fract` in `core`. See [`f64::fract`] for details.
@@ -2116,7 +2116,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add(x: f64, a: f64, b: f64) -> f64 {
-        intrinsics::fmaf64(x, a, b)
+        intrinsics::fma(x, a, b)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f64::div_euclid`] for details.
@@ -2207,7 +2207,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(x: f64, n: i32) -> f64 {
-        intrinsics::powif64(x, n)
+        intrinsics::powi(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f64::sqrt`] for details.
@@ -2237,7 +2237,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(x: f64) -> f64 {
-        intrinsics::sqrtf64(x)
+        intrinsics::sqrt(x)
     }
 
     /// Experimental version of `abs_sub` in `core`. See [`f64::abs_sub`] for details.

@@ -1504,23 +1504,23 @@ fn test_algebraic() {
 }
 
 fn test_fmuladd() {
-    use std::intrinsics::{fmuladdf16, fmuladdf32, fmuladdf64};
+    use std::intrinsics::fmuladd;
 
     // FIXME(f128): add when supported
 
     #[inline(never)]
     fn test_operations_f16(a: f16, b: f16, c: f16) {
-        assert_approx_eq!(fmuladdf16(a, b, c), a * b + c);
+        assert_approx_eq!(fmuladd(a, b, c), a * b + c);
     }
 
     #[inline(never)]
     fn test_operations_f32(a: f32, b: f32, c: f32) {
-        assert_approx_eq!(fmuladdf32(a, b, c), a * b + c);
+        assert_approx_eq!(fmuladd(a, b, c), a * b + c);
     }
 
     #[inline(never)]
     fn test_operations_f64(a: f64, b: f64, c: f64) {
-        assert_approx_eq!(fmuladdf64(a, b, c), a * b + c);
+        assert_approx_eq!(fmuladd(a, b, c), a * b + c);
     }
 
     test_operations_f16(0.1, 0.2, 0.3);

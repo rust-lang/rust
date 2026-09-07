@@ -568,56 +568,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
-            sym::minimum_number_nsz_f16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-            sym::minimum_number_nsz_f32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-            sym::minimum_number_nsz_f64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-            sym::minimum_number_nsz_f128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-
-            sym::minimumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Minimum, dest)?,
-            sym::minimumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::Minimum, dest)?
-            }
-            sym::minimumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::Minimum, dest)?
-            }
-            sym::minimumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Minimum, dest)?,
-
-            sym::maximum_number_nsz_f16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumberNsz, dest)?
-            }
-            sym::maximum_number_nsz_f32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumberNsz, dest)?
-            }
-            sym::maximum_number_nsz_f64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumberNsz, dest)?
-            }
-            sym::maximum_number_nsz_f128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumberNsz, dest)?
+            sym::minimum
+            | sym::maximum
+            | sym::minimum_number_nsz
+            | sym::maximum_number_nsz
+            | sym::copysign => {
+                let arg1 = self.read_immediate(&args[0])?;
+                let arg2 = self.read_immediate(&args[1])?;
+                let ty::Float(float_ty) = arg1.layout.ty.kind() else {
+                    span_bug!(
+                        self.cur_span(),
+                        "non-float type for float intrinsic: {}",
+                        arg1.layout.ty,
+                    );
+                };
+                let out_val = match float_ty {
+                    FloatTy::F16 => {
+                        self.binop_float_intrinsic::<Half>(intrinsic_name, arg1, arg2)?
+                    }
+                    FloatTy::F32 => {
+                        self.binop_float_intrinsic::<Single>(intrinsic_name, arg1, arg2)?
+                    }
+                    FloatTy::F64 => {
+                        self.binop_float_intrinsic::<Double>(intrinsic_name, arg1, arg2)?
+                    }
+                    FloatTy::F128 => {
+                        self.binop_float_intrinsic::<Quad>(intrinsic_name, arg1, arg2)?
+                    }
+                };
+                self.write_scalar(out_val, dest)?;
             }
 
-            sym::maximumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Maximum, dest)?,
-            sym::maximumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::Maximum, dest)?
-            }
-            sym::maximumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::Maximum, dest)?
-            }
-            sym::maximumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Maximum, dest)?,
-
-            sym::copysignf16 => self.float_copysign_intrinsic::<Half>(args, dest)?,
-            sym::copysignf32 => self.float_copysign_intrinsic::<Single>(args, dest)?,
-            sym::copysignf64 => self.float_copysign_intrinsic::<Double>(args, dest)?,
-            sym::copysignf128 => self.float_copysign_intrinsic::<Quad>(args, dest)?,
-
-            sym::fabs => {
+            sym::fabs | sym::floor | sym::ceil | sym::trunc | sym::round | sym::round_ties_even => {
                 let arg = self.read_immediate(&args[0])?;
                 let ty::Float(float_ty) = arg.layout.ty.kind() else {
                     span_bug!(
@@ -635,117 +617,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(out_val, dest)?;
             }
 
-            sym::floorf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-
-            sym::ceilf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-
-            sym::truncf16 => {
-                self.float_round_intrinsic::<Half>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf32 => {
-                self.float_round_intrinsic::<Single>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf64 => {
-                self.float_round_intrinsic::<Double>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf128 => {
-                self.float_round_intrinsic::<Quad>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-
-            sym::roundf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-
-            sym::round_ties_even_f16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::fmaf16 => self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Fused)?,
-            sym::fmaf32 => self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Fused)?,
-            sym::fmaf64 => self.float_muladd_intrinsic::<Double>(args, dest, MulAddType::Fused)?,
-            sym::fmaf128 => self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Fused)?,
-            sym::fmuladdf16 => {
-                self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf32 => {
-                self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf64 => {
-                self.float_muladd_intrinsic::<Double>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf128 => {
-                self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Nondeterministic)?
+            sym::fma | sym::fmuladd => {
+                let mul_add = if intrinsic_name == sym::fma {
+                    MulAddType::Fused
+                } else {
+                    MulAddType::Nondeterministic
+                };
+                let ty = args[0].layout.ty;
+                let ty::Float(float_ty) = ty.kind() else {
+                    span_bug!(self.cur_span(), "non-float type for float intrinsic: {ty}");
+                };
+                match float_ty {
+                    FloatTy::F16 => self.float_muladd_intrinsic::<Half>(args, dest, mul_add)?,
+                    FloatTy::F32 => self.float_muladd_intrinsic::<Single>(args, dest, mul_add)?,
+                    FloatTy::F64 => self.float_muladd_intrinsic::<Double>(args, dest, mul_add)?,
+                    FloatTy::F128 => self.float_muladd_intrinsic::<Quad>(args, dest, mul_add)?,
+                }
             }
 
             sym::va_copy => {
@@ -1192,7 +1079,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     fn unop_float_intrinsic<F>(
-        &self,
+        &mut self,
         name: Symbol,
         arg: ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
@@ -1203,21 +1090,43 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match name {
             // bitwise, no NaN adjustments
             sym::fabs => interp_ok(x.abs().into()),
+            sym::floor => self.float_round(x, rustc_apfloat::Round::TowardNegative),
+            sym::ceil => self.float_round(x, rustc_apfloat::Round::TowardPositive),
+            sym::trunc => self.float_round(x, rustc_apfloat::Round::TowardZero),
+            sym::round => self.float_round(x, rustc_apfloat::Round::NearestTiesToAway),
+            sym::round_ties_even => self.float_round(x, rustc_apfloat::Round::NearestTiesToEven),
             _ => bug!("not a unary float intrinsic: {}", name),
         }
     }
 
-    fn float_minmax<F>(
+    fn binop_float_intrinsic<F>(
         &self,
-        a: Scalar<M::Provenance>,
-        b: Scalar<M::Provenance>,
-        op: MinMax,
+        name: Symbol,
+        arg1: ImmTy<'tcx, M::Provenance>,
+        arg2: ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
-        let a: F = a.to_float()?;
-        let b: F = b.to_float()?;
+        let x: F = arg1.to_scalar().to_float()?;
+        let y: F = arg2.to_scalar().to_float()?;
+        match name {
+            // bitwise, no NaN adjustments
+            sym::copysign => interp_ok(x.copy_sign(y).into()),
+
+            sym::minimum => self.float_minmax(x, y, MinMax::Minimum),
+            sym::maximum => self.float_minmax(x, y, MinMax::Maximum),
+            sym::minimum_number_nsz => self.float_minmax(x, y, MinMax::MinimumNumberNsz),
+            sym::maximum_number_nsz => self.float_minmax(x, y, MinMax::MaximumNumberNsz),
+
+            _ => bug!("not a unary float intrinsic: {}", name),
+        }
+    }
+
+    fn float_minmax<F>(&self, a: F, b: F, op: MinMax) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
         let res = if matches!(op, MinMax::MinimumNumberNsz | MinMax::MaximumNumberNsz) && a == b {
             // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
             // Let the machine decide which one to return.
@@ -1235,62 +1144,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(res.into())
     }
 
-    fn float_minmax_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        op: MinMax,
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let res =
-            self.float_minmax::<F>(self.read_scalar(&args[0])?, self.read_scalar(&args[1])?, op)?;
-        self.write_scalar(res, dest)?;
-        interp_ok(())
-    }
-
-    fn float_copysign_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let a: F = self.read_scalar(&args[0])?.to_float()?;
-        let b: F = self.read_scalar(&args[1])?.to_float()?;
-        // bitwise, no NaN adjustments
-        self.write_scalar(a.copy_sign(b), dest)?;
-        interp_ok(())
-    }
-
     fn float_round<F>(
         &mut self,
-        x: Scalar<M::Provenance>,
+        x: F,
         mode: rustc_apfloat::Round,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
-        let x: F = x.to_float()?;
         let res = x.round_to_integral(mode).value;
         let res = self.adjust_nan(res, &[x]);
         interp_ok(res.into())
-    }
-
-    fn float_round_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
-        mode: rustc_apfloat::Round,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let res = self.float_round::<F>(self.read_scalar(&args[0])?, mode)?;
-        self.write_scalar(res, dest)?;
-        interp_ok(())
     }
 
     fn float_muladd<F>(

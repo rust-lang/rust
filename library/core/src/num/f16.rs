@@ -855,7 +855,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f16) -> f16 {
-        intrinsics::maximum_number_nsz_f16(self, other)
+        intrinsics::maximum_number_nsz(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -886,7 +886,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f16) -> f16 {
-        intrinsics::minimum_number_nsz_f16(self, other)
+        intrinsics::minimum_number_nsz(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -918,7 +918,7 @@ impl f16 {
     // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn maximum(self, other: f16) -> f16 {
-        intrinsics::maximumf16(self, other)
+        intrinsics::maximum(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -950,7 +950,7 @@ impl f16 {
     // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn minimum(self, other: f16) -> f16 {
-        intrinsics::minimumf16(self, other)
+        intrinsics::minimum(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.
@@ -1665,7 +1665,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn copysign(self, sign: f16) -> f16 {
-        intrinsics::copysignf16(self, sign)
+        intrinsics::copysign(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1785,7 +1785,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f16 {
-        intrinsics::floorf16(self)
+        intrinsics::floor(self)
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
@@ -1812,7 +1812,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f16 {
-        intrinsics::ceilf16(self)
+        intrinsics::ceil(self)
     }
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
@@ -1845,7 +1845,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f16 {
-        intrinsics::roundf16(self)
+        intrinsics::round(self)
     }
 
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
@@ -1876,7 +1876,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(self) -> f16 {
-        intrinsics::round_ties_even_f16(self)
+        intrinsics::round_ties_even(self)
     }
 
     /// Returns the integer part of `self`.
@@ -1906,7 +1906,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f16 {
-        intrinsics::truncf16(self)
+        intrinsics::trunc(self)
     }
 
     /// Returns the fractional part of `self`.
@@ -1980,7 +1980,7 @@ impl f16 {
     #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add(self, a: f16, b: f16) -> f16 {
-        intrinsics::fmaf16(self, a, b)
+        intrinsics::fma(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
@@ -2099,7 +2099,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f16 {
-        intrinsics::powif16(self, n)
+        intrinsics::powi(self, n)
     }
 
     /// Returns the square root of a number.
@@ -2133,7 +2133,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f16 {
-        intrinsics::sqrtf16(self)
+        intrinsics::sqrt(self)
     }
 
     /// Returns the cube root of a number.

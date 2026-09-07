@@ -8793,7 +8793,7 @@ pub fn vfma_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t {
 pub fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
     static_assert!(LANE == 0);
     let c: f64 = vget_lane_f64::<LANE>(c);
-    fmaf64(b, c, a)
+    fma(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_f16)"]
@@ -8803,7 +8803,7 @@ pub fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmah_f16(a: f16, b: f16, c: f16) -> f16 {
-    fmaf16(b, c, a)
+    fma(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_lane_f16)"]
@@ -8874,7 +8874,7 @@ pub fn vfmaq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t {
 pub fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
     static_assert_uimm_bits!(LANE, 1);
     let c: f32 = vget_lane_f32::<LANE>(c);
-    fmaf32(b, c, a)
+    fma(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmas_laneq_f32)"]
@@ -8886,7 +8886,7 @@ pub fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
 pub fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
     static_assert_uimm_bits!(LANE, 2);
     let c: f32 = vgetq_lane_f32::<LANE>(c);
-    fmaf32(b, c, a)
+    fma(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmad_laneq_f64)"]
@@ -8898,7 +8898,7 @@ pub fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
 pub fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
     static_assert_uimm_bits!(LANE, 1);
     let c: f64 = vgetq_lane_f64::<LANE>(c);
-    fmaf64(b, c, a)
+    fma(b, c, a)
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_high_f16)"]
@@ -22160,7 +22160,7 @@ pub fn vrndaq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrndah_f16(a: f16) -> f16 {
-    roundf16(a)
+    round(a)
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndh_f16)"]
@@ -22170,7 +22170,7 @@ pub fn vrndah_f16(a: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrndh_f16(a: f16) -> f16 {
-    truncf16(a)
+    trunc(a)
 }
 #[doc = "Floating-point round to integral, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndi_f16)"]
@@ -22351,7 +22351,7 @@ pub fn vrndmq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndmh_f16(a: f16) -> f16 {
-    floorf16(a)
+    floor(a)
 }
 #[doc = "Floating-point round to integral, to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndn_f64)"]
@@ -22482,7 +22482,7 @@ pub fn vrndpq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndph_f16(a: f16) -> f16 {
-    ceilf16(a)
+    ceil(a)
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f16)"]
@@ -22548,7 +22548,7 @@ pub fn vrndxq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxh_f16(a: f16) -> f16 {
-    round_ties_even_f16(a)
+    round_ties_even(a)
 }
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshld_s64)"]
@@ -24346,7 +24346,7 @@ pub fn vsqrtq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fsqrt))]
 pub fn vsqrth_f16(a: f16) -> f16 {
-    sqrtf16(a)
+    sqrt(a)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s8)"]

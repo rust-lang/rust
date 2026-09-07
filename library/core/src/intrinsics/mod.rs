@@ -1052,69 +1052,28 @@ pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
 pub unsafe fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
-/// Returns the square root of an `f16`
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::sqrt`](../../std/primitive.f16.html#method.sqrt)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf16(x: f16) -> f16 {
-    sqrtf32(x as f32) as f16
-}
-/// Returns the square root of an `f32`
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf32(x: f32) -> f32;
-/// Returns the square root of an `f64`
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf64(x: f64) -> f64;
-/// Returns the square root of an `f128`
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::sqrt`](../../std/primitive.f128.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf128(x: f128) -> f128;
+intrinsic_dispatch_on_type! {
+    /// Returns the square root of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `sqrt` method. For example, [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt).
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub fn sqrt<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Raises an `f16` to an integer power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::powi`](../../std/primitive.f16.html#method.powi)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powif16(a: f16, x: i32) -> f16 {
-    powif32(a as f32, x) as f16
+    f16 => { libm::sqrtf16(x) }
+    f32 => { libm::sqrtf(x) }
+    f64 => { libm::sqrt(x) }
+    f128 => { libm::sqrtf128(x) }
 }
-/// Raises an `f32` to an integer power.
+
+/// Raises a floating-point value to an integer power.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::powi`](../../std/primitive.f32.html#method.powi)
+/// The stabilized versions of this intrinsic are available on the float primitives via the
+/// `powi` method. For example, [`f32::powi`](../../std/primitive.f32.html#method.powi).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powif32(a: f32, x: i32) -> f32;
-/// Raises an `f64` to an integer power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::powi`](../../std/primitive.f64.html#method.powi)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powif64(a: f64, x: i32) -> f64;
-/// Raises an `f128` to an integer power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::powi`](../../std/primitive.f128.html#method.powi)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powif128(a: f128, x: i32) -> f128;
+pub fn powi<T: bounds::FloatPrimitive>(a: T, x: i32) -> T;
 
 intrinsic_dispatch_on_type! {
     /// Returns the sine of a floating-point value.
@@ -1158,48 +1117,25 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::maybe_available::cosf128(x) }
 }
 
-/// Raises an `f16` to an `f16` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::powf`](../../std/primitive.f16.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf16(a: f16, x: f16) -> f16 {
-    powf32(a as f32, x as f32) as f16
-}
-/// Raises an `f32` to an `f32` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::powf`](../../std/primitive.f32.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf32(a: f32, x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => powf64(a as f64, x as f64) as f32,
-        _ => libm::likely_available::powf(a, x),
+intrinsic_dispatch_on_type! {
+    /// Raises a floating-point value to a power of the same type.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `powf` method. For example, [`f32::powf`](../../std/primitive.f32.html#method.powf).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn powf<T: bounds::FloatPrimitive>(a: T, x: T) -> T;
+
+    f16 => { powf(a as f32, x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => powf(a as f64, x as f64) as f32,
+            _ => libm::likely_available::powf(a, x),
+        }
     }
-}
-/// Raises an `f64` to an `f64` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::powf`](../../std/primitive.f64.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf64(a: f64, x: f64) -> f64 {
-    libm::likely_available::pow(a, x)
-}
-/// Raises an `f128` to an `f128` power.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::powf`](../../std/primitive.f128.html#method.powf)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn powf128(a: f128, x: f128) -> f128 {
-    libm::maybe_available::powf128(a, x)
+    f64 => { libm::likely_available::pow(a, x) }
+    f128 => { libm::maybe_available::powf128(a, x) }
 }
 
 intrinsic_dispatch_on_type! {
@@ -1307,47 +1243,31 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::maybe_available::log2f128(x) }
 }
 
-/// Returns `a * b + c` without rounding the intermediate result for `f16` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::mul_add`](../../std/primitive.f16.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16 {
+intrinsic_dispatch_on_type! {
+    /// Returns `a * b + c` without rounding the intermediate result.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `mul_add` method. For example,
+    /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic_const_stable_indirect]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn fma<T: bounds::FloatPrimitive>(a: T, b: T, c: T) -> T;
+
     // NOTE: f32 does not have sufficient precision, so use f64 instead.
     // see also https://github.com/llvm/llvm-project/issues/128450#issuecomment-2727540179.
-    fmaf64(a as f64, b as f64, c as f64) as f16
+    f16 => { fma(a as f64, b as f64, c as f64) as f16 }
+    f32 => { libm::fmaf(a, b, c) }
+    f64 => { libm::fma(a, b, c) }
+    f128 => { libm::fmaf128(a, b, c) }
 }
-/// Returns `a * b + c` without rounding the intermediate result for `f32` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-/// Returns `a * b + c` without rounding the intermediate result for `f64` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-/// Returns `a * b + c` without rounding the intermediate result for `f128` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::mul_add`](../../std/primitive.f128.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 
-/// Returns `a * b + c` for `f16` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
+/// Returns `a * b + c`, non-deterministically executing either a fused multiply-add or two
+/// operations with rounding of the intermediate result.
 ///
 /// The operation is fused if the code generator determines that target
 /// instruction set has support for a fused operation, and that the fused
@@ -1356,246 +1276,115 @@ pub const fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 /// is selected, and that may depend on optimization level and context, for
 /// example.
 #[inline]
-#[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16 {
-    a * b + c
-}
-/// Returns `a * b + c` for `f32` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
-///
-/// The operation is fused if the code generator determines that target
-/// instruction set has support for a fused operation, and that the fused
-/// operation is more efficient than the equivalent, separate pair of mul
-/// and add instructions. It is unspecified whether or not a fused operation
-/// is selected, and that may depend on optimization level and context, for
-/// example.
-#[inline]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32 {
-    a * b + c
-}
-/// Returns `a * b + c` for `f64` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
-///
-/// The operation is fused if the code generator determines that target
-/// instruction set has support for a fused operation, and that the fused
-/// operation is more efficient than the equivalent, separate pair of mul
-/// and add instructions. It is unspecified whether or not a fused operation
-/// is selected, and that may depend on optimization level and context, for
-/// example.
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64 {
-    a * b + c
-}
-/// Returns `a * b + c` for `f128` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
-///
-/// The operation is fused if the code generator determines that target
-/// instruction set has support for a fused operation, and that the fused
-/// operation is more efficient than the equivalent, separate pair of mul
-/// and add instructions. It is unspecified whether or not a fused operation
-/// is selected, and that may depend on optimization level and context, for
-/// example.
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmuladdf128(a: f128, b: f128, c: f128) -> f128 {
+pub const fn fmuladd<T: const bounds::FloatPrimitive>(a: T, b: T, c: T) -> T {
     a * b + c
 }
 
-/// Returns the largest integer less than or equal to an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::floor`](../../std/primitive.f16.html#method.floor)
-#[rustc_intrinsic_const_stable_indirect]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn floorf16(x: f16) -> f16 {
-    floorf32(x as f32) as f16
-}
-/// Returns the largest integer less than or equal to an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::floor`](../../std/primitive.f32.html#method.floor)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn floorf32(x: f32) -> f32;
-/// Returns the largest integer less than or equal to an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::floor`](../../std/primitive.f64.html#method.floor)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn floorf64(x: f64) -> f64;
-/// Returns the largest integer less than or equal to an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::floor`](../../std/primitive.f128.html#method.floor)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn floorf128(x: f128) -> f128;
+intrinsic_dispatch_on_type! {
+    /// Returns the largest integer less than or equal to a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `floor` method. For example, [`f32::floor`](../../std/primitive.f32.html#method.floor).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic_const_stable_indirect]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn floor<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the smallest integer greater than or equal to an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
-#[rustc_intrinsic_const_stable_indirect]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn ceilf16(x: f16) -> f16 {
-    ceilf32(x as f32) as f16
-}
-/// Returns the smallest integer greater than or equal to an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn ceilf32(x: f32) -> f32;
-/// Returns the smallest integer greater than or equal to an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn ceilf64(x: f64) -> f64;
-/// Returns the smallest integer greater than or equal to an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::ceil`](../../std/primitive.f128.html#method.ceil)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn ceilf128(x: f128) -> f128;
-
-/// Returns the integer part of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
-#[rustc_intrinsic_const_stable_indirect]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn truncf16(x: f16) -> f16 {
-    truncf32(x as f32) as f16
-}
-/// Returns the integer part of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn truncf32(x: f32) -> f32;
-/// Returns the integer part of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn truncf64(x: f64) -> f64;
-/// Returns the integer part of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::trunc`](../../std/primitive.f128.html#method.trunc)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn truncf128(x: f128) -> f128;
-
-/// Returns the nearest integer to an `f16`. Rounds half-way cases to the number with an even
-/// least significant digit.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
-#[rustc_intrinsic_const_stable_indirect]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn round_ties_even_f16(x: f16) -> f16 {
-    round_ties_even_f32(x as f32) as f16
+    f16 => { libm::floorf16(x) }
+    f32 => { libm::floorf(x) }
+    f64 => { libm::floor(x) }
+    f128 => { libm::floorf128(x) }
 }
 
-/// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
-/// least significant digit.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn round_ties_even_f32(x: f32) -> f32;
+intrinsic_dispatch_on_type! {
+    /// Returns the smallest integer greater than or equal to a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `ceil` method. For example, [`f32::ceil`](../../std/primitive.f32.html#method.ceil).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic_const_stable_indirect]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn ceil<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the nearest integer to an `f64`. Rounds half-way cases to the number with an even
-/// least significant digit.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn round_ties_even_f64(x: f64) -> f64;
-
-/// Returns the nearest integer to an `f128`. Rounds half-way cases to the number with an even
-/// least significant digit.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn round_ties_even_f128(x: f128) -> f128;
-
-/// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::round`](../../std/primitive.f16.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf16(x: f16) -> f16 {
-    roundf32(x as f32) as f16
+    f16 => { libm::ceilf16(x) }
+    f32 => { libm::ceilf(x) }
+    f64 => { libm::ceil(x) }
+    f128 => { libm::ceilf128(x) }
 }
-/// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::round`](../../std/primitive.f32.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf32(x: f32) -> f32;
-/// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::round`](../../std/primitive.f64.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf64(x: f64) -> f64;
-/// Returns the nearest integer to an `f128`. Rounds half-way cases away from zero.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::round`](../../std/primitive.f128.html#method.round)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn roundf128(x: f128) -> f128;
+
+intrinsic_dispatch_on_type! {
+    /// Returns the integer part of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `trunc` method. For example, [`f32::trunc`](../../std/primitive.f32.html#method.trunc).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic_const_stable_indirect]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn trunc<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { libm::truncf16(x) }
+    f32 => { libm::truncf(x) }
+    f64 => { libm::trunc(x) }
+    f128 => { libm::truncf128(x) }
+}
+
+intrinsic_dispatch_on_type! {
+    /// Returns the nearest integer to a floating-point value. Rounds half-way cases to the number
+    /// with an even least significant digit.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `round_ties_even` method. For example,
+    /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic_const_stable_indirect]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn round_ties_even<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { libm::roundevenf16(x) }
+    f32 => { libm::roundevenf(x) }
+    f64 => { libm::roundeven(x) }
+    f128 => { libm::roundevenf128(x) }
+}
+
+intrinsic_dispatch_on_type! {
+    /// Returns the nearest integer to a floating-point value. Rounds half-way cases away from
+    /// zero.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `round` method. For example, [`f32::round`](../../std/primitive.f32.html#method.round).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic_const_stable_indirect]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn round<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { libm::roundf16(x) }
+    f32 => { libm::roundf(x) }
+    f64 => { libm::round(x) }
+    f128 => { libm::roundf128(x) }
+}
 
 /// Float addition that allows optimizations based on algebraic rules.
 /// Requires that inputs and output of the operation are finite, causing UB otherwise.
@@ -3178,7 +2967,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 #[rustc_intrinsic]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
-/// Returns the minimum of two `f16` values, ignoring NaN.
+/// Returns the minimum of two floating-point values, ignoring NaN.
 ///
 /// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
 /// zeros deterministically. In particular:
@@ -3191,36 +2980,13 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is [`f16::min`].
+/// The stabilized versions of this intrinsic are available on the float primitives via the
+/// `min` method. For example, [`f32::min`].
 #[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimum_number_nsz_f16(x: f16, y: f16) -> f16 {
-    if x.is_nan() || y <= x {
-        y
-    } else {
-        // Either y > x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the minimum of two `f32` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f32::min`].
-#[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn minimum_number_nsz_f32(x: f32, y: f32) -> f32 {
+pub const fn minimum_number_nsz<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x.is_nan() || y <= x {
         y
     } else {
@@ -3229,158 +2995,7 @@ pub const fn minimum_number_nsz_f32(x: f32, y: f32) -> f32 {
     }
 }
 
-/// Returns the minimum of two `f64` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f64::min`].
-#[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-pub const fn minimum_number_nsz_f64(x: f64, y: f64) -> f64 {
-    if x.is_nan() || y <= x {
-        y
-    } else {
-        // Either y > x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the minimum of two `f128` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 minimumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f128::min`].
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimum_number_nsz_f128(x: f128, y: f128) -> f128 {
-    if x.is_nan() || y <= x {
-        y
-    } else {
-        // Either y > x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the minimum of two `f16` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf16(x: f16, y: f16) -> f16 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the minimum of two `f32` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf32(x: f32, y: f32) -> f32 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the minimum of two `f64` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf64(x: f64, y: f64) -> f64 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the minimum of two `f128` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 minimum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn minimumf128(x: f128, y: f128) -> f128 {
-    if x < y {
-        x
-    } else if y < x {
-        y
-    } else if x == y {
-        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
-    } else {
-        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-        x + y
-    }
-}
-
-/// Returns the maximum of two `f16` values, ignoring NaN.
+/// Returns the maximum of two floating-point values, ignoring NaN.
 ///
 /// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
 /// zeros deterministically. In particular:
@@ -3393,36 +3008,13 @@ pub const fn minimumf128(x: f128, y: f128) -> f128 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is [`f16::max`].
+/// The stabilized versions of this intrinsic are available on the float primitives via the
+/// `max` method. For example, [`f32::max`].
 #[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximum_number_nsz_f16(x: f16, y: f16) -> f16 {
-    if x.is_nan() || y >= x {
-        y
-    } else {
-        // Either y < x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the maximum of two `f32` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f32::max`].
-#[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn maximum_number_nsz_f32(x: f32, y: f32) -> f32 {
+pub const fn maximum_number_nsz<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x.is_nan() || y >= x {
         y
     } else {
@@ -3431,82 +3023,34 @@ pub const fn maximum_number_nsz_f32(x: f32, y: f32) -> f32 {
     }
 }
 
-/// Returns the maximum of two `f64` values, ignoring NaN.
+/// Returns the minimum of two floating-point values, propagating NaN.
 ///
-/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
+/// This behaves like IEEE 754-2019 minimum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f64::max`].
 #[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn maximum_number_nsz_f64(x: f64, y: f64) -> f64 {
-    if x.is_nan() || y >= x {
-        y
-    } else {
-        // Either y < x or y is a NaN.
+pub const fn minimum<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+    if x < y {
         x
-    }
-}
-
-/// Returns the maximum of two `f128` values, ignoring NaN.
-///
-/// This behaves like IEEE 754-2019 maximumNumber, *except* that it does not order signed
-/// zeros deterministically. In particular:
-/// If one of the arguments is NaN (quiet or signaling), then the other argument is returned. If
-/// both arguments are NaN, returns NaN. If the inputs compare equal (such as for the case of `+0.0`
-/// and `-0.0`), either input may be returned non-deterministically.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-///
-/// The stabilized version of this intrinsic is [`f128::max`].
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximum_number_nsz_f128(x: f128, y: f128) -> f128 {
-    if x.is_nan() || y >= x {
-        y
-    } else {
-        // Either y < x or y is a NaN.
-        x
-    }
-}
-
-/// Returns the maximum of two `f16` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 maximum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximumf16(x: f16, y: f16) -> f16 {
-    if x > y {
-        x
-    } else if y > x {
+    } else if y < x {
         y
     } else if x == y {
-        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
     } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
         x + y
     }
 }
 
-/// Returns the maximum of two `f32` values, propagating NaN.
+/// Returns the maximum of two floating-point values, propagating NaN.
 ///
 /// This behaves like IEEE 754-2019 maximum. In particular:
 /// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
@@ -3517,8 +3061,10 @@ pub const fn maximumf16(x: f16, y: f16) -> f16 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn maximumf32(x: f32, y: f32) -> f32 {
+pub const fn maximum<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x > y {
         x
     } else if y > x {
@@ -3526,54 +3072,7 @@ pub const fn maximumf32(x: f32, y: f32) -> f32 {
     } else if x == y {
         if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
     } else {
-        x + y
-    }
-}
-
-/// Returns the maximum of two `f64` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 maximum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximumf64(x: f64, y: f64) -> f64 {
-    if x > y {
-        x
-    } else if y > x {
-        y
-    } else if x == y {
-        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
-    } else {
-        x + y
-    }
-}
-
-/// Returns the maximum of two `f128` values, propagating NaN.
-///
-/// This behaves like IEEE 754-2019 maximum. In particular:
-/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
-/// For this operation, -0.0 is considered to be strictly less than +0.0.
-///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn maximumf128(x: f128, y: f128) -> f128 {
-    if x > y {
-        x
-    } else if y > x {
-        y
-    } else if x == y {
-        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
-    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
         x + y
     }
 }
@@ -3591,49 +3090,18 @@ pub const fn fabs<T: const bounds::FloatPrimitive>(x: T) -> T {
     T::from_bits(x.to_bits() & !T::SIGN_MASK)
 }
 
-/// Copies the sign from `y` to `x` for `f16` values.
+/// Copies the sign from `y` to `x` for floating-point values.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `copysign` method. For example, [`f32::copysign`].
 #[inline]
 #[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn copysignf16(x: f16, y: f16) -> f16 {
-    f16::from_bits((x.to_bits() & !f16::SIGN_MASK) | (y.to_bits() & f16::SIGN_MASK))
-}
-
-/// Copies the sign from `y` to `x` for `f32` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
-#[inline]
-#[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn copysignf32(x: f32, y: f32) -> f32 {
-    f32::from_bits((x.to_bits() & !f32::SIGN_MASK) | (y.to_bits() & f32::SIGN_MASK))
-}
-/// Copies the sign from `y` to `x` for `f64` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
-#[inline]
-#[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-pub const fn copysignf64(x: f64, y: f64) -> f64 {
-    f64::from_bits((x.to_bits() & !f64::SIGN_MASK) | (y.to_bits() & f64::SIGN_MASK))
-}
-
-/// Copies the sign from `y` to `x` for `f128` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
-#[inline]
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn copysignf128(x: f128, y: f128) -> f128 {
-    f128::from_bits((x.to_bits() & !f128::SIGN_MASK) | (y.to_bits() & f128::SIGN_MASK))
+#[miri::intrinsic_fallback_is_spec]
+pub const fn copysign<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+    T::from_bits((x.to_bits() & !T::SIGN_MASK) | (y.to_bits() & T::SIGN_MASK))
 }
 
 /// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,
