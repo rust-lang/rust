@@ -475,7 +475,6 @@ generate! {
     pop_if,
     position,
     pow,
-    powi,
     print_macro,
     println_macro,
     process_abort,

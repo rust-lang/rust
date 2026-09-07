@@ -56,11 +56,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     args: &[OperandRef<'tcx, &'ll Value>],
 ) -> Option<&'ll Value> {
     let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
-        sym::powif16 => ("llvm.powi", &[bx.type_f16(), bx.type_i32()]),
-        sym::powif32 => ("llvm.powi", &[bx.type_f32(), bx.type_i32()]),
-        sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
-        sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
-
         sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
@@ -534,7 +529,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => {
+            | sym::cos
+            | sym::powi => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -567,11 +563,17 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::log2 => "llvm.log2",
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
+                    sym::powi => "llvm.powi",
+
                     _ => bug!(),
                 };
+
+                let params: &[&'ll Type] =
+                    if name == sym::powi { &[llty, self.type_i32()] } else { &[llty] };
+
                 self.call_intrinsic(
                     llvm_name,
-                    &[llty],
+                    params,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }

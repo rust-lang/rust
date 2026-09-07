@@ -58,8 +58,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     name: Symbol,
 ) -> Option<Function<'gcc>> {
     let gcc_name = match name {
-        sym::powif32 => "__builtin_powif",
-        sym::powif64 => "__builtin_powi",
         sym::minimumf32 => return float_intrinsic(cx, cx.type_f32(), "fminimumf"),
         sym::minimumf64 => return float_intrinsic(cx, cx.type_f64(), "fminimum"),
         sym::minimumf128 => return float_intrinsic(cx, cx.type_f128(), "fminimumf128"),
@@ -214,32 +212,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::powif16 => {
-                let func = self.cx.context.get_builtin_function("__builtin_powif");
-                let arg0 = self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
-                let args = [arg0, args[1].immediate()];
-                let result = self.cx.context.new_call(None, func, &args);
-                self.cx.context.new_cast(None, result, self.cx.type_f16())
-            }
-            sym::powif128 => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, self.int_type, "b"),
-                    ],
-                    "__powitf2",
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");
@@ -365,7 +337,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => 'float_unop: {
+            | sym::cos
+            | sym::powi => 'float_op: {
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
                     span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
@@ -394,6 +367,33 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     (sym::fma | sym::fmuladd, F16) | (sym::fmuladd, F128) => {
                         let fallback = Instance::new_raw(instance.def_id(), instance.args);
                         return IntrinsicResult::Fallback(fallback);
+                    }
+
+                    (sym::powi, F32) => self.context.get_builtin_function("__builtin_powif"),
+                    (sym::powi, F64) => self.context.get_builtin_function("__builtin_powi"),
+                    // Provided by `compiler-builtins`.
+                    (sym::powi, F128) => {
+                        let f128_type = self.cx.type_f128();
+                        self.cx.context.new_function(
+                            None,
+                            FunctionType::Extern,
+                            f128_type,
+                            &[
+                                self.cx.context.new_parameter(None, f128_type, "a"),
+                                self.cx.context.new_parameter(None, self.int_type, "b"),
+                            ],
+                            "__powitf2",
+                            false,
+                        )
+                    }
+                    // `f16` can't go through `f16_builtin` due to the integer argument.
+                    (sym::powi, F16) => {
+                        let func = self.cx.context.get_builtin_function("__builtin_powif");
+                        let arg0 =
+                            self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
+                        let args = [arg0, args[1].immediate()];
+                        let result = self.cx.context.new_call(None, func, &args);
+                        break 'float_op self.cx.context.new_cast(None, result, self.cx.type_f16());
                     }
 
                     (sym::floor, F32) => self.context.get_builtin_function("floorf"),
@@ -435,7 +435,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                     (_, F32 | F64) => unreachable!(),
 
-                    (_, F16) => break 'float_unop f16_builtin(self, name, args),
+                    (_, F16) => break 'float_op f16_builtin(self, name, args),
                     (_, F128) => {
                         if !self.cx.supports_f128_type {
                             // Fall back to default body

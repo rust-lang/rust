@@ -2113,7 +2113,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f128 {
-        intrinsics::powif128(self, n)
+        intrinsics::powi(self, n)
     }
 
     /// Returns the square root of a number.

@@ -2207,7 +2207,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(x: f64, n: i32) -> f64 {
-        intrinsics::powif64(x, n)
+        intrinsics::powi(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f64::sqrt`] for details.
