@@ -11,7 +11,8 @@ use rustc_parse::lexer::{StripTokens, nfc_normalize};
 use rustc_parse::parser::Parser;
 use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream};
 use rustc_proc_macro::bridge::{
-    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
+    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, IdentKind, LitKind, Literal, Punct,
+    TokenTree, server,
 };
 use rustc_proc_macro::{Delimiter, Level};
 use rustc_session::Session;
@@ -103,6 +104,26 @@ impl ToInternal<tk::LitKind> for LitKind {
     }
 }
 
+impl FromInternal<tk::IdentKind> for IdentKind {
+    fn from_internal(kind: tk::IdentKind) -> Self {
+        match kind {
+            tk::IdentKind::Normal => IdentKind::Normal,
+            tk::IdentKind::Raw => IdentKind::Raw,
+            tk::IdentKind::ForcedKeyword => IdentKind::ForcedKeyword,
+        }
+    }
+}
+
+impl ToInternal<tk::IdentKind> for IdentKind {
+    fn to_internal(self) -> tk::IdentKind {
+        match self {
+            IdentKind::Normal => tk::IdentKind::Normal,
+            IdentKind::Raw => tk::IdentKind::Raw,
+            IdentKind::ForcedKeyword => tk::IdentKind::ForcedKeyword,
+        }
+    }
+}
+
 impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
     fn from_internal(stream: TokenStream) -> Self {
         // Estimate the capacity as `stream.len()` rounded up to the next power
@@ -127,7 +148,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     }
 
                     trees.push(TokenTree::Group(Group {
-                        delimiter: rustc_proc_macro::Delimiter::from_internal(delim),
+                        delimiter: Delimiter::from_internal(delim),
                         stream: Some(stream),
                         span: DelimSpan {
                             open: span.open,
@@ -228,33 +249,33 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                 tk::Question => op("?"),
                 tk::SingleQuote => op("'"),
 
-                tk::Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident {
+                tk::Ident(sym, kind) => trees.push(TokenTree::Ident(Ident {
                     sym,
-                    is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
+                    kind: IdentKind::from_internal(kind),
                     span,
                 })),
-                tk::NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
+                tk::NtIdent(ident, kind) => trees.push(TokenTree::Ident(Ident {
                     sym: ident.name,
-                    is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
+                    kind: IdentKind::from_internal(kind),
                     span: ident.span,
                 })),
 
-                tk::Lifetime(name, is_raw) => {
+                tk::Lifetime(name, kind) => {
                     let ident = rustc_span::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
                         TokenTree::Ident(Ident {
                             sym: ident.name,
-                            is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
+                            kind: IdentKind::from_internal(kind),
                             span,
                         }),
                     ]);
                 }
-                tk::NtLifetime(ident, is_raw) => {
+                tk::NtLifetime(ident, kind) => {
                     let stream =
-                        TokenStream::token_alone(tk::Lifetime(ident.name, is_raw), ident.span);
+                        TokenStream::token_alone(tk::Lifetime(ident.name, kind), ident.span);
                     trees.push(TokenTree::Group(Group {
-                        delimiter: rustc_proc_macro::Delimiter::None,
+                        delimiter: Delimiter::None,
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }))
@@ -274,7 +295,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                         escaped.extend(ch.escape_debug());
                     }
                     let stream = [
-                        tk::Ident(sym::doc, tk::IdentIsRaw::No),
+                        tk::Ident(sym::doc, tk::IdentKind::Normal),
                         tk::Eq,
                         tk::TokenKind::lit(tk::Str, Symbol::intern(&escaped), None),
                     ]
@@ -286,7 +307,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                         trees.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
                     }
                     trees.push(TokenTree::Group(Group {
-                        delimiter: rustc_proc_macro::Delimiter::Bracket,
+                        delimiter: Delimiter::Bracket,
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }));
@@ -364,16 +385,16 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                     stream.unwrap_or_default(),
                 )]
             }
-            TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
+            TokenTree::Ident(Ident { sym, kind, span }) => {
                 rustc.psess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(tk::Ident(sym, is_raw.into()), span)]
+                smallvec![tokenstream::TokenTree::token_alone(
+                    tk::Ident(sym, kind.to_internal()),
+                    span
+                )]
             }
-            TokenTree::Literal(self::Literal {
-                kind: self::LitKind::Integer,
-                symbol,
-                suffix,
-                span,
-            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+            TokenTree::Literal(self::Literal { kind: LitKind::Integer, symbol, suffix, span })
+                if let Some(symbol) = symbol.as_str().strip_prefix('-') =>
+            {
                 let symbol = Symbol::intern(symbol);
                 let integer = tk::TokenKind::lit(tk::Integer, symbol, suffix);
                 let a = tokenstream::TokenTree::token_joint_hidden(tk::Minus, span);
@@ -613,7 +634,7 @@ impl server::Server for Rustc<'_, '_> {
         match &expr.kind {
             ast::ExprKind::Lit(token_lit) if token_lit.kind == tk::Bool => {
                 Ok(tokenstream::TokenStream::token_alone(
-                    tk::Ident(token_lit.symbol, tk::IdentIsRaw::No),
+                    tk::Ident(token_lit.symbol, tk::IdentKind::Normal),
                     expr.span,
                 ))
             }

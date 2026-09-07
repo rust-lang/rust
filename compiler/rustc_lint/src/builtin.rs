@@ -1758,11 +1758,11 @@ impl KeywordIdents {
             match tt {
                 // Only report non-raw idents.
                 TokenTree::Token(token, _) => {
-                    if let Some((ident, token::IdentIsRaw::No)) = token.ident() {
+                    if let Some((ident, token::IdentKind::Normal)) = token.ident() {
                         if !prev_dollar {
                             self.check_ident_token(cx, UnderMacro(true), ident, "");
                         }
-                    } else if let Some((ident, token::IdentIsRaw::No)) = token.lifetime() {
+                    } else if let Some((ident, token::IdentKind::Normal)) = token.lifetime() {
                         self.check_ident_token(
                             cx,
                             UnderMacro(true),

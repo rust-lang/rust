@@ -1005,6 +1005,7 @@ symbols! {
         forall,
         forbid,
         force_target_feature,
+        forced_keywords,
         forget,
         format_args,
         format_args_capture,
@@ -2535,6 +2536,7 @@ impl fmt::Display for Ident {
 pub enum IdentPrintMode {
     Normal,
     RawIdent,
+    ForcedKeywordIdent,
     RawLifetime,
 }
 
@@ -2593,6 +2595,10 @@ impl fmt::Display for IdentPrinter {
             IdentPrintMode::Normal => self.symbol,
             IdentPrintMode::RawIdent => {
                 f.write_str("r#")?;
+                self.symbol
+            }
+            IdentPrintMode::ForcedKeywordIdent => {
+                f.write_str("k#")?;
                 self.symbol
             }
             IdentPrintMode::RawLifetime => {
@@ -3028,6 +3034,11 @@ impl Symbol {
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
+    }
+
+    /// Returns `true` if this symbol can be a forced keyword.
+    pub fn can_be_forced_keyword(self) -> bool {
+        self.is_reserved(|| Edition::EditionFuture) || self.is_weak()
     }
 
     /// Was this symbol index predefined in the compiler's `symbols!` macro?
