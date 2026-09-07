@@ -453,7 +453,7 @@ pub const trait Extend<T> {
     unsafe fn extend_one_unchecked(&mut self, item: T)
     where
         Self: Sized,
-        A: [const] Destruct,
+        T: [const] Destruct,
     {
         self.extend_one(item);
     }
@@ -562,7 +562,9 @@ where
     // applicable.
     #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
     const trait SpecExtend<I> {
-        fn extend(&mut self, iter: I);
+        fn extend(&mut self, iter: I)
+        where
+            I: [const] Destruct;
     }
 
     // Extracting these to separate functions avoid monomorphising the closures
@@ -595,10 +597,13 @@ where
     const impl<ExtendT, I, T> SpecExtend<I> for ExtendT
     where
         ExtendT: [const] Extend<T>,
+        I: [const] Iterator<Item = T>,
         T: [const] Destruct,
-        I: [const] Iterator<Item = T> + [const] Destruct,
     {
-        default fn extend(&mut self, iter: I) {
+        default fn extend(&mut self, iter: I)
+        where
+            I: [const] Destruct,
+        {
             let (lower_bound, _) = iter.size_hint();
             if lower_bound > 0 {
                 self.extend_reserve(lower_bound);
@@ -612,10 +617,13 @@ where
     const impl<ExtendT, I, T> SpecExtend<I> for ExtendT
     where
         ExtendT: [const] Extend<T>,
+        I: [const] TrustedLen<Item = T>,
         T: [const] Destruct,
-        I: [const] TrustedLen<Item = T> + [const] Destruct,
     {
-        fn extend(&mut self, iter: I) {
+        fn extend(&mut self, iter: I)
+        where
+            I: [const] Destruct,
+        {
             let (lower_bound, upper_bound) = iter.size_hint();
             if lower_bound > 0 {
                 self.extend_reserve(lower_bound);
@@ -647,7 +655,9 @@ macro_rules! impl_extend_tuple {
             $($extend_ty: [const] Extend<$ty>,)+
         {
             fn extend<Iter: [const] IntoIterator<Item = ($($ty,)+)>>(&mut self, iter: Iter)
-            where Iter::IntoIter: [const] Destruct{
+            where
+                Iter::IntoIter: [const] Destruct
+            {
                 default_extend(self, iter)
             }
 
