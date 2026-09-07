@@ -5,111 +5,165 @@
       debug vec => _1;
       debug count => _2;
       let mut _0: ();
-      let mut _3: std::ops::Range<usize>;
-      let mut _4: std::ops::Range<usize>;
-      let mut _5: usize;
-      let mut _6: std::ops::Range<usize>;
-      let mut _7: ();
+      let _3: ();
+      let mut _4: bool;
+      let mut _5: &std::vec::Vec<usize>;
+      let _6: ();
+      let mut _7: &mut std::vec::Vec<usize>;
       let _8: ();
-      let mut _9: std::option::Option<usize>;
-      let mut _10: &mut std::ops::Range<usize>;
-      let mut _11: &mut std::ops::Range<usize>;
-      let mut _12: isize;
-      let mut _13: !;
-      let _15: ();
-      let mut _16: &mut std::vec::Vec<usize>;
-      let mut _17: usize;
-+     let mut _18: std::vec::Vec<usize>;
-+     let mut _19: &mut std::vec::Vec<usize>;
+      let mut _9: std::ops::Range<usize>;
+      let mut _10: std::ops::Range<usize>;
+      let mut _11: usize;
+      let mut _12: std::ops::Range<usize>;
+      let mut _13: ();
+      let _14: ();
+      let mut _15: std::option::Option<usize>;
+      let mut _16: &mut std::ops::Range<usize>;
+      let mut _17: &mut std::ops::Range<usize>;
+      let mut _18: isize;
+      let mut _19: !;
+      let _21: ();
+      let mut _22: &mut std::vec::Vec<usize>;
+      let mut _23: usize;
+      let _24: ();
+      let mut _25: &mut std::vec::Vec<usize>;
+      let mut _26: usize;
++     let mut _27: std::vec::Vec<usize>;
++     let mut _28: &mut std::vec::Vec<usize>;
       scope 1 {
-          debug iter => _6;
-          let _14: usize;
+          debug iter => _12;
+          let _20: usize;
           scope 2 {
-              debug value => _14;
+              debug value => _20;
           }
       }
   
       bb0: {
-+         _18 = move (*_1);
-+         _19 = &mut _18;
++         _27 = move (*_1);
++         _28 = &mut _27;
           StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
-          _5 = copy _2;
-          _4 = std::ops::Range::<usize> { start: const 0_usize, end: move _5 };
-          StorageDead(_5);
--         _3 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _4) -> [return: bb1, unwind continue];
-+         _3 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _4) -> [return: bb1, unwind: bb8];
+-         _5 = &(*_1);
++         _5 = &(*_28);
+          _4 = Vec::<usize>::is_empty(move _5) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-          StorageDead(_4);
-          StorageLive(_6);
-          _6 = move _3;
-          goto -> bb2;
+          switchInt(move _4) -> [0: bb3, otherwise: bb2];
       }
   
       bb2: {
+          StorageDead(_5);
+          _3 = const ();
+          goto -> bb5;
+      }
+  
+      bb3: {
+          StorageDead(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+-         _7 = &mut (*_1);
++         _7 = &mut (*_28);
+          _6 = Vec::<usize>::clear(move _7) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_7);
+          StorageDead(_6);
+          _3 = const ();
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_4);
+          StorageDead(_3);
           StorageLive(_8);
           StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
-          _11 = &mut _6;
-          _10 = &mut (*_11);
--         _9 = <std::ops::Range<usize> as Iterator>::next(move _10) -> [return: bb3, unwind continue];
-+         _9 = <std::ops::Range<usize> as Iterator>::next(move _10) -> [return: bb3, unwind: bb8];
-      }
-  
-      bb3: {
-          StorageDead(_10);
-          _12 = discriminant(_9);
-          switchInt(move _12) -> [0: bb6, 1: bb5, otherwise: bb4];
-      }
-  
-      bb4: {
-          unreachable;
-      }
-  
-      bb5: {
-          StorageLive(_14);
-          _14 = copy ((_9 as Some).0: usize);
-          StorageLive(_15);
-          StorageLive(_16);
--         _16 = &mut (*_1);
-+         _16 = &mut (*_19);
-          StorageLive(_17);
-          _17 = copy _14;
--         _15 = Vec::<usize>::push(move _16, move _17) -> [return: bb7, unwind continue];
-+         _15 = Vec::<usize>::push(move _16, move _17) -> [return: bb7, unwind: bb8];
+          _11 = copy _2;
+          _10 = std::ops::Range::<usize> { start: const 0_usize, end: move _11 };
+          StorageDead(_11);
+          _9 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _10) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
-          _0 = const ();
-          StorageDead(_11);
-          StorageDead(_9);
-          StorageDead(_8);
-          StorageDead(_6);
-          StorageDead(_3);
-+         (*_1) = move _18;
-          return;
+          StorageDead(_10);
+          StorageLive(_12);
+          _12 = move _9;
+          goto -> bb7;
       }
   
       bb7: {
-          StorageDead(_17);
+          StorageLive(_14);
+          StorageLive(_15);
+          StorageLive(_16);
+          StorageLive(_17);
+          _17 = &mut _12;
+          _16 = &mut (*_17);
+          _15 = <std::ops::Range<usize> as Iterator>::next(move _16) -> [return: bb8, unwind unreachable];
+      }
+  
+      bb8: {
           StorageDead(_16);
-          StorageDead(_15);
+          _18 = discriminant(_15);
+          switchInt(move _18) -> [0: bb11, 1: bb10, otherwise: bb9];
+      }
+  
+      bb9: {
+          unreachable;
+      }
+  
+      bb10: {
+          StorageLive(_20);
+          _20 = copy ((_15 as Some).0: usize);
+          StorageLive(_21);
+          StorageLive(_22);
+-         _22 = &mut (*_1);
++         _22 = &mut (*_28);
+          StorageLive(_23);
+          _23 = copy _20;
+          _21 = Vec::<usize>::push(move _22, move _23) -> [return: bb12, unwind unreachable];
+      }
+  
+      bb11: {
           _8 = const ();
+          StorageDead(_17);
+          StorageDead(_15);
           StorageDead(_14);
-          StorageDead(_11);
+          StorageDead(_12);
           StorageDead(_9);
           StorageDead(_8);
-          _7 = const ();
-          goto -> bb2;
-+     }
-+ 
-+     bb8 (cleanup): {
-+         (*_1) = move _18;
-+         resume;
+          StorageLive(_24);
+          StorageLive(_25);
+-         _25 = &mut (*_1);
++         _25 = &mut (*_28);
+          StorageLive(_26);
+          _26 = copy _2;
+          _24 = Vec::<usize>::truncate(move _25, move _26) -> [return: bb13, unwind unreachable];
+      }
+  
+      bb12: {
+          StorageDead(_23);
+          StorageDead(_22);
+          StorageDead(_21);
+          _14 = const ();
+          StorageDead(_20);
+          StorageDead(_17);
+          StorageDead(_15);
+          StorageDead(_14);
+          _13 = const ();
+          goto -> bb7;
+      }
+  
+      bb13: {
+          StorageDead(_26);
+          StorageDead(_25);
+          StorageDead(_24);
+          _0 = const ();
++         (*_1) = move _27;
+          return;
       }
   }
   
