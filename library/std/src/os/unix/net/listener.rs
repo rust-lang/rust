@@ -1,9 +1,10 @@
-use super::{SocketAddr, UnixStream, sockaddr_un};
+use super::{SocketAddr, UnixStream};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::net::SOCK_MAX_SIZE;
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
-use crate::{fmt, io, mem};
+use crate::{fmt, io};
 
 /// A structure representing a Unix domain socket server.
 ///
@@ -73,7 +74,7 @@ impl UnixListener {
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
-            let (addr, len) = sockaddr_un(path.as_ref())?;
+            let sockaddr = SocketAddr::from_path(path.as_ref())?;
             #[cfg(any(
                 target_os = "windows",
                 target_os = "redox",
@@ -104,7 +105,11 @@ impl UnixListener {
             )))]
             const backlog: libc::c_int = libc::SOMAXCONN;
 
-            cvt(libc::bind(inner.as_inner().as_raw_fd(), (&raw const addr) as *const _, len as _))?;
+            cvt(libc::bind(
+                inner.as_inner().as_raw_fd(),
+                (&raw const sockaddr.addr) as *const _,
+                sockaddr.len as _,
+            ))?;
             cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
 
             Ok(UnixListener(inner))
@@ -179,7 +184,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
-        let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
+        let mut storage: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
         let mut len = size_of_val(&storage) as libc::socklen_t;
         let sock = self.0.accept((&raw mut storage) as *mut _, &mut len)?;
         let addr = SocketAddr::from_parts(storage, len)?;
@@ -225,7 +230,9 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
+        SocketAddr::new(|addr, len| unsafe {
+            libc::getsockname(self.as_raw_fd(), addr as *mut libc::sockaddr, len)
+        })
     }
 
     /// Moves the socket into or out of nonblocking mode.

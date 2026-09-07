@@ -35,10 +35,12 @@ fn sock_addr_from_pathname() {
 fn sock_addr_without_trailing_nul() {
     const PATH: &[u8] = b"/path/to/socket";
 
-    // SAFETY: all zeros is a valid representation for `sockaddr_un`.
-    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
-    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
-    for (dst, &src) in addr.sun_path.iter_mut().zip(PATH) {
+    let mut addr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
+    let sun_family = (libc::AF_UNIX as libc::sa_family_t).to_ne_bytes();
+    addr[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
+        .copy_from_slice(&sun_family);
+
+    for (dst, &src) in addr[SUN_PATH_OFFSET..].iter_mut().zip(PATH) {
         *dst = src as _;
     }
     let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
