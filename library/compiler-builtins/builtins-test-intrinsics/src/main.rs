@@ -10,6 +10,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(lang_items)]
+#![feature(optimize_attribute)]
 #![no_std]
 #![no_main]
 
@@ -389,6 +390,47 @@ mod intrinsics {
         a % b
     }
 
+    /* Unaligned memory access */
+
+    // LLVM only emits calls to `__aeabi_uread*` and `__aeabi_uwrite*` for functions optimized
+    // for minimum size on AEABI targets without unaligned access support.
+
+    /// # Safety
+    ///
+    /// `p` must be valid for reading four bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uread4(p: *const u8) -> u32 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u32>().read_unaligned() }
+    }
+
+    /// # Safety
+    ///
+    /// `p` must be valid for reading eight bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uread8(p: *const u8) -> u64 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u64>().read_unaligned() }
+    }
+
+    /// # Safety
+    ///
+    /// `p` must be valid for writing four bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uwrite4(x: u32, p: *mut u8) {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u32>().write_unaligned(x) }
+    }
+
+    /// # Safety
+    ///
+    /// `p` must be valid for writing eight bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uwrite8(x: u64, p: *mut u8) {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u64>().write_unaligned(x) }
+    }
+
     /* u64 operations */
 
     // floatundisf
@@ -500,6 +542,13 @@ fn run() {
     bb(aeabi_ui2f(bb(2)));
     bb(aeabi_uidiv(bb(2), bb(3)));
     bb(aeabi_uidivmod(bb(2), bb(3)));
+    // SAFETY: the pointers point to buffers large enough for the access.
+    unsafe {
+        bb(aeabi_uread4(bb([0u8; 4].as_ptr())));
+        bb(aeabi_uread8(bb([0u8; 8].as_ptr())));
+        bb(aeabi_uwrite4(bb(2), bb([0u8; 4].as_mut_ptr())));
+        bb(aeabi_uwrite8(bb(2), bb([0u8; 8].as_mut_ptr())));
+    }
     bb(aeabi_ul2d(bb(2)));
     bb(aeabi_ul2f(bb(2)));
     bb(aeabi_uldivmod(bb(2), bb(3)));
