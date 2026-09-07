@@ -1,3 +1,4 @@
+//@ compile-flags: --check-cfg 'cfg(feature, values("meow"))'
 #![crate_type = "lib"]
 #![warn(unreachable_cfg_select_predicates)] // Unused warnings are disabled by default in UI tests.
 
@@ -250,4 +251,32 @@ cfg_select! {
     //~^ ERROR expected outer doc comment
     debug_assertions => {}
     _ => {}
+}
+
+cfg_select! {
+    all(true, false) => {
+        struct Thing1;
+    }
+    _ => {}
+}
+
+cfg_select! {
+    feature = "meow" => {
+        struct Thing2;
+    }
+    _ => {}
+}
+
+cfg_select! {
+    all(true, feature = "meow") => {
+        struct Thing2;
+    }
+    _ => {}
+}
+
+fn usages() {
+    let t1: Thing1;
+    //~^ ERROR cannot find type `Thing1` in this scope [E0425]
+    let t2: Thing2;
+    //~^ ERROR cannot find type `Thing2` in this scope [E0425]
 }

@@ -3,7 +3,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrKind, Expr, SyntheticAttr, ast};
 use rustc_attr_ir::CfgEntry;
 use rustc_attr_parsing as attr;
-use rustc_attr_parsing::{CfgSelectBranches, EvalConfigResult, parse_cfg_select};
+use rustc_attr_parsing::{CfgSelectBranches, parse_cfg_select};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult};
 use rustc_expand::expand::DeclaredIdents;
 use rustc_span::{Ident, Span, sym};
@@ -129,9 +129,7 @@ pub(super) fn expand_cfg_select<'cx>(
         ) {
             Ok(mut branches) => {
                 if let Some((cfg_entry, selected_tts, selected_span)) =
-                    branches.pop_first_match(|cfg| {
-                        matches!(attr::eval_config_entry(ecx.sess, cfg), EvalConfigResult::True)
-                    })
+                    branches.pop_first_match(|cfg| attr::eval_config_entry(ecx.sess, cfg))
                 {
                     let mac = CfgSelectResult {
                         ecx,
