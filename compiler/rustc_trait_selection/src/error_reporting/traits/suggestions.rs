@@ -780,6 +780,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if span.in_external_macro(self.tcx.sess.source_map()) {
                     return false;
                 }
+
+                // For a shared reference, prefer removing the outer `&` over suggesting
+                // `&*reference`. Keep the reborrow for `&mut T` and smart pointers.
+                if is_under_ref.is_some()
+                    && steps == 1
+                    && matches!(base_ty.kind(), ty::Ref(_, _, hir::Mutability::Not))
+                    && !expr.span.from_expansion()
+                    && self.suggest_remove_reference(obligation, err, real_trait_pred)
+                {
+                    return true;
+                }
                 let derefs = "*".repeat(steps);
                 let msg = "consider dereferencing here";
 

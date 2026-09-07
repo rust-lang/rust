@@ -7,6 +7,11 @@
 
 fn consume<'a>(_: impl IntoIterator<Item = &'a i32>) {}
 
+trait Value {}
+struct Source;
+impl Value for &Source {}
+fn consume_value(_: impl Value) {}
+
 fn main() {
     let a: Vec<i32> = Vec::new();
     let ref_a = &a;
@@ -32,4 +37,10 @@ fn main() {
     let mut_ref = &mut values;
     consume(&mut_ref);
     //~^ ERROR is not an iterator
+
+    // Also cover a direct trait bound without the Iterator-to-IntoIterator blanket impl.
+    let source = Source;
+    let shared = &source;
+    consume_value(&shared);
+    //~^ ERROR the trait bound
 }
