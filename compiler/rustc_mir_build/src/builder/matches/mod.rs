@@ -339,10 +339,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_id: ExprId,
         arms: &[ArmId],
         span: Span,
-        scrutinee_span: Span,
     ) -> BlockAnd<()> {
-        let scrutinee_place =
-            unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
+        let scrutinee_span = self.thir[scrutinee_id].span;
+        let scrutinee_place = unpack!(block = self.lower_scrutinee(block, scrutinee_id));
 
         let match_start_span = span.shrink_to_lo().to(scrutinee_span);
         let patterns = arms
@@ -378,11 +377,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scrutinee_id: ExprId,
-        scrutinee_span: Span,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee_id));
         if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
-            let source_info = self.source_info(scrutinee_span);
+            let source_info = self.source_info(self.thir[scrutinee_id].span);
             self.cfg.push_place_mention(block, source_info, scrutinee_place);
         }
 
@@ -612,9 +610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             _ => {
-                let initializer = &self.thir[initializer_id];
-                let place_builder =
-                    unpack!(block = self.lower_scrutinee(block, initializer_id, initializer.span));
+                let place_builder = unpack!(block = self.lower_scrutinee(block, initializer_id));
                 self.place_into_pattern(block, irrefutable_pat, place_builder, true)
             }
         }
@@ -2334,7 +2330,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         declare_let_bindings: DeclareLetBindings,
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
-        let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
+        let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id));
         let built_tree = self.lower_match_tree(
             block,
             expr_span,
