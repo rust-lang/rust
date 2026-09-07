@@ -177,5 +177,6 @@ pub trait ExtraBackendMethods: Send + Sync + DynSend + DynSync {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        bitcode_needed: bool,
     ) -> (ModuleCodegen<Self::Module>, u64);
 }

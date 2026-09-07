@@ -7,15 +7,6 @@ LL | .intel_syntax noprefix
    | ^
 
 error: unknown directive
-   |
-note: instantiated into assembly here
-  --> <inline asm>:1:1
-   |
-LL | .intel_syntax noprefix
-   | ^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: unknown directive
   --> $DIR/inline-syntax.rs:21:15
    |
 LL |         asm!(".intel_syntax noprefix", "nop");
@@ -87,5 +78,5 @@ note: instantiated into assembly here
 LL |             .intel_syntax noprefix
    |             ^
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 

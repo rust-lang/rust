@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ build-fail
-//@ compile-flags: --target x86_64-unknown-linux-gnu -Ccodegen-units=1
+//@ compile-flags: --target x86_64-unknown-linux-gnu -Ccodegen-units=1 -Cembed-bitcode=false -Clto=no
 //@ needs-llvm-components: x86
 //@ ignore-backends: gcc
 #![crate_type = "lib"]

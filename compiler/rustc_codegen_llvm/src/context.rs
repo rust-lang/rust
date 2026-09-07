@@ -93,6 +93,7 @@ pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
 
 pub(crate) struct FullCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub bitcode_needed: bool,
     pub scx: SimpleCx<'ll>,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
@@ -608,6 +609,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
+        bitcode_needed: bool,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -703,6 +705,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         GenericCx(
             FullCx {
                 tcx,
+                bitcode_needed,
                 scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size()),
                 use_dll_storage_attrs,
                 tls_model,
