@@ -34,6 +34,7 @@ The targets are built and tested using a reasonably modern C toolchain, and it s
 * GCC 14.2
 * mingw-w64 12.0.0
 * MSVCRT library as the default
+* Libgcc with DWARF-2 exception handling for i686 and SEH for x86_64
 
 Using older tools (especially Binutils) may not work properly, due to the number of issues plaguing older versions of Binutils.
 The supported toolchain versions are subject to change.
