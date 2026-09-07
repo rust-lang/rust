@@ -279,7 +279,7 @@ pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
         | PatKind::Deref { subpattern, .. }
         | PatKind::DerefPattern { subpattern, .. } => callback(subpattern),
 
-        PatKind::Variant { subpatterns, .. } | PatKind::Leaf { subpatterns } => {
+        PatKind::Variant { subpatterns, .. } | PatKind::Leaf { subpatterns, .. } => {
             for field_pat in subpatterns {
                 callback(&field_pat.pattern);
             }

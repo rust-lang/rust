@@ -501,7 +501,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 ctor = DerefPattern(cx.reveal_opaque_ty(subpattern.ty));
                 self.internal_state.has_lowered_deref_pat.set(true);
             }
-            PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
+            PatKind::Leaf { subpatterns, .. } | PatKind::Variant { subpatterns, .. } => {
                 match ty.kind() {
                     ty::Tuple(fs) => {
                         ctor = Struct;

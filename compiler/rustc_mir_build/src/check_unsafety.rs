@@ -271,7 +271,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Wild
                 // these just wrap other patterns, which we recurse on below.
                 | PatKind::Or { .. }
-                | PatKind::Leaf { .. }
+                | PatKind::Leaf { .. } // We do extra checks below for patterns lowered from consts
                 | PatKind::Array { .. }
                 | PatKind::Guard { .. }
                 | PatKind::Error(_) => {}
@@ -279,13 +279,34 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
         };
 
         match &pat.kind {
-            PatKind::Leaf { subpatterns, .. } => {
+            PatKind::Leaf { subpatterns, has_rest } => {
                 if let ty::Adt(adt_def, ..) = pat.ty.kind() {
-                    for pat in subpatterns {
-                        if adt_def.non_enum_variant().fields[pat.field].safety.is_unsafe() {
-                            self.requires_unsafe(pat.pattern.span, UseOfUnsafeField);
+                    let single_variant = adt_def.non_enum_variant();
+
+                    let scope = self.tcx.parent_module(self.hir_context).to_def_id();
+
+                    if self.in_union_destructure
+                        && !has_rest
+                        && (single_variant.field_list_has_applicable_non_exhaustive()
+                            || single_variant
+                                .fields
+                                .iter()
+                                .any(|f| !f.vis.is_accessible_from(scope, self.tcx)))
+                    {
+                        // This pattern must have been lowered from a constant.
+                        // Changes to private implementation details of said constant
+                        // must not affect whether we require `unsafe`.
+                        self.requires_unsafe(pat.span, AccessToUnionField);
+                        return;
+                    }
+
+                    for subpat in subpatterns {
+                        let field = &single_variant.fields[subpat.field];
+                        if field.safety.is_unsafe() {
+                            self.requires_unsafe(subpat.pattern.span, UseOfUnsafeField);
                         }
                     }
+
                     if adt_def.is_union() {
                         let old_in_union_destructure =
                             std::mem::replace(&mut self.in_union_destructure, true);
