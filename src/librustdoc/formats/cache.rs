@@ -405,6 +405,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
             | clean::KeywordItem
+            | clean::FeatureItem
             | clean::AttributeItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
@@ -577,6 +578,9 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
                 }
             }
         }
+        // Features have the `DefId` of the crate, so if we go in the condition below, they'll be
+        // ignored.
+        clean::FeatureItem => (None, &*cache.stack),
         _ => {
             // Don't index if item is crate root, which is inserted later on when serializing the index.
             // Don't index if containing module is stripped (i.e., private),
