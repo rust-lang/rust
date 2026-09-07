@@ -39,7 +39,7 @@
 // tidy-alphabetical-end
 
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
@@ -315,15 +315,6 @@ struct LoweringContext<'a, 'hir> {
     /// so we only store `self_param_id`.
     partial_res_overrides: NodeMap<NodeId>,
 
-    allow_contracts: Arc<[Symbol]>,
-    allow_try_trait: Arc<[Symbol]>,
-    allow_gen_future: Arc<[Symbol]>,
-    allow_pattern_type: Arc<[Symbol]>,
-    allow_async_gen: Arc<[Symbol]>,
-    allow_async_iterator: Arc<[Symbol]>,
-    allow_for_await: Arc<[Symbol]>,
-    allow_async_fn_traits: Arc<[Symbol]>,
-
     /// Stack of `move(...)` collection states. A closure-like body pushes
     /// `Some`, so `move(...)` expressions can record the generated locals they
     /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
@@ -333,6 +324,26 @@ struct LoweringContext<'a, 'hir> {
     lowering_move_expr_initializer: bool,
 
     attribute_parser: AttributeParser<'hir>,
+}
+
+macro_rules! allow {
+    ($($name:ident: $list:expr;)*) => {
+        $( static $name: LazyLock<Arc<[Symbol]>> = LazyLock::new(|| $list.into()); )*
+    }
+}
+
+allow! {
+    ALLOW_CONTRACTS: [sym::contracts_internals];
+    ALLOW_TRY_TRAIT: [sym::try_trait_v2, sym::try_trait_v2_residual, sym::yeet_desugar_details];
+    ALLOW_PATTERN_TYPE: [sym::pattern_types, sym::pattern_type_range_trait];
+    ALLOW_GEN_FUTURE: [sym::gen_future];
+    ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER: [sym::gen_future, sym::closure_track_caller];
+    ALLOW_FOR_AWAIT: [sym::async_gen_internals, sym::async_iterator];
+    ALLOW_ASYNC_FN_TRAITS: [sym::async_fn_traits];
+    ALLOW_ASYNC_GEN: [sym::async_gen_internals];
+    // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
+    // interact with `gen`/`async gen` blocks
+    ALLOW_ASYNC_ITERATOR: [sym::gen_future, sym::async_iterator];
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -357,25 +368,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             coroutine_kind: None,
             task_context: None,
             current_item: None,
-            allow_contracts: [sym::contracts_internals].into(),
-            allow_try_trait: [
-                sym::try_trait_v2,
-                sym::try_trait_v2_residual,
-                sym::yeet_desugar_details,
-            ]
-            .into(),
-            allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
-            allow_gen_future: if tcx.features().async_fn_track_caller() {
-                [sym::gen_future, sym::closure_track_caller].into()
-            } else {
-                [sym::gen_future].into()
-            },
-            allow_for_await: [sym::async_gen_internals, sym::async_iterator].into(),
-            allow_async_fn_traits: [sym::async_fn_traits].into(),
-            allow_async_gen: [sym::async_gen_internals].into(),
-            // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
-            // interact with `gen`/`async gen` blocks
-            allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
             move_expr_bindings: Vec::new(),
             lowering_move_expr_initializer: false,
@@ -390,6 +382,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
+    }
+
+    fn allow_gen_future(&self) -> &Arc<[Symbol]> {
+        if self.tcx.features().async_fn_track_caller() {
+            &ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER
+        } else {
+            &ALLOW_GEN_FUTURE
+        }
     }
 }
 
@@ -2095,7 +2095,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (opaque_ty_node_id, allowed_features) = match coro.kind {
             CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
             CoroutineKind::AsyncGen => {
-                (coro.return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
+                (coro.return_impl_trait_id, Some(Arc::clone(&ALLOW_ASYNC_ITERATOR)))
             }
         };
 
