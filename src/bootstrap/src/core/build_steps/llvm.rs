@@ -2231,30 +2231,37 @@ impl Step for FileCheck {
         };
 
         // There is a LLVM config set, take filecheck from it
-        // Note: because `download-ci-llvm` currently overrides `llvm-config`, when the LLVM is
-        // downloaded, we go through this branch. Ideally, this should be changed so that
-        // `download-ci-llvm` doesn't override the config.
-        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(builder).stdout();
-            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", self.target));
-            let filecheck = if filecheck.exists() {
-                filecheck
-            } else {
-                // On Fedora the system LLVM installs FileCheck in the
-                // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(builder).stdout();
-                let lib_filecheck =
-                    Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", self.target));
-                if lib_filecheck.exists() {
-                    lib_filecheck
-                } else {
-                    // Return the most normal file name, even though
-                    // it doesn't exist, so that any error message
-                    // refers to that.
+        if let Some(llvm_config) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+            // We can only execute llvm-config if we're on the same host target
+            return if builder.is_host_target(self.target) {
+                let llvm_bindir =
+                    command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", self.target));
+
+                if filecheck.exists() {
                     filecheck
+                } else {
+                    // On Fedora the system LLVM installs FileCheck in the
+                    // llvm subdirectory of the libdir.
+                    let llvm_libdir =
+                        command(llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
+                    let lib_filecheck = Path::new(llvm_libdir.trim())
+                        .join("llvm")
+                        .join(exe("FileCheck", self.target));
+                    if lib_filecheck.exists() {
+                        lib_filecheck
+                    } else {
+                        // Return the most normal file name, even though
+                        // it doesn't exist, so that any error message
+                        // refers to that.
+                        filecheck
+                    }
                 }
+            } else {
+                // In other cases, just guess that Filecheck is available in the same directory
+                // as the llvm-config
+                llvm_config.parent().unwrap().join(exe("FileCheck", self.target))
             };
-            return filecheck;
         }
         // Here we take the filecheck from LLVM directly
         let llvm_output = builder.ensure(Llvm { target: self.target });
