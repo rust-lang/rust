@@ -1,8 +1,6 @@
 //! Basic smoke test for `#[optimize(..)]` attributes.
 //@ run-pass
 
-#![feature(optimize_attribute)]
-
 #[optimize(speed)]
 fn optimized_speed() -> i32 {
     42
