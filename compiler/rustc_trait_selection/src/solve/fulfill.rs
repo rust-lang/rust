@@ -460,6 +460,6 @@ mod size_asserts {
     // `memcpy` for moving elements of `PendingObligations`. Then #160479 greatly reduced the
     // number of `memcpy` operations in `try_evaluate_obligations`. So the size of this pair is
     // much less important than it was, but still shouldn't be changed without some thought.
-    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn<TyCtxt<'_>>>), 104);
+    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn<TyCtxt<'_>>>), 112);
     // tidy-alphabetical-end
 }

@@ -24,6 +24,7 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Interner, Region, TypeVisitableExt};
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -60,11 +61,13 @@ fn has_no_inference_or_external_constraints<I: Interner>(
     let ExternalConstraintsData {
         ref region_constraints,
         ref opaque_types,
+        ref opaque_hidden_type_bounds,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
     response.value.var_values.is_identity()
         && region_constraints.is_empty()
         && opaque_types.is_empty()
+        && opaque_hidden_type_bounds.is_empty()
         && normalization_nested_goals.is_empty()
 }
 
@@ -72,6 +75,22 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
     let ExternalConstraintsData {
         region_constraints: _,
         ref opaque_types,
+        ref opaque_hidden_type_bounds,
+        ref normalization_nested_goals,
+    } = *response.value.external_constraints;
+    response.value.var_values.is_identity_modulo_regions()
+        && opaque_types.is_empty()
+        && opaque_hidden_type_bounds.is_empty()
+        && normalization_nested_goals.is_empty()
+}
+
+fn has_only_region_constraints_or_opaque_hidden_ty_bounds<I: Interner>(
+    response: ty::Canonical<I, Response<I>>,
+) -> bool {
+    let ExternalConstraintsData {
+        region_constraints: _,
+        ref opaque_types,
+        opaque_hidden_type_bounds: _,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
     response.value.var_values.is_identity_modulo_regions()
@@ -436,4 +455,13 @@ pub struct GoalEvaluation<I: Interner> {
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
     /// before rerunning it.
     pub stalled_on: Option<GoalStalledOn<I>>,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+pub struct RawExternalConstraintsData<I: Interner> {
+    pub region_constraints: ExternalRegionConstraints<I>,
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pub opaque_hidden_type_bounds: Vec<(I::Ty, ty::OpaqueHiddenTyBound<I>)>,
+    pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
