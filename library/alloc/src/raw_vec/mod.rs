@@ -537,7 +537,7 @@ const impl RawVecInner {
     fn grow_one_zst_allocator<A: [const] Allocator>(self, elem_layout: Layout) -> Self {
         debug_assert!(A::IS_ZST);
         let alloc = unsafe { NonNull::<A>::dangling().as_ref() };
-        unsafe { self.grow_one_impl(alloc, elem_layout) }
+        unsafe { self.grow_one(alloc, elem_layout) }
     }
 
     /// # Safety
@@ -549,70 +549,34 @@ const impl RawVecInner {
         alloc: &A,
         elem_layout: Layout,
     ) -> Self {
-        unsafe { self.grow_one_impl(alloc, elem_layout) }
+        unsafe { self.grow_one(alloc, elem_layout) }
     }
 
     #[cfg(not(no_global_oom_handling))]
     #[inline(always)]
-    unsafe fn grow_one_impl<A: [const] Allocator + ?Sized>(
-        mut self,
+    unsafe fn grow_one<A: [const] Allocator + ?Sized>(
+        self,
         alloc: &A,
         elem_layout: Layout,
     ) -> Self {
-        if elem_layout.size() == 0 {
-            handle_error(CapacityOverflow.into());
-        }
-
-        let old_cap = self.cap.as_inner();
-        let cap = if old_cap == 0 { min_non_zero_cap(elem_layout.size()) } else { old_cap * 2 };
-        let new_layout = match layout_array(cap, elem_layout) {
-            Ok(layout) => layout,
+        match unsafe { self.grow_amortized(self.cap.as_inner(), 1, elem_layout, alloc) } {
+            Ok(inner) => inner,
             Err(err) => handle_error(err),
-        };
-        let memory = if old_cap == 0 {
-            alloc.allocate(new_layout)
-        } else {
-            let (ptr, old_layout) = unsafe { self.current_memory(elem_layout).unwrap_unchecked() };
-            debug_assert!(old_layout.align() == new_layout.align());
-            unsafe {
-                hint::assert_unchecked(old_layout.align() == new_layout.align());
-                alloc.grow(ptr, old_layout, new_layout)
-            }
-        };
-        let ptr = match memory {
-            Ok(ptr) => ptr,
-            Err(_) => handle_error(AllocError { layout: new_layout, non_exhaustive: () }.into()),
-        };
-        unsafe { self.set_ptr_and_cap(ptr, cap) };
-        self
-    }
-
-    /// # Safety
-    ///
-    /// This should only be called once for a given `RawVecInner`. After this function any copies
-    /// of this `RawVecInner` are invalidated.
-    #[inline]
-    unsafe fn deallocate<A: [const] Allocator + ?Sized>(self, elem_layout: Layout, alloc: &A) {
-        // SAFETY: Precondition passed to caller.
-        if let Some((ptr, layout)) = unsafe { self.current_memory(elem_layout) } {
-            unsafe { alloc.deallocate(ptr, layout) };
         }
     }
-}
 
-impl RawVecInner {
     /// # Safety
     /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     /// - The sum of `len` and `additional` must be greater than the current capacity
-    unsafe fn grow_amortized<A: Allocator + ?Sized>(
-        &mut self,
+    unsafe fn grow_amortized<A: [const] Allocator + ?Sized>(
+        mut self,
         len: usize,
         additional: usize,
         elem_layout: Layout,
         alloc: &A,
-    ) -> Result<(), TryReserveError> {
+    ) -> Result<Self, TryReserveError> {
         // This is ensured by the calling contexts.
         debug_assert!(additional > 0);
 
@@ -637,7 +601,7 @@ impl RawVecInner {
 
         // SAFETY: `finish_grow` would have failed if `cap > isize::MAX`
         unsafe { self.set_ptr_and_cap(ptr, cap) };
-        Ok(())
+        Ok(self)
     }
 
     /// # Safety
@@ -648,7 +612,7 @@ impl RawVecInner {
     // not marked inline(never) since we want optimizers to be able to observe the specifics of this
     // function, see tests/codegen-llvm/vec-reserve-extend.rs.
     #[cold]
-    unsafe fn finish_grow<A: Allocator + ?Sized>(
+    unsafe fn finish_grow<A: [const] Allocator + ?Sized>(
         &self,
         cap: usize,
         elem_layout: Layout,
@@ -668,9 +632,26 @@ impl RawVecInner {
             alloc.allocate(new_layout)
         };
 
-        memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
+        match memory {
+            Ok(memory) => Ok(memory),
+            Err(_) => Err(AllocError { layout: new_layout, non_exhaustive: () }.into()),
+        }
     }
 
+    /// # Safety
+    ///
+    /// This should only be called once for a given `RawVecInner`. After this function any copies
+    /// of this `RawVecInner` are invalidated.
+    #[inline]
+    unsafe fn deallocate<A: [const] Allocator + ?Sized>(self, elem_layout: Layout, alloc: &A) {
+        // SAFETY: Precondition passed to caller.
+        if let Some((ptr, layout)) = unsafe { self.current_memory(elem_layout) } {
+            unsafe { alloc.deallocate(ptr, layout) };
+        }
+    }
+}
+
+impl RawVecInner {
     #[inline]
     const fn new(align: Alignment) -> Self {
         let ptr = Unique::from_non_null(NonNull::without_provenance(align.as_nonzero_usize()));
@@ -752,8 +733,9 @@ impl RawVecInner {
             alloc: &A,
         ) {
             // SAFETY: Precondition passed to caller
-            if let Err(err) = unsafe { slf.grow_amortized(len, additional, elem_layout, alloc) } {
-                handle_error(err);
+            match unsafe { slf.grow_amortized(len, additional, elem_layout, alloc) } {
+                Ok(inner) => *slf = inner,
+                Err(err) => handle_error(err),
             }
         }
 
@@ -778,9 +760,8 @@ impl RawVecInner {
     ) -> Result<(), TryReserveError> {
         if self.needs_to_grow(len, additional, elem_layout) {
             // SAFETY: Precondition passed to caller
-            unsafe {
-                self.grow_amortized(len, additional, elem_layout, alloc)?;
-            }
+            let inner = unsafe { self.grow_amortized(len, additional, elem_layout, alloc)? };
+            *self = inner;
         }
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed.
