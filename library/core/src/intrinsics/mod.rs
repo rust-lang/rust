@@ -3191,7 +3191,6 @@ pub const fn maximum<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
 /// The stabilized versions of this intrinsic are available on the float
 /// primitives via the `abs` method. For example, [`f32::abs`].
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
