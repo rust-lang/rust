@@ -1337,7 +1337,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
             self.may_coerce(rhs, lhs)
         };
-        let (applicability, eq) = if self.may_coerce(rhs_ty, lhs_ty) {
+        // Never-to-any coercions do not imply that the operands can be compared, e.g. `String == !`.
+        let (applicability, eq) = if self.may_coerce_except_never(rhs_ty, lhs_ty) {
             (Applicability::MachineApplicable, true)
         } else if refs_can_coerce(rhs_ty, lhs_ty) {
             // The lhs and rhs are likely missing some references in either side. Subsequent
@@ -1352,7 +1353,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // if x == 1 && y == 2 { .. }
             //                 +
             let actual_lhs = self.check_expr(rhs_expr);
-            let may_eq = self.may_coerce(rhs_ty, actual_lhs) || refs_can_coerce(rhs_ty, actual_lhs);
+            let may_eq = self.may_coerce_except_never(rhs_ty, actual_lhs)
+                || refs_can_coerce(rhs_ty, actual_lhs);
             (Applicability::MaybeIncorrect, may_eq)
         } else if let ExprKind::Binary(
             Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
@@ -1363,7 +1365,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // if x == 1 && y == 2 { .. }
             //       +
             let actual_rhs = self.check_expr(lhs_expr);
-            let may_eq = self.may_coerce(actual_rhs, lhs_ty) || refs_can_coerce(actual_rhs, lhs_ty);
+            let may_eq = self.may_coerce_except_never(actual_rhs, lhs_ty)
+                || refs_can_coerce(actual_rhs, lhs_ty);
             (Applicability::MaybeIncorrect, may_eq)
         } else {
             (Applicability::MaybeIncorrect, false)
