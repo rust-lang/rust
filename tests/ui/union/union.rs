@@ -1,3 +1,8 @@
+//@ aux-build: zst-const.rs
+
+extern crate zst_const;
+use zst_const::{HAS_PRIVATE_FIELD, HasPrivateField};
+
 union Foo {
     bar: i8,
     zst: (),
@@ -6,6 +11,7 @@ union Foo {
     tuple_struct: TupleStruct,
     array: [u32; 2],
     single_variant_enum: SingleVariant,
+    has_private_field: HasPrivateField,
 }
 
 #[derive(Clone, Copy)]
@@ -111,4 +117,10 @@ pub fn main() {
         Foo { bar: _ } => {}
     }
     let Foo { bar: _ } = foo;
+
+    // Known bug: this should be rejected due to privacy,
+    // but is currently accepted
+    match foo {
+        Foo { has_private_field: HAS_PRIVATE_FIELD } => {}
+    }
 }
