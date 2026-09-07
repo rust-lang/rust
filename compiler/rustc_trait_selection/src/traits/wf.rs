@@ -1003,7 +1003,10 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         let kind = obligation.predicate.kind().skip_binder();
                         let keep = match kind {
                             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
-                                if matches!(ct.kind(), ty::ConstKind::Param(..)) =>
+                                if matches!(
+                                    ct.kind(),
+                                    ty::ConstKind::Param(..) | ty::ConstKind::Placeholder(..)
+                                ) =>
                             {
                                 // ConstArgHasType clauses are not higher kinded. Assert as
                                 // such so we can fix this up if that ever changes.
