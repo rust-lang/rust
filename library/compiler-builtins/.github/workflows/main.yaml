@@ -71,6 +71,8 @@ jobs:
           os: ubuntu-26.04
         - target: armv7-unknown-linux-gnueabihf
           os: ubuntu-26.04
+        - target: thumbv7neon-unknown-linux-gnueabihf
+          os: ubuntu-26.04
         - target: i586-unknown-linux-gnu
           os: ubuntu-26.04
         - target: i686-unknown-linux-gnu

@@ -19,7 +19,7 @@ extern crate compiler_builtins;
 extern crate panic_handler;
 
 // SAFETY: no definitions, only used for linking
-#[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
+#[cfg(all(not(target_os = "none"), not(windows), not(target_arch = "wasm32")))]
 #[link(name = "c")]
 unsafe extern "C" {}
 
@@ -650,14 +650,14 @@ fn something_with_a_dtor(f: &dyn Fn()) {
 }
 
 #[unsafe(no_mangle)]
-#[cfg(not(thumb))]
+#[cfg(not(target_os = "none"))]
 extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     run();
     0
 }
 
 #[unsafe(no_mangle)]
-#[cfg(thumb)]
+#[cfg(target_os = "none")]
 extern "C" fn _start() -> ! {
     run();
     loop {}
