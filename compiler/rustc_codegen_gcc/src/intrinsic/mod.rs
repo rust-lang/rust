@@ -54,17 +54,6 @@ fn binop_libcall<'gcc, 'tcx>(
     )
 }
 
-fn get_simple_intrinsic<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-) -> Option<Function<'gcc>> {
-    let gcc_name = match name {
-        sym::abort => "abort",
-        _ => return None,
-    };
-    Some(cx.context.get_builtin_function(gcc_name))
-}
-
 fn get_simple_function_f128<'gcc, 'tcx>(
     span: Span,
     cx: &CodegenCx<'gcc, 'tcx>,
@@ -151,17 +140,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let name_str = name.as_str();
         let fn_args = instance.args;
 
-        let simple = get_simple_intrinsic(self, name);
-
         let value = match name {
-            _ if simple.is_some() => {
-                let func = simple.expect("simple intrinsic function");
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
+            sym::abort => self.cx.context.new_call(
+                self.location,
+                self.context.get_builtin_function("abort"),
+                &[],
+            ),
 
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
