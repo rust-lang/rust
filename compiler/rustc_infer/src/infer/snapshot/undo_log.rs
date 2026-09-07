@@ -12,6 +12,7 @@ use crate::traits;
 
 pub struct Snapshot<'tcx> {
     pub(crate) undo_len: usize,
+    stalled_goal_generation: Option<u64>,
     _marker: PhantomData<&'tcx ()>,
 }
 
@@ -149,6 +150,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         }
 
         self.type_variable_storage.finalize_rollback();
+        self.stalled_goal_generation = snapshot.stalled_goal_generation;
 
         if self.undo_log.num_open_snapshots == 1 {
             // After the root snapshot the undo log should be empty.
@@ -175,9 +177,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtUndoLogs<'tcx> {
-    pub(crate) fn start_snapshot(&mut self) -> Snapshot<'tcx> {
+    pub(crate) fn start_snapshot(
+        &mut self,
+        stalled_goal_generation: Option<u64>,
+    ) -> Snapshot<'tcx> {
         self.num_open_snapshots += 1;
-        Snapshot { undo_len: self.logs.len(), _marker: PhantomData }
+        Snapshot { undo_len: self.logs.len(), stalled_goal_generation, _marker: PhantomData }
     }
 
     pub(crate) fn region_constraints_in_snapshot(
