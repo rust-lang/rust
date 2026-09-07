@@ -442,7 +442,7 @@ impl<'a> Parser<'a> {
                     })
                     .unwrap()
                     .node;
-                Ok(attr_item.meta(attr_item.path.span).unwrap())
+                Ok(attr_item.meta(attr_item.span).unwrap())
             } else {
                 self.unexpected_any()
             };

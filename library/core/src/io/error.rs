@@ -234,7 +234,6 @@ impl Error {
 
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    #[must_use]
     #[inline]
     pub fn into_custom_owner(self) -> result::Result<CustomOwner, Self> {
         if matches!(self.repr.data(), ErrorData::Custom(..)) {

@@ -1,3 +1,8 @@
+//! Test that Option<&mut ()> can be coerced into a shared Option<&()>.
+//! This should pass eventually.
+
+#![feature(reborrow)]
+
 fn method(a: Option<&()>) {}  //~NOTE function defined here
 
 fn main() {

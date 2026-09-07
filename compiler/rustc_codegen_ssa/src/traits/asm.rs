@@ -66,12 +66,17 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
 }
 
 pub trait AsmCodegenMethods<'tcx> {
+    /// Codegen a module-level assembly block.
+    ///
+    /// NOTE: the target features must be the rust target feature names, not backend target
+    /// feature names. This argument is used to forward target features on naked functions.
     fn codegen_global_asm(
         &mut self,
         template: &[InlineAsmTemplatePiece],
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        extra_rust_target_features: &[String],
     );
 
     /// The mangled name of this instance

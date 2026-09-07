@@ -53,7 +53,7 @@ impl LoongArchInlineAsmRegClass {
             (Self::vreg, _) => {
                 if allow_experimental_reg {
                     types! {
-                        lsx: F16, F32, F64,
+                        lsx: I128, F16, F32, F64,
                             VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
                     }
                 } else {
@@ -63,7 +63,7 @@ impl LoongArchInlineAsmRegClass {
             (Self::xreg, _) => {
                 if allow_experimental_reg {
                     types! {
-                        lasx: F16, F32, F64,
+                        lasx: I128, F16, F32, F64,
                             VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
                             VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4);
                     }

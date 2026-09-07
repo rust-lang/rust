@@ -9,14 +9,14 @@
 //@[arm] compile-flags: --target=armv8r-none-eabihf -Ctarget-cpu=cortex-r4
 //@[arm] needs-llvm-components: arm
 
-// LLVM 24 refuses to compile ARM minicore due to mismatched target features.
-// FIXME(#161276): With LLVM rejecting this, we should make Rust's own warning an error.
-//@[arm] max-llvm-major-version: 23
+// On x86 this is just a warning.
+//@[x86] check-pass
+//@[arm] check-fail
 
-// For now this is just a warning.
-//@ build-pass
 //@ ignore-backends: gcc
 //@ add-minicore
+// Don't inherit the target-cpu above for minicore, to avoid errors when building that.
+//@ minicore-compile-flags: -Ctarget-cpu=generic
 
 #![feature(no_core)]
 #![no_core]
@@ -24,4 +24,5 @@
 extern crate minicore;
 use minicore::*;
 
-//~? WARN must be enabled to ensure that the ABI of the current target can be implemented correctly
+//[x86]~? WARN must be enabled to ensure that the ABI of the current target can be implemented correctly
+//[arm]~? ERROR must be enabled to ensure that the ABI of the current target can be implemented correctly

@@ -387,11 +387,16 @@ fn get_targets_root_only(
     targets: &mut BTreeSet<Target>,
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(manifest_path)?;
+    // `workspace_root_path` is the path to the workspace's root directory
     let workspace_root_path = PathBuf::from(&metadata.workspace_root).canonicalize()?;
     let (in_workspace_root, current_dir_manifest) = if let Some(target_manifest) = manifest_path {
+        // `target_manifest` is the canonicalized path to a `Cargo.toml` file
+        let target_manifest = target_manifest.canonicalize()?;
         (
-            workspace_root_path == target_manifest,
-            target_manifest.canonicalize()?,
+            target_manifest
+                .parent()
+                .is_some_and(|manifest_dir| workspace_root_path == manifest_dir),
+            target_manifest,
         )
     } else {
         let current_dir = env::current_dir()?.canonicalize()?;

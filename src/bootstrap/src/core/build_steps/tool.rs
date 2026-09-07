@@ -797,7 +797,7 @@ impl CommandLineStep for Rustdoc {
                 // Cargo adds a number of paths to the dylib search path on windows, which results in
                 // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
                 // rustdoc a different name.
-                tool: "rustdoc_tool_binary",
+                tool: "rustdoc-tool-binary",
                 mode: Mode::ToolRustcPrivate,
                 path: "src/tools/rustdoc",
                 source_type: SourceType::InTree,

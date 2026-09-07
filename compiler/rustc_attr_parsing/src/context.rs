@@ -246,10 +246,8 @@ attribute_parsers!(
         Single<RustcLintOptDenyFieldAccessParser>,
         Single<RustcMacroTransparencyParser>,
         Single<RustcMustImplementOneOfParser>,
-        Single<RustcNeverTypeOptionsParser>,
         Single<RustcObjcClassParser>,
         Single<RustcObjcSelectorParser>,
-        Single<RustcReservationImplParser>,
         Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<RustcSkipDuringMethodDispatchParser>,
@@ -355,7 +353,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcSpecializationTraitParser>>,
         Single<WithoutArgs<RustcStdInternalSymbolParser>>,
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
-        Single<WithoutArgs<RustcTestEntrypointMarkerParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
@@ -864,12 +861,6 @@ impl<'p, 'sess: 'p> DerefMut for SharedContext<'p, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.cx
     }
-}
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum OmitDoc {
-    Lower,
-    Skip,
 }
 
 #[derive(Copy, Clone, Debug)]

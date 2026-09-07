@@ -115,6 +115,21 @@ fn test() {
 }
 
 #[test]
+fn array_repeat_never_can_be_reinferred() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let y = [return; 2];
+    match y {
+        [(1, _), (_, false)] => {}
+        [_, _] => {}
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn match_no_arm() {
     check_types(
         r#"

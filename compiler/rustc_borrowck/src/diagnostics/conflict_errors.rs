@@ -26,7 +26,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, PredicateKind, RegionExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
+    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
 use rustc_mir_dataflow::move_paths::{Init, InitKind, InitLocation, MoveOutIndex, MovePathIndex};
@@ -285,7 +285,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             let place = &self.move_data.move_paths[mpi].place;
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
-            if self.infcx.param_env.caller_bounds().iter().any(|c| {
+            if self.infcx.param_env.caller_bounds().any(|c| {
                 c.as_trait_clause().is_some_and(|pred| {
                     pred.skip_binder().self_ty() == ty && self.infcx.tcx.is_fn_trait(pred.def_id())
                 })
@@ -4268,6 +4268,13 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                                     place_ty.ty.is_box(),
                                     "Drop of value behind a reference or raw pointer"
                                 );
+                                StorageDeadOrDrop::BoxedStorageDead
+                            }
+                            StorageDeadOrDrop::Destructor(_) => kind,
+                        },
+                        ProjectionElem::PhantomDeref => match kind {
+                            StorageDeadOrDrop::LocalStorageDead
+                            | StorageDeadOrDrop::BoxedStorageDead => {
                                 StorageDeadOrDrop::BoxedStorageDead
                             }
                             StorageDeadOrDrop::Destructor(_) => kind,

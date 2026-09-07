@@ -630,6 +630,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
         ItemKind::Trait { .. } => Trait,
         ItemKind::TraitAlias(..) => TraitAlias,
         ItemKind::Impl(..) => Impl,
+        ItemKind::TestBinderConstraints { .. } => TestBinderConstraints,
     }
 }
 

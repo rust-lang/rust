@@ -58,6 +58,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, source_info);
                 this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
                     this.as_rvalue(block, scope, value)
                 })
             }
@@ -385,7 +386,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
             | ExprKind::NeverToAny { .. }
-            | ExprKind::Use { .. }
+            | ExprKind::ValueExpr { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::RawBorrow { .. }
             | ExprKind::Adt { .. }
@@ -600,7 +601,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             debug!(?kind, "check_constness");
             match kind {
                 &ExprKind::ValueTypeAscription { source: eid, user_ty: _, user_ty_span: _ }
-                | &ExprKind::Use { source: eid }
+                | &ExprKind::ValueExpr { source: eid }
                 | &ExprKind::PointerCoercion {
                     cast: PointerCoercion::Unsize,
                     source: eid,

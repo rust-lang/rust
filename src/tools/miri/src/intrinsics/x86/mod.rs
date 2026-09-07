@@ -45,7 +45,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
-                let [cb_in, a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [cb_in, a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let op = if unprefixed_name.starts_with("add") {
                     mir::BinOp::AddWithOverflow
                 } else {
@@ -63,7 +63,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the instruction behaves like a no-op, so it is always safe to call the
             // intrinsic.
             "sse2.pause" => {
-                let [] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
                 if this.tcx.sess.internal_target_features.contains(&Symbol::intern("sse2")) {
                     this.yield_active_thread();
@@ -82,7 +82,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     len = 8;
                 }
 
-                let [left, right, imm] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right, imm] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 pclmulqdq(this, left, right, imm, dest, len)?;
             }

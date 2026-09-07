@@ -334,7 +334,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::AnonConst { def_id }
             | ty::AliasTermKind::ProjectionConst { def_id }
             | ty::AliasTermKind::FreeConst { def_id }
-            | ty::AliasTermKind::InherentConst { def_id } => self.def_path_str(def_id),
+            | ty::AliasTermKind::InherentConstSelf { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => self.def_path_str(def_id),
         }
     }
 }

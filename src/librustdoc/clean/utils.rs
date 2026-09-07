@@ -313,7 +313,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::Box(p) | PatKind::Ref(p, _, _) | PatKind::Guard(p, _) => return name_from_pat(p),
+        PatKind::Ref(p, _, _) | PatKind::Guard(p, _) => return name_from_pat(p),
         PatKind::TupleStruct(p, ..) | PatKind::Expr(PatExpr { kind: PatExprKind::Path(p), .. }) => {
             qpath_to_string(p)
         }
@@ -358,7 +358,8 @@ pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
         ty::ConstKind::Alias(_, ty::AliasConst { kind, .. }) => {
             let def_id: DefId = match kind {
                 ty::AliasConstKind::Projection { def_id } => def_id.into(),
-                ty::AliasConstKind::Inherent { def_id } => def_id.into(),
+                ty::AliasConstKind::InherentSelf { def_id } => def_id.into(),
+                ty::AliasConstKind::InherentImpl { def_id } => def_id.into(),
                 ty::AliasConstKind::Free { def_id } => def_id.into(),
                 ty::AliasConstKind::Anon { def_id } => def_id.into(),
             };

@@ -6,7 +6,7 @@
 // Check that we do not ICE when compiling this
 // macro, which reuses the expression `$id`
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 struct Foo {
   a: isize
@@ -25,7 +25,7 @@ impl Foo {
       })
     }
     match s {
-      box Bar::Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
+      Bar::Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
       _ => panic!()
     }
   }

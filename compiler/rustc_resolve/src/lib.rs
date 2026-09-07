@@ -32,8 +32,8 @@ use effective_visibilities::EffectiveVisibilitiesVisitor;
 use hygiene::Macros20NormalizedSyntaxContext;
 use imports::{Import, ImportData, ImportKind, NameResolution, PendingDecl};
 use late::{
-    ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
-    UnnecessaryQualification,
+    ConstantRequiresType, ForwardGenericParamBanReason, HasGenericParams, PathSource,
+    PatternSource, UnnecessaryQualification,
 };
 pub use macros::registered_lint_tools_ast;
 use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
@@ -53,22 +53,20 @@ use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind}
 use rustc_feature::{BUILTIN_ATTRIBUTES, Features};
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{
-    self, CtorOf, DefKind, DocLinkResMap, MacroKinds, NonMacroAttrKind, PartialRes, PerNS,
-};
+use rustc_hir::def::{self, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::PRIVATE_MACRO_USE;
 use rustc_metadata::creader::CStore;
-use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
-use rustc_middle::query::Providers;
-use rustc_middle::ty::{
-    self, DelegationInfo, MainDefinition, PerOwnerResolverData, RegisteredTools,
-    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
+use rustc_middle::middle::resolve::{
+    AmbigModChild, DelegationInfo, DocLinkResMap, MainDefinition, ModChild, PartialRes,
+    PerOwnerResolverData, Reexport, ResolverAstLowering, ResolverGlobalCtxt,
 };
+use rustc_middle::query::Providers;
+use rustc_middle::ty::{self, RegisteredTools, TyCtxt, TyCtxtFeed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -272,6 +270,7 @@ enum ResolutionError<'ra> {
         segment: Symbol,
         label: String,
         suggestion: Option<Suggestion>,
+        help: Option<String>,
         module: Option<ModuleOrUniformRoot<'ra>>,
         message: String,
     },
@@ -283,6 +282,7 @@ enum ResolutionError<'ra> {
         suggestion: &'static str,
         current: &'static str,
         type_span: Option<Span>,
+        requires_type: ConstantRequiresType,
     },
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {
@@ -339,7 +339,14 @@ enum ResolutionError<'ra> {
 enum VisResolutionError {
     Relative2018(Span, ast::Path),
     AncestorOnly(Span),
-    FailedToResolve(Span, Symbol, String, Option<Suggestion>, String),
+    FailedToResolve {
+        span: Span,
+        segment: Symbol,
+        label: String,
+        suggestion: Option<Suggestion>,
+        help: Option<String>,
+        message: String,
+    },
     ExpectedFound(Span, String, Res),
     Indeterminate(Span),
     ModuleOnly(Span),
@@ -459,6 +466,7 @@ enum PathResult<'ra> {
         span: Span,
         label: String,
         suggestion: Option<Suggestion>,
+        help: Option<String>,
         is_error_from_last_segment: bool,
         /// The final module being resolved, for instance:
         ///
@@ -494,19 +502,21 @@ impl<'ra> PathResult<'ra> {
             String,
             Option<Suggestion>,
             Option<String>,
+            Option<String>,
         ),
     ) -> PathResult<'ra> {
-        let (message, label, suggestion, note) = if finalize {
+        let (message, label, suggestion, note, help) = if finalize {
             label_and_suggestion_and_note()
         } else {
             // FIXME: this output isn't actually present in the test suite.
-            (format!("cannot find `{ident}` in this scope"), String::new(), None, None)
+            (format!("cannot find `{ident}` in this scope"), String::new(), None, None, None)
         };
         PathResult::Failed {
             span: ident.span,
             segment: ident,
             label,
             suggestion,
+            help,
             is_error_from_last_segment,
             module,
             error_implied_by_parse_error,
@@ -1982,7 +1992,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
             delegation_infos: self.delegation_infos,
         };
-        let ast_lowering = ty::ResolverAstLowering {
+        let ast_lowering = ResolverAstLowering {
             partial_res_map: self.partial_res_map,
             next_node_id: self.next_node_id,
             owners: self.owners,

@@ -68,7 +68,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
         // \\
 
         // It's a POSIX path.
-        if cfg!(target_os = "cygwin") && !path.as_encoded_bytes().iter().any(|&x| x == b'\\') {
+        if cfg!(target_os = "cygwin") && !path.as_encoded_bytes().contains(&b'\\') {
             return None;
         }
 
@@ -76,7 +76,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
         // separator.
         if let Some(parser) = parser.strip_prefix(r"?\")
             // Cygwin allows `/` in verbatim paths.
-            && (cfg!(target_os = "cygwin") || !parser.prefix_bytes().iter().any(|&x| x == b'/'))
+            && (cfg!(target_os = "cygwin") || !parser.prefix_bytes().contains(&b'/'))
         {
             // \\?\
             if let Some(parser) = parser.strip_prefix(r"UNC\") {
@@ -142,7 +142,7 @@ fn parse_drive(path: &OsStr) -> Option<u8> {
 // Parses a drive prefix exactly, e.g. "C:"
 fn parse_drive_exact(path: &OsStr) -> Option<u8> {
     // only parse two bytes: the drive letter and the drive separator
-    if path.as_encoded_bytes().get(2).map(|&x| is_sep_byte(x)).unwrap_or(true) {
+    if path.as_encoded_bytes().get(2).map(|&x| is_verbatim_sep(x)).unwrap_or(true) {
         parse_drive(path)
     } else {
         None

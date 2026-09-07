@@ -1890,7 +1890,7 @@ dependencies = [
  "paths",
  "proc-macro-test",
  "span",
- "temp-dir",
+ "stdx",
 ]
 
 [[package]]
@@ -1966,7 +1966,6 @@ dependencies = [
  "serde_json",
  "span",
  "stdx",
- "temp-dir",
  "toml",
  "toolchain",
  "tracing",
@@ -2751,12 +2750,6 @@ dependencies = [
  "test-utils",
  "tt",
 ]
-
-[[package]]
-name = "temp-dir"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "016ef9739649996fcc983b9c588fe3d557cf216d4d98503ce1b057ab5a66d689"
 
 [[package]]
 name = "tempfile"

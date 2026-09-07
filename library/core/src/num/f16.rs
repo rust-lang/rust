@@ -10,6 +10,7 @@
 //! defined directly on the `f16` type.
 
 #![unstable(feature = "f16", issue = "116909")]
+#![expect(clippy::approx_constant, reason = "this module defines f16 constants")]
 
 use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
@@ -1468,7 +1469,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// assert!((-3.0f16).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f16).clamp(-2.0, 1.0) == 0.0);
@@ -1485,6 +1486,7 @@ impl f16 {
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub const fn clamp(mut self, min: f16, max: f16) -> f16 {
         const_assert!(
             min <= max,
@@ -1529,10 +1531,48 @@ impl f16 {
     #[inline]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[must_use = "this returns the clamped value and does not modify the original"]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub fn clamp_magnitude(self, limit: f16) -> f16 {
-        assert!(limit >= 0.0, "limit must be non-negative");
+        assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)
+    }
+
+    /// Restrict a value to a certain range, unless it is NaN.
+    ///
+    /// This is largely equal to `max`, `min`, or `clamp`, depending on whether the range is
+    /// `min..`, `..=max`, or `min..=max`, respectively. However, unlike `max` and `min`, it will
+    /// panic if any bound is NaN.
+    ///
+    /// Note that this function returns NaN if the initial value was NaN as
+    /// well.
+    ///
+    /// Exclusive ranges are not permitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics on `min..=max` if `min > max`, or if any bound is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16, clamp_to)]
+    /// # #[cfg(target_has_reliable_f16_math)] {
+    /// assert_eq!((-3.0f16).clamp_to(-2.0..=1.0), -2.0);
+    /// assert_eq!(0.0f16.clamp_to(-2.0..=1.0), 0.0);
+    /// assert_eq!(2.0f16.clamp_to(..=1.0), 1.0);
+    /// assert_eq!(5.0f16.clamp_to(7.0..), 7.0);
+    /// assert!(f16::NAN.clamp_to(1.0..=2.0).is_nan());
+    /// # }
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "clamp_to", issue = "147781")]
+    pub fn clamp_to<R>(self, range: R) -> Self
+    where
+        R: crate::cmp::ClampBounds<Self>,
+    {
+        range.clamp(self)
     }
 
     /// Computes the absolute value of `self`.

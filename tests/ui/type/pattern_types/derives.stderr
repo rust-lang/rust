@@ -1,4 +1,4 @@
-error[E0369]: binary operation `==` cannot be applied to type `(i32) is 0..=999999999`
+error[E0369]: binary operation `==` cannot be applied to type `pattern_type!(i32 is 0..=999999999)`
   --> $DIR/derives.rs:11:20
    |
 LL | #[derive(Clone, Copy, PartialEq)]

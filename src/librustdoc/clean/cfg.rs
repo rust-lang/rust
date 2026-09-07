@@ -685,6 +685,7 @@ fn human_readable_target_os(os: Symbol) -> Option<&'static str> {
         Nto => "QNX SDP 7.x",
         NuttX => "NuttX",
         OpenBsd => "OpenBSD",
+        Ps3 => "Play Station 3",
         Psp => "Play Station Portable",
         Psx => "Play Station 1",
         Qnx => "QNX SDP 8.0+",

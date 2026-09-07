@@ -26,6 +26,13 @@ if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
         rustup target add "$target"
 fi
 
+# Run the command with its output in a collapsable section
+asgroup() {
+    echo "::group::$*"
+    "$@"
+    echo "::endgroup"
+}
+
 # If nextest is available, use that
 command -v cargo-nextest && nextest=1 || nextest=0
 if [ "$nextest" = "1" ]; then
@@ -57,14 +64,13 @@ else
         --target "$target"
     )
 
-    "${test_builtins[@]}"
-    "${test_builtins[@]}" --release
-    "${test_builtins[@]}" --features c
-    "${test_builtins[@]}" --features c --release
-    "${test_builtins[@]}" --benches
-    "${test_builtins[@]}" --benches --release
-    "${test_builtins[@]}" --no-default-features
-    "${test_builtins[@]}" --no-default-features --release
+    asgroup "${test_builtins[@]}"
+    asgroup "${test_builtins[@]}" --release
+    asgroup "${test_builtins[@]}" --features c
+    asgroup "${test_builtins[@]}" --features c --release
+    asgroup "${test_builtins[@]}" --benches --release
+    asgroup "${test_builtins[@]}" --no-default-features
+    asgroup "${test_builtins[@]}" --no-default-features --release
 
     # Validate that having a verbatim path for the target directory works
     # (trivial to regress using `/` in paths to build artifacts rather than
@@ -74,6 +80,9 @@ else
         "${test_builtins[@]}" --target-dir "$verb_path" --features c
     fi
 fi
+
+
+echo "::group::Run symcheck"
 
 # Ensure there are no duplicate symbols or references to `core` when
 # `compiler-builtins` is built with various features. Symcheck invokes Cargo to
@@ -93,6 +102,11 @@ symcheck_cb_args=(-- --package compiler_builtins --features compiler-builtins)
 "${symcheck[@]}" "${symcheck_cb_args[@]}" --features c --release
 "${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features
 "${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features --release
+
+echo "::endgroup"
+
+
+echo "::group::Run intrinsics tests"
 
 run_intrinsics_test() {
     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
@@ -118,6 +132,8 @@ run_intrinsics_test --features c --release
 # implementations
 CARGO_PROFILE_DEV_LTO=true run_intrinsics_test
 CARGO_PROFILE_RELEASE_LTO=true run_intrinsics_test --release
+
+echo "::endgroup"
 
 # Test libm
 
@@ -190,32 +206,31 @@ else
     cmd=("${test_runner[@]}" "${mflags[@]}")
 
     # Test once without intrinsics
-    "${cmd[@]}"
+    asgroup "${cmd[@]}"
 
     # Run doctests if they were excluded by nextest
-    [ "$nextest" = "1" ] && cargo test --doc --exclude compiler_builtins "${mflags[@]}"
+    [ "$nextest" = "1" ] && asgroup cargo test --doc --exclude compiler_builtins "${mflags[@]}"
 
     # Exclude the macros and utile crates from the rest of the tests to save CI
     # runtime, they shouldn't have anything feature- or opt-level-dependent.
     cmd+=(--exclude util --exclude libm-macros)
 
     # Test once with intrinsics enabled
-    "${cmd[@]}" --features arch,unstable-intrinsics
-    "${cmd[@]}" --features arch,unstable-intrinsics --benches
+    asgroup "${cmd[@]}" --features arch,unstable-intrinsics
 
     # Test the same in release mode, which also increases coverage. Also ensure
     # the soft float routines are checked.
-    "${cmd[@]}" "$profile_flag" release-checked
-    "${cmd[@]}" "$profile_flag" release-checked --features arch
-    "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics
-    "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics --benches
+    asgroup "${cmd[@]}" "$profile_flag" release-checked
+    asgroup "${cmd[@]}" "$profile_flag" release-checked --features arch
+    asgroup "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics
+    asgroup "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics --benches
 
     # Ensure that the routines do not panic.
     #
     # `--tests` must be passed because no-panic is only enabled as a dev
     # dependency. The `release-opt` profile must be used to enable LTO and a
     # single CGU.
-    ENSURE_NO_PANIC=1 cargo build \
+    ENSURE_NO_PANIC=1 asgroup cargo build \
         -p libm \
         --target "$target" \
         --no-default-features \

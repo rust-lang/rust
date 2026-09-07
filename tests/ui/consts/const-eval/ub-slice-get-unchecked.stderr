@@ -1,11 +1,35 @@
 error[E0080]: evaluation panicked: unsafe precondition(s) violated: slice::get_unchecked requires that the range is within the slice
               
               This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
-  --> $DIR/ub-slice-get-unchecked.rs:7:27
+  --> $DIR/ub-slice-get-unchecked.rs:7:39
    |
-LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
-   |                           ^^^^^^^^^^^^^^^^^^^^^ evaluation of `B` failed here
+LL | const ZST_RANGE_OOB: &[()] = unsafe { ZST_ARRAY.get_unchecked(3..1) };
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ZST_RANGE_OOB` failed here
 
-error: aborting due to 1 previous error
+error[E0080]: evaluation panicked: unsafe precondition(s) violated: slice::get_unchecked requires that the index is within the slice
+              
+              This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+  --> $DIR/ub-slice-get-unchecked.rs:10:37
+   |
+LL | const ZST_INDEX_OOB: &() = unsafe { ZST_ARRAY.get_unchecked(9) };
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ZST_INDEX_OOB` failed here
+
+error[E0080]: evaluation panicked: unsafe precondition(s) violated: slice::get_unchecked requires that the index is within the slice
+              
+              This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+  --> $DIR/ub-slice-get-unchecked.rs:15:34
+   |
+LL | const INDEX_OOB: &i32 = unsafe { ARRAY.get_unchecked(9) };
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INDEX_OOB` failed here
+
+error[E0080]: evaluation panicked: unsafe precondition(s) violated: slice::get_unchecked_mut requires that the index is within the slice
+              
+              This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+  --> $DIR/ub-slice-get-unchecked.rs:20:13
+   |
+LL |     let _ = array.get_unchecked_mut(9);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INDEX_OOB_MUT` failed here
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

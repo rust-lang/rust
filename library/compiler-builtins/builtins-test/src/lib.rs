@@ -17,6 +17,7 @@
 #![cfg_attr(f16_enabled, feature(f16))]
 
 pub mod bench;
+pub mod mem;
 extern crate alloc;
 
 use compiler_builtins::support::{Float, Int, MinInt};

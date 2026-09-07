@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value of type std::mem::MaybeDangling<&i8>: encountered a reference that is too close to the end of the address space for a pointee of 1 bytes
+error: Undefined Behavior: constructing invalid value of type std::mem::MaybeDangling<&i8>: at .0, encountered a reference that is too close to the end of the address space for a pointee of 1 bytes
   --> tests/fail/validity/maybe_dangling_ref_too_big.rs:LL:CC
    |
 LL |     let _x: MaybeDangling<&i8> = unsafe { transmute(usize::MAX) };

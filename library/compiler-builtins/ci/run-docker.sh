@@ -58,7 +58,7 @@ run() {
             "IMAGE=${DOCKER_BASE_IMAGE:-rustlang/rust:nightly}"
         )
         run_args=(-v "compiler-builtins-cache:/builtins-target")
-        run_cmd="$run_cmd HOME=/tmp" "USING_CONTAINER_RUSTC=1"
+        run_cmd="$run_cmd HOME=/tmp USING_CONTAINER_RUSTC=1"
     fi
 
     if [ -d compiler-rt ]; then

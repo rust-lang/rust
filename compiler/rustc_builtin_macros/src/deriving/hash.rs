@@ -5,7 +5,7 @@ use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::{path_std, pathvec_std};
+use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_hash(
     cx: &ExtCtxt<'_>,
@@ -15,7 +15,7 @@ pub(crate) fn expand_deriving_hash(
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    let path = Path::new_(pathvec_std!(hash::Hash), vec![], PathKind::Std);
+    let path = path_std!(hash::Hash);
 
     let typaram = sym::__H;
 
@@ -25,23 +25,20 @@ pub(crate) fn expand_deriving_hash(
         path,
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
-        additional_bounds: Vec::new(),
+        additional_bounds: SmallVec::new(),
         supports_unions: false,
-        methods: vec![MethodDef {
+        methods: smallvec![MethodDef {
             name: sym::hash,
             generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
             explicit_self: true,
-            nonself_args: vec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
+            nonself_args: smallvec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                hash_substructure(a, b, c)
-            })),
+            combine_substructure: combine_substructure(hash_substructure),
         }],
-        associated_types: Vec::new(),
+        associated_types: SmallVec::new(),
         is_const,
-        is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
         document: true,
     };
@@ -54,11 +51,8 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'
         cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
     let call_hash = |span, expr| {
-        let hash_path = {
-            let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
-
-            cx.expr_path(cx.path_global(span, strs))
-        };
+        let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
+        let hash_path = cx.expr_path(cx.path_global(span, strs));
         let expr = cx.expr_call(span, hash_path, thin_vec![expr, state_expr.clone()]);
         cx.stmt_expr(expr)
     };

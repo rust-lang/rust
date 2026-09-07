@@ -167,7 +167,7 @@ enum CommentPosition {
 /// Information about an expression in a chain.
 struct SubExpr {
     expr: ast::Expr,
-    is_method_call_receiver: bool,
+    is_postfix_receiver: bool,
 }
 
 /// An expression plus trailing `?`s to be formatted together.
@@ -226,7 +226,7 @@ impl ChainItemKind {
     fn from_ast(
         context: &RewriteContext<'_>,
         expr: &ast::Expr,
-        is_method_call_receiver: bool,
+        is_postfix_receiver: bool,
     ) -> (ChainItemKind, Span) {
         let (kind, span) = match expr.kind {
             ast::ExprKind::MethodCall(ref call) => {
@@ -276,7 +276,7 @@ impl ChainItemKind {
                 return (
                     ChainItemKind::Parent {
                         expr: expr.clone(),
-                        parens: is_method_call_receiver && should_add_parens(expr, context),
+                        parens: is_postfix_receiver && should_add_parens(expr, context),
                     },
                     expr.span,
                 );
@@ -331,8 +331,7 @@ impl Rewrite for ChainItem {
 
 impl ChainItem {
     fn new(context: &RewriteContext<'_>, expr: &SubExpr, tries: usize) -> ChainItem {
-        let (kind, span) =
-            ChainItemKind::from_ast(context, &expr.expr, expr.is_method_call_receiver);
+        let (kind, span) = ChainItemKind::from_ast(context, &expr.expr, expr.is_postfix_receiver);
         ChainItem { kind, tries, span }
     }
 
@@ -503,7 +502,7 @@ impl Chain {
     fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext<'_>) -> Vec<SubExpr> {
         let mut subexpr_list = vec![SubExpr {
             expr: expr.clone(),
-            is_method_call_receiver: false,
+            is_postfix_receiver: false,
         }];
 
         while let Some(subexpr) = Self::pop_expr_chain(subexpr_list.last().unwrap(), context) {
@@ -519,15 +518,18 @@ impl Chain {
         match expr.expr.kind {
             ast::ExprKind::MethodCall(ref call) => Some(SubExpr {
                 expr: Self::convert_try(&call.receiver, context),
-                is_method_call_receiver: true,
+                is_postfix_receiver: true,
             }),
             ast::ExprKind::Field(ref subexpr, _)
-            | ast::ExprKind::Try(ref subexpr)
             | ast::ExprKind::Await(ref subexpr, _)
             | ast::ExprKind::Use(ref subexpr, _)
             | ast::ExprKind::Yield(ast::YieldKind::Postfix(ref subexpr)) => Some(SubExpr {
                 expr: Self::convert_try(subexpr, context),
-                is_method_call_receiver: false,
+                is_postfix_receiver: true,
+            }),
+            ast::ExprKind::Try(ref subexpr) => Some(SubExpr {
+                expr: Self::convert_try(subexpr, context),
+                is_postfix_receiver: false,
             }),
             _ => None,
         }

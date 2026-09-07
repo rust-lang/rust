@@ -315,9 +315,7 @@ impl<'db> UnsafeVisitor<'db> {
                     // https://github.com/rust-lang/rust/pull/129248
                     // Taking a raw ref to a deref place expr is always safe.
                     Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                        self.body
-                            .walk_child_exprs_without_pats(expr, |child| self.walk_expr(child));
-
+                        self.walk_expr(expr);
                         return;
                     }
                     _ => (),

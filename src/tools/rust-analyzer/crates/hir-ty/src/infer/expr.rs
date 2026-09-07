@@ -1329,7 +1329,11 @@ impl<'db> InferenceContext<'db> {
             }
             None => {
                 let ty = self.table.next_ty_var(element.into());
-                self.infer_expr(element, &Expectation::has_type(ty), ExprIsRead::Yes);
+                self.infer_expr_suptype_coerce_never(
+                    element,
+                    &Expectation::has_type(ty),
+                    ExprIsRead::Yes,
+                );
                 ty
             }
         };

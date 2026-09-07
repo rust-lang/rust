@@ -126,8 +126,8 @@ fn find_unchecked_sibling_method<'tcx>(
 /// Checks that `checked_def_id` and `unchecked_def_id` refer to functions with:
 /// - same visibility
 /// - identical signatures, apart from unsafety
-/// - "matching" return types: the checked version returns `Option<T>`/`Result<T, E>`, while the
-///   unchecked one returns `T`
+/// - "matching" return types: the checked version returns `Option<T>`/`Result<T, E>`, while the unchecked one returns
+///   `T`
 fn same_functions_modulo_safety<'tcx>(
     cx: &LateContext<'tcx>,
     checked_def_id: DefId,

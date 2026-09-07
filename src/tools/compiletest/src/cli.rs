@@ -401,13 +401,6 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
     let iteration_count = args.iteration_count.unwrap_or(Config::DEFAULT_ITERATION_COUNT);
     assert!(iteration_count > 0, "`--iteration-count` must be a positive integer");
 
-    let gcc_supported_target_tuples = match default_codegen_backend {
-        CodegenBackend::Gcc => {
-            directives::find_gcc_supported_targets(&args.sysroot_base, &args.host)
-        }
-        CodegenBackend::Llvm | CodegenBackend::Cranelift => vec![],
-    };
-
     // FIXME: this run scheme is... confusing.
     let run = args.run.and_then(|mode| match mode.as_str() {
         "auto" => None,
@@ -454,8 +447,6 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         filters,
         force_pass_mode: args.pass,
         force_rerun: args.force_rerun,
-
-        gcc_supported_target_tuples,
 
         gdb: args.gdb,
         gdb_version,

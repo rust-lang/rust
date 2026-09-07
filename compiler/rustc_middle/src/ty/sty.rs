@@ -23,7 +23,7 @@ use rustc_type_ir::{
 use tracing::instrument;
 use ty::util::IntTypeExt;
 
-use super::GenericParamDefKind;
+use super::{AdtFlags, GenericParamDefKind};
 use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
@@ -333,7 +333,7 @@ impl ParamConst {
 
     #[instrument(level = "debug")]
     pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(param_ct, ty) => {
@@ -478,22 +478,6 @@ impl<'tcx> Ty<'tcx> {
         is_rigid: ty::IsRigid,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Ty<'tcx> {
-        if cfg!(debug_assertions) {
-            match alias_ty.kind {
-                ty::AliasTyKind::Projection { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
-                }
-                ty::AliasTyKind::Inherent { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
-                }
-                ty::AliasTyKind::Opaque { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::OpaqueTy)
-                }
-                ty::AliasTyKind::Free { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::TyAlias)
-                }
-            }
-        }
         Ty::new(tcx, Alias(is_rigid, alias_ty))
     }
 
@@ -679,7 +663,8 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::GlobalAsm
                 | DefKind::Impl { .. }
                 | DefKind::Closure
-                | DefKind::SyntheticCoroutineBody => {
+                | DefKind::SyntheticCoroutineBody
+                | DefKind::TestBinderConstraints => {
                     bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
                 }
             }
@@ -2198,6 +2183,22 @@ impl<'tcx> Ty<'tcx> {
     pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
         TypeWalker::new(self.into())
     }
+
+    /// Returns `true` if this is a `MaybeDangling<T>`-like type, i.e., a type whose inner
+    /// references are not required to be dereferenceable and are not reborrowed.
+    #[inline]
+    pub fn is_like_maybe_dangling(self) -> bool {
+        match self.kind() {
+            ty::Adt(def, _) => {
+                // ManuallyDrop is "natively" like maybe-dangling so that we don't have
+                // to nest field types even deeper.
+                def.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
+                    || def.flags().contains(AdtFlags::IS_MANUALLY_DROP)
+            }
+            ty::Closure(..) | ty::Coroutine(..) | ty::CoroutineClosure(..) => true,
+            _ => false,
+        }
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
@@ -2211,9 +2212,9 @@ impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx
 }
 
 impl<'tcx> rustc_type_ir::inherent::Symbol<TyCtxt<'tcx>> for Symbol {
-    fn is_kw_underscore_lifetime(self) -> bool {
-        self == kw::UnderscoreLifetime
-    }
+    const KW_UNDERSCORE_LIFETIME: Self = kw::UnderscoreLifetime;
+    const KW_STATIC_LIFETIME: Self = kw::StaticLifetime;
+    const SYM_ANON: Self = sym::anon;
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.

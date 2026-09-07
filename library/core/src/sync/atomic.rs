@@ -534,6 +534,7 @@ pub enum Ordering {
     note = "the `new` function is now preferred",
     suggestion = "AtomicBool::new(false)"
 )]
+#[expect(clippy::declare_interior_mutable_const, reason = "legacy atomic initializer")]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_has_atomic_load_store = "8")]
@@ -603,6 +604,16 @@ impl AtomicBool {
     pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
+    }
+
+    /// Creates a new pointer to `AtomicBool` from a pointer.
+    ///
+    /// This is useful if you want to do volatile atomic accesses, and thus avoid creating
+    /// a reference to the destination.
+    #[inline]
+    #[unstable(feature = "atomic_volatile", issue = "158947")]
+    pub const fn from_ptr_raw(ptr: *mut bool) -> *const AtomicBool {
+        ptr.cast_const().cast()
     }
 
     /// Returns a mutable reference to the underlying [`bool`].
@@ -764,6 +775,40 @@ impl AtomicBool {
         }
     }
 
+    /// Perform a volatile atomic load from the bool.
+    ///
+    /// `load_volatile` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
+    ///
+    #[doc = include_str!("./atomic_load_volatile.md")]
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * `self` must be [valid] for reads, or `self` must point to memory
+    ///   outside of all Rust allocations and reading from that memory must:
+    ///   - not trap, and
+    ///   - not cause any memory inside a Rust allocation to be modified.
+    ///
+    /// * Reading from `self` must produce a properly initialized value of type `bool`.
+    ///
+    /// [valid]: core::ptr#safety
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Release`] or [`AcqRel`].
+    #[inline]
+    #[unstable(feature = "atomic_volatile", issue = "158947")]
+    #[rustc_const_unstable(feature = "atomic_volatile", issue = "158947")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn load_volatile(self: *const Self, order: Ordering) -> bool {
+        // SAFETY: follows from our own safety requirements.
+        unsafe {
+            atomic_load::<_, /* VOLATILE */ true>(self.cast::<u8>(), order) != 0
+        }
+    }
+
     /// Stores a value into the bool.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory ordering
@@ -793,6 +838,39 @@ impl AtomicBool {
         // pointer passed in is valid because we got it from a reference.
         unsafe {
             atomic_store::<_, /* VOLATILE */ false>(self.v.get().cast::<u8>(), val as u8, order);
+        }
+    }
+
+    /// Performs a volatile atomic store into the bool.
+    ///
+    /// `store_volatile` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
+    ///
+    #[doc = include_str!("./atomic_store_volatile.md")]
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * `self` must be either [valid] for writes, or `self` must point to memory
+    ///   outside of all Rust allocations and writing to that memory must:
+    ///   - not trap, and
+    ///   - not cause any memory inside a Rust allocation to be modified.
+    ///
+    /// [valid]: core::ptr#safety
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+    #[inline]
+    #[unstable(feature = "atomic_volatile", issue = "158947")]
+    #[rustc_const_unstable(feature = "atomic_volatile", issue = "158947")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_should_not_be_called_on_const_items]
+    pub const unsafe fn store_volatile(self: *const Self, val: bool, order: Ordering) {
+        // SAFETY: follows from our own safety requirements.
+        unsafe {
+            atomic_store::<_, /* VOLATILE */ true>(self.cast::<u8>().cast_mut(), val as u8, order);
         }
     }
 
@@ -1566,6 +1644,16 @@ impl<T> AtomicPtr<T> {
         unsafe { &*ptr.cast() }
     }
 
+    /// Creates a new pointer to `AtomicPtr` from a pointer.
+    ///
+    /// This is useful if you want to do volatile atomic accesses, and thus avoid creating
+    /// a reference to the destination.
+    #[inline]
+    #[unstable(feature = "atomic_volatile", issue = "158947")]
+    pub const fn from_ptr_raw(ptr: *mut *mut T) -> *const AtomicPtr<T> {
+        ptr.cast_const().cast()
+    }
+
     /// Creates a new `AtomicPtr` initialized with a null pointer.
     ///
     /// # Examples
@@ -1769,6 +1857,71 @@ impl<T> AtomicPtr<T> {
         }
     }
 
+    /// Perform a volatile atomic load from the pointer.
+    ///
+    /// `load_volatile` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
+    ///
+    #[doc = include_str!("./atomic_load_volatile.md")]
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * `self` must be [valid] for reads, or `self` must point to memory
+    ///   outside of all Rust allocations and reading from that memory must:
+    ///   - not trap, and
+    ///   - not cause any memory inside a Rust allocation to be modified.
+    ///
+    /// * `self` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this
+    ///   can be bigger than `align_of::<*mut T>()`).
+    ///
+    /// * Reading from `self` must produce a properly initialized value of type `*mut T`.
+    ///
+    /// [valid]: core::ptr#safety
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Release`] or [`AcqRel`].
+    ///
+    /// # Examples
+    ///
+    /// Assuming an MMIO region at `MMIO_ADDR` that belongs to a device with direct memory
+    /// access, we may receive a buffer in shared memory from that device as follows:
+    ///
+    /// ```rust,no_run
+    /// #![feature(atomic_volatile)]
+    /// use std::sync::atomic::{fence, AtomicPtr, Ordering};
+    /// use std::ptr;
+    ///
+    /// const MMIO_ADDR: *mut *mut u8 = ptr::without_provenance_mut(0xCAF0);
+    /// let atomic_ptr = AtomicPtr::<u8>::from_ptr_raw(MMIO_ADDR);
+    ///
+    /// // Spin until we see a non-zero value.
+    /// let buf = 'buf: loop {
+    ///     let buf = unsafe { atomic_ptr.load_volatile(Ordering::Relaxed) };
+    ///     if !buf.is_null() {
+    ///         break 'buf buf;
+    ///     }
+    /// };
+    /// // Synchronize with the store whose value we just read.
+    /// // Note: a standard acquire fence may not be sufficient to synchronize with DMA devices.
+    /// // Depending on your target, you may have to use inline assembly to emit a special fence.
+    /// fence(Ordering::Acquire);
+    ///
+    /// // Now process the data in `buf`.
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_volatile", issue = "158947")]
+    #[rustc_const_unstable(feature = "atomic_volatile", issue = "158947")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn load_volatile(self: *const Self, order: Ordering) -> *mut T {
+        // SAFETY: follows from our own safety requirements.
+        unsafe {
+            atomic_load::<_, /* VOLATILE */ true>(self.cast::<*mut T>(), order)
+        }
+    }
+
     /// Stores a value into the pointer.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory ordering
@@ -1799,6 +1952,67 @@ impl<T> AtomicPtr<T> {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe {
             atomic_store::<_, /* VOLATILE */ false>(self.as_ptr(), ptr, order);
+        }
+    }
+
+    /// Performs a volatile atomic store into the pointer.
+    ///
+    /// `store_volatile` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
+    ///
+    #[doc = include_str!("./atomic_store_volatile.md")]
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * `self` must be either [valid] for writes, or `self` must point to memory
+    ///   outside of all Rust allocations and writing to that memory must:
+    ///   - not trap, and
+    ///   - not cause any memory inside a Rust allocation to be modified.
+    ///
+    /// * `self` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this
+    ///   can be bigger than `align_of::<*mut T>()`).
+    ///
+    /// [valid]: core::ptr#safety
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+    ///
+    /// # Examples
+    ///
+    /// Assuming an MMIO region at `MMIO_ADDR` that belongs to a device with direct memory
+    /// access, we may submit a buffer in shared memory to that device as follows:
+    ///
+    /// ```rust,no_run
+    /// #![feature(atomic_volatile)]
+    /// use std::sync::atomic::{fence, AtomicPtr, Ordering};
+    /// use std::ptr;
+    ///
+    /// const MMIO_ADDR: *mut *mut u8 = ptr::without_provenance_mut(0xCAF0);
+    /// let atomic_ptr = AtomicPtr::<u8>::from_ptr_raw(MMIO_ADDR);
+    ///
+    /// // Prepare some data for the DMA device.
+    /// # fn get_dma_buffer() -> *mut u8 { panic!() }
+    /// let buf = get_dma_buffer();
+    ///
+    /// // Ensure the other side can synchronize with the store we do below.
+    /// // Note: a standard release fence may not be sufficient to synchronize with DMA devices.
+    /// // Depending on your target, you may have to use inline assembly to emit a special fence.
+    /// fence(Ordering::Release);
+    ///
+    /// unsafe { atomic_ptr.store_volatile(buf, Ordering::Relaxed) };
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_volatile", issue = "158947")]
+    #[rustc_const_unstable(feature = "atomic_volatile", issue = "158947")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_should_not_be_called_on_const_items]
+    pub const unsafe fn store_volatile(self: *const Self, ptr: *mut T, order: Ordering) {
+        // SAFETY: follows from our own safety requirements.
+        unsafe {
+            atomic_store::<_, /* VOLATILE */ true>(self.cast::<*mut T>().cast_mut(), ptr, order);
         }
     }
 
@@ -2732,6 +2946,16 @@ macro_rules! atomic_int {
                 unsafe { &*ptr.cast() }
             }
 
+            /// Creates a new pointer to an atomic integer from a pointer.
+            ///
+            /// This is useful if you want to do volatile atomic accesses, and thus avoid creating
+            /// a reference to the destination.
+            #[inline]
+            #[unstable(feature = "atomic_volatile", issue = "158947")]
+            pub const fn from_ptr_raw(ptr: *mut $int_type) -> *const $atomic_type {
+                ptr.cast_const().cast()
+            }
+
             /// Returns a mutable reference to the underlying integer.
             ///
             /// This is safe because the mutable reference guarantees that no other threads are
@@ -2920,6 +3144,55 @@ macro_rules! atomic_int {
                 unsafe { atomic_load::<_, /* VOLATILE */ false>(self.as_ptr(), order) }
             }
 
+            /// Perform a volatile load from the atomic integer.
+            ///
+            /// `load_volatile` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
+            ///
+            #[doc = include_str!("./atomic_load_volatile.md")]
+            ///
+            /// # Safety
+            ///
+            /// Behavior is undefined if any of the following conditions are violated:
+            ///
+            /// * `self` must be [valid] for reads, or `self` must point to memory
+            ///   outside of all Rust allocations and reading from that memory must:
+            ///   - not trap, and
+            ///   - not cause any memory inside a Rust allocation to be modified.
+            ///
+            /// * `self` must be aligned to
+            #[doc = concat!("  `align_of::<", stringify!($atomic_type), ">()`")]
+            #[doc = if_8_bit!{
+                $int_type,
+                yes = [
+                    "  (note that this is always true, since `align_of::<",
+                    stringify!($atomic_type), ">() == 1`)."
+                ],
+                no = [
+                    "  (note that on some platforms this can be bigger than `align_of::<",
+                    stringify!($int_type), ">()`)."
+                ],
+            }]
+            ///
+            /// * Reading from `self` must produce a properly initialized value of the underlying
+            ///   integer type.
+            ///
+            /// [valid]: core::ptr#safety
+            ///
+            /// # Panics
+            ///
+            /// Panics if `order` is [`Release`] or [`AcqRel`].
+            #[inline]
+            #[unstable(feature = "atomic_volatile", issue = "158947")]
+            #[rustc_const_unstable(feature = "atomic_volatile", issue = "158947")]
+            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+            pub const unsafe fn load_volatile(self: *const Self, order: Ordering) -> $int_type {
+                // SAFETY: follows from our own safety requirements.
+                unsafe {
+                    atomic_load::<_, /* VOLATILE */ true>(self.cast::<$int_type>(), order)
+                }
+            }
+
             /// Stores a value into the atomic integer.
             ///
             /// `store` takes an [`Ordering`] argument which describes the memory ordering of this operation.
@@ -2948,6 +3221,53 @@ macro_rules! atomic_int {
             pub const fn store(&self, val: $int_type, order: Ordering) {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_store::<_, /* VOLATILE */ false>(self.as_ptr(), val, order); }
+            }
+
+            /// Performs a volatile store into the atomic integer.
+            ///
+            /// `store_volatile` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
+            ///
+            #[doc = include_str!("./atomic_store_volatile.md")]
+            ///
+            /// # Safety
+            ///
+            /// Behavior is undefined if any of the following conditions are violated:
+            ///
+            /// * `self` must be either [valid] for writes, or `self` must point to memory
+            ///   outside of all Rust allocations and writing to that memory must:
+            ///   - not trap, and
+            ///   - not cause any memory inside a Rust allocation to be modified.
+            ///
+            /// * `self` must be aligned to
+            #[doc = concat!("  `align_of::<", stringify!($atomic_type), ">()`")]
+            #[doc = if_8_bit!{
+                $int_type,
+                yes = [
+                    "  (note that this is always true, since `align_of::<",
+                    stringify!($atomic_type), ">() == 1`)."
+                ],
+                no = [
+                    "  (note that on some platforms this can be bigger than `align_of::<",
+                    stringify!($int_type), ">()`)."
+                ],
+            }]
+            ///
+            /// [valid]: core::ptr#safety
+            ///
+            /// # Panics
+            ///
+            /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+            #[inline]
+            #[unstable(feature = "atomic_volatile", issue = "158947")]
+            #[rustc_const_unstable(feature = "atomic_volatile", issue = "158947")]
+            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+            #[rustc_should_not_be_called_on_const_items]
+            pub const unsafe fn store_volatile(self: *const Self, val: $int_type, order: Ordering) {
+                // SAFETY: follows from our own safety requirements.
+                unsafe {
+                    atomic_store::<_, /* VOLATILE */ true>(self.cast::<$int_type>().cast_mut(), val, order);
+                }
             }
 
             /// Stores a value into the atomic integer, returning the previous value.
@@ -3939,6 +4259,7 @@ macro_rules! atomic_int_ptr_sized {
             note = "the `new` function is now preferred",
             suggestion = "AtomicIsize::new(0)",
         )]
+        #[expect(clippy::declare_interior_mutable_const, reason = "legacy atomic initializer")]
         pub const ATOMIC_ISIZE_INIT: AtomicIsize = AtomicIsize::new(0);
 
         /// An [`AtomicUsize`] initialized to `0`.
@@ -3949,6 +4270,7 @@ macro_rules! atomic_int_ptr_sized {
             note = "the `new` function is now preferred",
             suggestion = "AtomicUsize::new(0)",
         )]
+        #[expect(clippy::declare_interior_mutable_const, reason = "legacy atomic initializer")]
         pub const ATOMIC_USIZE_INIT: AtomicUsize = AtomicUsize::new(0);
     )* };
 }

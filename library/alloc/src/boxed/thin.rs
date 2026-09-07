@@ -146,6 +146,7 @@ impl<T: ?Sized> Deref for ThinBox<T> {
         let value = self.data();
         let metadata = self.meta();
         let pointer = ptr::from_raw_parts(value as *const (), metadata);
+        // SAFETY: &ThinBox<T> points to a valid pointer for T.
         unsafe { &*pointer }
     }
 }
@@ -156,6 +157,7 @@ impl<T: ?Sized> DerefMut for ThinBox<T> {
         let value = self.data();
         let metadata = self.meta();
         let pointer = ptr::from_raw_parts_mut::<T>(value as *mut (), metadata);
+        // SAFETY: &mut ThinBox<T> points to a valid and unique pointer for T.
         unsafe { &mut *pointer }
     }
 }
@@ -163,9 +165,10 @@ impl<T: ?Sized> DerefMut for ThinBox<T> {
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T: ?Sized> Drop for ThinBox<T> {
     fn drop(&mut self) {
+        let value = self.deref_mut();
+        let value = value as *mut T;
+        // SAFETY: `value` is valid for reads and writes for our `T`.
         unsafe {
-            let value = self.deref_mut();
-            let value = value as *mut T;
             self.with_header().drop::<T>(value);
         }
     }
@@ -174,8 +177,7 @@ impl<T: ?Sized> Drop for ThinBox<T> {
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T: ?Sized> ThinBox<T> {
     fn meta(&self) -> <T as Pointee>::Metadata {
-        //  Safety:
-        //  -   NonNull and valid.
+        // SAFETY: NonNull and valid.
         unsafe { *self.with_header().header() }
     }
 
@@ -238,33 +240,39 @@ impl<H> WithHeader<H> {
             alloc::handle_alloc_error(Layout::new::<()>());
         };
 
-        unsafe {
-            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
-            // we use `layout.dangling()` for this case, which should have a valid
-            // alignment for both `T` and `H`.
-            let ptr = if layout.size() == 0 {
-                // Some paranoia checking, mostly so that the ThinBox tests are
-                // more able to catch issues.
-                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
-                layout.dangling_ptr()
-            } else {
-                let ptr = alloc::alloc(layout);
-                if ptr.is_null() {
-                    alloc::handle_alloc_error(layout);
-                }
-                // Safety:
-                // - The size is at least `aligned_header_size`.
+        // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+        // we use `layout.dangling()` for this case, which should have a valid
+        // alignment for both `T` and `H`.
+        let ptr = if layout.size() == 0 {
+            // Some paranoia checking, mostly so that the ThinBox tests are
+            // more able to catch issues.
+            debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
+            layout.dangling_ptr()
+        } else {
+            // SAFETY: We check above that the layout size is nonzero.
+            let ptr = unsafe { alloc::alloc(layout) };
+            if ptr.is_null() {
+                alloc::handle_alloc_error(layout);
+            }
+            // SAFETY:
+            // - The size is at least `aligned_header_size`.
+            unsafe {
                 let ptr = ptr.add(value_offset) as *mut _;
 
                 NonNull::new_unchecked(ptr)
-            };
+            }
+        };
 
-            let result = WithHeader(ptr, PhantomData);
+        let result = WithHeader(ptr, PhantomData);
+
+        // SAFETY: `result.header()` promises to give us a valid place for writing
+        // the header, and `result.value()` promises the same for the value.
+        unsafe {
             ptr::write(result.header(), header);
             ptr::write(result.value().cast(), value);
-
-            result
         }
+
+        result
     }
 
     /// Non-panicking version of `new`.
@@ -275,34 +283,40 @@ impl<H> WithHeader<H> {
             return Err(core::alloc::AllocError);
         };
 
-        unsafe {
-            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
-            // we use `layout.dangling()` for this case, which should have a valid
-            // alignment for both `T` and `H`.
-            let ptr = if layout.size() == 0 {
-                // Some paranoia checking, mostly so that the ThinBox tests are
-                // more able to catch issues.
-                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
-                layout.dangling_ptr()
-            } else {
-                let ptr = alloc::alloc(layout);
-                if ptr.is_null() {
-                    return Err(core::alloc::AllocError);
-                }
+        // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+        // we use `layout.dangling()` for this case, which should have a valid
+        // alignment for both `T` and `H`.
+        let ptr = if layout.size() == 0 {
+            // Some paranoia checking, mostly so that the ThinBox tests are
+            // more able to catch issues.
+            debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
+            layout.dangling_ptr()
+        } else {
+            // SAFETY: We check above that the layout size is nonzero.
+            let ptr = unsafe { alloc::alloc(layout) };
+            if ptr.is_null() {
+                return Err(core::alloc::AllocError);
+            }
 
-                // Safety:
-                // - The size is at least `aligned_header_size`.
+            // SAFETY:
+            // - The size is at least `aligned_header_size`.
+            unsafe {
                 let ptr = ptr.add(value_offset) as *mut _;
 
                 NonNull::new_unchecked(ptr)
-            };
+            }
+        };
 
-            let result = WithHeader(ptr, PhantomData);
+        let result = WithHeader(ptr, PhantomData);
+
+        // SAFETY: `result.header()` promises to give us a valid place for writing
+        // the header, and `result.value()` promises the same for the value.
+        unsafe {
             ptr::write(result.header(), header);
             ptr::write(result.value().cast(), value);
-
-            Ok(result)
         }
+
+        Ok(result)
     }
 
     // `Dyn` is `?Sized` type like `[u32]`, and `T` is ZST type like `[u32; 0]`.
@@ -330,35 +344,36 @@ impl<H> WithHeader<H> {
 
             let alloc_size = max(align_of::<T>(), size_of::<<Dyn as Pointee>::Metadata>());
 
-            unsafe {
-                // SAFETY: align is power of two because it is the maximum of two alignments.
-                let alloc: *mut u8 = const_allocate(alloc_size, alloc_align);
+            // SAFETY: align is power of two because it is the maximum of two alignments.
+            let alloc: *mut u8 = unsafe { const_allocate(alloc_size, alloc_align) };
 
-                let metadata_offset =
-                    alloc_size.checked_sub(size_of::<<Dyn as Pointee>::Metadata>()).unwrap();
+            let metadata_offset =
+                alloc_size.checked_sub(size_of::<<Dyn as Pointee>::Metadata>()).unwrap();
+            let metadata_ptr: *mut <Dyn as Pointee>::Metadata =
                 // SAFETY: adding offset within the allocation.
-                let metadata_ptr: *mut <Dyn as Pointee>::Metadata =
-                    alloc.add(metadata_offset).cast();
-                // SAFETY: `*metadata_ptr` is within the allocation.
+                unsafe { alloc.add(metadata_offset).cast() };
+            // SAFETY: `*metadata_ptr` is within the allocation.
+            unsafe {
                 metadata_ptr.write(ptr::metadata::<Dyn>(ptr::dangling::<T>() as *const Dyn));
-                // SAFETY: valid heap allocation
-                const_make_global(alloc);
-                // SAFETY: we have just written the metadata.
-                &*metadata_ptr
             }
+            // SAFETY: valid heap allocation
+            unsafe { const_make_global(alloc) };
+            // SAFETY: we have just written the metadata.
+            unsafe { &*metadata_ptr }
         };
 
-        // SAFETY: `alloc` points to `<Dyn as Pointee>::Metadata`, so addition stays in-bounds.
         let value_ptr =
+            // SAFETY: `alloc` points to `<Dyn as Pointee>::Metadata`, so addition stays in-bounds.
             unsafe { (alloc as *const <Dyn as Pointee>::Metadata).add(1) }.cast::<T>().cast_mut();
         debug_assert!(value_ptr.is_aligned());
         mem::forget(value);
         WithHeader(NonNull::new(value_ptr.cast()).unwrap(), PhantomData)
     }
 
-    // Safety:
-    // - Assumes that either `value` can be dereferenced, or is the
-    //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
+    /// # Safety
+    ///
+    /// `value` must point to an undropped owned `T`, and `self` must not be
+    /// accessed again after this is called.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
         struct DropGuard<H> {
             ptr: NonNull<u8>,
@@ -373,34 +388,33 @@ impl<H> WithHeader<H> {
                     return;
                 }
 
-                unsafe {
+                let (layout, value_offset) =
                     // SAFETY: Layout must have been computable if we're in drop
-                    let (layout, value_offset) =
-                        WithHeader::<H>::alloc_layout(self.value_layout).unwrap_unchecked();
+                    unsafe { WithHeader::<H>::alloc_layout(self.value_layout).unwrap_unchecked() };
 
-                    // Since we only allocate for non-ZSTs, the layout size cannot be zero.
-                    debug_assert!(layout.size() != 0);
-                    alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
-                }
+                // Since we only allocate for non-ZSTs, the layout size cannot be zero.
+                debug_assert!(layout.size() != 0);
+                // SAFETY: We own the allocation with `layout` at `ptr - value_offset`.
+                unsafe { alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout) };
             }
         }
 
-        unsafe {
-            // `_guard` will deallocate the memory when dropped, even if `drop_in_place` unwinds.
-            let _guard = DropGuard {
-                ptr: self.0,
-                value_layout: Layout::for_value_raw(value),
-                _marker: PhantomData::<H>,
-            };
+        // `_guard` will deallocate the memory when dropped, even if `drop_in_place` unwinds.
+        let _guard = DropGuard {
+            ptr: self.0,
+            // SAFETY: Caller ensures `value` is valid.
+            value_layout: unsafe { Layout::for_value_raw(value) },
+            _marker: PhantomData::<H>,
+        };
 
-            // We only drop the value because the Pointee trait requires that the metadata is copy
-            // aka trivially droppable.
-            ptr::drop_in_place::<T>(value);
-        }
+        // We only drop the value because the Pointee trait requires that the metadata is copy
+        // aka trivially droppable.
+        // SAFETY: We're the only droppers of `value` and it's not dropped again.
+        unsafe { ptr::drop_in_place::<T>(value) };
     }
 
     fn header(&self) -> *mut H {
-        //  Safety:
+        // SAFETY:
         //  - At least `size_of::<H>()` bytes are allocated ahead of the pointer.
         //  - We know that H will be aligned because the middle pointer is aligned to the greater
         //    of the alignment of the header and the data and the header size includes the padding

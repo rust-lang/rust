@@ -446,10 +446,10 @@ impl<T> [T] {
             fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
                 let len = s.len();
                 let mut v = Vec::with_capacity_in(len, alloc);
-                // SAFETY:
-                // allocated above with the capacity of `s`, and initialize to `s.len()` in
-                // ptr::copy_to_non_overlapping below.
                 if len > 0 {
+                    // SAFETY:
+                    // allocated above with the capacity of `s`, and initialize to `s.len()` in
+                    // ptr::copy_to_non_overlapping below.
                     unsafe {
                         s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), len);
                         v.set_len(len);
@@ -479,11 +479,13 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
     pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
-        unsafe {
-            let len = self.len();
-            let (b, alloc) = Box::into_raw_with_allocator(self);
-            Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
-        }
+        let len = self.len();
+        let (b, alloc) = Box::into_raw_with_allocator(self);
+        // SAFETY: `b` is currently allocated with `alloc` and was allocated with the
+        // matching layout for an array of `T * len`, the length is equal to the capacity,
+        // and the existence of a `Box<[T]>` is proof that the first `len` elements are
+        // valid `T`s.
+        unsafe { Vec::from_raw_parts_in(b as *mut T, len, len, alloc) }
     }
 
     /// Creates a vector by copying a slice `n` times.
@@ -531,16 +533,24 @@ impl<T> [T] {
             // If `m > 0`, there are remaining bits up to the leftmost '1'.
             while m > 0 {
                 // `buf.extend(buf)`:
+                // SAFETY: We're copying `len` elements after offsetting by `len`,
+                // with the previous call to `extend` ensuring that the first `len`
+                // elements are valid `T`s and the call to `with_capacity` ensuring
+                // we have `len * n` space to write the new elements.
+                // Each iteration of this loop doubles the number of initialised elements,
+                // which is tracked via `m` - when `m == 0`, we've written `most_significant_bit(n)`
+                // elements to the buffer.
                 unsafe {
                     ptr::copy_nonoverlapping::<T>(
                         buf.as_ptr(),
                         (buf.as_mut_ptr()).add(buf.len()),
                         buf.len(),
                     );
-                    // `buf` has capacity of `self.len() * n`.
-                    let buf_len = buf.len();
-                    buf.set_len(buf_len * 2);
                 }
+                // `buf` has capacity of `self.len() * n`.
+                let buf_len = buf.len();
+                // SAFETY: We initialised another `buf_len` elements above.
+                unsafe { buf.set_len(buf_len * 2) };
 
                 m >>= 1;
             }
@@ -551,6 +561,14 @@ impl<T> [T] {
         let rem_len = capacity - buf.len(); // `self.len() * rem`
         if rem_len > 0 {
             // `buf.extend(buf[0 .. rem_len])`:
+            // SAFETY: We're copying `rem_len` elements after offsetting by `len`. The previous
+            // looping `copy_nonoverlapping` always doubled the number of instantiated elements,
+            // and so if `rem_len` was greater than `len` it would have allowed for another such
+            // doubling, until such time that `rem_len < len`. Thus, the space for these remaining
+            // `rem_len` elements must be preceded by more than `rem_len` previously-copied
+            // elements.
+            // Setting the length is correct since we've initialised the whole `capacity`-length
+            // space with copies of the previous `len` elements.
             unsafe {
                 // This is non-overlapping since `2^expn > rem`.
                 ptr::copy_nonoverlapping::<T>(

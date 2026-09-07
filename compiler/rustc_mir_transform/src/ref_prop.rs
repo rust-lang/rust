@@ -73,8 +73,8 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 pub(super) struct ReferencePropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]

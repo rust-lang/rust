@@ -23,8 +23,8 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(true)
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

@@ -29,6 +29,7 @@ expression: check compiler
     - Set({compiler/rustc_error_messages})
     - Set({compiler/rustc_errors})
     - Set({compiler/rustc_expand})
+    - Set({compiler/rustc_expand_queries})
     - Set({compiler/rustc_feature})
     - Set({compiler/rustc_fs_util})
     - Set({compiler/rustc_graphviz})

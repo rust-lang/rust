@@ -2,7 +2,9 @@ use rustc_hir::attrs::CoverageAttrKind;
 use rustc_hir::find_attr;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
+use rustc_middle::mir::coverage::{
+    BasicCoverageBlock, CoverageCodegenInfo, CoverageKind, MappingKind,
+};
 use rustc_middle::mir::{Body, Statement, StatementKind};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
@@ -14,12 +16,12 @@ use crate::coverage::counters::{CoverageCounters, transcribe_counters};
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.hooks.is_eligible_for_coverage = is_eligible_for_coverage;
+    providers.queries.is_eligible_for_coverage = is_eligible_for_coverage;
     providers.queries.coverage_attr_on = coverage_attr_on;
-    providers.queries.coverage_ids_info = coverage_ids_info;
+    providers.queries.coverage_codegen_info = coverage_codegen_info;
 }
 
-/// Hook implementation for [`TyCtxt::is_eligible_for_coverage`].
+/// Query implementation for [`TyCtxt::is_eligible_for_coverage`].
 fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Only instrument functions, methods, and closures (not constants since they are evaluated
     // at compile time by Miri).
@@ -75,17 +77,17 @@ fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     }
 }
 
-/// Query implementation for `coverage_ids_info`.
-fn coverage_ids_info<'tcx>(
+/// Query implementation for [`TyCtxt::coverage_codegen_info`].
+fn coverage_codegen_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance_def: ty::InstanceKind<'tcx>,
-) -> Option<CoverageIdsInfo> {
+) -> Option<CoverageCodegenInfo> {
     let mir_body = tcx.instance_mir(instance_def);
-    let fn_cov_info = mir_body.function_coverage_info.as_deref()?;
+    let mir_info = mir_body.coverage_mir_info.as_deref()?;
 
     // Scan through the final MIR to see which BCBs survived MIR opts.
     // Any BCB not in this set was optimized away.
-    let mut bcbs_seen = DenseBitSet::new_empty(fn_cov_info.priority_list.len());
+    let mut bcbs_seen = DenseBitSet::new_empty(mir_info.priority_list.len());
     for kind in all_coverage_in_mir_body(mir_body) {
         match *kind {
             CoverageKind::VirtualCounter { bcb } => {
@@ -99,8 +101,8 @@ fn coverage_ids_info<'tcx>(
     // need a counter. Any node not in this set will only get a counter if it
     // is part of the counter expression for a node that is in the set.
     let mut bcb_needs_counter =
-        DenseBitSet::<BasicCoverageBlock>::new_empty(fn_cov_info.priority_list.len());
-    for mapping in &fn_cov_info.mappings {
+        DenseBitSet::<BasicCoverageBlock>::new_empty(mir_info.priority_list.len());
+    for mapping in &mir_info.mappings {
         match mapping.kind {
             MappingKind::Code { bcb } => {
                 bcb_needs_counter.insert(bcb);
@@ -113,7 +115,7 @@ fn coverage_ids_info<'tcx>(
     }
 
     // Clone the priority list so that we can re-sort it.
-    let mut priority_list = fn_cov_info.priority_list.clone();
+    let mut priority_list = mir_info.priority_list.clone();
     // The first ID in the priority list represents the synthetic "sink" node,
     // and must remain first so that it _never_ gets a physical counter.
     debug_assert_eq!(priority_list[0], priority_list.iter().copied().max().unwrap());
@@ -125,14 +127,14 @@ fn coverage_ids_info<'tcx>(
     // (The original ordering remains in effect within both partitions.)
     priority_list[1..].sort_by_key(|&bcb| !bcbs_seen.contains(bcb));
 
-    let node_counters = make_node_counters(&fn_cov_info.node_flow_data, &priority_list);
+    let node_counters = make_node_counters(&mir_info.node_flow_data, &priority_list);
     let coverage_counters = transcribe_counters(&node_counters, &bcb_needs_counter, &bcbs_seen);
 
     let CoverageCounters {
         phys_counter_for_node, next_counter_id, node_counters, expressions, ..
     } = coverage_counters;
 
-    Some(CoverageIdsInfo {
+    Some(CoverageCodegenInfo {
         num_counters: next_counter_id.as_u32(),
         phys_counter_for_node,
         term_for_bcb: node_counters,

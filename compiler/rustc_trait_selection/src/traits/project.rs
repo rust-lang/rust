@@ -470,18 +470,7 @@ fn normalize_to_error<'a, 'tcx>(
     depth: usize,
 ) -> NormalizedTerm<'tcx> {
     let trait_ref = ty::Binder::dummy(projection_term.trait_ref(selcx.tcx()));
-    let new_value = match projection_term.kind {
-        ty::AliasTermKind::ProjectionTy { .. }
-        | ty::AliasTermKind::InherentTy { .. }
-        | ty::AliasTermKind::OpaqueTy { .. }
-        | ty::AliasTermKind::FreeTy { .. } => selcx.infcx.next_ty_var(cause.span).into(),
-        ty::AliasTermKind::FreeConst { .. }
-        | ty::AliasTermKind::InherentConst { .. }
-        | ty::AliasTermKind::AnonConst { .. }
-        | ty::AliasTermKind::ProjectionConst { .. } => {
-            selcx.infcx.next_const_var(cause.span).into()
-        }
-    };
+    let new_value = selcx.infcx.next_term_var_of_alias_kind(projection_term, cause.span);
     let mut obligations = PredicateObligations::new();
     obligations.push(Obligation {
         cause,
@@ -514,6 +503,22 @@ fn push_const_arg_has_type_obligation<'tcx>(
             ty::ClauseKind::ConstArgHasType(ct, expected_ty),
         ));
     }
+}
+
+/// The old solver does not support references to non-type-consts.
+/// Emit a delayed bug if there is a type system reference to a non type const, as this should have
+/// already errored elsewhere.
+pub fn const_of_item_or_delayed_bug<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
+    tcx.const_of_item(def_id).unwrap_or_else(|| {
+        let e = tcx.dcx().span_delayed_bug(
+            tcx.def_span(def_id),
+            "encountered regular consts in the old solver's const normalization",
+        );
+        ty::EarlyBinder::bind(tcx, ty::Const::new_error(tcx, e))
+    })
 }
 
 /// Confirm and normalize the given inherent projection.
@@ -576,7 +581,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     let term = if alias_term.kind.is_type() {
         tcx.type_of(def_id).instantiate(tcx, args).map(Into::into)
     } else {
-        tcx.const_of_item(def_id).instantiate(tcx, args).map(Into::into)
+        const_of_item_or_delayed_bug(tcx, def_id).instantiate(tcx, args).map(Into::into)
     };
 
     let term = selcx.infcx.resolve_vars_if_possible(term);
@@ -608,7 +613,13 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
 ) -> ty::GenericArgsRef<'tcx> {
     let tcx = selcx.tcx();
 
-    let alias_def_id = alias_term.expect_inherent_def_id();
+    let alias_def_id = match alias_term.kind {
+        ty::AliasTermKind::InherentTy { def_id } => def_id,
+        ty::AliasTermKind::InherentConstSelf { def_id } => def_id,
+        ty::AliasTermKind::InherentConstImpl { .. } => return alias_term.args,
+        kind => panic!("expected inherent alias, found {kind:?}"),
+    };
+
     let impl_def_id = tcx.parent(alias_def_id);
     let impl_args = selcx.infcx.fresh_args_for_item(cause.span, impl_def_id);
 
@@ -790,7 +801,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::ParamEnv,
-        obligation.param_env.caller_bounds().iter(),
+        obligation.param_env.caller_bounds(),
         false,
     );
 }
@@ -2101,13 +2112,13 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_term.defining_node);
 
-    let term = if obligation.predicate.kind.is_type() {
-        tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
+    let term_kind = if obligation.predicate.kind.is_type() {
+        ty::AliasTermKind::ProjectionTy { def_id: assoc_term.item.def_id }
     } else {
-        tcx.const_of_item(assoc_term.item.def_id).map_bound(|ct| ct.into())
+        ty::AliasTermKind::ProjectionConst { def_id: assoc_term.item.def_id }
     };
 
-    let progress = if !tcx.check_args_compatible(assoc_term.item.def_id, args) {
+    let progress = if !tcx.check_alias_term_args_compatible(term_kind, args) {
         let msg = "impl item and trait item have different parameters";
         let span = obligation.cause.span;
         let err = if obligation.predicate.kind.is_type() {
@@ -2117,6 +2128,12 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         };
         Progress { term: ty::Unnormalized::dummy(err), obligations: nested }
     } else {
+        let term = if obligation.predicate.kind.is_type() {
+            tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
+        } else {
+            const_of_item_or_delayed_bug(tcx, assoc_term.item.def_id).map_bound(|ct| ct.into())
+        };
+
         assoc_term_own_obligations(selcx, obligation, &mut nested);
         let instantiated_term = term.instantiate(tcx, args);
         let term_for_obligation = instantiated_term.skip_norm_wip();

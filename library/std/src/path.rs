@@ -2025,10 +2025,10 @@ impl From<String> for PathBuf {
 
 #[stable(feature = "path_from_str", since = "1.32.0")]
 impl FromStr for PathBuf {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(PathBuf::from(s))
     }
 }
@@ -2377,7 +2377,7 @@ pub struct NormalizeError;
 impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
-    unsafe fn from_u8_slice(s: &[u8]) -> &Path {
+    pub(crate) unsafe fn from_u8_slice(s: &[u8]) -> &Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
@@ -2933,7 +2933,7 @@ impl Path {
     #[stable(feature = "path_file_prefix", since = "1.91.0")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
-        self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
+        self.file_name().map(split_file_at_dot).map(|(before, _after)| before)
     }
 
     /// Extracts the extension (without the leading dot) of [`self.file_name`], if possible.
@@ -3423,6 +3423,8 @@ impl Path {
     /// In particular, `a/c` and `a/b/../c` are distinct on many systems because `b` may be a symbolic link, so its parent isn't `a`.
     ///
     /// </div>
+    ///
+    /// On Windows this will convert all `/` to `\` unless a [verbatim](Prefix::is_verbatim()) path is given.
     ///
     /// [`path::absolute`](absolute) is an alternative that preserves `..`.
     /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.

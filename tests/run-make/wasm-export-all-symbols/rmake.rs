@@ -19,7 +19,10 @@ fn test(args: &[&str]) {
     rustc().input("foo.rs").target("wasm32-wasip1").args(args).run();
     rustc().input("main.rs").target("wasm32-wasip1").args(args).run();
 
-    verify_exports(Path::new("foo.wasm"), &[("foo", Func), ("FOO", Global), ("memory", Memory)]);
+    verify_exports(
+        Path::new("foo.wasm"),
+        &[("foo", Func), ("FOO", Global), ("memory", Memory), ("_initialize", Func)],
+    );
     verify_exports(
         Path::new("main.wasm"),
         &[

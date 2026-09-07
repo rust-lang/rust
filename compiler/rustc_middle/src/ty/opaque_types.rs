@@ -5,8 +5,7 @@ use tracing::{debug, instrument, trace};
 
 use crate::diagnostics::ConstNotUsedTraitAlias;
 use crate::ty::{
-    self, GenericArg, GenericArgKind, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable,
+    self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
 
 pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;

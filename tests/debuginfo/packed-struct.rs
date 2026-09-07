@@ -49,14 +49,14 @@
 
 #![allow(unused_variables)]
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct Packed {
     x: i16,
     y: i32,
     z: i64
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedInPacked {
     a: i32,
     b: Packed,
@@ -64,6 +64,7 @@ struct PackedInPacked {
     d: Packed
 }
 
+#[repr(C)]
 // layout (64 bit): aaaa bbbb bbbb bbbb bb.. .... cccc cccc dddd dddd dddd dd..
 struct PackedInUnpacked {
     a: i32,
@@ -72,6 +73,7 @@ struct PackedInUnpacked {
     d: Packed
 }
 
+#[repr(C)]
 // layout (64 bit): xx.. yyyy zz.. .... wwww wwww
 struct Unpacked {
     x: i16,
@@ -81,7 +83,7 @@ struct Unpacked {
 }
 
 // layout (64 bit): aabb bbbb bbbb bbbb bbbb bbbb bbcc cccc cccc cccc cccc cccc ccdd dddd dd
-#[repr(packed)]
+#[repr(C, packed)]
 struct UnpackedInPacked {
     a: i16,
     b: Unpacked,

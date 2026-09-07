@@ -30,8 +30,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
     GenericArgsRef, GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, RegionExt, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    PseudoCanonicalInput, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::{CanonicalizerState, MayBeErased};
@@ -65,7 +65,7 @@ mod solver_region_constraints;
 mod type_variable;
 mod unify_key;
 
-pub(crate) use solver_region_constraints::SolverRegionConstraint;
+pub use solver_region_constraints::SolverRegionConstraint;
 use solver_region_constraints::SolverRegionConstraintStorage;
 
 /// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
@@ -89,10 +89,11 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
     ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut InferCtxtUndoLogs<'tcx>>,
 >;
 
-/// This type contains all the things within `InferCtxt` that sit within a
-/// `RefCell` and are involved with taking/rolling back snapshots. Snapshot
-/// operations are hot enough that we want only one call to `borrow_mut` per
-/// call to `start_snapshot` and `rollback_to`.
+/// This type contains all the things within [`InferCtxt`] that sit within a
+/// [`RefCell`] and are involved with taking/rolling back snapshots. Snapshot
+/// operations are hot enough that we want only one call to
+/// [`RefCell::borrow_mut`] per call to [`InferCtxt::start_snapshot`] and
+///  [`InferCtxt::rollback_to`].
 #[derive(Clone)]
 pub struct InferCtxtInner<'tcx> {
     undo_log: InferCtxtUndoLogs<'tcx>,
@@ -102,7 +103,10 @@ pub struct InferCtxtInner<'tcx> {
     /// This cache is snapshotted along with the infcx.
     projection_cache: traits::ProjectionCacheStorage<'tcx>,
 
-    /// We instantiate `UnificationTable` with `bounds<Ty>` because the types
+    /// Primary map of inference variables to the types that they currently
+    /// represent.
+    ///
+    /// We instantiate [`UnificationTable`] with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
     /// represented by its upper and lower bounds.
     type_variable_storage: type_variable::TypeVariableStorage<'tcx>,
@@ -994,7 +998,8 @@ impl<'tcx> InferCtxt<'tcx> {
             | ty::AliasTermKind::OpaqueTy { .. }
             | ty::AliasTermKind::FreeTy { .. } => self.next_ty_var(span).into(),
             ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::AnonConst { .. }
             | ty::AliasTermKind::ProjectionConst { .. } => self.next_const_var(span).into(),
         }
@@ -1475,10 +1480,10 @@ impl<'tcx> InferCtxt<'tcx> {
         value: ty::Binder<'tcx, T>,
     ) -> T
     where
-        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if let Some(inner) = value.no_bound_vars() {
-            return inner;
+        if let Some(_) = value.as_ref().no_bound_vars() {
+            return value.skip_binder();
         }
 
         let bound_vars = value.bound_vars();
@@ -1512,6 +1517,48 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let delegate = ToFreshVars { args };
         self.tcx.replace_bound_vars_uncached(value, delegate)
+    }
+
+    pub fn insert_placeholder_assumptions(
+        &self,
+        u: ty::UniverseIndex,
+        assumptions: Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
+    ) {
+        if let Some(assumptions) = &assumptions {
+            assert!(
+                !assumptions.type_outlives.has_escaping_bound_vars(),
+                "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
+                assumptions.type_outlives
+            );
+            assert!(
+                assumptions.region_outlives.base_edges().all(|r| !r.has_escaping_bound_vars()),
+                "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
+                assumptions.region_outlives
+            );
+        }
+        self.placeholder_assumptions_for_next_solver.borrow_mut().insert(u, assumptions);
+    }
+
+    pub fn get_placeholder_assumptions(
+        &self,
+        u: ty::UniverseIndex,
+    ) -> Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>> {
+        self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().as_ref().cloned()
+    }
+
+    pub fn get_solver_region_constraint(&self) -> SolverRegionConstraint<'tcx> {
+        self.inner.borrow().solver_region_constraint_storage.get_constraint()
+    }
+
+    pub fn overwrite_solver_region_constraint(&self, constraint: SolverRegionConstraint<'tcx>) {
+        assert!(
+            !constraint.has_escaping_bound_vars(),
+            "solver region constraint has escaping bound vars, which is indicative of a bug in how constraints are handled: {constraint:?}",
+        );
+        let mut inner = self.inner.borrow_mut();
+        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
+        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
+        inner.solver_region_constraint_storage.overwrite(constraint);
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

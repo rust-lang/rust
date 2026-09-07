@@ -1034,7 +1034,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|clause| {
+        let bounds = self.param_env.caller_bounds().filter_map(|clause| {
             let bound_clause = clause.kind();
             match bound_clause.skip_binder() {
                 ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
@@ -1087,7 +1087,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
-                if duplicates.insert(trait_did) {
+                // If we have the same trait in scope but one of them is ambiguous and the other
+                // is not, we should treat them differently and then handle them later on.
+                if duplicates.insert((trait_did, trait_candidate.lint_ambiguous)) {
                     self.assemble_extension_candidates_for_trait(
                         &trait_candidate.import_ids,
                         trait_did,
@@ -2182,28 +2184,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
             }
 
-            // See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/134>.
-            //
-            // In the new solver, check the well-formedness of the return type.
-            // This emulates, in a way, the predicates that fall out of
-            // normalizing the return type in the old solver.
-            //
-            // FIXME(-Znext-solver): We alternatively could check the predicates of
-            // the method itself hold, but we intentionally do not do this in the old
-            // solver b/c of cycles, and doing it in the new solver would be stronger.
-            // This should be fixed in the future, since it likely leads to much better
-            // method winnowing.
-            if let Some(xform_ret_ty) = xform_ret_ty
-                && self.infcx.next_trait_solver()
-            {
-                ocx.register_obligation(traits::Obligation::new(
-                    self.tcx,
-                    cause.clone(),
-                    self.param_env,
-                    ty::ClauseKind::WellFormed(xform_ret_ty.into()),
-                ));
-            }
-
             // Evaluate those obligations to see if they might possibly hold.
             for error in ocx.try_evaluate_obligations() {
                 result = ProbeResult::NoMatch;
@@ -2381,10 +2361,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        let lint_ambiguous = match probes[0].0.kind {
+        // They are all the same, so if any of them is ambiguous, we report the pick as ambiguous.
+        let lint_ambiguous = probes.iter().any(|(p, _)| match p.kind {
             TraitCandidate(_, lint) => lint,
             _ => false,
-        };
+        });
 
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
@@ -2465,7 +2446,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        let lint_ambiguous = match probes[0].0.kind {
+        let lint_ambiguous = match child_candidate.kind {
             TraitCandidate(_, lint) => lint,
             _ => false,
         };

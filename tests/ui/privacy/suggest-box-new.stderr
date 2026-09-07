@@ -147,10 +147,10 @@ LL -     let _ = Box::<i32> {};
 LL +     let _ = Box::<i32>::new_in(_, _);
    |
 LL -     let _ = Box::<i32> {};
-LL +     let _ = Box::<i32>::map(_, _);
+LL +     let _ = Box::<i32>::into_inner(_);
    |
 LL -     let _ = Box::<i32> {};
-LL +     let _ = Box::<i32>::into_inner(_);
+LL +     let _ = Box::<i32>::map(_, _);
    |
    = and 7 other candidates
 help: consider using the `Default` trait

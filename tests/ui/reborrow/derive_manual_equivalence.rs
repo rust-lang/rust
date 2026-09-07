@@ -1,5 +1,8 @@
 //@ run-pass
 
+//! Test that deriving CoerceShared automatically or implementing it manually on equivalent types
+//! work equivalently.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 

@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
-  --> $DIR/coerce-shared-reordered-field.rs:19:1
+  --> $DIR/coerce-shared-reordered-field.rs:21:1
    |
 LL | impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}
    | ^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^--------------^^^

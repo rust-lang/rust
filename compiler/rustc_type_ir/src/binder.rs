@@ -1028,7 +1028,7 @@ impl<I: Interner> BoundRegionKind<I> {
         match *self {
             ty::BoundRegionKind::Named(def_id) => {
                 let name = tcx.item_name(def_id);
-                if name.is_kw_underscore_lifetime() { None } else { Some(name) }
+                if name == I::Symbol::KW_UNDERSCORE_LIFETIME { None } else { Some(name) }
             }
             ty::BoundRegionKind::NamedForPrinting(name) => Some(name),
             _ => None,
@@ -1258,7 +1258,7 @@ impl<I: Interner> PlaceholderConst<I> {
     }
 
     pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
-        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {

@@ -1,6 +1,6 @@
 # Autodiff CI job
 
-The [`optional-x86_64-gnu-autodiff`] job provides continuous test coverage for
+The [`optional-test-x86_64-gnu-autodiff`] job provides continuous test coverage for
 the experimental `autodiff` feature and its integration with LLVM Enzyme.
 It is an optional [auto job](./ci.md#auto-builds), so a failure does not prevent a
 pull request from being merged.
@@ -41,4 +41,4 @@ For suspected Enzyme backend failures, see the [autodiff debugging guide].
 [autodiff Zulip channel]: https://rust-lang.zulipchat.com/#narrow/channel/390790-wg-autodiff
 [autodiff debugging guide]: ../autodiff/debugging.md
 [autodiff tracking issue]: https://github.com/rust-lang/rust/issues/124509
-[`optional-x86_64-gnu-autodiff`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/github-actions/jobs.yml
+[`optional-test-x86_64-gnu-autodiff`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/github-actions/jobs.yml

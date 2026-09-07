@@ -80,14 +80,16 @@ impl<'tcx> ConstToPat<'tcx> {
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         if let ty::ConstKind::Alias(_, alias_const) = self.c.kind() {
             if let ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id } = alias_const.kind
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id } = alias_const.kind
                 && let Some(def_id) = def_id.as_local()
             {
                 // Include the container item in the output.
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
             if let ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id } = alias_const.kind
             {
                 err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
@@ -134,11 +136,18 @@ impl<'tcx> ConstToPat<'tcx> {
             return self.mk_err(err, ty);
         };
 
-        // FIXME(gca): This will become insufficient once associated constants can be
-        // implemented as `type` consts (project-const-generics#76). At that point it'll
-        // become necessary to just use type system normalization for all const patterns
-        // but that's not yet possible.
-        let const_value = if alias_const.kind.is_type_const(self.tcx) {
+        // Under generic_const_args, `alias_const` might be a regular const declared in a trait, but
+        // is `impl`d as a directly represented const. We do not know whether it is here, so we must
+        // use type system normalization for all consts under generic_const_args.
+        //
+        // We probably want to always use type system normalization on stable too, but that would be
+        // a breaking change (in addition to needing significant improvements to diagnostics), so
+        // right now, we limit this to just generic_const_args.
+        //
+        // See: https://github.com/rust-lang/project-const-generics/issues/105
+        let const_value = if self.tcx.features().generic_const_args()
+            || alias_const.kind.is_direct_const(self.tcx)
+        {
             let Ok(normalize) = self
                 .tcx
                 .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(self.c))
@@ -166,7 +175,8 @@ impl<'tcx> ConstToPat<'tcx> {
                         // on its use as well.
                         if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
                             && let ty::AliasConstKind::Projection { .. }
-                            | ty::AliasConstKind::Inherent { .. }
+                            | ty::AliasConstKind::InherentSelf { .. }
+                            | ty::AliasConstKind::InherentImpl { .. }
                             | ty::AliasConstKind::Free { .. } = alias_const.kind
                         {
                             err.downgrade_to_delayed_bug();

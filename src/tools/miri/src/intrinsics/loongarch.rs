@@ -44,7 +44,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [data, crc] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [data, crc] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let data = this.read_scalar(data)?;
                 let crc = this.read_scalar(crc)?;
 

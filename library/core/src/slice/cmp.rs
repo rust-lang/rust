@@ -176,7 +176,7 @@ const trait SliceChain: Sized {
     fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
 }
 
-type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
+type AlwaysBreak<B> = ControlFlow<B, !>;
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd> SlicePartialOrd for A {
@@ -386,6 +386,7 @@ impl<T> SliceContains for T
 where
     T: PartialEq,
 {
+    #[expect(clippy::manual_contains, reason = "implements slice_contains")]
     default fn slice_contains(&self, x: &[Self]) -> bool {
         x.iter().any(|y| *y == *self)
     }
@@ -393,6 +394,7 @@ where
 
 impl<T: BytewiseEq> SliceContains for T {
     #[inline]
+    #[expect(clippy::manual_contains, reason = "implements slice_contains")]
     default fn slice_contains(&self, x: &[Self]) -> bool {
         if size_of::<T>() == 1 {
             // SAFETY: `BytewiseEq` guarantees that values have no padding or provenance and

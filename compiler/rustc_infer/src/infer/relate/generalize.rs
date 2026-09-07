@@ -182,7 +182,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 | ty::AliasTermKind::OpaqueTy { .. } => {
                     return Err(TypeError::CyclicTy(source_term.expect_type()));
                 }
-                ty::AliasTermKind::InherentConst { .. }
+                ty::AliasTermKind::InherentConstSelf { .. }
+                | ty::AliasTermKind::InherentConstImpl { .. }
                 | ty::AliasTermKind::FreeConst { .. }
                 | ty::AliasTermKind::AnonConst { .. } => {
                     return Err(TypeError::CyclicConst(source_term.expect_const()));

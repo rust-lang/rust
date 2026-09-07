@@ -48,8 +48,15 @@
 //@ lldb-command:v box_str
 //@ lldb-check:(alloc::boxed::Box<str, alloc::alloc::Global>) box_str = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' }
 
-//@ lldb-command:v rc_str
-//@ lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }
+// Disabled temporarily since it only "works" by accident
+// `value` is a wide pointer, whose `data_ptr` type, according to LLDB, is `unsigned char[]`. LLDB
+// reads this as a c-string by default. On Linux this fairly consistenly results in the expected
+// output below. On Windows, the string data is often not followed by a null byte and attempts to
+// read OOB memory. This will be fixed as part of #161657
+// lldb-command:v rc_str
+
+// ignore-tidy-linelength
+// lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }
 
 #![allow(unused_variables)]
 

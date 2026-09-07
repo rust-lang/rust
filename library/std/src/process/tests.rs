@@ -16,14 +16,12 @@ fn known_command() -> Command {
     }
 }
 
-#[cfg(target_os = "android")]
 fn shell_cmd() -> Command {
-    Command::new("/system/bin/sh")
-}
-
-#[cfg(not(target_os = "android"))]
-fn shell_cmd() -> Command {
-    Command::new("/bin/sh")
+    if cfg!(target_os = "android") || cfg!(target_os = "motor") {
+        Command::new("/system/bin/sh")
+    } else {
+        Command::new("/bin/sh")
+    }
 }
 
 #[test]

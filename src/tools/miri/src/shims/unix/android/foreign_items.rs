@@ -31,9 +31,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, count, offset] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
@@ -45,9 +43,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, n, offset] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
@@ -60,9 +56,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, offset, whence] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, i32) -> libc::off64_t),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
@@ -72,9 +66,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "ftruncate64" => {
                 let [fd, length] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let length = this.read_scalar(length)?.to_int(length.layout.size)?;

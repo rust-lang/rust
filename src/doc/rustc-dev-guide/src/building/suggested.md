@@ -90,29 +90,19 @@ Running `./x setup editor` will prompt you to create a project-local LSP config
 file for one of the supported editors.
 You can also create the config file as a step of running `./x setup`.
 
-### Using a separate build directory for rust-analyzer
+### Using a shared build directory for rust-analyzer
 
-By default, when rust-analyzer runs a check or format command, it will share
-the same build directory as manual command-line builds.
-This can be inconvenient for two reasons:
+By default, when rust-analyzer runs a bootstrap command,
+it will use a separate build directory from manual command-line builds.
+You can override this your generated LSP config file if you want to save disk space.
+
+However, this is not recommended:
 - Each build will lock the build directory and force the other to wait, so it
   becomes impossible to run command-line builds while rust-analyzer is running
   commands in the background.
 - There is an increased risk of one of the builds deleting previously-built
   artifacts due to conflicting compiler flags or other settings, forcing
   additional rebuilds in some cases.
-
-To avoid these problems:
-- Add `--build-dir=build-rust-analyzer` to all of the custom `x` commands in
-  your editor's rust-analyzer configuration.
-  (Feel free to choose a different directory name if desired.)
-- Modify the `rust-analyzer.rustfmt.overrideCommand` setting so that it points
-  to the copy of `rustfmt` in that other build directory.
-- Modify the `rust-analyzer.procMacro.server` setting so that it points to the
-  copy of `rust-analyzer-proc-macro-srv` in that other build directory.
-
-Using separate build directories for command-line builds and rust-analyzer
-requires extra disk space.
 
 ### Visual Studio Code
 
