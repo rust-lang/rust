@@ -15,7 +15,8 @@ use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::AttributeSafety;
 use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use crate::{
-    AttributeParser, AttributeTemplate, ParsedDescription, ShouldEmit, diagnostics, parse_cfg_entry,
+    AttributeParser, AttributeTemplate, EvalConfigResult, ParsedDescription, ShouldEmit,
+    diagnostics, parse_cfg_entry,
 };
 
 #[derive(Clone)]
@@ -49,11 +50,16 @@ impl CfgSelectBranches {
     /// or the wildcard if none of the reachable branches satisfied the predicate.
     pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(CfgEntry, TokenStream, Span)>
     where
-        F: Fn(&CfgEntry) -> bool,
+        F: Fn(&CfgEntry) -> EvalConfigResult,
     {
-        for (index, (cfg, _, _)) in self.reachable.iter().enumerate() {
-            if predicate(cfg) {
-                return Some(self.reachable.remove(index));
+        for (index, (cfg, _, _)) in self.reachable.iter_mut().enumerate() {
+            match predicate(cfg) {
+                EvalConfigResult::True => {
+                    return Some(self.reachable.remove(index));
+                }
+                EvalConfigResult::False { reason } => {
+                    *cfg = reason;
+                }
             }
         }
 
