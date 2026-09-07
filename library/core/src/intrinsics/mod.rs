@@ -3196,8 +3196,8 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_allow_const_fn_unstable(const_cmp, const_trait_impl, core_intrinsics)]
-pub const fn minimum_number_nsz<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+#[rustc_do_not_const_check]
+pub const fn minimum_number_nsz<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x.is_nan() || y <= x {
         y
     } else {
@@ -3224,8 +3224,8 @@ pub const fn minimum_number_nsz<T: const bounds::FloatPrimitive>(x: T, y: T) -> 
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_allow_const_fn_unstable(const_cmp, const_trait_impl, core_intrinsics)]
-pub const fn maximum_number_nsz<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+#[rustc_do_not_const_check]
+pub const fn maximum_number_nsz<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x.is_nan() || y >= x {
         y
     } else {
@@ -3247,8 +3247,8 @@ pub const fn maximum_number_nsz<T: const bounds::FloatPrimitive>(x: T, y: T) -> 
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_allow_const_fn_unstable(const_cmp, const_ops, const_trait_impl, core_intrinsics)]
-pub const fn minimum<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+#[rustc_do_not_const_check]
+pub const fn minimum<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x < y {
         x
     } else if y < x {
@@ -3274,8 +3274,8 @@ pub const fn minimum<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_allow_const_fn_unstable(const_cmp, const_ops, const_trait_impl, core_intrinsics)]
-pub const fn maximum<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+#[rustc_do_not_const_check]
+pub const fn maximum<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     if x > y {
         x
     } else if y > x {
@@ -3296,8 +3296,8 @@ pub const fn maximum<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
-#[rustc_allow_const_fn_unstable(const_ops, const_trait_impl, core_intrinsics)]
-pub const fn fabs<T: const bounds::FloatPrimitive>(x: T) -> T {
+#[rustc_do_not_const_check]
+pub const fn fabs<T: bounds::FloatPrimitive>(x: T) -> T {
     T::from_bits(x.to_bits() & !T::SIGN_MASK)
 }
 
@@ -3309,9 +3309,9 @@ pub const fn fabs<T: const bounds::FloatPrimitive>(x: T) -> T {
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_allow_const_fn_unstable(const_ops, const_trait_impl, core_intrinsics)]
+#[rustc_do_not_const_check]
 #[miri::intrinsic_fallback_is_spec]
-pub const fn copysign<T: const bounds::FloatPrimitive>(x: T, y: T) -> T {
+pub const fn copysign<T: bounds::FloatPrimitive>(x: T, y: T) -> T {
     T::from_bits((x.to_bits() & !T::SIGN_MASK) | (y.to_bits() & T::SIGN_MASK))
 }
 

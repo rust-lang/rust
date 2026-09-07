@@ -44,13 +44,12 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
 ///
 /// # Safety
 /// Must actually *be* such a type.
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-pub const unsafe trait FloatPrimitive:
-    Sized + Copy + [const] PartialOrd + [const] core::ops::Add<Output = Self>
+pub unsafe trait FloatPrimitive:
+    Sized + Copy + PartialOrd + core::ops::Add<Output = Self>
 {
-    type UInt: const core::ops::BitOr<Output = Self::UInt>
-        + const core::ops::BitAnd<Output = Self::UInt>
-        + const core::ops::Not<Output = Self::UInt>;
+    type UInt: core::ops::BitOr<Output = Self::UInt>
+        + core::ops::BitAnd<Output = Self::UInt>
+        + core::ops::Not<Output = Self::UInt>;
     const SIGN_MASK: Self::UInt;
     fn to_bits(self) -> Self::UInt;
     fn from_bits(bits: Self::UInt) -> Self;
@@ -61,8 +60,7 @@ pub const unsafe trait FloatPrimitive:
 
 macro_rules! impl_float_primitive {
     ($($float:ident => $bits:ident),+) => {$(
-        #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-        const unsafe impl FloatPrimitive for $float {
+        unsafe impl FloatPrimitive for $float {
             type UInt = $bits;
             const SIGN_MASK: Self::UInt = $float::SIGN_MASK;
             #[inline]
