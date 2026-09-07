@@ -108,7 +108,7 @@ pub(crate) struct OffloadBundleImagesFailed;
 pub(crate) struct OffloadEmbedFailed;
 
 #[derive(Diagnostic)]
-#[diag("call to WrapImages failed, `wrapper.o` was not created")]
+#[diag("call to WrapImages failed, device image was not wrapped into the host module")]
 pub(crate) struct OffloadWrapImagesFailed;
 
 #[derive(Diagnostic)]

@@ -6,18 +6,26 @@
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Frontend/Offloading/OffloadWrapper.h"
 #include "llvm/Frontend/Offloading/Utility.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/OffloadBinary.h"
+#include "llvm/Support/CodeGen.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileOutputBuffer.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/Path.h"
+#include "llvm/Support/MemoryBufferRef.h"
 #include "llvm/Support/Program.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
@@ -26,6 +34,7 @@
 #include <optional>
 #include <string>
 #include <system_error>
+#include <utility>
 
 using namespace llvm;
 using namespace llvm::object;
@@ -162,72 +171,151 @@ static bool reportAndFailWrappingImages(Error E, const char *What) {
 }
 
 static Expected<std::unique_ptr<MemoryBuffer>>
-compileAndLinkDeviceImages(const OffloadBinary &Input, const char *ClangPath) {
-  const Triple DeviceTriple(Input.getTriple());
-  const StringRef Arch = Input.getArch();
+assembleWithPtxas(StringRef Ptx, StringRef Arch) {
+  const ErrorOr<std::string> Ptxas = sys::findProgramByName("ptxas");
+  if (!Ptxas)
+    return createStringError(Ptxas.getError(), "ptxas not found in PATH");
 
-  SmallString<128> TempDir;
+  SmallString<128> PtxFilePath;
   if (std::error_code E =
-          sys::fs::createUniqueDirectory("rust-offload", TempDir))
+          sys::fs::createTemporaryFile("rust-offload", "ptx", PtxFilePath))
+    return errorCodeToError(E);
+
+  SmallString<128> CubinFilePath;
+  if (std::error_code E =
+          sys::fs::createTemporaryFile("rust-offload", "cubin", CubinFilePath))
     return errorCodeToError(E);
 
   auto Cleanup = scope_exit([&] {
-    if (std::error_code E = sys::fs::remove_directories(TempDir))
+    if (std::error_code E = sys::fs::remove(PtxFilePath))
       (void)reportAndFailWrappingImages(
-          errorCodeToError(E), "compileAndLinkDeviceImages: tempdir cleanup");
+          errorCodeToError(E), "assembleWithPtxas: PtxFilePath cleanup");
+    if (std::error_code E = sys::fs::remove(CubinFilePath))
+      (void)reportAndFailWrappingImages(
+          errorCodeToError(E), "assembleWithPtxas: CubinFilePath cleanup");
   });
 
-  SmallString<128> OutputPath(TempDir);
-  sys::path::append(OutputPath, "device.img");
-
-  SmallVector<std::string> ArgStorage{
-      ClangPath,
-      "--no-default-config",
-      "--target=" + DeviceTriple.str(),
-      "-o",
-      OutputPath.str().str(),
-      "-dumpdir",
-      OutputPath.str().str() + ".",
-  };
-
-  if (!Arch.empty() && Arch != "generic")
-    ArgStorage.push_back(
-        ((DeviceTriple.isAMDGPU() ? "-mcpu=" : "-march=") + Arch).str());
-
-  if (DeviceTriple.isAMDGPU())
-    ArgStorage.push_back("-Wl,--no-undefined");
-
-  SmallString<128> InputPath(TempDir);
-  sys::path::append(InputPath, "input.o");
-
-  if (Error E = writeFile(InputPath, Input.getImage()))
+  if (Error E = writeFile(PtxFilePath, Ptx))
     return std::move(E);
 
-  ArgStorage.push_back(InputPath.str().str());
+  const StringRef Args[] = {
+      *Ptxas, "-m64",          "-O3",         "--gpu-name",
+      Arch,   "--output-file", CubinFilePath, PtxFilePath,
+  };
 
-  SmallVector<StringRef> CmdArgs;
-  for (const StringRef Arg : ArgStorage)
-    CmdArgs.push_back(Arg);
-
-  std::string ExecError;
-  int Status = sys::ExecuteAndWait(ClangPath, CmdArgs, std::nullopt, {}, 0, 0,
-                                   &ExecError);
+  std::string ErrorMsg;
+  const int Status =
+      sys::ExecuteAndWait(*Ptxas, Args, std::nullopt, {}, 0, 0, &ErrorMsg);
 
   if (Status != 0)
-    return createStringError("compileAndLinkDeviceImages: device compiler "
-                             "failed for %s/%s (status %d): %s",
-                             DeviceTriple.str().c_str(), Arch.str().c_str(),
-                             Status, ExecError.c_str());
+    return createStringError("assembleWithPtxas: status %d: %s", Status,
+                             ErrorMsg.c_str());
 
-  auto ImageOrErr = MemoryBuffer::getFileAsStream(OutputPath);
-  if (!ImageOrErr)
-    return createFileError(OutputPath, ImageOrErr.getError());
+  ErrorOr<std::unique_ptr<MemoryBuffer>> CubinOrError =
+      MemoryBuffer::getFileAsStream(CubinFilePath);
+  if (!CubinOrError)
+    return errorCodeToError(CubinOrError.getError());
 
-  return std::move(*ImageOrErr);
+  return std::move(*CubinOrError);
+}
+
+static Expected<std::unique_ptr<MemoryBuffer>>
+linkWithRustLld(StringRef Obj, StringRef LldPath) {
+  SmallString<128> ObjFilePath;
+  if (std::error_code E =
+          sys::fs::createTemporaryFile("rust-offload", "o", ObjFilePath))
+    return errorCodeToError(E);
+
+  SmallString<128> SoFilePath;
+  if (std::error_code E =
+          sys::fs::createTemporaryFile("rust-offload", "so", SoFilePath))
+    return errorCodeToError(E);
+
+  auto Cleanup = scope_exit([&] {
+    if (std::error_code E = sys::fs::remove(ObjFilePath))
+      (void)reportAndFailWrappingImages(errorCodeToError(E),
+                                        "linkWithRustLld: ObjFilePath cleanup");
+    if (std::error_code E = sys::fs::remove(SoFilePath))
+      (void)reportAndFailWrappingImages(errorCodeToError(E),
+                                        "linkWithRustLld: SoFilePath cleanup");
+  });
+
+  if (Error E = writeFile(ObjFilePath, Obj))
+    return std::move(E);
+
+  const StringRef Args[] = {
+      LldPath,          "-flavor", "gnu",      "-shared",
+      "--no-undefined", "-o",      SoFilePath, ObjFilePath,
+  };
+
+  std::string ErrorMsg;
+  const int Status =
+      sys::ExecuteAndWait(LldPath, Args, std::nullopt, {}, 0, 0, &ErrorMsg);
+
+  if (Status != 0)
+    return createStringError("linkWithRustLld: status %d: %s", Status,
+                             ErrorMsg.c_str());
+
+  ErrorOr<std::unique_ptr<MemoryBuffer>> ElfOrError =
+      MemoryBuffer::getFileAsStream(SoFilePath);
+  if (!ElfOrError)
+    return errorCodeToError(ElfOrError.getError());
+
+  return std::move(*ElfOrError);
+}
+
+static Expected<std::unique_ptr<MemoryBuffer>>
+compileDeviceImage(const OffloadBinary &Input, const char *LldPath) {
+  const Triple DeviceTriple(Input.getTriple());
+  const StringRef Arch = Input.getArch();
+
+  LLVMContext Ctx;
+  Expected<std::unique_ptr<Module>> ImageObjOrError =
+      parseBitcodeFile(MemoryBufferRef(Input.getImage(), "device.bc"), Ctx);
+  if (!ImageObjOrError)
+    return ImageObjOrError.takeError();
+
+  std::string ErrorMsg;
+  const Target *DeviceTarget =
+      TargetRegistry::lookupTarget(DeviceTriple, ErrorMsg);
+  if (!DeviceTarget)
+    return createStringError(ErrorMsg);
+
+  std::unique_ptr<TargetMachine> TM(DeviceTarget->createTargetMachine(
+      DeviceTriple, Arch, /*Features=*/"", TargetOptions(), Reloc::PIC_));
+  if (!TM)
+    return createStringError("createTargetMachine failed for %s",
+                             DeviceTriple.str().c_str());
+
+  const bool IsNvptx = DeviceTriple.isNVPTX();
+
+  legacy::PassManager PM;
+  SmallString<0> Emitted;
+  raw_svector_ostream OS(Emitted);
+  const CodeGenFileType FileType =
+      IsNvptx ? CodeGenFileType::AssemblyFile : CodeGenFileType::ObjectFile;
+  if (TM->addPassesToEmitFile(PM, OS, nullptr, FileType))
+    return createStringError("target %s cannot emit %s",
+                             DeviceTriple.str().c_str(),
+                             IsNvptx ? "assembly" : "object");
+
+  PM.run(**ImageObjOrError);
+
+  if (IsNvptx)
+    return assembleWithPtxas(Emitted, Arch);
+  if (DeviceTriple.isAMDGPU()) {
+    if (!LldPath || !*LldPath)
+      return createStringError("rust-lld path was not provided for %s",
+                               DeviceTriple.str().c_str());
+    return linkWithRustLld(Emitted, LldPath);
+  }
+
+  return createStringError("unsupported offload target %s",
+                           DeviceTriple.str().c_str());
 }
 
 extern "C" bool LLVMRustOffloadWrapImages(LLVMModuleRef HostMRef,
-                                          const char *ClangPath,
+                                          const char *LldPath,
                                           const char *DeviceBinPath) {
   Module &M = *unwrap(HostMRef);
   if (!hasOffloadEntries(M))
@@ -246,9 +334,10 @@ extern "C" bool LLVMRustOffloadWrapImages(LLVMModuleRef HostMRef,
 
   const OffloadBinary &Input = *Binaries.front().getBinary();
 
-  auto ImageOrErr = compileAndLinkDeviceImages(Input, ClangPath);
+  auto ImageOrErr = compileDeviceImage(Input, LldPath);
   if (!ImageOrErr)
-    return reportAndFailWrappingImages(ImageOrErr.takeError(), "device link");
+    return reportAndFailWrappingImages(ImageOrErr.takeError(),
+                                       "device compile");
 
   StringRef ImageBuf = (*ImageOrErr)->getBuffer();
   ArrayRef<char> Image(ImageBuf.data(), ImageBuf.size());
