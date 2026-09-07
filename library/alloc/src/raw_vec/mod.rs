@@ -184,9 +184,9 @@ const impl<T, A: [const] Allocator + [const] Destruct> RawVec<T, A> {
     /// A specialized version of `self.reserve(len, 1)` which requires the
     /// caller to ensure `len == self.capacity()`.
     #[cfg(not(no_global_oom_handling))]
-    #[inline(never)]
+    #[inline(always)]
     pub(crate) fn grow_one(&mut self) {
-        // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout
+        // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout.
         unsafe { self.inner.grow_one(T::LAYOUT) }
     }
 }
@@ -500,12 +500,55 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     #[cfg(not(no_global_oom_handling))]
-    #[inline]
+    #[inline(always)]
     unsafe fn grow_one(&mut self, elem_layout: Layout) {
-        // SAFETY: Precondition passed to caller
-        if let Err(err) = unsafe { self.grow_amortized(self.cap.as_inner(), 1, elem_layout) } {
-            handle_error(err);
+        // Allocators must not unwind. Return the owned inner on allocation errors, restore it, and
+        // only then enter the error handler, which may panic.
+        let owned = unsafe { ptr::read(self) };
+        let (owned, error) = match owned.grow_one_owned(elem_layout) {
+            Ok(owned) => (owned, None),
+            Err((owned, error)) => (owned, Some(error)),
+        };
+        unsafe { ptr::write(self, owned) };
+        if let Some(error) = error {
+            handle_error(error);
         }
+    }
+
+    /// By-value runtime fallback for `Vec::push`. A zero-sized `A` contributes no ABI argument.
+    #[cfg(not(no_global_oom_handling))]
+    #[inline(never)]
+    fn grow_one_owned(mut self, elem_layout: Layout) -> Result<Self, (Self, TryReserveError)> {
+        if elem_layout.size() == 0 {
+            return Err((self, CapacityOverflow.into()));
+        }
+
+        let old_cap = self.cap.as_inner();
+        let cap = if old_cap == 0 { min_non_zero_cap(elem_layout.size()) } else { old_cap * 2 };
+        let new_layout = match layout_array(cap, elem_layout) {
+            Ok(layout) => layout,
+            Err(error) => return Err((self, error)),
+        };
+
+        let memory = if old_cap == 0 {
+            self.alloc.allocate(new_layout)
+        } else {
+            let (ptr, old_layout) = unsafe { self.current_memory(elem_layout).unwrap_unchecked() };
+            debug_assert!(old_layout.align() == new_layout.align());
+            unsafe {
+                hint::assert_unchecked(old_layout.align() == new_layout.align());
+                self.alloc.grow(ptr, old_layout, new_layout)
+            }
+        };
+        let ptr = match memory {
+            Ok(ptr) => ptr,
+            Err(_) => {
+                let error = AllocError { layout: new_layout, non_exhaustive: () }.into();
+                return Err((self, error));
+            }
+        };
+        unsafe { self.set_ptr_and_cap(ptr, cap) };
+        Ok(self)
     }
 
     /// # Safety

@@ -2316,6 +2316,7 @@ symbols! {
         variant_non_exhaustive,
         variants,
         vec,
+        vec_push,
         vector,
         verbatim,
         version,

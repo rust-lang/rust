@@ -131,6 +131,7 @@ declare_passes! {
     mod check_const_item_mutation : CheckConstItemMutation;
     mod check_null : CheckNull;
     mod check_packed_ref : CheckPackedRef;
+    mod capture_mut_vec : CaptureMutVec;
     mod check_mut_restriction : CheckMutRestriction;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
@@ -698,6 +699,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &check_alignment::CheckAlignment,
             &check_null::CheckNull,
             &check_enums::CheckEnums,
+            &capture_mut_vec::CaptureMutVec,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
