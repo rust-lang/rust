@@ -175,6 +175,8 @@ struct SubExpr {
 struct ChainItem {
     kind: ChainItemKind,
     tries: usize,
+    // The entire span of the chain item, including the leading dot and any comments, e.g.
+    // `.some_method(arg, arg)`, or  `. /* a comment */ my_attribute`.
     span: Span,
 }
 
@@ -421,7 +423,7 @@ impl Chain {
             prev_span_end: &mut BytePos,
             children: &mut Vec<ChainItem>,
         ) {
-            let white_spaces: &[_] = &[' ', '\t'];
+            let white_spaces = &[' ', '\t'];
             if post_comment_snippet
                 .trim_matches(white_spaces)
                 .starts_with('\n')
@@ -445,6 +447,8 @@ impl Chain {
         let mut prev_span_end = parent.span.hi();
         let mut iter = rev_children.into_iter().rev().peekable();
         if let Some(first_chain_item) = iter.peek() {
+            // `parent? /* maybe comment */ . /* maybe comment */ first_child`
+            //        ^------------------- ^ comment_span
             let comment_span = mk_sp(prev_span_end, first_chain_item.span.lo());
             let comment_snippet = context.snippet(comment_span);
             if !is_tries(comment_snippet.trim()) {
@@ -466,16 +470,14 @@ impl Chain {
             if handle_comment {
                 let pre_comment_span = mk_sp(prev_span_end, chain_item.span.lo());
                 let pre_comment_snippet = trim_tries(context.snippet(pre_comment_span));
-                let (pre_comment, _) = extract_pre_comment(&pre_comment_snippet);
-                match pre_comment {
-                    Some(ref comment) if !comment.is_empty() => {
+                if let (Some(pre_comment), _) = extract_pre_comment(&pre_comment_snippet) {
+                    if !pre_comment.is_empty() {
                         children.push(ChainItem::comment(
                             pre_comment_span,
-                            comment.to_owned(),
+                            pre_comment.to_owned(),
                             CommentPosition::Top,
                         ));
                     }
-                    _ => (),
                 }
             }
 
@@ -509,7 +511,8 @@ impl Chain {
             is_postfix_receiver: false,
         }];
 
-        while let Some(subexpr) = Self::pop_expr_chain(subexpr_list.last().unwrap(), context) {
+        while let Some(subexpr) = Self::pop_expr_chain(&subexpr_list.last().unwrap().expr, context)
+        {
             subexpr_list.push(subexpr);
         }
 
@@ -518,20 +521,20 @@ impl Chain {
 
     // Returns the expression's subexpression, if it exists. When the subexpr
     // is a try! macro, we'll convert it to shorthand when the option is set.
-    fn pop_expr_chain(expr: &SubExpr, context: &RewriteContext<'_>) -> Option<SubExpr> {
-        match expr.expr.kind {
-            ast::ExprKind::MethodCall(ref call) => Some(SubExpr {
+    fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext<'_>) -> Option<SubExpr> {
+        match &expr.kind {
+            ast::ExprKind::MethodCall(call) => Some(SubExpr {
                 expr: Self::convert_try(&call.receiver, context),
                 is_postfix_receiver: true,
             }),
-            ast::ExprKind::Field(ref subexpr, _)
-            | ast::ExprKind::Await(ref subexpr, _)
-            | ast::ExprKind::Use(ref subexpr, _)
-            | ast::ExprKind::Yield(ast::YieldKind::Postfix(ref subexpr)) => Some(SubExpr {
+            ast::ExprKind::Field(subexpr, _)
+            | ast::ExprKind::Await(subexpr, _)
+            | ast::ExprKind::Use(subexpr, _)
+            | ast::ExprKind::Yield(ast::YieldKind::Postfix(subexpr)) => Some(SubExpr {
                 expr: Self::convert_try(subexpr, context),
                 is_postfix_receiver: true,
             }),
-            ast::ExprKind::Try(ref subexpr) => Some(SubExpr {
+            ast::ExprKind::Try(subexpr) => Some(SubExpr {
                 expr: Self::convert_try(subexpr, context),
                 is_postfix_receiver: false,
             }),
@@ -540,13 +543,9 @@ impl Chain {
     }
 
     fn convert_try(expr: &ast::Expr, context: &RewriteContext<'_>) -> ast::Expr {
-        match expr.kind {
-            ast::ExprKind::MacCall(ref mac) if context.config.use_try_shorthand() => {
-                if let Some(subexpr) = convert_try_mac(mac, context) {
-                    subexpr
-                } else {
-                    expr.clone()
-                }
+        match &expr.kind {
+            ast::ExprKind::MacCall(mac) if context.config.use_try_shorthand() => {
+                convert_try_mac(mac, context).unwrap_or(expr.clone())
             }
             _ => expr.clone(),
         }
