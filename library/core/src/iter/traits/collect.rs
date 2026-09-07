@@ -151,7 +151,9 @@ pub const trait FromIterator<T>: Sized {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "from_iter_fn"]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self;
+    fn from_iter<I: [const] IntoIterator<Item = T>>(iter: I) -> Self
+    where
+        I::IntoIter: [const] Destruct;
 }
 
 /// Conversion into an [`Iterator`].
@@ -678,12 +680,17 @@ macro_rules! impl_extend_tuple {
         }
 
         #[doc(hidden)]
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
         #[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
-        impl<$($ty,)+ $($extend_ty,)+> FromIterator<($($ty,)+)> for ($($extend_ty,)+)
+        const impl<$($ty,)+ $($extend_ty,)+> FromIterator<($($ty,)+)> for ($($extend_ty,)+)
         where
-            $($extend_ty: Default + Extend<$ty>,)+
+            $($ty: [const] Destruct,)+
+            $($extend_ty: [const] Default + [const] Extend<$ty>,)+
         {
-            fn from_iter<Iter: IntoIterator<Item = ($($ty,)+)>>(iter: Iter) -> Self {
+            fn from_iter<Iter: [const] IntoIterator<Item = ($($ty,)+)>>(iter: Iter) -> Self
+            where
+                Iter::IntoIter: [const] Destruct
+            {
                 let mut res = Self::default();
                 res.extend(iter);
                 res
