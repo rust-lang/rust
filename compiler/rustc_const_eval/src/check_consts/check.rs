@@ -830,20 +830,19 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // as well skip the remaining checks.
                         return;
                     }
-                    // We use `intrinsic.const_stable` to determine if this can be safely exposed to
-                    // stable code, rather than `const_stable_indirect`. This is to make
-                    // `#[rustc_const_stable_indirect]` an attribute that is always safe to add.
-                    // We also ask is_safe_to_expose_on_stable_const_fn; this determines whether the intrinsic
-                    // fallback body is safe to expose on stable.
-                    let is_const_stable = intrinsic.const_stable
-                        || (!intrinsic.must_be_overridden
-                            && is_fn_or_trait_safe_to_expose_on_stable(tcx, callee));
+                    // In addition to the usual check, we also require that the intrinsic either has
+                    // a fallback body, or the special `#[rustc_intrinsic_const_stable_indirect]`.
+                    let usable_fallback_body = !intrinsic.must_be_overridden
+                        && !find_attr!(self.tcx, callee, RustcDoNotConstCheck);
+                    let const_stable_indirect =
+                        is_fn_or_trait_safe_to_expose_on_stable(tcx, callee)
+                            && (usable_fallback_body || intrinsic.const_stable_indirect);
                     match tcx.lookup_const_stability(callee) {
                         None => {
                             // This doesn't need a separate const-stability check -- const-stability equals
                             // regular stability, and regular stability is checked separately.
                             // However, we *do* have to worry about *recursive* const stability.
-                            if !is_const_stable && self.enforce_recursive_const_stability() {
+                            if !const_stable_indirect && self.enforce_recursive_const_stability() {
                                 self.dcx().emit_err(diagnostics::UnmarkedIntrinsicExposed {
                                     span: self.span,
                                     def_path: self.tcx.def_path_str(callee),
@@ -860,14 +859,14 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // This is not ideal since it means the user sees an error, not the macro
                             // author, but that's also the case if one forgets to set
                             // `#[allow_internal_unstable]` in the first place.
-                            if self.span.allows_unstable(feature) && is_const_stable {
+                            if self.span.allows_unstable(feature) && const_stable_indirect {
                                 return;
                             }
 
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,
-                                const_stable_indirect: is_const_stable,
+                                const_stable_indirect,
                             });
                         }
                         Some(hir::ConstStability {
