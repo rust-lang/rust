@@ -491,7 +491,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
+        self.tcx.dcx().into_taintable(&self.tainted_by_errors)
     }
 
     fn item_def_id(&self) -> LocalDefId {

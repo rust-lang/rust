@@ -1345,7 +1345,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         s
     }
 
-    /// See `DiagCtxt::stash_diagnostic` for details.
+    /// See `DiagCtxtHandle::stash_diagnostic` for details.
     pub fn stash(mut self, span: Span, key: StashKey) -> Option<ErrorGuaranteed> {
         let diag = self.take_diag();
         self.dcx.stash_diagnostic(span, key, diag)
