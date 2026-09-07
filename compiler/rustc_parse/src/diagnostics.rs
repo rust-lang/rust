@@ -257,7 +257,7 @@ pub(crate) enum InvalidComparisonOperatorSub {
 pub(crate) struct InvalidLogicalOperator {
     #[primary_span]
     pub span: Span,
-    pub incorrect: String,
+    pub incorrect: Symbol,
     #[subdiagnostic]
     pub sub: InvalidLogicalOperatorSub,
 }
@@ -2718,6 +2718,14 @@ pub(crate) struct CannotBeRawIdent {
 }
 
 #[derive(Diagnostic)]
+#[diag("`{$ident}` is not a valid keyword")]
+pub(crate) struct CannotBeForcedKeywordIdent {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$ident}` cannot be a raw lifetime")]
 pub(crate) struct CannotBeRawLifetime {
     #[primary_span]
@@ -4121,21 +4129,6 @@ impl IntoDiagArg for Case {
         }
         .into_diag_arg(path)
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown `builtin #` construct `{$name}`")]
-pub(crate) struct UnknownBuiltinConstruct {
-    #[primary_span]
-    pub span: Span,
-    pub name: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag("expected identifier after `builtin #`")]
-pub(crate) struct ExpectedBuiltinIdent {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -10,7 +10,7 @@ use rustc_middle::ty::adjustment::{
     OverloadedDeref, PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, kw, sym};
 use tracing::debug;
 
 use crate::method::{MethodCallee, TreatNotYetDefinedOpaques};
@@ -204,7 +204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("try_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
 
         let (Some(imm_tr), imm_op) = (match op {
-            PlaceOp::Deref => (self.tcx.lang_items().deref_trait(), sym::deref),
+            PlaceOp::Deref => (self.tcx.lang_items().deref_trait(), kw::Deref),
             PlaceOp::Index => (self.tcx.lang_items().index_trait(), sym::index),
         }) else {
             // Bail if `Deref` or `Index` isn't defined.

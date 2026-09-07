@@ -1,46 +1,117 @@
-error: expected one of `!`, `(`, `+`, `,`, `::`, or `<`, found `)`
-  --> $DIR/offset-of-builtin.rs:8:43
+error: suffixes on a tuple index are invalid
+  --> $DIR/offset-of-builtin.rs:16:27
    |
-LL |     builtin # offset_of(NotEnoughArguments);
-   |                                           ^ expected one of `!`, `(`, `+`, `,`, `::`, or `<`
+LL |     k#offset_of((u8, u8), 1_u8);
+   |                           ^^^^ invalid suffix `u8`
 
-error: expected expression, found `)`
-  --> $DIR/offset-of-builtin.rs:11:55
+error: suffixes on a tuple index are invalid
+  --> $DIR/offset-of-builtin.rs:10:26
    |
-LL |     builtin # offset_of(NotEnoughArgumentsWithAComma, );
-   |                                                       ^ expected expression
+LL |     offset_of!((u8, u8), 1_u8);
+   |                          ^^^^ invalid suffix `u8`
 
-error: expected `)`, found `too`
-  --> $DIR/offset-of-builtin.rs:14:31
+error[E0609]: no field `_0` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:7:26
    |
-LL |     builtin # offset_of(S, f, too many arguments);
-   |                               ^^^ expected `)`
+LL |     offset_of!((u8, u8), _0);
+   |                          ^^
    |
-   = note: unexpected third argument to offset_of
-
-error: unexpected token: `)`
-  --> $DIR/offset-of-builtin.rs:20:30
+help: a field with a similar name exists
    |
-LL |     builtin # offset_of(S, f.);
-   |                              ^
-
-error: unexpected token: `,`
-  --> $DIR/offset-of-builtin.rs:23:30
+LL -     offset_of!((u8, u8), _0);
+LL +     offset_of!((u8, u8), 0);
    |
-LL |     builtin # offset_of(S, f.,);
-   |                              ^
 
-error: offset_of expects dot-separated field and variant names
-  --> $DIR/offset-of-builtin.rs:26:28
+error[E0609]: no field `01` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:8:26
    |
-LL |     builtin # offset_of(S, f..);
-   |                            ^^^
-
-error: offset_of expects dot-separated field and variant names
-  --> $DIR/offset-of-builtin.rs:29:28
+LL |     offset_of!((u8, u8), 01);
+   |                          ^^
    |
-LL |     builtin # offset_of(S, f..,);
-   |                            ^^^
+   = note: available fields are: `0`, `1`
 
-error: aborting due to 7 previous errors
+error[E0609]: no field `1e2` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:9:26
+   |
+LL |     offset_of!((u8, u8), 1e2);
+   |                          ^^^
+   |
+   = note: available fields are: `0`, `1`
 
+error[E0609]: no field `1_` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:10:26
+   |
+LL |     offset_of!((u8, u8), 1_u8);
+   |                          ^^^^
+   |
+help: a field with a similar name exists
+   |
+LL -     offset_of!((u8, u8), 1_u8);
+LL +     offset_of!((u8, u8), 1);
+   |
+
+error[E0609]: no field `1e2` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:13:27
+   |
+LL |     k#offset_of((u8, u8), 1e2);
+   |                           ^^^
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `_0` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:14:27
+   |
+LL |     k#offset_of((u8, u8), _0);
+   |                           ^^
+   |
+help: a field with a similar name exists
+   |
+LL -     k#offset_of((u8, u8), _0);
+LL +     k#offset_of((u8, u8), 0);
+   |
+
+error[E0609]: no field `01` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:15:27
+   |
+LL |     k#offset_of((u8, u8), 01);
+   |                           ^^
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `1_` on type `(u8, u8)`
+  --> $DIR/offset-of-builtin.rs:16:27
+   |
+LL |     k#offset_of((u8, u8), 1_u8);
+   |                           ^^^^
+   |
+help: a field with a similar name exists
+   |
+LL -     k#offset_of((u8, u8), 1_u8);
+LL +     k#offset_of((u8, u8), 1);
+   |
+
+error[E0609]: no field `2` on type `(u8, u16)`
+  --> $DIR/offset-of-builtin.rs:19:47
+   |
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
+   |                                               ^
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `1e2` on type `(u8, u16)`
+  --> $DIR/offset-of-builtin.rs:20:47
+   |
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.1e2);
+   |                                               ^^^
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `0` on type `u8`
+  --> $DIR/offset-of-builtin.rs:22:49
+   |
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0);
+   |                                                 ^
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

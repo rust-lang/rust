@@ -15,7 +15,7 @@ use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{FloatTy, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Symbol, kw, sym};
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -231,7 +231,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let val = layout.align.bytes();
                 self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
             }
-            sym::offset_of => {
+            kw::OffsetOf => {
                 let tp_ty = instance.args.type_at(0);
 
                 let variant = self.read_scalar(&args[0])?.to_u32()?;

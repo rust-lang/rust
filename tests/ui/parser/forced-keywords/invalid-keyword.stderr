@@ -1,0 +1,14 @@
+error: `not_a_keyword` is not a valid keyword
+  --> $DIR/invalid-keyword.rs:4:15
+   |
+LL | const _: () = k#not_a_keyword();
+   |               ^^^^^^^^^^^^^^^
+
+error: expected expression, found `k#not_a_keyword`
+  --> $DIR/invalid-keyword.rs:4:15
+   |
+LL | const _: () = k#not_a_keyword();
+   |               ^^^^^^^^^^^^^^^ expected expression
+
+error: aborting due to 2 previous errors
+

@@ -1655,10 +1655,10 @@ impl<T> SizedTypeProperties for T {}
     note = "this macro expects a container type and a (nested) field path, like `offset_of!(Type, field)`"
 )]
 #[doc(alias = "memoffset")]
-#[allow_internal_unstable(builtin_syntax, core_intrinsics)]
+#[allow_internal_unstable(core_intrinsics, internal_syntax)]
 #[diagnostic::opaque]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
-    const { builtin # offset_of($Container, $($fields)+) }
+    const { k#offset_of($Container, $($fields)+) }
 }
 
 /// Create a fresh instance of the inhabited ZST type `T`.
