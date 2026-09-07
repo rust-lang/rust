@@ -53,7 +53,7 @@ LL |             T: 'a,
 error: forall expect clause failed
   --> $DIR/test-infra-fails-properly.rs:63:17
    |
-LL |                 'c: 'c,
+LL |                 'b: 'c,
    |                 ^^^^^^
    |
 note: constraint from here
@@ -62,7 +62,7 @@ note: constraint from here
 LL |         forall<'a> where 'b: 'a {
    |         ^^^^^^
    = note: expected: RegionOutlives(
-               'c/#1,
+               'b/#0,
                'c/#1,
                $DIR/test-infra-fails-properly.rs:63:17: 63:23 (#0),
            )

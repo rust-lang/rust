@@ -165,6 +165,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 /// An OR of AND of LEAF constraints. Always in "canonical form" meaning:
 /// - No two ANDs are equivalent
 /// - All ANDs are in canonical form
+/// - If any AND is empty, i.e. trivially true, it is the only AND
 pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[And<I, S>]>);
 impl<I: Interner> Or<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -204,6 +205,13 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
         let mut new_ands: Vec<And<I, S>> = Vec::new();
 
         for and in ands {
+            // An empty AND is trivially true, which makes the whole OR true no matter what the
+            // other candidates are. `And::new` discards leaf constraints which are trivially
+            // true, so this is how e.g. a reflexive `'a: 'a` candidate discharges an OR.
+            if and.0.is_empty() {
+                return Self::new_true();
+            }
+
             if new_ands.iter().all(|c| !c.is_and_equivalent_to(&and)) {
                 new_ands.push(and)
             }
@@ -217,7 +225,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     }
 
     pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
-        Or(Box::new([And(Box::new([l]))]))
+        Or::new([And::new([l])])
     }
 
     pub fn build_and(a: Or<I, S>, b: Or<I, S>) -> Self {
@@ -249,6 +257,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An AND of leaf constraints. Always in "canonical form", meaning:
 /// - No leaf constraints are present twice in this AND
+/// - No leaf constraint is trivially true, i.e. a reflexive `'a: 'a`
 pub struct And<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[LeafRegionConstraint<I, S>]>);
 impl<I: Interner> And<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -264,6 +273,15 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
         And(i
             .into_iter()
             .filter(|leaf| {
+                // Outlives is reflexive so a `'a: 'a` leaf is always true and carries no
+                // information. Dropping it here keeps the rest of the code from having to special
+                // case it, and is what lets an OR with a reflexive candidate be recognized as true.
+                if let LeafRegionConstraint::RegionOutlives(r1, r2, _) = leaf
+                    && r1 == r2
+                {
+                    return false;
+                }
+
                 if seen.contains(&leaf.clone().without_span()) {
                     false
                 } else {
@@ -409,7 +427,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
     }
 
     pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
-        RegionConstraint { and_constraint: And(Box::new([l])), or_constraint: Or::new_true() }
+        RegionConstraint { and_constraint: And::new([l]), or_constraint: Or::new_true() }
     }
 }
 
@@ -725,26 +743,16 @@ pub fn destructure_type_outlives_constraints_in_root<
         let mut destructured_constraints = Vec::new();
         for c in &and.0 {
             match c {
-                // Root constraints never go through `pull_region_outlives_constraints_out_of_universe`.
-                // A reflexive leaf may be the candidate which makes a root OR true, so discharge it here
-                // instead of requiring the remaining candidates to hold.
-                RegionOutlives(r1, r2, _) if r1 == r2 => {}
                 Ambiguity(_) | RegionOutlives(..) => {
                     destructured_constraints.push(Or::new_leaf(c.clone()))
                 }
-                PlaceholderTyOutlives(ty, r, span) => {
-                    let candidates = regions_outlived_by_placeholder(*ty, assumptions, infcx.cx())
-                        .collect::<Vec<_>>();
-                    if candidates.contains(r) {
-                        destructured_constraints.push(Or::new_true());
-                    } else {
-                        destructured_constraints.push(Or::new(candidates.into_iter().map(
-                            move |assumption_r| {
-                                And::new([RegionOutlives(assumption_r, *r, span.clone())])
-                            },
-                        )));
-                    }
-                }
+                PlaceholderTyOutlives(ty, r, span) => destructured_constraints.push(Or::new(
+                    regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
+                        move |assumption_r| {
+                            And::new([RegionOutlives(assumption_r, *r, span.clone())])
+                        },
+                    ),
+                )),
                 AliasTyOutlivesViaEnv(bound_outlives, span) => {
                     destructured_constraints.push(
                         alias_outlives_candidates_from_assumptions(
