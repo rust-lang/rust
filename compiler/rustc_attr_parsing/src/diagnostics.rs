@@ -72,7 +72,7 @@ pub(crate) struct ItemFollowingInnerAttr {
 }
 
 #[derive(Diagnostic)]
-#[diag("invalid edition in edition redirect")]
+#[diag("invalid edition range in edition redirect")]
 pub(crate) struct InvalidEditionRedirect {
     #[primary_span]
     pub span: Span,
