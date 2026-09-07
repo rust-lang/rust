@@ -1,0 +1,278 @@
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:12:16
+   |
+LL | fn func1(_num: mut& i32) {}
+   |                ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL - fn func1(_num: mut& i32) {}
+LL + fn func1(_num: &mut i32) {}
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:16:19
+   |
+LL | fn func2(_num: i32&) {}
+   |                   ^
+   |
+help: put the `&` before the type
+   |
+LL - fn func2(_num: i32&) {}
+LL + fn func2(_num: &i32) {}
+   |
+
+error: `mut` must be written after the lifetime
+  --> $DIR/c-style-reference-types-issue-101487.rs:20:20
+   |
+LL | fn func3<'a>(_num: mut &'a i32) {}
+   |                    ^^^
+   |
+help: put `mut` after the lifetime
+   |
+LL - fn func3<'a>(_num: mut &'a i32) {}
+LL + fn func3<'a>(_num: &'a mut i32) {}
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:26:28
+   |
+LL |     fn method(self, _size: mut& u32) {}
+   |                            ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     fn method(self, _size: mut& u32) {}
+LL +     fn method(self, _size: &mut u32) {}
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:30:32
+   |
+LL |     fn method2(self, _size: i32&) {}
+   |                                ^
+   |
+help: put the `&` before the type
+   |
+LL -     fn method2(self, _size: i32&) {}
+LL +     fn method2(self, _size: &i32) {}
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:36:19
+   |
+LL |     fn method(_p: mut& u8);
+   |                   ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     fn method(_p: mut& u8);
+LL +     fn method(_p: &mut u8);
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:40:23
+   |
+LL |     fn method3(_p: i32&);
+   |                       ^
+   |
+help: put the `&` before the type
+   |
+LL -     fn method3(_p: i32&);
+LL +     fn method3(_p: &i32);
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:45:24
+   |
+LL | fn generic_func<T>(_t: mut& T) {}
+   |                        ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL - fn generic_func<T>(_t: mut& T) {}
+LL + fn generic_func<T>(_t: &mut T) {}
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:49:26
+   |
+LL | fn generic_func2<T>(_t: T&) {}
+   |                          ^
+   |
+help: put the `&` before the type
+   |
+LL - fn generic_func2<T>(_t: T&) {}
+LL + fn generic_func2<T>(_t: &T) {}
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:55:15
+   |
+LL |     let _ptr: mut& u8;
+   |               ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     let _ptr: mut& u8;
+LL +     let _ptr: &mut u8;
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:59:18
+   |
+LL |     let _tuple: (mut& u8, i32);
+   |                  ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     let _tuple: (mut& u8, i32);
+LL +     let _tuple: (&mut u8, i32);
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:63:18
+   |
+LL |     let _array: [mut& u8; 2];
+   |                  ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     let _array: [mut& u8; 2];
+LL +     let _array: [&mut u8; 2];
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:67:23
+   |
+LL |     let _generic: Vec<mut& u8>;
+   |                       ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     let _generic: Vec<mut& u8>;
+LL +     let _generic: Vec<&mut u8>;
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:71:25
+   |
+LL |     let _nested: Option<mut& u8>;
+   |                         ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     let _nested: Option<mut& u8>;
+LL +     let _nested: Option<&mut u8>;
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:75:16
+   |
+LL |     let _ptr2: mut &u8;
+   |                ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     let _ptr2: mut &u8;
+LL +     let _ptr2: &mut u8;
+   |
+
+error: reference types must be written as `&mut T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:79:16
+   |
+LL |     let _ptr3: mut & u8;
+   |                ^^^
+   |
+help: put the `&` before `mut`
+   |
+LL -     let _ptr3: mut & u8;
+LL +     let _ptr3: &mut  u8;
+   |
+
+error: `mut` must be written after the lifetime
+  --> $DIR/c-style-reference-types-issue-101487.rs:83:16
+   |
+LL |     let _ptr4: mut &'static u8;
+   |                ^^^
+   |
+help: put `mut` after the lifetime
+   |
+LL -     let _ptr4: mut &'static u8;
+LL +     let _ptr4: &'static mut u8;
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:87:21
+   |
+LL |     let _tuple2: (u8&, i32);
+   |                     ^
+   |
+help: put the `&` before the type
+   |
+LL -     let _tuple2: (u8&, i32);
+LL +     let _tuple2: (&u8, i32);
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:91:21
+   |
+LL |     let _array2: [u8&; 2];
+   |                     ^
+   |
+help: put the `&` before the type
+   |
+LL -     let _array2: [u8&; 2];
+LL +     let _array2: [&u8; 2];
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:95:26
+   |
+LL |     let _generic2: Vec<u8&>;
+   |                          ^
+   |
+help: put the `&` before the type
+   |
+LL -     let _generic2: Vec<u8&>;
+LL +     let _generic2: Vec<&u8>;
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:99:28
+   |
+LL |     let _nested2: Option<u8&>;
+   |                            ^
+   |
+help: put the `&` before the type
+   |
+LL -     let _nested2: Option<u8&>;
+LL +     let _nested2: Option<&u8>;
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:103:15
+   |
+LL |     let _a: u8&;
+   |               ^
+   |
+help: put the `&` before the type
+   |
+LL -     let _a: u8&;
+LL +     let _a: &u8;
+   |
+
+error: reference types must be written as `&T`
+  --> $DIR/c-style-reference-types-issue-101487.rs:107:16
+   |
+LL |     let _b: u8 &;
+   |                ^
+   |
+help: put the `&` before the type
+   |
+LL -     let _b: u8 &;
+LL +     let _b: &u8 ;
+   |
+
+error: aborting due to 23 previous errors
+

@@ -1,0 +1,118 @@
+// Tests for https://github.com/rust-lang/rust/issues/101487
+// `&` should go before the type and `mut` in C-style references
+//@ run-rustfix
+
+#![allow(unused)]
+
+macro_rules! m {
+    ($t:ty) => { 0u8 };
+    ($($t:tt)*) => { 0u8 };
+}
+
+fn func1(_num: mut& i32) {}
+//~^ ERROR reference types must be written as `&mut T`
+//~| HELP put the `&` before `mut`
+
+fn func2(_num: i32&) {}
+//~^ ERROR reference types must be written as `&T`
+//~| HELP put the `&` before the type
+
+fn func3<'a>(_num: mut &'a i32) {}
+//~^ ERROR `mut` must be written after the lifetime
+//~| HELP put `mut` after the lifetime
+
+struct S1;
+impl S1 {
+    fn method(self, _size: mut& u32) {}
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    fn method2(self, _size: i32&) {}
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+}
+
+trait Trait1 {
+    fn method(_p: mut& u8);
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    fn method3(_p: i32&);
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+}
+
+fn generic_func<T>(_t: mut& T) {}
+//~^ ERROR reference types must be written as `&mut T`
+//~| HELP put the `&` before `mut`
+
+fn generic_func2<T>(_t: T&) {}
+//~^ ERROR reference types must be written as `&T`
+//~| HELP put the `&` before the type
+
+
+fn main() {
+    let _ptr: mut& u8;
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    let _tuple: (mut& u8, i32);
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    let _array: [mut& u8; 2];
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    let _generic: Vec<mut& u8>;
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    let _nested: Option<mut& u8>;
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    let _ptr2: mut &u8;
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    let _ptr3: mut & u8;
+    //~^ ERROR reference types must be written as `&mut T`
+    //~| HELP put the `&` before `mut`
+
+    let _ptr4: mut &'static u8;
+    //~^ ERROR `mut` must be written after the lifetime
+    //~| HELP put `mut` after the lifetime
+
+    let _tuple2: (u8&, i32);
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+
+    let _array2: [u8&; 2];
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+
+    let _generic2: Vec<u8&>;
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+
+    let _nested2: Option<u8&>;
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+
+    let _a: u8&;
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+
+    let _b: u8 &;
+    //~^ ERROR reference types must be written as `&T`
+    //~| HELP put the `&` before the type
+
+    // The following lines are examples of bitwise AND operations
+    // They should not trigger any errors related to reference types.
+    let x = 5i32;
+    let y = 3u8;
+    let t = 4u8;
+    let _z = x as u8 & y;
+    let _m = m!(t & y);
+}
