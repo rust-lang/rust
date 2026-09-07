@@ -108,6 +108,10 @@ pub(crate) struct OffloadBundleImagesFailed;
 pub(crate) struct OffloadEmbedFailed;
 
 #[derive(Diagnostic)]
+#[diag("call to WrapImages failed, `wrapper.o` was not created")]
+pub(crate) struct OffloadWrapImagesFailed;
+
+#[derive(Diagnostic)]
 #[diag("failed to get bitcode from object file for LTO ({$err})")]
 pub(crate) struct LtoBitcodeFromRlib {
     pub err: String,

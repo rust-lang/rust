@@ -612,6 +612,8 @@ pub(crate) unsafe fn llvm_optimize(
     let pgo_use_path = get_pgo_use_path(config);
     let pgo_sample_use_path = get_pgo_sample_use_path(config);
     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
+    let is_final_stage =
+        !matches!(opt_stage, llvm::OptStage::PreLinkFatLTO | llvm::OptStage::PreLinkThinLTO);
     let instr_profile_output_path = get_instr_profile_output_path(config);
     let sanitize_dataflow_abilist: Vec<_> = config
         .sanitizer_dataflow_abilist
@@ -840,7 +842,7 @@ pub(crate) unsafe fn llvm_optimize(
     // don't need any other artifacts from the previous run. We will embed this artifact into our
     // LLVM-IR host module, to create a `host.o` ObjectFile, which we will write to disk.
     // The last, not yet automated steps uses the `clang-linker-wrapper` to process `host.o`.
-    if !cgcx.target_is_like_gpu {
+    if !cgcx.target_is_like_gpu && is_final_stage {
         if let Some(device_path) = config
             .offload
             .iter()
@@ -866,10 +868,11 @@ pub(crate) unsafe fn llvm_optimize(
             // 2) Finalize host: lib.bc + device.bin -> host.o (host TM)
             // We create a full clone of our LLVM host module, since we will embed the device IR
             // into it, and this might break caching or incremental compilation otherwise.
-            let llmod2 = llvm::LLVMCloneModule(module.module_llvm.llmod());
             let ok = unsafe {
-                llvm::RustOffloadWrapper::get_instance()
-                    .llvm_rust_offload_embed_buffer_in_module(llmod2, device_bin_c.as_c_str())
+                llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_embed_buffer_in_module(
+                    module.module_llvm.llmod(),
+                    device_bin_c.as_c_str(),
+                )
             };
             if !ok {
                 dcx.emit_err(crate::diagnostics::OffloadEmbedFailed);
@@ -878,7 +881,7 @@ pub(crate) unsafe fn llvm_optimize(
                 dcx,
                 module.module_llvm.tm.raw(),
                 config.no_builtins,
-                llmod2,
+                module.module_llvm.llmod(),
                 &out_obj,
                 None,
                 llvm::FileType::ObjectFile,
@@ -888,6 +891,16 @@ pub(crate) unsafe fn llvm_optimize(
             // We ignore cgcx.save_temps here and unconditionally always keep our `device.bin` artifact.
             // Otherwise, recompiling the host code would fail since we deleted that device artifact
             // in the previous host compilation, which would be confusing at best.
+
+            let ok = unsafe {
+                llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_wrap_images(
+                    module.module_llvm.llmod(),
+                    device_bin_c.as_c_str(),
+                )
+            };
+            if !ok {
+                dcx.emit_err(crate::diagnostics::OffloadWrapImagesFailed);
+            }
         }
     }
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))

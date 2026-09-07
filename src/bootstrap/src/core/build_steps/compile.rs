@@ -21,7 +21,9 @@ use tracing::span;
 
 use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
-use crate::core::build_steps::llvm::{LlvmFromCi, LlvmKind, prebuilt_llvm_output};
+use crate::core::build_steps::llvm::{
+    LlvmFromCi, LlvmKind, offload_clang_lib_paths, offload_tool_paths, prebuilt_llvm_output,
+};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
@@ -2311,6 +2313,15 @@ impl CommandLineStep for Assemble {
                     let libname = p.file_name().unwrap();
                     let dst_lib = target_libdir.join(libname);
                     builder.resolve_symlink_and_copy(&p, &dst_lib);
+                }
+
+                for (source, filename) in offload_tool_paths(builder, target_compiler.host) {
+                    builder.resolve_symlink_and_copy(&source, &libdir_bin.join(filename));
+                }
+
+                for source in offload_clang_lib_paths(builder, target_compiler.host) {
+                    let filename = source.file_name().unwrap();
+                    builder.resolve_symlink_and_copy(&source, &target_libdir.join(filename));
                 }
             }
         }

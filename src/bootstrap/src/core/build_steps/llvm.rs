@@ -1211,6 +1211,63 @@ impl CommandLineStep for RustOffload {
     }
 }
 
+/// Returns the binary and library directories of the selected clang.
+fn offload_clang_dirs(builder: &Builder<'_>, target: TargetSelection) -> (PathBuf, PathBuf) {
+    if builder.config.llvm_clang {
+        let llvm = builder.ensure(llvm::Llvm { target });
+        return (llvm.root_dir().join("bin"), llvm.root_dir().join("lib"));
+    }
+
+    let lib_dir = builder
+        .config
+        .offload_clang_dir
+        .as_deref()
+        .and_then(|dir| dir.ancestors().nth(2))
+        .expect("llvm.offload-clang-dir must point to <prefix>/<libdir>/cmake/clang");
+
+    let root = lib_dir.parent().expect("Clang library directory must have a parent");
+
+    (root.join("bin"), lib_dir.into())
+}
+
+/// Returns (source path, destination filename) pairs for offloading tools such as clang.
+pub(crate) fn offload_tool_paths(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+) -> Vec<(PathBuf, String)> {
+    let lld = builder.ensure(llvm::Lld { target });
+    let (clang_bin_dir, _) = offload_clang_dirs(builder, target);
+
+    let mut tools = Vec::new();
+
+    for name in ["clang", "clang-nvlink-wrapper"] {
+        let filename = exe(name, target);
+        let source = clang_bin_dir.join(&filename);
+        tools.push((source, filename));
+    }
+
+    tools.push((lld.join("bin").join(exe("lld", target)), exe("ld.lld", target)));
+
+    tools
+}
+
+pub(crate) fn offload_clang_lib_paths(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+) -> Vec<PathBuf> {
+    let (_, lib_dir) = offload_clang_dirs(builder, target);
+
+    let mut paths = Vec::new();
+    for entry in builder.read_dir(&lib_dir) {
+        let filename = entry.file_name();
+        let filename = filename.to_string_lossy();
+        if filename == "libclang-cpp.so" || filename.starts_with("libclang-cpp.so.") {
+            paths.push(entry.path());
+        }
+    }
+    paths
+}
+
 #[derive(Clone)]
 pub struct BuiltOmpOffload {
     /// Path to the omp and offload dylibs.

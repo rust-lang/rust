@@ -27,6 +27,7 @@ use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::GccTargetPair;
 use crate::core::build_steps::llvm::{
     LLVM_CI_LINK_TYPE_PATH, LlvmBuildStatus, LlvmKind, get_llvm_build_status,
+    offload_clang_lib_paths, offload_tool_paths,
 };
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
@@ -2900,7 +2901,21 @@ impl CommandLineStep for Offload {
             tarball.add_file(path, destdir, FileType::NativeLibrary);
         }
 
-        tarball.add_file(rust_offload.rust_offload_path(), target_libdir, FileType::NativeLibrary);
+        tarball.add_file(rust_offload.rust_offload_path(), &target_libdir, FileType::NativeLibrary);
+
+        let target_bindir = PathBuf::from(format!("lib/rustlib/{}/bin", target.triple));
+        for (source, filename) in offload_tool_paths(builder, target) {
+            let source = t!(fs::canonicalize(source));
+            tarball.add_renamed_file(source, &target_bindir, &filename, FileType::Executable);
+        }
+
+        for source in offload_clang_lib_paths(builder, target) {
+            let filename = source.file_name().unwrap().to_str().unwrap();
+            let resolved = t!(fs::canonicalize(&source));
+            tarball.add_renamed_file(resolved, &target_libdir, filename, FileType::NativeLibrary);
+        }
+
+        maybe_install_llvm_target(builder, target, tarball.image_dir());
 
         Some(tarball.generate())
     }
