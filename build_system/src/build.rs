@@ -132,6 +132,24 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+
+    // Record the sysroot sources under the path the `rust-src` component uses, which is where
+    // rustc looks for them to turn a sysroot span into `/rustc/$hash`. Without this, ui tests
+    // print the build path where they expect `$SRC_DIR`.
+    let sysroot_source_dir = lib_path.join("rustlib/src/rust/library");
+    rustflags.push_str(&format!(
+        " --remap-path-prefix={library_dir}={sysroot_source_dir}",
+        library_dir = std::path::absolute(&library_dir)
+            .map_err(|error| format!(
+                "Failed to get the absolute path of the sysroot sources: {error:?}"
+            ))?
+            .display(),
+        sysroot_source_dir = std::path::absolute(&sysroot_source_dir)
+            .map_err(|error| format!(
+                "Failed to get the absolute path of the sysroot sources: {error:?}"
+            ))?
+            .display(),
+    ));
     if config.sysroot_panic_abort {
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
