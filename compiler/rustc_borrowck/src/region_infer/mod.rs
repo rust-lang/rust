@@ -589,6 +589,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // result in basically the exact same error being reported to
         // the user. Avoid that.
         let mut deduplicate_errors = FxIndexSet::default();
+        let mut failed_type_tests = Vec::new();
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
@@ -609,8 +610,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
 
-            // Type-test failed. Report the error.
+            // Type-test failed. Collect it so we can suppress redundant errors below.
             let erased_generic_kind = infcx.tcx.erase_and_anonymize_regions(type_test.generic_kind);
+            failed_type_tests.push((erased_generic_kind, type_test));
+        }
+
+        // An async body can produce both `G: 'static` and `G: 'a` type-test failures at
+        // the same span, as in `tests/ui/async-await/spurious-static-bound-issue-115376.rs`.
+        // Reporting the weaker bound adds a redundant diagnostic and suggests a lifetime
+        // bound that cannot fix the missing `G: 'static` requirement. Keep the `'static`
+        // error and suppress weaker failures for the same erased generic kind and span.
+        // This is a diagnostic heuristic, using the same erasure as deduplication below.
+        //
+        // Collect all failed `'static` bounds before reporting errors so suppression does
+        // not depend on the order of the type tests. Compare SCCs because a lower-bound
+        // region can be equivalent to `'static` without being `fr_static` itself.
+        let static_scc = self.constraint_sccs.scc(self.universal_regions().fr_static);
+        let static_bound_errors: FxIndexSet<_> = failed_type_tests
+            .iter()
+            .filter_map(|&(erased_generic_kind, type_test)| {
+                if self.constraint_sccs.scc(type_test.lower_bound) == static_scc {
+                    Some((erased_generic_kind, type_test.span))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // If `G: 'static` failed at this span, then same-span `G: 'a` failures are weaker.
+        for (erased_generic_kind, type_test) in failed_type_tests {
+            if self.constraint_sccs.scc(type_test.lower_bound) != static_scc
+                && static_bound_errors.contains(&(erased_generic_kind, type_test.span))
+            {
+                continue;
+            }
 
             // Skip duplicate-ish errors.
             if deduplicate_errors.insert((
