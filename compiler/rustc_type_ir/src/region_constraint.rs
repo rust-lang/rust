@@ -594,20 +594,16 @@ pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::h
         return RegionConstraint::new_leaf(ambig.clone());
     }
 
-    for and in constraint.or_constraint.0.iter() {
-        // FIXME(-Zassumptions-on-binders): This is overly conservative. If we have:
-        // `'a: 'b OR ambig` we don't necessarily want to propagate ambiguity here
-        // as we might end up with `'a: 'b` being satisfied in which case we unnecessarily
-        // errored here.
-        //
-        // It's fine if the `ambig` wound up being `false` as that wouldn't cause a goal to
-        // become `NoSolution`, it would instead result in us returning the `'a: 'b` constraint
-        // by itself.
-        //
-        // `rust-lang/project-assumptions-on-binders#21`
-        if let Some(ambig) = and.0.iter().find(|c| c.is_ambig()) {
-            return RegionConstraint::new_leaf(ambig.clone());
-        }
+    // An OR only depends on ambiguity if every alternative contains an ambiguous leaf.
+    // Keep mixed ORs intact: a concrete candidate may be satisfied later, e.g. when an
+    // alias outlives constraint is checked against the root assumptions. Keep the ambiguous
+    // alternatives too, so rejecting the concrete candidates still leaves ambiguity.
+    let mut ambiguities =
+        constraint.or_constraint.0.iter().map(|and| and.0.iter().find(|c| c.is_ambig()));
+    if let Some(Some(ambig)) = ambiguities.next()
+        && ambiguities.all(|ambig| ambig.is_some())
+    {
+        return RegionConstraint::new_leaf(ambig.clone());
     }
 
     constraint
