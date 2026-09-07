@@ -30,6 +30,12 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         (**self).cx()
     }
 
+    /// Number of currently-open inference snapshots.
+    ///
+    /// Fulfillment contexts must only be used in the snapshot in which
+    /// they were created.
+    fn num_open_snapshots(&self) -> usize;
+
     fn build_with_canonical<V>(
         cx: Self::Interner,
         canonical: &ty::CanonicalQueryInput<Self::Interner, V>,
