@@ -1918,7 +1918,8 @@ mod snapshot {
             [build] rustc 0 <host> -> CoverageDump 1 <host>
             [test] compiletest-coverage 2 <host>
             [test] compiletest-coverage 2 <host>
-            [build] rustc 2 <host> -> std 2 <host>
+            [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 2 <host> -> std 2 <host>
             [test] compiletest-mir-opt 2 <host>
             [build] rustc 1 <host> -> std 1 <host-synthetic-miropt-abort>
         [build] rustc 2 <host> -> std 2 <host-synthetic-miropt-abort>
