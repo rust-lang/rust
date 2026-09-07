@@ -364,5 +364,17 @@ help: use an automatic link instead
 LL | /// <https://bloob.blob>]
    |     +                  +
 
-error: aborting due to 30 previous errors
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:96:9
+   |
+LL | /// See https://en.wikipedia.org/wiki/Rust_(programming_language)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <https://en.wikipedia.org/wiki/Rust_(programming_language)>
+   |         +                                                         +
+
+error: aborting due to 31 previous errors
 
