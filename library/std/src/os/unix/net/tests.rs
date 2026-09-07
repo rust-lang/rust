@@ -35,10 +35,12 @@ fn sock_addr_from_pathname() {
 fn sock_addr_without_trailing_nul() {
     const PATH: &[u8] = b"/path/to/socket";
 
-    // SAFETY: all zeros is a valid representation for `sockaddr_un`.
-    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
-    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
-    for (dst, &src) in addr.sun_path.iter_mut().zip(PATH) {
+    let mut addr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
+    let sun_family = (libc::AF_UNIX as libc::sa_family_t).to_ne_bytes();
+    addr[SUN_FAMILY_OFFSET..SUN_FAMILY_OFFSET + size_of::<libc::sa_family_t>()]
+        .copy_from_slice(&sun_family);
+
+    for (dst, &src) in addr[SUN_PATH_OFFSET..].iter_mut().zip(PATH) {
         *dst = src as _;
     }
     let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
@@ -204,10 +206,14 @@ fn iter() {
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn long_path() {
     let dir = tmpdir();
-    let socket_path = dir.path().join(
-        "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfa\
-                                sasdfasdfasdasdfasdfasdfadfasdfasdfasdfasdfasdf",
+    // +1 for separator byte on join
+    let dir_len = dir.path().as_os_str().len() + 1;
+    let sock = format!(
+        "sock{}",
+        vec!['a'; SUN_PATH_MAX_LEN.saturating_sub(dir_len)].into_iter().collect::<String>()
     );
+    let socket_path = dir.path().join(sock);
+
     match UnixStream::connect(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
         Err(e) => panic!("unexpected error {e}"),
