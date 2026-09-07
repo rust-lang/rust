@@ -90,7 +90,10 @@ pub(super) fn check_fn<'a, 'tcx>(
         }
 
         // Check that argument is Sized.
-        if !params_can_be_unsized || fn_sig.abi() == rustc_abi::ExternAbi::RustTail {
+        if !params_can_be_unsized
+            || fn_sig.abi() == rustc_abi::ExternAbi::RustTail
+            || fn_sig.abi() == rustc_abi::ExternAbi::X86Interrupt
+        {
             fcx.require_type_is_sized(
                 param_ty,
                 param.ty_span,

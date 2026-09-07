@@ -5,6 +5,7 @@ LL |     extern "tail" fn unsized_argument(x: [u8]) -> u8 {
    |                                          ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
+   = note: argument required to be sized due to `extern "tail"` ABI
 help: function arguments must have a statically known size, borrowed slices always have a known size
    |
 LL |     extern "tail" fn unsized_argument(x: &[u8]) -> u8 {

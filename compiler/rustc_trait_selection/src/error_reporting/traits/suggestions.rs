@@ -4300,6 +4300,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     err.help("unsized fn params are gated as an unstable feature");
                 }
+                // The `unsized_fn_params` feature allows unsized parameters to be passed to functions,
+                // except for ABIs that pass their parameters explicitly by value and therefore need
+                // a known size. The ABI is referenced in order to make it clear that this is intentional
+                // behavior.
+                if tcx.features().unsized_fn_params()
+                    && let Some(hir_id) = hir_id
+                    && let Some(sig) = tcx.parent_hir_node(hir_id).fn_sig()
+                    && matches!(sig.header.abi, ExternAbi::X86Interrupt | ExternAbi::RustTail)
+                {
+                    err.note(format!(
+                        "argument required to be sized due to `extern {}` ABI",
+                        sig.header.abi
+                    ));
+                }
             }
             ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType => {
                 err.note("the return type of a function must have a statically known size");

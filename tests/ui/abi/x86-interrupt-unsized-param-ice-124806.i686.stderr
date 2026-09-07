@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/x86-interrupt-unsized-param-ice-124806.rs:20:49
+   |
+LL | extern "x86-interrupt" fn interrupt_unsized(_a: str) {}
+   |                                                 ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: argument required to be sized due to `extern "x86-interrupt"` ABI
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | extern "x86-interrupt" fn interrupt_unsized(_a: &str) {}
+   |                                                 +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
