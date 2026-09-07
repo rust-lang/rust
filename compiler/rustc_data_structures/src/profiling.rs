@@ -87,7 +87,7 @@ use std::error::Error;
 use std::fmt::Display;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use std::{fs, hint, process};
 
@@ -623,6 +623,8 @@ impl SelfProfiler {
         event_filters: Option<&[String]>,
         counter_name: &str,
     ) -> Result<SelfProfiler, Box<dyn Error + Send + Sync>> {
+        static PROFILER_COUNT: AtomicUsize = AtomicUsize::new(0);
+
         fs::create_dir_all(output_directory)?;
 
         let crate_name = crate_name.unwrap_or("unknown-crate");
@@ -630,7 +632,20 @@ impl SelfProfiler {
         // length can behave as a source of entropy for heap addresses, when
         // ASLR is disabled and the heap is otherwise deterministic.
         let pid: u32 = process::id();
-        let filename = format!("{crate_name}-{pid:07}.rustc_profile");
+        // We count how many profilers have been made to ensure unique names
+        // for profiles when invoking the compiler multiple times from the same
+        // process, as in those cases the combination cratename + pid might
+        // not be unique.
+        //
+        // These are not added to the default name in order
+        // to not change the existing names when the compiler is run through
+        // the rustc binary.
+        let count = PROFILER_COUNT.fetch_add(1, Ordering::Relaxed);
+        let filename = if count != 0 {
+            format!("{crate_name}-{pid:07}-{count:022}.rustc_profile")
+        } else {
+            format!("{crate_name}-{pid:07}.rustc_profile")
+        };
         let path = output_directory.join(filename);
         let profiler =
             Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
