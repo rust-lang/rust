@@ -115,10 +115,12 @@ pub fn emit(cfg: &Config) {
     // To compile builtins-test-intrinsics for thumb targets, where there is no libc
     let thumb = split[0].starts_with("thumb");
 
-    // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
-    // these targets do not have full Thumb-2 support but only original Thumb-1.
-    // We have to cfg our code accordingly.
-    let thumb1_only = split[0] == "thumbv6m" || split[0] == "thumbv8m.base";
+    // compiler-rt `cfg`s away some intrinsics for targets that do not have full Thumb-2 support
+    // but only original Thumb-1. We have to cfg our code accordingly.
+    let thumb1_only = matches!(
+        split[0].as_str(),
+        "thumbv4t" | "thumbv5te" | "thumbv6" | "thumbv6m" | "thumbv8m.base"
+    );
 
     // FIXME(msrv): `cfg(target_abi)` is usable since 1.78.
     let target_abi_eabihf = cfg.target_abi.as_deref() == Some("eabihf");
@@ -132,7 +134,6 @@ pub fn emit(cfg: &Config) {
     // Ensure that thumb is set when expected. We match on target name rather than using target
     // features directly, since `arm_target_feature` is unfortunately not yet stable. If any
     // target features are present, we are running on nightly and can do these checks.
-    /* FIXME: fails on targets such as thumbv5te-none-eabi
     if cfg.verbose_build && !cfg.target_features.is_empty() {
         if thumb {
             assert!(cfg.has_target_feature("thumb-mode"));
@@ -144,7 +145,6 @@ pub fn emit(cfg: &Config) {
             assert!(cfg.has_target_feature("thumb2"));
         }
     }
-    */
 
     // Arch shorthand config is used in most crates.
     set_cfg("thumb", thumb);
