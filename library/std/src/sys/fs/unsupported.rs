@@ -29,6 +29,25 @@ pub struct FileType(!);
 #[derive(Debug)]
 pub struct DirBuilder {}
 
+// Dummy Drops so that `needs_drop::<std::fs::File>()` etc. is true independent of platform,
+// avoiding a portability hazard.
+// The types not listed here are pure data and don’t implement Drop even when real.
+impl Drop for File {
+    fn drop(&mut self) {
+        self.0
+    }
+}
+impl Drop for ReadDir {
+    fn drop(&mut self) {
+        self.0
+    }
+}
+impl Drop for DirEntry {
+    fn drop(&mut self) {
+        self.0
+    }
+}
+
 impl FileAttr {
     pub fn size(&self) -> u64 {
         self.0
