@@ -18,6 +18,9 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
    = note: late-bound region is '?3
    = note: late-bound region is '?4
    = note: number of external vids: 5
+   = note: where '?1: '?2
+   = note: where '?1: '?2
+   = note: where '?1: '?0
    = note: where '?1: '?0
 
 note: no external requirements

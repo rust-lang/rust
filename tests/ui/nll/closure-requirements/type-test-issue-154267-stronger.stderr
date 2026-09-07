@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/type-test-issue-154267-stronger.rs:18:5
+   |
+LL | fn error<'a, 'b, 'c, T: 'a>() {
+   |          --  -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+LL |     takes_closure::<'a, 'b, 'c, T>(|arg| arg.constrain());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+
