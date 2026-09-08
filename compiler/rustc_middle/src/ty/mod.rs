@@ -1240,6 +1240,16 @@ pub struct TypingEnv<'tcx> {
     pub param_env: ParamEnv<'tcx>,
 }
 
+impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> {
+    fn fully_monomorphized() -> Self {
+        Self::fully_monomorphized()
+    }
+
+    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis(tcx, def_id)
+    }
+}
+
 impl<'tcx> TypingEnv<'tcx> {
     pub fn new(param_env: ParamEnv<'tcx>, typing_mode: TypingMode<'tcx>) -> Self {
         Self { typing_mode: TypingModeEqWrapper(typing_mode), param_env }

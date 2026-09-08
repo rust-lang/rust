@@ -622,6 +622,15 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 }
 
 #[rust_analyzer::prefer_underscore_import]
+pub trait TypingEnv<I: Interner>:
+    Copy + Clone + Debug + PartialEq + Eq + Hash + TypeFoldable<I> + TypeVisitable<I>
+{
+    fn fully_monomorphized() -> Self;
+
+    fn post_analysis(cx: I, def_id: I::DefId) -> Self;
+}
+
+#[rust_analyzer::prefer_underscore_import]
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
