@@ -284,17 +284,50 @@ fn equate_hidden_types_for_same_opaque_instantiation<'tcx>(
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     defining_uses: &[DefiningUse<'tcx>],
 ) {
-    for (index, defining_use) in defining_uses.iter().enumerate() {
-        // Leave incompatible candidates for the definition-site merge to diagnose.
-        let cause = ObligationCause::misc(
-            defining_use.hidden_type.span,
-            body.source.def_id().expect_local(),
-        );
-        // Ambiguity can make a probe fail, so keep looking for another compatible
-        // candidate in the same instantiation.
-        let Some(previous) = defining_uses[..index].iter().find(|previous| {
-            same_opaque_instantiation(infcx.tcx, previous, defining_use)
-                && infcx.probe(|_| {
+    fn root(candidate_components: &[usize], mut index: usize) -> usize {
+        while candidate_components[index] != index {
+            index = candidate_components[index];
+        }
+        index
+    }
+
+    fn union(candidate_components: &mut [usize], a: usize, b: usize) {
+        let a = root(candidate_components, a);
+        let b = root(candidate_components, b);
+        if a != b {
+            candidate_components[b] = a;
+        }
+    }
+
+    // Build a spanning forest of compatible candidates for each opaque
+    // instantiation. A pair may be ambiguous before another candidate equality has
+    // been registered, so retry unconnected candidates until a full pass adds no
+    // new equality edge.
+    let mut candidate_components = (0..defining_uses.len()).collect::<Vec<_>>();
+
+    loop {
+        let mut made_progress = false;
+
+        for (index, defining_use) in defining_uses.iter().enumerate() {
+            for previous_index in 0..index {
+                if root(&candidate_components, previous_index) == root(&candidate_components, index)
+                {
+                    continue;
+                }
+
+                let previous = &defining_uses[previous_index];
+                if !same_opaque_instantiation(infcx.tcx, previous, defining_use) {
+                    continue;
+                }
+
+                // Leave incompatible candidates for the definition-site merge to
+                // diagnose.
+                let cause = ObligationCause::misc(
+                    defining_use.hidden_type.span,
+                    body.source.def_id().expect_local(),
+                );
+
+                if !infcx.probe(|_| {
                     let ocx = ObligationCtxt::new(infcx);
                     equate_hidden_type_candidates(
                         &ocx,
@@ -305,39 +338,47 @@ fn equate_hidden_types_for_same_opaque_instantiation<'tcx>(
                     )
                     .is_ok()
                         && ocx.evaluate_obligations_error_on_ambiguity().no_errors()
-                })
-        }) else {
-            continue;
-        };
+                }) {
+                    continue;
+                }
 
-        let locations = Locations::All(defining_use.hidden_type.span);
-        let result = fully_perform_op_raw(
-            infcx,
-            body,
-            universal_regions,
-            region_bound_pairs,
-            known_type_outlives_obligations,
-            constraints,
-            locations,
-            ConstraintCategory::OpaqueType,
-            CustomTypeOp::new(
-                |ocx| {
-                    equate_hidden_type_candidates(
-                        ocx,
-                        &cause,
-                        infcx.param_env,
-                        previous.equality_hidden_type,
-                        defining_use.equality_hidden_type,
-                    )
-                },
-                "equating defining opaque type uses",
-            ),
-        );
-        if let Err(guar) = result {
-            // The probe above succeeded, so preserve an unexpected failure rather
-            // than silently ignoring it.
-            infcx.set_tainted_by_errors(guar);
-            return;
+                let locations = Locations::All(defining_use.hidden_type.span);
+                let result = fully_perform_op_raw(
+                    infcx,
+                    body,
+                    universal_regions,
+                    region_bound_pairs,
+                    known_type_outlives_obligations,
+                    constraints,
+                    locations,
+                    ConstraintCategory::OpaqueType,
+                    CustomTypeOp::new(
+                        |ocx| {
+                            equate_hidden_type_candidates(
+                                ocx,
+                                &cause,
+                                infcx.param_env,
+                                previous.equality_hidden_type,
+                                defining_use.equality_hidden_type,
+                            )
+                        },
+                        "equating defining opaque type uses",
+                    ),
+                );
+                if let Err(guar) = result {
+                    // The probe above succeeded, so preserve an unexpected failure
+                    // rather than silently ignoring it.
+                    infcx.set_tainted_by_errors(guar);
+                    return;
+                }
+
+                union(&mut candidate_components, previous_index, index);
+                made_progress = true;
+            }
+        }
+
+        if !made_progress {
+            break;
         }
     }
 }
