@@ -448,6 +448,8 @@ target | std | host | notes
 [`thumbv8m.base-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Baseline with NuttX
 [`thumbv8m.main-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
+[`thumbv8.1m.main-none-eabi`](platform-support/thumbv8.1m.main-none-eabi.md) | * |  | Bare Armv8.1-M Mainline, with DSP and LOB
+[`thumbv8.1m.main-none-eabihf`](platform-support/thumbv8.1m.main-none-eabi.md) | * |  | Bare Armv8.1-M Mainline, hardfloat, with DSP and LOB
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
