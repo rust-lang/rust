@@ -5,7 +5,6 @@
 //!
 //! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
-use std::borrow::Cow;
 use std::fmt::Debug;
 use std::io;
 use std::io::Write;
@@ -166,7 +165,7 @@ impl AnnotateSnippetEmitter {
         // If at least one portion of the message is styled, we need to
         // "pre-style" the message
         let mut title = if msgs.iter().any(|(_, style)| style != &crate::Style::NoStyle) {
-            annotation_level.clone().secondary_title(Cow::Owned(self.pre_style_msgs(msgs, args)))
+            annotation_level.clone().secondary_title(self.pre_style_msgs(msgs, args))
         } else {
             annotation_level.clone().primary_title(format_diag_messages(msgs, args))
         };
@@ -184,7 +183,7 @@ impl AnnotateSnippetEmitter {
         // If we don't have span information, emit and exit
         let Some(sm) = self.sm.as_ref() else {
             group = group.elements(children.iter().map(|c| {
-                let msg = format_diag_messages(&c.messages, args).to_string();
+                let msg = format_diag_messages(&c.messages, args);
                 let level = annotation_level_for_level(c.level);
                 level.message(msg)
             }));
@@ -253,7 +252,7 @@ impl AnnotateSnippetEmitter {
             // If at least one portion of the message is styled, we need to
             // "pre-style" the message
             let msg = if c.messages.iter().any(|(_, style)| style != &crate::Style::NoStyle) {
-                Cow::Owned(self.pre_style_msgs(&c.messages, args))
+                self.pre_style_msgs(&c.messages, args)
             } else {
                 format_diag_messages(&c.messages, args)
             };
