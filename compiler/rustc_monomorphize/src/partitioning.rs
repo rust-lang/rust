@@ -216,6 +216,7 @@ where
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
     let cgu_name_cache = &mut UnordMap::default();
+    let mut reachable_inlined_items = FxIndexSet::default();
 
     for mono_item in mono_items {
         // Handle only root (GloballyShared) items directly here. Inlined (LocalCopy) items
@@ -264,15 +265,15 @@ where
         // going via another root item. This includes drop-glue, functions from
         // external crates, and local functions the definition of which is
         // marked with `#[inline]`.
-        let mut reachable_inlined_items = FxIndexSet::default();
+        reachable_inlined_items.clear();
         get_reachable_inlined_items(cx.tcx, mono_item, cx.usage_map, &mut reachable_inlined_items);
 
         // Add those inlined items. It's possible an inlined item is reachable
         // from multiple root items within a CGU, which is fine, it just means
         // the `insert` will be a no-op.
-        for inlined_item in reachable_inlined_items {
+        for inlined_item in &reachable_inlined_items {
             // This is a CGU-private copy.
-            cgu.items_mut().entry(inlined_item).or_insert_with(|| MonoItemData {
+            cgu.items_mut().entry(*inlined_item).or_insert_with(|| MonoItemData {
                 inlined: true,
                 linkage: Linkage::Internal,
                 visibility: Visibility::Default,
