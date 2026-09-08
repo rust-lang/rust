@@ -160,6 +160,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         // See trait-system-refactor-initiative#234.
     }
 
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T {
+        self.erase_and_anonymize_regions(value)
+    }
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<'tcx>,
+        span: Self::Span,
+    ) -> Result<Result<Self::ValTree, Self::Ty>, Option<Self::ErrorGuaranteed>> {
+        match self.const_eval_resolve_for_typeck(typing_env, ct, span) {
+            Ok(Ok(vt)) => Ok(Ok(vt)),
+            Ok(Err(ty)) => Ok(Err(ty)),
+            Err(e) => match e {
+                rustc_middle::mir::interpret::ErrorHandled::Reported(e, _) => Err(Some(e.into())),
+                rustc_middle::mir::interpret::ErrorHandled::TooGeneric(_) => Err(None),
+            },
+        }
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }
