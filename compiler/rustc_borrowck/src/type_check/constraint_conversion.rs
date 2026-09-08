@@ -67,7 +67,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        let QueryRegionConstraints { constraints, assumptions } = query_constraints;
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } =
+            query_constraints;
         let assumptions =
             elaborate::elaborate_outlives_assumptions(self.infcx.tcx, assumptions.iter().copied());
 
@@ -76,6 +77,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 self.convert(predicate, category, &assumptions);
             });
         }
+
+        self.constraints
+            .register_solver_constraint(solver_constraints.clone().with_spans(self.span));
     }
 
     /// Given an instance of the closure type, this method instantiates the "extra" requirements
