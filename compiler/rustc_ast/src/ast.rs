@@ -3790,6 +3790,25 @@ impl Extern {
             Extern::Implicit(span) | Extern::Explicit(_, span) => Some(span),
         }
     }
+
+    /// An ABI "like Rust"
+    ///
+    /// These ABIs are fully controlled by the Rust compiler, which means they
+    /// - support unwinding with `-Cpanic=unwind`, unlike `extern "C"`
+    /// - often diverge from the C ABI
+    /// - are subject to change between compiler versions
+    pub fn is_rustic_abi(self) -> bool {
+        match self {
+            Extern::None => true,
+            Extern::Implicit(_) => false,
+            Extern::Explicit(name, _) => {
+                matches!(
+                    name.symbol_unescaped.as_str(),
+                    "Rust" | "rust-call" | "rust-cold" | "rust-preserve-none" | "rust-tail"
+                )
+            }
+        }
+    }
 }
 
 /// A function header.
