@@ -318,7 +318,7 @@ struct CollectRegionConstraintsResult<'tcx> {
 /// the current body. This initializes the relevant data structures
 /// and then type checks the MIR body.
 fn borrowck_collect_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'_, 'tcx>,
+    root_cx: &BorrowCheckRootCtxt<'_, 'tcx>,
     def: LocalDefId,
 ) -> CollectRegionConstraintsResult<'tcx> {
     let tcx = root_cx.tcx;
