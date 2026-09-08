@@ -108,6 +108,9 @@ fn main() {
         Command::AbiTest => abi_test::run(),
     } {
         eprintln!("Command failed to run: {e}");
-        process::exit(1);
+        // CI needs to tell a build system error apart from the test failures some suites expect.
+        let exit_code =
+            if e == test::TESTS_FAILED_ERROR { test::TESTS_FAILED_EXIT_CODE } else { 1 };
+        process::exit(exit_code);
     }
 }

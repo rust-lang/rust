@@ -25,6 +25,7 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
@@ -89,7 +90,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::round_ties_even_f64 => "rint",
         sym::roundf32 => "roundf",
         sym::roundf64 => "round",
-        sym::abort => "abort",
         _ => return None,
     };
     Some(cx.context.get_builtin_function(gcc_name))
@@ -664,16 +664,26 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     }
 
     fn abort(&mut self) {
-        let func = self.context.get_builtin_function("abort");
-        let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-        self.call(self.type_void(), None, None, func, &[], None, None);
+        let func = self.context.get_builtin_function("__builtin_trap");
+        self.block.add_eval(self.location, self.context.new_call(self.location, func, &[]));
     }
 
     fn assume(&mut self, value: Self::Value) {
-        // FIXME(antoyo): switch to assume when it exists.
-        // Or use something like this:
-        // #define __assume(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
-        self.expect(value, true);
+        // libgccjit currently has no direct equivalent of LLVM's `llvm.assume`,
+        // so use the idiom `if (!cond) __builtin_unreachable()`.
+        // FIXME: this should use IFN_ASSUME when we have internal functions in
+        // libgccjit.
+        if self.sess().opts.optimize == OptLevel::No {
+            return;
+        }
+        let then_block = self.append_sibling_block("assume_holds");
+        let unreachable_block = self.append_sibling_block("assume_violated");
+        self.block.end_with_conditional(self.location, value, then_block, unreachable_block);
+
+        self.switch_to_block(unreachable_block);
+        self.unreachable();
+
+        self.switch_to_block(then_block);
     }
 
     fn expect(&mut self, cond: Self::Value, _expected: bool) -> Self::Value {

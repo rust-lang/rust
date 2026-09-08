@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
@@ -11,15 +13,18 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_log::tracing::trace;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint,
+    self, Allocation, ConstAllocation, CtfeProvenance, ErrorHandled, Scalar as InterpScalar,
+    read_target_uint,
 };
+use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 
-use crate::base;
+use crate::common::bytes_type_in_context;
 use crate::context::CodegenCx;
+use crate::type_::struct_attributes;
 use crate::type_of::LayoutGccExt;
 
 pub(crate) fn const_alloc_to_gcc<'gcc, 'tcx>(
@@ -99,15 +104,21 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         let is_thread_local = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
         let global = self.get_static_inner(def_id, val_llty);
 
-        #[cfg(feature = "master")]
-        if global.to_rvalue().get_type() != val_llty {
-            global.to_rvalue().set_type(val_llty);
-        }
+        debug_assert_eq!(
+            global.to_rvalue().get_type(),
+            val_llty,
+            "`predefine_static` declared this global with a type its initializer does not have"
+        );
 
         // NOTE: Alignment from attributes has already been applied to the allocation.
         set_global_alignment(self, global, alloc.align);
 
-        global.global_set_initializer_rvalue(value);
+        // A common symbol is storage the linker allocates and zero-fills, so giving the definition
+        // an initializer — even an all-zero one — takes it back out of `.comm`. A non-zero one is
+        // kept: the symbol is then an ordinary definition, which is what GCC does with it too.
+        if attrs.linkage != Some(Linkage::Common) || !is_zero_initializer(alloc) {
+            global.global_set_initializer_rvalue(value);
+        }
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
@@ -237,15 +248,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             return global;
         }
 
-        // FIXME: Once we stop removing globals in `codegen_static`, we can uncomment this code.
-        // let defined_in_current_codegen_unit =
-        //     self.codegen_unit.items().contains_key(&MonoItem::Static(def_id));
-        // assert!(
-        //     !defined_in_current_codegen_unit,
-        //     "consts::get_static() should always hit the cache for \
-        //          statics defined in the same CGU, but did not for `{:?}`",
-        //     def_id
-        // );
+        let defined_in_current_codegen_unit =
+            self.codegen_unit.items().contains_key(&MonoItem::Static(def_id));
+        assert!(
+            !defined_in_current_codegen_unit,
+            "consts::get_static() should always hit the cache for \
+                 statics defined in the same CGU, but did not for `{:?}`",
+            def_id
+        );
         let sym = self.tcx.symbol_name(instance).name;
         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
 
@@ -309,6 +319,64 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
     }
 }
+/// One field of the packed struct that a constant allocation is lowered to.
+enum AllocField {
+    /// A run of bytes carrying no provenance.
+    Bytes { range: Range<usize> },
+    /// A pointer with provenance, occupying one target pointer worth of bytes.
+    Pointer { offset: usize, prov: CtfeProvenance },
+}
+
+/// The field-by-field shape of `alloc`.
+///
+/// [`const_alloc_to_gcc_uncached`] and [`const_alloc_type`] have to agree exactly on this, down to
+/// the empty trailing run an allocation ending on a pointer produces, so both derive the shape here
+/// instead of each walking the allocation on its own.
+fn alloc_fields(cx: &CodegenCx<'_, '_>, alloc: &interpret::Allocation) -> Vec<AllocField> {
+    let pointer_size = cx.data_layout().pointer_size().bytes() as usize;
+    let mut fields = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
+
+    let mut next_offset = 0;
+    for &(offset, prov) in alloc.provenance().ptrs().iter() {
+        let offset = offset.bytes();
+        assert_eq!(offset as usize as u64, offset);
+        let offset = offset as usize;
+        if offset > next_offset {
+            fields.push(AllocField::Bytes { range: next_offset..offset });
+        }
+        fields.push(AllocField::Pointer { offset, prov });
+        next_offset = offset + pointer_size;
+    }
+    if alloc.len() >= next_offset {
+        fields.push(AllocField::Bytes { range: next_offset..alloc.len() });
+    }
+
+    fields
+}
+
+/// The type [`const_alloc_to_gcc`] gives `alloc`, computed without building any rvalue.
+///
+/// This lets `predefine_static` declare a static's global with the type its initializer will have,
+/// so that the two never disagree. It must not reach for the rvalue of anything it points at:
+/// during the predefine pass the pointee may not be declared yet, and `alloc_to_backend` would
+/// declare it with the wrong type behind our back.
+pub(crate) fn const_alloc_type<'gcc>(
+    cx: &CodegenCx<'gcc, '_>,
+    alloc: ConstAllocation<'_>,
+) -> Type<'gcc> {
+    let fields: Vec<_> = alloc_fields(cx, alloc.inner())
+        .into_iter()
+        .map(|field| match field {
+            AllocField::Bytes { range } => bytes_type_in_context(cx, range.len()),
+            AllocField::Pointer { prov, .. } => {
+                let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
+                cx.type_i8p_ext(address_space)
+            }
+        })
+        .collect();
+    cx.type_struct(&fields, &struct_attributes(true, None))
+}
+
 /// Converts a given const alloc to a gcc Rvalue, without any caching or deduplication.
 /// YOU SHOULD NOT call this function directly - that may break the semantics of Rust.
 /// Use `const_data_from_alloc` instead.
@@ -317,65 +385,65 @@ pub(crate) fn const_alloc_to_gcc_uncached<'gcc>(
     alloc: ConstAllocation<'_>,
 ) -> RValue<'gcc> {
     let alloc = alloc.inner();
-    let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
     let dl = cx.data_layout();
-    let pointer_size = dl.pointer_size().bytes() as usize;
+    let pointer_size = dl.pointer_size();
 
-    let mut next_offset = 0;
-    for &(offset, prov) in alloc.provenance().ptrs().iter() {
-        let alloc_id = prov.alloc_id();
-        let offset = offset.bytes();
-        assert_eq!(offset as usize as u64, offset);
-        let offset = offset as usize;
-        if offset > next_offset {
-            // This `inspect` is okay since we have checked that it is not within a pointer with provenance, it
-            // is within the bounds of the allocation, and it doesn't affect interpreter execution
-            // (we inspect the result after interpreter execution). Any undef byte is replaced with
-            // some arbitrary byte value.
-            //
-            // FIXME: relay undef bytes to codegen as undef const bytes
-            let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(next_offset..offset);
-            llvals.push(cx.const_bytes(bytes));
-        }
-        let ptr_offset = read_target_uint(
-            dl.endian,
-            // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
-            // affect interpreter execution (we inspect the result after interpreter execution),
-            // and we properly interpret the provenance as a relocation pointer offset.
-            alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
-        )
-        .expect("const_alloc_to_gcc_uncached: could not read relocation pointer")
-            as u64;
+    let llvals: Vec<_> = alloc_fields(cx, alloc)
+        .into_iter()
+        .map(|field| match field {
+            AllocField::Bytes { range } => {
+                // This `inspect` is okay since we have checked that it is not within a pointer with
+                // provenance, it is within the bounds of the allocation, and it doesn't affect
+                // interpreter execution (we inspect the result after interpreter execution). Any
+                // undef byte is replaced with some arbitrary byte value.
+                //
+                // FIXME: relay undef bytes to codegen as undef const bytes
+                cx.const_bytes(alloc.inspect_with_uninit_and_ptr_outside_interpreter(range))
+            }
+            AllocField::Pointer { offset, prov } => {
+                let ptr_offset = read_target_uint(
+                    dl.endian,
+                    // This `inspect` is okay since it is within the bounds of the allocation, it
+                    // doesn't affect interpreter execution (we inspect the result after interpreter
+                    // execution), and we properly interpret the provenance as a relocation pointer
+                    // offset.
+                    alloc.inspect_with_uninit_and_ptr_outside_interpreter(
+                        offset..(offset + pointer_size.bytes() as usize),
+                    ),
+                )
+                .expect("const_alloc_to_gcc_uncached: could not read relocation pointer")
+                    as u64;
 
-        let address_space = cx.tcx.global_alloc(alloc_id).address_space(cx);
+                let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
 
-        llvals.push(cx.scalar_to_backend(
-            InterpScalar::from_pointer(
-                interpret::Pointer::new(prov, Size::from_bytes(ptr_offset)),
-                &cx.tcx,
-            ),
-            abi::Scalar::Initialized {
-                value: Primitive::Pointer(address_space),
-                valid_range: WrappingRange::full(dl.pointer_size()),
-            },
-            cx.type_i8p_ext(address_space),
-        ));
-        next_offset = offset + pointer_size;
-    }
-    if alloc.len() >= next_offset {
-        let range = next_offset..alloc.len();
-        // This `inspect` is okay since we have check that it is after all provenance, it is
-        // within the bounds of the allocation, and it doesn't affect interpreter execution (we
-        // inspect the result after interpreter execution). Any undef byte is replaced with some
-        // arbitrary byte value.
-        //
-        // FIXME: relay undef bytes to codegen as undef const bytes
-        let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(range);
-        llvals.push(cx.const_bytes(bytes));
-    }
+                cx.scalar_to_backend(
+                    InterpScalar::from_pointer(
+                        interpret::Pointer::new(prov, Size::from_bytes(ptr_offset)),
+                        &cx.tcx,
+                    ),
+                    abi::Scalar::Initialized {
+                        value: Primitive::Pointer(address_space),
+                        valid_range: WrappingRange::full(pointer_size),
+                    },
+                    cx.type_i8p_ext(address_space),
+                )
+            }
+        })
+        .collect();
 
     // FIXME(bjorn3) avoid wrapping in a struct when there is only a single element.
     cx.const_struct(&llvals, true)
+}
+
+/// Whether this allocation is all zeroes, and so needs no initializer to be spelled out.
+fn is_zero_initializer(alloc: &Allocation) -> bool {
+    alloc.provenance().ptrs().is_empty()
+        // This `inspect` is okay: it is within the bounds of the allocation, there is no provenance
+        // to misread, and it does not affect interpreter execution.
+        && alloc
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.size().bytes_usize())
+            .iter()
+            .all(|&byte| byte == 0)
 }
 
 fn codegen_static_initializer<'gcc, 'tcx>(
@@ -394,10 +462,10 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
 ) -> LValue<'gcc> {
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
     if let Some(linkage) = attrs.import_linkage {
-        // Declare a symbol `foo` with the desired linkage.
-        let global1 =
-            cx.declare_global_with_linkage(sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
+        // Whatever the flavour, an import is an undefined reference to a symbol defined elsewhere.
+        let global1 = cx.declare_global_with_linkage(sym, cx.type_i8(), GlobalKind::Imported);
 
+        // Only `extern_weak` lets the symbol stay unresolved, in which case it reads as null.
         if linkage == Linkage::ExternalWeak {
             #[cfg(feature = "master")]
             global1.add_attribute(VarAttribute::Weak);
@@ -411,8 +479,13 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // zero.
         let real_name =
             format!("_rust_extern_with_linkage_{:016x}_{sym}", cx.tcx.stable_crate_id(LOCAL_CRATE));
-        let global2 = cx.define_global(&real_name, gcc_type, is_tls, attrs.link_section);
-        // FIXME(antoyo): set linkage.
+        let global2 = cx.define_global(
+            &real_name,
+            gcc_type,
+            GlobalKind::Internal,
+            is_tls,
+            attrs.link_section,
+        );
         let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
         global2.global_set_initializer_rvalue(value);
         global2

@@ -97,7 +97,7 @@ use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{Arch, RelocModel};
+use rustc_target::spec::{RelocModel, TargetTuple};
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
@@ -196,35 +196,44 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
-            let rustlib_path =
-                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
-            sysroot_path
-                .join(rustlib_path)
-                .join("codegen-backends")
-                .join("lib")
-                .join(sess.target.llvm_target.as_ref())
-                .join("libgccjit.so")
+        fn file_paths(sysroot_path: &Path, sess: &Session) -> Vec<PathBuf> {
+            let rustlib_path = rustc_target::relative_target_rustlib_path(
+                sysroot_path,
+                rustc_session::config::host_tuple(),
+            );
+            let lib_path = sysroot_path.join(rustlib_path).join("codegen-backends").join("lib");
+            let rust_target_path =
+                lib_path.join(sess.opts.target_triple.tuple()).join("libgccjit.so");
+            let mut paths = vec![rust_target_path];
+            if matches!(sess.opts.target_triple, TargetTuple::TargetJson { .. }) {
+                let llvm_target_path =
+                    lib_path.join(sess.target.llvm_target.as_ref()).join("libgccjit.so");
+                paths.push(llvm_target_path);
+            }
+            paths
         }
 
         // We use all_paths() instead of only path() in case the path specified by --sysroot is
         // invalid.
         // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
-        for path in sess.opts.sysroot.all_paths() {
-            let libgccjit_target_lib_file = file_path(path, sess);
-            if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
-                load_libgccjit_if_needed(&libgccjit_target_lib_file);
-                break;
+        'sysroot: for path in sess.opts.sysroot.all_paths() {
+            for libgccjit_target_lib_file in file_paths(path, sess) {
+                if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
+                    load_libgccjit_if_needed(&libgccjit_target_lib_file);
+                    break 'sysroot;
+                }
             }
         }
 
         if !gccjit::is_loaded() {
             let mut paths = vec![];
             for path in sess.opts.sysroot.all_paths() {
-                let libgccjit_target_lib_file = file_path(path, sess);
-                paths.push(libgccjit_target_lib_file);
+                for libgccjit_target_lib_file in file_paths(path, sess) {
+                    paths.push(libgccjit_target_lib_file);
+                }
             }
 
+            paths.dedup();
             panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
         }
 
@@ -286,7 +295,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn target_cpu(&self, sess: &Session) -> String {
-        target_cpu(sess).to_owned()
+        target_cpu(sess).into_owned()
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {

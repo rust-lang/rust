@@ -1,5 +1,5 @@
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, VarAttribute};
+use gccjit::{FnAttribute, GlobalKind, ToRValue, Type, VarAttribute};
 use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
@@ -10,6 +10,7 @@ use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 
+use crate::consts::const_alloc_type;
 use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 use crate::{attributes, base};
@@ -19,23 +20,58 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn predefine_static(
         &mut self,
         def_id: DefId,
-        _linkage: Linkage,
+        linkage: Linkage,
         visibility: Visibility,
         symbol_name: &str,
     ) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
         let instance = Instance::mono(self.tcx, def_id);
-        let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
-        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
-        // the gcc type from the actual evaluated initializer.
-        let ty =
-            if nested { self.tcx.types.unit } else { instance.ty(self.tcx, self.typing_env()) };
-        let gcc_type = self.layout_of(ty).gcc_type(self);
+        // Declare the global with the type its initializer will have, so that `codegen_static`
+        // never has to retype it afterwards. The initializer is lowered as a packed struct of byte
+        // runs and relocations, which almost never matches the layout type.
+        let gcc_type = match self.tcx.eval_static_initializer(def_id) {
+            Ok(alloc) => const_alloc_type(self, alloc),
+            // The initializer failed to evaluate; `codegen_static` bails out on it too, so this
+            // type is never used to hold one.
+            Err(_) => {
+                let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
+                // Nested statics do not have a type, so pick a dummy one.
+                let ty = if nested {
+                    self.tcx.types.unit
+                } else {
+                    instance.ty(self.tcx, self.typing_env())
+                };
+                self.layout_of(ty).gcc_type(self)
+            }
+        };
 
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-        let global = self.define_global(symbol_name, gcc_type, is_tls, attrs.link_section);
+        let global_kind = base::global_linkage_to_gcc(linkage);
+        let global =
+            self.define_global(global_name, gcc_type, global_kind, is_tls, attrs.link_section);
         #[cfg(feature = "master")]
-        global.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
+        {
+            // Visibility is meaningless on an internal global: GCC ignores the attribute and
+            // warns about it.
+            if !matches!(global_kind, GlobalKind::Internal) {
+                // If we're compiling the compiler-builtins crate, e.g., the equivalent of
+                // compiler-rt, then we want to implicitly compile everything with hidden
+                // visibility as we're going to link this object all over the place but
+                // don't want the symbols to get exported.
+                let visibility = if self.tcx.is_compiler_builtins(LOCAL_CRATE) {
+                    gccjit::Visibility::Hidden
+                } else {
+                    base::visibility_to_gcc(visibility)
+                };
+                global.add_attribute(VarAttribute::Visibility(visibility));
+            }
+            if let Some(attribute) = base::global_linkage_attribute(linkage) {
+                global.add_attribute(attribute);
+            }
+        }
+
+        #[cfg(feature = "master")]
+        self.add_static_aliases(gcc_type, global_name, attrs, &attrs.foreign_item_symbol_aliases);
 
         // FIXME(antoyo): set linkage.
         self.instances.borrow_mut().insert(instance, global);
@@ -50,12 +86,115 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     ) {
         assert!(!instance.args.has_infer());
 
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
+
+        let decl =
+            self.predefine_without_aliases(instance, &attrs, linkage, visibility, symbol_name);
+
+        #[cfg(feature = "master")]
+        self.add_function_aliases(instance, decl, &attrs, &attrs.foreign_item_symbol_aliases);
+
+        self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
+        self.function_instances.borrow_mut().insert(instance, decl);
+    }
+}
+
+impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    #[cfg(feature = "master")]
+    fn add_static_aliases(
+        &self,
+        gcc_type: Type<'gcc>,
+        aliased: &str,
+        attrs: &CodegenFnAttrs,
+        aliases: &[(DefId, Linkage, Visibility)],
+    ) {
+        let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
+
+        for &(alias, linkage, visibility) in aliases {
+            let instance = Instance::mono(self.tcx, alias);
+            let symbol_name = self.tcx.symbol_name(instance);
+
+            let alias = self.declare_global(
+                symbol_name.name,
+                gcc_type,
+                GlobalKind::Imported,
+                is_tls,
+                attrs.link_section,
+            );
+            alias.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
+            alias.add_attribute(VarAttribute::Alias(aliased));
+            if linkage == Linkage::WeakAny {
+                alias.add_attribute(VarAttribute::Weak);
+            }
+
+            // Add the alias name to the set of cached items, so there is no duplicate
+            // instance added to it during the normal `external static` codegen
+            let prev_entry = self.instances.borrow_mut().insert(instance, alias);
+
+            // If there already was a previous entry, then `add_static_aliases` was called multiple times for the same `alias`
+            // which would result in incorrect codegen
+            assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
+        }
+    }
+
+    #[cfg(feature = "master")]
+    fn add_function_aliases(
+        &self,
+        aliased_instance: Instance<'tcx>,
+        aliased: Function<'gcc>,
+        attrs: &CodegenFnAttrs,
+        aliases: &[(DefId, Linkage, Visibility)],
+    ) {
+        for &(alias, linkage, visibility) in aliases {
+            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, alias));
+
+            // predefine another copy of the original instance
+            // with a new symbol name
+            let alias_fn_decl = self.predefine_without_aliases(
+                aliased_instance,
+                attrs,
+                linkage,
+                visibility,
+                symbol_name.name,
+            );
+
+            let block = alias_fn_decl.new_block("start");
+            let nb_params = alias_fn_decl.get_param_count();
+            let mut args = Vec::with_capacity(nb_params);
+            for idx in 0..nb_params {
+                args.push(alias_fn_decl.get_param(idx as _).to_rvalue());
+            }
+
+            let void_type = self.context.new_type::<()>();
+            let call = self.context.new_call(None, aliased, &args);
+            if alias_fn_decl.get_return_type() == void_type {
+                block.add_eval(None, call);
+                block.end_with_void_return(None);
+            } else {
+                block.end_with_return(None, call);
+            }
+        }
+    }
+
+    fn predefine_without_aliases(
+        &self,
+        instance: Instance<'tcx>,
+        _attrs: &CodegenFnAttrs,
+        linkage: Linkage,
+        visibility: Visibility,
+        symbol_name: &str,
+    ) -> Function<'gcc> {
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         self.linkage.set(base::linkage_to_gcc(linkage));
         let decl = self.declare_fn(symbol_name, fn_abi);
         //let attrs = self.tcx.codegen_instance_attrs(instance.def);
 
         attributes::from_fn_attrs(self, decl, instance);
+
+        #[cfg(feature = "master")]
+        if base::linkage_needs_weak_attribute(linkage) {
+            fn_decl.add_attribute(FnAttribute::Weak);
+        }
 
         // If we're compiling the compiler-builtins crate, e.g., the equivalent of
         // compiler-rt, then we want to implicitly compile everything with hidden

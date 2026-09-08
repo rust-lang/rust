@@ -73,7 +73,7 @@ impl GccType for CastTarget {
             args.push(cx.type_ix(rem_bytes * 8));
         }
 
-        cx.type_struct(&args, false)
+        cx.type_struct(&args, &[])
     }
 }
 

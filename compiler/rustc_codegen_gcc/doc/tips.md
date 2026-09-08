@@ -58,7 +58,7 @@ If you wish to build a custom sysroot, pass the path of your sysroot source to `
 ### How to generate GIMPLE
 
 If you need to check what gccjit is generating (GIMPLE), then take a look at how to
-generate it in [gimple.md](./doc/gimple.md).
+generate it in [gimple.md](./gimple.md).
 
 ### How to build a cross-compiling libgccjit
 

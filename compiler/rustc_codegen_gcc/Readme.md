@@ -176,7 +176,7 @@ $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(ca
 More specific documentation is available in the [`doc`](./doc) folder:
 
  * [Common errors](./doc/errors.md)
- * [Debugging GCC LTO](./doc/debugging-gcc-lto.md)
+ * [Debugging](./doc/debugging.md)
  * [Debugging libgccjit](./doc/debugging-libgccjit.md)
  * [Git subtree sync](./doc/subtree.md)
  * [List of useful commands](./doc/tips.md)

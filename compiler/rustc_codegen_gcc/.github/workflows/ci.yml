@@ -31,11 +31,12 @@ jobs:
           # "--asm-tests",
           "--test-libcore",
           "--extended-rand-tests",
-          "--extended-regex-example-tests",
+          "--extended-regex-example-tests --test-libcore-doctests",
           "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
           "--projects",
+          "--gcc-asm-tests --test-release-libcore",
         ]
 
     steps:
@@ -126,13 +127,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python tools/check_intrinsics_duplicates.py
-
-  spell_check:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: crate-ci/typos@v1.32.0
-      - uses: streetsidesoftware/cspell-action@v7
 
   build_system:
     runs-on: ubuntu-24.04

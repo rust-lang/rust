@@ -36,7 +36,8 @@ use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use crate::abi::FnAbiGccExt;
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
-use crate::diagnostics;
+#[cfg(feature = "master")]
+use crate::context::PendingCleanup;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
@@ -63,6 +64,33 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn next_value_counter(&self) -> u64 {
         self.value_counter.set(self.value_counter.get() + 1);
         self.value_counter.get()
+    }
+
+    /// Tell GCC that `pointer` is `align`-aligned, so that the bulk memory builtins can widen their
+    /// accesses: a pointer cast to an aligned type would be dropped as a useless conversion.
+    fn assume_aligned(&mut self, pointer: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+        if align.bytes() <= 1 {
+            return pointer;
+        }
+        let assume_aligned = self.context.get_builtin_function("__builtin_assume_aligned");
+        let alignment = self.context.new_rvalue_from_long(self.type_size_t(), align.bytes() as i64);
+        let pointer_type = pointer.get_type();
+        let const_void_ptr_type = self.context.new_type::<()>().make_const().make_pointer();
+        let pointer = self.context.new_cast(self.location, pointer, const_void_ptr_type);
+        let aligned = self.context.new_call(self.location, assume_aligned, &[pointer, alignment]);
+        self.context.new_cast(self.location, aligned, pointer_type)
+    }
+
+    /// GCC ignores a volatile qualifier on the pointers given to `memcpy`/`memmove`/`memset` and
+    /// happily deletes the call, so a barrier is what keeps the operation observable. The pointers
+    /// are fed to it because a clobber alone does not reach memory GCC believes never escapes.
+    fn volatile_barrier(&mut self, pointers: &[RValue<'gcc>]) {
+        let barrier = self.block.add_extended_asm(self.location, "");
+        for pointer in pointers {
+            barrier.add_input_operand(None, "r", *pointer);
+        }
+        barrier.add_clobber("memory");
+        barrier.set_volatile_flag(true);
     }
 
     fn atomic_extremum(
@@ -614,24 +642,34 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _funclet: Option<&Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        let try_block = self.current_func().new_block("try");
+        let current_func = self.current_func();
+        let try_region = current_func.new_region(self.location);
+        let try_block = try_region.new_block("try");
 
         let current_block = self.block;
         self.block = try_block;
         let call = self.call(typ, fn_attrs, fn_abi, func, args, None, instance); // FIXME(antoyo): use funclet here?
         self.block = current_block;
 
-        let return_value =
-            self.current_func().new_local(self.location, call.get_type(), "invokeResult");
+        let return_value = self.new_temp(current_func, self.location, call.get_type());
 
         try_block.add_assignment(self.location, return_value, call);
 
         try_block.end_with_jump(self.location, then);
 
-        if self.cleanup_blocks.borrow().contains(&catch) {
-            self.block.add_try_finally(self.location, try_block, catch);
+        if self.cx.landing_pads.borrow().contains(&catch) {
+            let cleanup_region = current_func.new_region(self.location);
+            self.block.add_cleanup(self.location, try_region, cleanup_region);
+            self.cx
+                .pending_cleanups
+                .borrow_mut()
+                .push(PendingCleanup { region: cleanup_region, landing_pad: catch });
         } else {
-            self.block.add_try_catch(self.location, try_block, catch);
+            let catch_region = current_func.new_region(self.location);
+            for clone in gccjit::clone_blocks(&[catch]) {
+                catch_region.add_block(clone);
+            }
+            self.block.add_try_catch(self.location, try_region, catch_region);
         }
 
         self.block.end_with_jump(self.location, then);
@@ -669,8 +707,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         if return_type == void_type {
             self.block.end_with_void_return(self.location)
         } else {
-            let return_value =
-                self.current_func().new_local(self.location, return_type, "unreachableReturn");
+            let trap = self.context.get_builtin_function("__builtin_trap");
+            self.block.add_eval(self.location, self.context.new_call(self.location, trap, &[]));
+            let return_value = self.new_temp(self.current_func(), self.location, return_type);
             self.block.end_with_return(self.location, return_value)
         }
     }
@@ -1403,47 +1442,53 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn memcpy(
         &mut self,
         dst: RValue<'gcc>,
-        _dst_align: Align,
+        dst_align: Align,
         src: RValue<'gcc>,
-        _src_align: Align,
+        src_align: Align,
         size: RValue<'gcc>,
         flags: MemFlags,
         _tt: Option<rustc_ast::expand::typetree::FncTree>, // Autodiff TypeTrees are LLVM-only, ignored in GCC backend
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_size_t(), false);
-        let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
+        let dst = self.assume_aligned(dst, dst_align);
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
+        let src = self.assume_aligned(src, src_align);
         let memcpy = self.context.get_builtin_function("memcpy");
-        // FIXME(antoyo): handle aligns and is_volatile.
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memcpy, &[dst, src, size]),
         );
+        if flags.contains(MemFlags::VOLATILE) {
+            self.volatile_barrier(&[dst, src]);
+        }
     }
 
     fn memmove(
         &mut self,
         dst: RValue<'gcc>,
-        _dst_align: Align,
+        dst_align: Align,
         src: RValue<'gcc>,
-        _src_align: Align,
+        src_align: Align,
         size: RValue<'gcc>,
         flags: MemFlags,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_size_t(), false);
-        let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
+        let dst = self.assume_aligned(dst, dst_align);
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
+        let src = self.assume_aligned(src, src_align);
 
         let memmove = self.context.get_builtin_function("memmove");
-        // FIXME(antoyo): handle is_volatile.
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memmove, &[dst, src, size]),
         );
+        if flags.contains(MemFlags::VOLATILE) {
+            self.volatile_barrier(&[dst, src]);
+        }
     }
 
     fn memset(
@@ -1451,20 +1496,22 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         ptr: RValue<'gcc>,
         fill_byte: RValue<'gcc>,
         size: RValue<'gcc>,
-        _align: Align,
+        align: Align,
         flags: MemFlags,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
-        let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
+        let ptr = self.assume_aligned(ptr, align);
         let memset = self.context.get_builtin_function("memset");
-        // FIXME(antoyo): handle align and is_volatile.
         let fill_byte = self.context.new_cast(self.location, fill_byte, self.i32_type);
         let size = self.intcast(size, self.type_size_t(), false);
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memset, &[ptr, fill_byte, size]),
         );
+        if flags.contains(MemFlags::VOLATILE) {
+            self.volatile_barrier(&[ptr]);
+        }
     }
 
     fn vscale(&mut self, _: Self::Type) -> Self::Value {
@@ -1604,18 +1651,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
         // generate a try/finally instead of a try/catch for this block.
-        self.cleanup_blocks.borrow_mut().insert(self.block);
+        self.cx.landing_pads.borrow_mut().insert(self.block);
 
-        let eh_pointer_builtin =
-            self.cx.context.get_target_builtin_function("__builtin_eh_pointer");
-        let zero = self.cx.context.new_rvalue_zero(self.int_type);
-        let ptr = self.cx.context.new_call(self.location, eh_pointer_builtin, &[zero]);
-
-        let value1_type = self.u8_type.make_pointer();
-        let ptr = self.cx.context.new_cast(self.location, ptr, value1_type);
-        let value1 = ptr;
-        let value2 = zero; // FIXME(antoyo): set the proper value here (the type of exception?).
-
+        // A cleanup resumes by falling through: it never inspects the exception
+        // object.
+        let value1 = self.context.new_null(self.u8_type.make_pointer());
+        let value2 = self.context.new_rvalue_zero(self.i32_type);
         (value1, value2)
     }
 
@@ -1631,18 +1672,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) {
-        // FIXME(antoyo): generate the correct landing pad
-        self.cleanup_landing_pad(pers_fn);
+        self.set_personality_fn(pers_fn);
     }
 
     #[cfg(feature = "master")]
-    fn resume(&mut self, exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
-        let exn_type = exn0.get_type();
-        let exn = self.context.new_cast(self.location, exn0, exn_type);
-        let unwind_resume = self.context.get_target_builtin_function("__builtin_unwind_resume");
-        self.llbb()
-            .add_eval(self.location, self.context.new_call(self.location, unwind_resume, &[exn]));
-        self.unreachable();
+    fn resume(&mut self, _exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
+        // End the cleanup by falling off the end of its region body.
+        self.block.end_with_fallthrough(self.location);
     }
 
     #[cfg(not(feature = "master"))]
