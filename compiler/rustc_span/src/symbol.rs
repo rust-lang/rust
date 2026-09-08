@@ -2776,7 +2776,6 @@ impl ByteSymbol {
     }
 
     /// Maps a string to its interned representation.
-    #[inline]
     pub fn intern(byte_str: &[u8]) -> Self {
         with_session_globals(|session_globals| {
             session_globals.symbol_interner.intern_byte_str(byte_str)
