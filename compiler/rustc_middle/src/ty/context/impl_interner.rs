@@ -122,6 +122,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>;
 
+    type TypingEnv = ty::TypingEnv<'tcx>;
+
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
 
@@ -154,6 +156,30 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn assert_evaluation_is_concurrent(&self) {
         // Turns out, the assumption for this function isn't perfect.
         // See trait-system-refactor-initiative#234.
+    }
+
+    fn param_env_normalized_for_post_analysis(self, defid: Self::DefId) -> Self::ParamEnv {
+        self.param_env_normalized_for_post_analysis(defid)
+    }
+
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T {
+        self.erase_and_anonymize_regions(value)
+    }
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<'tcx>,
+        span: Self::Span,
+    ) -> Result<Result<Self::ValTree, Self::Ty>, Option<Self::ErrorGuaranteed>> {
+        match self.const_eval_resolve_for_typeck(typing_env, ct, span) {
+            Ok(Ok(vt)) => Ok(Ok(vt)),
+            Ok(Err(ty)) => Ok(Err(ty)),
+            Err(e) => match e {
+                rustc_middle::mir::interpret::ErrorHandled::Reported(e, _) => Err(Some(e.into())),
+                rustc_middle::mir::interpret::ErrorHandled::TooGeneric(_) => Err(None),
+            },
+        }
     }
 
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
