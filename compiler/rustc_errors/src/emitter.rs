@@ -555,33 +555,10 @@ pub fn get_stderr_color_choice(color: ColorConfig, stderr: &std::io::Stderr) -> 
     if matches!(choice, ColorChoice::Auto) { AutoStream::choice(stderr) } else { choice }
 }
 
-/// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.
-///
-/// See #36178.
-const BRIGHT_BLUE: anstyle::Style = if cfg!(windows) {
-    AnsiColor::BrightCyan.on_default()
-} else {
-    AnsiColor::BrightBlue.on_default()
-};
-
 impl Style {
-    pub(crate) fn anstyle(&self, lvl: Level) -> anstyle::Style {
+    pub(crate) fn anstyle(&self) -> anstyle::Style {
         match self {
-            Style::Addition => AnsiColor::BrightGreen.on_default(),
-            Style::Removal => AnsiColor::BrightRed.on_default(),
-            Style::LineAndColumn => anstyle::Style::new(),
-            Style::LineNumber => BRIGHT_BLUE.effects(Effects::BOLD),
-            Style::Quotation => anstyle::Style::new(),
-            Style::MainHeaderMsg => if cfg!(windows) {
-                AnsiColor::BrightWhite.on_default()
-            } else {
-                anstyle::Style::new()
-            }
-            .effects(Effects::BOLD),
-            Style::UnderlinePrimary | Style::LabelPrimary => lvl.color().effects(Effects::BOLD),
-            Style::UnderlineSecondary | Style::LabelSecondary => BRIGHT_BLUE.effects(Effects::BOLD),
             Style::HeaderMsg | Style::NoStyle => anstyle::Style::new(),
-            Style::Level(lvl) => lvl.color().effects(Effects::BOLD),
             Style::Highlight => AnsiColor::Magenta.on_default().effects(Effects::BOLD),
         }
     }
