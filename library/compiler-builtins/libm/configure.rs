@@ -115,7 +115,7 @@ pub fn emit(cfg: &Config) {
     // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
     // these targets do not have full Thumb-2 support but only original Thumb-1.
     // We have to cfg our code accordingly.
-    let thumb_1 = split[0] == "thumbv6m" || split[0] == "thumbv8m.base";
+    let thumb1_only = split[0] == "thumbv6m" || split[0] == "thumbv8m.base";
 
     // FIXME(msrv): `cfg(target_abi)` is usable since 1.78.
     let target_abi_eabihf = cfg.target_abi.as_deref() == Some("eabihf");
@@ -128,7 +128,7 @@ pub fn emit(cfg: &Config) {
 
     // Arch shorthand config is used in most crates.
     set_cfg("thumb", thumb);
-    set_cfg("thumb_1", thumb_1);
+    set_cfg("thumb1_only", thumb1_only);
     set_cfg("target_abi_eabihf", target_abi_eabihf);
     set_cfg("x86_no_sse2", x86_no_sse2);
     // FIXME(arm_target_feature): the exact target features are not yet stable.
