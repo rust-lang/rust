@@ -3,7 +3,7 @@ use std::mem;
 use std::rc::Rc;
 
 use rustc_abi::FieldIdx;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxBuildHasher, FxHashMap, FxIndexMap};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
@@ -267,15 +267,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
     }
 
     pub(super) fn do_mir_borrowck(&mut self) {
-        // The list of all bodies we need to borrowck. This first looks at
-        // nested bodies, and then their parents. This means accessing e.g.
-        // `used_mut_upvars` for a closure can assume that we've already
-        // checked that closure.
-        let all_bodies = self
-            .tcx
-            .nested_bodies_within(self.root_def_id)
-            .iter()
-            .chain(std::iter::once(self.root_def_id));
+        let nested_bodies = self.tcx.nested_bodies_within(self.root_def_id);
 
         // The region constraints computed by [borrowck_collect_region_constraints]. This uses
         // an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
@@ -283,7 +275,14 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         let mut collect_region_constraints_results: FxIndexMap<
             LocalDefId,
             CollectRegionConstraintsResult<'tcx>,
-        > = FxIndexMap::default();
+        > = FxIndexMap::with_capacity_and_hasher(nested_bodies.len(), FxBuildHasher::default());
+
+        // The list of all bodies we need to borrowck. This first looks at
+        // nested bodies, and then their parents. This means accessing e.g.
+        // `used_mut_upvars` for a closure can assume that we've already
+        // checked that closure.
+        let all_bodies = nested_bodies.iter().chain(std::iter::once(self.root_def_id));
+
         for def_id in all_bodies {
             let result = borrowck_collect_region_constraints(self, def_id);
             collect_region_constraints_results.insert(def_id, result);
