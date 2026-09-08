@@ -38,6 +38,8 @@ fn init_compiler_benchmarks(
         scenarios.join(",").as_str(),
         "--exact-match",
         crates.join(",").as_str(),
+        "--frontend-threads",
+        "1",
         "--jobs",
         "4",
     ])
