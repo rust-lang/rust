@@ -360,7 +360,7 @@ pub trait Interner:
         typing_env: Self::TypingEnv,
         ct: ty::AliasConst<Self>,
         span: Self::Span,
-    ) -> Result<Result<Self::ValTree, Self::Ty>, Option<Self::ErrorGuaranteed>>;
+    ) -> ty::ConstEvalResult<Self>;
 
     fn coroutine_hidden_types(
         self,

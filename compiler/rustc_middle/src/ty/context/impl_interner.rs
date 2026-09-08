@@ -169,14 +169,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         typing_env: Self::TypingEnv,
         ct: ty::AliasConst<'tcx>,
         span: Self::Span,
-    ) -> Result<Result<Self::ValTree, Self::Ty>, Option<Self::ErrorGuaranteed>> {
+    ) -> ty::ConstEvalResult<Self> {
+        use crate::mir::interpret::ErrorHandled;
+
         match self.const_eval_resolve_for_typeck(typing_env, ct, span) {
-            Ok(Ok(vt)) => Ok(Ok(vt)),
-            Ok(Err(ty)) => Ok(Err(ty)),
-            Err(e) => match e {
-                rustc_middle::mir::interpret::ErrorHandled::Reported(e, _) => Err(Some(e.into())),
-                rustc_middle::mir::interpret::ErrorHandled::TooGeneric(_) => Err(None),
-            },
+            Ok(Ok(vt)) => Ok(vt),
+            Ok(Err(ty)) => Err(ty::ConstEvalErr::NonValtreeable(ty)),
+            Err(ErrorHandled::Reported(e, _)) => Err(ty::ConstEvalErr::Reported(e.into())),
+            Err(ErrorHandled::TooGeneric(_)) => Err(ty::ConstEvalErr::TooGeneric),
         }
     }
 
