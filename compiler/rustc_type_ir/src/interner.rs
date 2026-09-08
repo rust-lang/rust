@@ -352,6 +352,15 @@ pub trait Interner:
 
     fn renormalize_rigid_aliases(self) -> bool;
 
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T;
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<Self>,
+        span: Self::Span,
+    ) -> Result<Result<Self::ValTree, Self::Ty>, Option<Self::ErrorGuaranteed>>;
+
     fn coroutine_hidden_types(
         self,
         def_id: Self::CoroutineId,
