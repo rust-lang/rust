@@ -95,6 +95,7 @@ pub enum Profile {
     Check,
     Debug,
     Doc,
+    DocJson,
     Opt,
     Clippy,
 }
@@ -105,6 +106,7 @@ impl Display for Profile {
             Profile::Check => "Check",
             Profile::Debug => "Debug",
             Profile::Doc => "Doc",
+            Profile::DocJson => "DocJson",
             Profile::Opt => "Opt",
             Profile::Clippy => "Clippy",
         };
