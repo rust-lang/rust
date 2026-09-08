@@ -601,15 +601,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         {
             if defer_seeds_come_from_allow {
                 return ImplItemCheckResult::Dead { require: adt_def_id };
-            } else {
-                let comes_from_allow = trait_comes_from_allow
-                    .or_else(|| has_allow_dead_code_or_lang_attr(self.tcx, adt_def_id));
-
-                return match comes_from_allow {
-                    Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
-                    None => ImplItemCheckResult::Dead { require: adt_def_id },
-                };
             }
+
+            return match trait_comes_from_allow {
+                Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
+                None => ImplItemCheckResult::Dead { require: adt_def_id },
+            };
         }
 
         ImplItemCheckResult::Live(ComesFromAllowExpect::No)
