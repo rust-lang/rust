@@ -1,8 +1,9 @@
 #[cfg(feature = "master")]
 use std::convert::TryInto;
+use std::mem::discriminant;
 
 #[cfg(feature = "master")]
-use gccjit::CType;
+use gccjit::{CType, TypeAttribute};
 use gccjit::{RValue, Struct, Type};
 use rustc_abi::{AddressSpace, Align, Integer, Size};
 use rustc_codegen_ssa::common::TypeKind;
@@ -101,9 +102,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.bool_type
     }
 
-    pub fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
-        let types = fields.to_vec();
-        if let Some(typ) = self.struct_types.borrow().get(fields) {
+    pub fn type_struct(&self, fields: &[Type<'gcc>], attributes: &[StructAttribute]) -> Type<'gcc> {
+        let key =
+            StructTypeKey { fields: fields.to_vec(), attributes: canonical_attributes(attributes) };
+        if let Some(typ) = self.struct_types.borrow().get(&key) {
             return *typ;
         }
         let fields: Vec<_> = fields
@@ -114,14 +116,90 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             })
             .collect();
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
-        if packed {
-            #[cfg(feature = "master")]
-            typ.set_packed();
-        }
-        self.struct_types.borrow_mut().insert(types, typ);
+        apply_struct_attributes(typ, &key.attributes);
+        self.struct_types.borrow_mut().insert(key, typ);
         typ
     }
 }
+
+/// An attribute that can be set on a GCC struct type.
+///
+/// This mirrors the subset of `gccjit::TypeAttribute` that cg_gcc needs, rather than using it
+/// directly, because it must exist without the `master` feature and because it is what
+/// `StructTypeKey` is keyed on. Adding a variant here is therefore all it takes to make a new
+/// attribute part of the cache key: there is no second place to remember to update.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum StructAttribute {
+    /// Alignment, in bytes.
+    Aligned(u32),
+    /// Lay the fields out without inserting padding between them.
+    Packed,
+}
+
+/// Identifies an anonymous struct type in `CodegenCx::struct_types`.
+///
+/// Two Rust types with the same field list can still need distinct GCC types — `struct { a: u64,
+/// b: u64 }` with and without `repr(align(16))` produces the same fields — so every attribute has
+/// to be part of the key. Holding them as one [`StructAttribute`] list rather than as separate
+/// fields is what keeps that true when a new attribute is added.
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub struct StructTypeKey<'gcc> {
+    pub fields: Vec<Type<'gcc>>,
+    pub attributes: Vec<StructAttribute>,
+}
+
+/// The attributes a GCC struct needs in order to match the Rust layout it is built from.
+pub fn struct_attributes(packed: bool, align: Option<Align>) -> Vec<StructAttribute> {
+    let mut attributes = Vec::new();
+    if packed {
+        attributes.push(StructAttribute::Packed);
+    }
+    if let Some(align) = align
+        && align.bytes() > 1
+        && align.bytes() <= MAX_STRUCT_ALIGNMENT
+    {
+        attributes.push(StructAttribute::Aligned(align.bytes() as u32));
+    }
+    attributes
+}
+
+/// The largest alignment GCC accepts on a type, in bytes.
+const MAX_STRUCT_ALIGNMENT: u64 = 1 << 28;
+
+/// Put an attribute list into a canonical form so that it can be used as a cache key.
+///
+/// Without this, `[Packed, Aligned(8)]` and `[Aligned(8), Packed]` would hash differently and mint
+/// two GCC types for what is one Rust type.
+fn canonical_attributes(attributes: &[StructAttribute]) -> Vec<StructAttribute> {
+    let mut attributes = attributes.to_vec();
+    attributes.sort_unstable();
+    attributes.dedup();
+    debug_assert!(
+        attributes.windows(2).all(|pair| discriminant(&pair[0]) != discriminant(&pair[1])),
+        "contradictory struct attributes: {attributes:?}"
+    );
+    attributes
+}
+
+/// Set `attributes` on the struct type `typ`.
+///
+/// This is the only place allowed to call `Type::add_attribute`; `clippy.toml` forbids it
+/// everywhere else. An attribute set on a type that `CodegenCx::struct_types` handed out would
+/// change every other use of that type, so attributes have to be decided when the type is created
+/// and be part of its cache key. Going through [`StructAttribute`] is what enforces that.
+#[cfg(feature = "master")]
+#[allow(clippy::disallowed_methods)]
+pub fn apply_struct_attributes(typ: Type<'_>, attributes: &[StructAttribute]) {
+    for attribute in attributes {
+        typ.add_attribute(match *attribute {
+            StructAttribute::Aligned(align) => TypeAttribute::Aligned(align),
+            StructAttribute::Packed => TypeAttribute::Packed,
+        });
+    }
+}
+
+#[cfg(not(feature = "master"))]
+pub fn apply_struct_attributes(_typ: Type<'_>, _attributes: &[StructAttribute]) {}
 
 impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn type_i8(&self) -> Type<'gcc> {
@@ -153,7 +231,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         if self.supports_f16_type {
             return self.context.new_c_type(CType::Float16);
         }
-        bug!("unsupported float width 16")
+        self.u16_type
     }
 
     fn type_f32(&self) -> Type<'gcc> {
@@ -324,17 +402,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
 
-    pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], packed: bool) {
+    pub fn set_struct_body(
+        &self,
+        typ: Struct<'gcc>,
+        fields: &[Type<'gcc>],
+        attributes: &[StructAttribute],
+    ) {
         let fields: Vec<_> = fields
             .iter()
             .enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, format!("field_{}", index)))
             .collect();
         typ.set_fields(None, &fields);
-        if packed {
-            #[cfg(feature = "master")]
-            typ.as_type().set_packed();
-        }
+        apply_struct_attributes(typ.as_type(), &canonical_attributes(attributes));
     }
 
     pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {
