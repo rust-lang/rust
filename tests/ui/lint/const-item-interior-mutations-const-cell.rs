@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(unsafe_cell_access)]
+
 #![feature(sync_unsafe_cell)]
 #![feature(once_cell_try_insert)]
 #![feature(once_cell_try)]
