@@ -9,15 +9,27 @@ fn main() {
         variadic();
         variadic(1_i32);
         variadic(String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic(1_i32, String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic(String::new(), 1_i32);
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic(String::new(), String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
+        //~| WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
     }
 }
 
 fn generic<T>(x: T) {
     unsafe {
         variadic(x);
+        //~^ WARN type `T` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
     }
 }
 
@@ -31,12 +43,20 @@ fn indirect() {
     unsafe {
         let f = variadic;
         f(String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         let f_ref = &f;
         f_ref(String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         let g = variadic as unsafe extern "C" fn(...);
         g(String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         let g_ref = &g;
         g_ref(String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
     }
 }
 
@@ -54,9 +74,19 @@ fn simple_variadic_after_struct(my_struct: MyStruct) {
         variadic_after_struct(my_struct);
         variadic_after_struct(my_struct, 1_i32);
         variadic_after_struct(my_struct, String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic_after_struct(my_struct, 1_i32, String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic_after_struct(my_struct, String::new(), 1_i32);
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic_after_struct(my_struct, String::new(), String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
+        //~| WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
     }
 }
 
@@ -77,11 +107,19 @@ fn references<T, U: ?Sized>(tr: &T, tm: &mut T, ur: &U, um: &mut U) {
         variadic(&String::new());
         variadic(&mut String::new());
         variadic(&String::new() as &dyn Send);
+        //~^ WARN type `&dyn Send` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic(&mut String::new() as &mut dyn Send);
+        //~^ WARN type `&mut dyn Send` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic(tr);
         variadic(tm);
         variadic(ur);
+        //~^ WARN type `&U` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         variadic(um);
+        //~^ WARN type `&mut U` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
     }
 }
 
@@ -91,6 +129,8 @@ fn infer_var() {
     unsafe {
         let mut x = 1;
         variadic(x);
+        //~^ WARN type `u8` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         x = 1_u8;
     }
 }
@@ -112,8 +152,18 @@ fn method_call_syntax() {
         Thing.variadic_method();
         Thing.variadic_method(1_i32);
         Thing.variadic_method(String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         Thing.variadic_method(1_i32, String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         Thing.variadic_method(String::new(), 1_i32);
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
         Thing.variadic_method(String::new(), String::new());
+        //~^ WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
+        //~| WARN type `String` does not implement `VaArgSafe`
+        //~| WARN this was previously accepted by the compiler but is being phased out
     }
 }
