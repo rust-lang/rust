@@ -45,6 +45,8 @@ mod specialize;
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use ascii::EscapeAscii;
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+pub use ascii::SplitAsciiWhitespace;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;

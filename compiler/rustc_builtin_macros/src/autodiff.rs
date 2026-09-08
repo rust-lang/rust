@@ -68,7 +68,7 @@ mod llvm_enzyme {
         let lit = x.lit()?;
         match lit.kind {
             ast::LitKind::Int(x, _) => Some(x.get()),
-            _ => return None,
+            _ => None,
         }
     }
 
@@ -76,7 +76,7 @@ mod llvm_enzyme {
     fn extract_item_info(iitem: &Box<ast::Item>) -> Option<(Visibility, FnSig, Ident, Generics)> {
         match &iitem.kind {
             ItemKind::Fn(ast::Fn { sig, ident, generics, .. }) => {
-                Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
+                Some((iitem.vis.clone(), sig.clone(), *ident, generics.clone()))
             }
             _ => None,
         }
@@ -115,7 +115,7 @@ mod llvm_enzyme {
         let mut activities: Vec<DiffActivity> = vec![];
         let mut errors = false;
         for x in &meta_item[first_activity..] {
-            let activity_str = name(&x);
+            let activity_str = name(x);
             let res = DiffActivity::from_str(&activity_str);
             match res {
                 Ok(x) => activities.push(x),
@@ -158,7 +158,7 @@ mod llvm_enzyme {
         let val = first_ident(t);
         let t = Token::from_ast_ident(val);
         ts.push(TokenTree::Token(t, Spacing::Joint));
-        ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
+        ts.push(TokenTree::Token(comma, Spacing::Alone));
     }
 
     pub(crate) fn expand_forward(
@@ -226,13 +226,9 @@ mod llvm_enzyme {
             },
             Annotatable::AssocItem(assoc_item, _ctxt @ (Impl { of_trait: _ } | Trait)) => {
                 match &assoc_item.kind {
-                    ast::AssocItemKind::Fn(ast::Fn { sig, ident, generics, .. }) => Some((
-                        assoc_item.vis.clone(),
-                        sig.clone(),
-                        ident.clone(),
-                        generics.clone(),
-                        true,
-                    )),
+                    ast::AssocItemKind::Fn(ast::Fn { sig, ident, generics, .. }) => {
+                        Some((assoc_item.vis.clone(), sig.clone(), *ident, generics.clone(), true))
+                    }
                     _ => None,
                 }
             }
@@ -255,7 +251,7 @@ mod llvm_enzyme {
         // create TokenStream from vec elemtents:
         // meta_item doesn't have a .tokens field
         let mut ts: Vec<TokenTree> = vec![];
-        if meta_item_vec.len() < 1 {
+        if meta_item_vec.is_empty() {
             // At the bare minimum, we need a fnc name.
             dcx.emit_err(diagnostics::AutoDiffMissingConfig { span: item.span() });
             return vec![item];
@@ -294,7 +290,7 @@ mod llvm_enzyme {
         let t = Token::new(TokenKind::Literal(l), Span::default());
         let comma = Token::new(TokenKind::Comma, Span::default());
         ts.push(TokenTree::Token(t, Spacing::Joint));
-        ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
+        ts.push(TokenTree::Token(comma, Spacing::Alone));
 
         for t in meta_item_vec.clone()[start_position..].iter() {
             meta_item_inner_to_ts(t, &mut ts);
@@ -474,7 +470,7 @@ mod llvm_enzyme {
             }
         };
 
-        return vec![orig_annotatable, d_annotatable];
+        vec![orig_annotatable, d_annotatable]
     }
 
     // shadow arguments (the extra ones which were not in the original (primal) function), in reverse mode must be
@@ -519,10 +515,8 @@ mod llvm_enzyme {
             .map(|param| {
                 let ty = match &param.ty.kind {
                     TyKind::ImplicitSelf => self_ty(),
-                    TyKind::Ref(lt, mt) if matches!(mt.ty.kind, TyKind::ImplicitSelf) => ecx.ty(
-                        span,
-                        TyKind::Ref(lt.clone(), ast::MutTy { ty: self_ty(), mutbl: mt.mutbl }),
-                    ),
+                    TyKind::Ref(lt, mt) if matches!(mt.ty.kind, TyKind::ImplicitSelf) => ecx
+                        .ty(span, TyKind::Ref(*lt, ast::MutTy { ty: self_ty(), mutbl: mt.mutbl })),
                     TyKind::Ptr(mt) if matches!(mt.ty.kind, TyKind::ImplicitSelf) => {
                         ecx.ty(span, TyKind::Ptr(ast::MutTy { ty: self_ty(), mutbl: mt.mutbl }))
                     }
@@ -603,7 +597,7 @@ mod llvm_enzyme {
                     let anon_const = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
                     Some(AngleBracketedArg::Arg(GenericArg::Const(anon_const)))
                 }
-                GenericParamKind::Lifetime { .. } => None,
+                GenericParamKind::Lifetime => None,
             })
             .collect::<ThinVec<_>>();
 
@@ -722,7 +716,7 @@ mod llvm_enzyme {
                     for i in 0..x.width {
                         let mut shadow_arg = arg.clone();
                         // We += into the shadow in reverse mode.
-                        shadow_arg.ty = Box::new(assure_mut_ref(&arg.ty));
+                        *shadow_arg.ty = assure_mut_ref(&arg.ty);
                         let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                             ident.name
                         } else {
@@ -732,11 +726,11 @@ mod llvm_enzyme {
                         let name: String = format!("d{}_{}", old_name, i);
                         new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                        shadow_arg.pat = Box::new(ast::Pat {
+                        *shadow_arg.pat = ast::Pat {
                             id: ast::DUMMY_NODE_ID,
                             kind: PatKind::Ident(BindingMode::NONE, ident, None),
                             span: shadow_arg.pat.span,
-                        });
+                        };
                         d_inputs.push(shadow_arg.clone());
                     }
                 }
@@ -763,11 +757,11 @@ mod llvm_enzyme {
                         let name: String = format!("b{}_{}", old_name, i);
                         new_inputs.push(name.clone());
                         let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                        shadow_arg.pat = Box::new(ast::Pat {
+                        *shadow_arg.pat = ast::Pat {
                             id: ast::DUMMY_NODE_ID,
                             kind: PatKind::Ident(BindingMode::NONE, ident, None),
                             span: shadow_arg.pat.span,
-                        });
+                        };
                         d_inputs.push(shadow_arg.clone());
                     }
                 }
@@ -779,7 +773,7 @@ mod llvm_enzyme {
                 }
             }
             if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                idents.push(ident.clone());
+                idents.push(ident);
             } else {
                 panic!("not an ident?");
             }
@@ -891,7 +885,7 @@ mod llvm_enzyme {
                     if act_ret.len() == 1 {
                         act_ret[0].clone()
                     } else {
-                        let kind = TyKind::Tup(act_ret.iter().map(|arg| arg.clone()).collect());
+                        let kind = TyKind::Tup(act_ret);
                         Box::new(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span })
                     }
                 }
@@ -899,7 +893,7 @@ mod llvm_enzyme {
             d_decl.output = FnRetTy::Ty(ret_ty);
         }
 
-        let mut d_header = sig.header.clone();
+        let mut d_header = sig.header;
         if unsafe_activities {
             d_header.safety = rustc_ast::Safety::Unsafe(span);
         }

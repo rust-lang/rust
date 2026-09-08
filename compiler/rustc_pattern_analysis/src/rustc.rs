@@ -380,7 +380,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         let variant_def_id = def.variant(idx).def_id;
                         // Visibly uninhabited variants.
                         let is_inhabited = v
-                            .inhabited_predicate(cx.tcx, *def)
+                            .inhabited_predicate(cx.tcx)
                             .instantiate(cx.tcx, args)
                             .apply_revealing_opaque(cx.tcx, cx.typing_env, cx.module, &|key| {
                                 cx.reveal_opaque_key(key)
@@ -823,14 +823,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 let mut s = String::new();
                 print::write_ref_like(&mut s, pat.ty().inner(), &print(&pat.fields[0])).unwrap();
                 s
-            }
-            DerefPattern(_) if pat.ty().is_box() && !self.tcx.features().deref_patterns() => {
-                // FIXME(deref_patterns): Remove this special handling once `box_patterns` is gone.
-                // HACK(@dianne): `box _` syntax is exposed on stable in diagnostics, e.g. to
-                // witness non-exhaustiveness of `match Box::new(0) { Box { .. } if false => {} }`.
-                // To avoid changing diagnostics before deref pattern syntax is finalized, let's use
-                // `box _` syntax unless `deref_patterns` is enabled.
-                format!("box {}", print(&pat.fields[0]))
             }
             DerefPattern(_) => format!("deref!({})", print(&pat.fields[0])),
             Slice(slice) => {

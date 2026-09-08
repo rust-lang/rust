@@ -180,7 +180,7 @@ use super::super::*;
     out.push_str(
         r#"
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
 "#,
     );
 

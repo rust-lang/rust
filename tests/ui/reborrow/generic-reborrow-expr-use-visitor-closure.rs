@@ -1,5 +1,8 @@
 //@ check-pass
 
+//! Test that a type implementing Reborrow and CoerceShared can be captured by a closure, and
+//! reborrowed and coerced as shared within it.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};

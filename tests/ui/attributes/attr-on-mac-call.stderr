@@ -38,6 +38,12 @@ note: this attribute does not have an `!`, which means it is applied to this mac
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
 
+error: attribute value must be a literal
+  --> $DIR/attr-on-mac-call.rs:113:20
+   |
+LL |     #[deprecated = concat!("woah", "dude")]
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+
 warning: the `export_name` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:8:7
    |
@@ -341,6 +347,6 @@ LL |     #[repr(Rust)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
-error: aborting due to 4 previous errors; 30 warnings emitted
+error: aborting due to 5 previous errors; 30 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

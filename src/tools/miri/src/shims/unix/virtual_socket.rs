@@ -14,6 +14,7 @@ use crate::shims::files::{
     EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
 use crate::shims::readiness::DelayedReadinessUpdates;
+use crate::shims::sig::Varargs;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
@@ -260,7 +261,7 @@ impl UnixFileDescription for VirtualSocket {
     fn ioctl<'tcx>(
         &self,
         op: Scalar,
-        arg: Option<&OpTy<'tcx>>,
+        args: Varargs<'tcx, '_>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         match self.fd_type {
@@ -290,9 +291,7 @@ impl UnixFileDescription for VirtualSocket {
                 );
             }
 
-            let Some(value_ptr) = arg else {
-                throw_ub_format!("ioctl: setting FIONBIO on sockets requires a third argument");
-            };
+            let ([value_ptr], _) = ecx.check_varargs(shim_varargs![*_], args, "ioctl")?;
             let value = ecx.deref_pointer_as(value_ptr, ecx.machine.layouts.i32)?;
             let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
             self.is_nonblock.set(non_block);

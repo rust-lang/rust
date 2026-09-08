@@ -22,8 +22,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // Environment
             "__unsetenv13" => {
-                let [name] =
-                    this.check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), link_name, abi, args)?;
+                let [name] = this
+                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
                 let result = this.unsetenv(name)?;
                 this.write_scalar(result, dest)?;
             }
@@ -31,7 +31,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Miscellaneous
             "__errno" => {
                 let [] =
-                    this.check_shim_sig(shim_sig!(extern "C" fn() -> *_), link_name, abi, args)?;
+                    this.check_shim_sig(shim_sig!(extern "C" fn() -> *_), (link_name, abi, args))?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }

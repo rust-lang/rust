@@ -75,7 +75,7 @@ types! {
 
 // LLVM intrinsic declarations for 64-byte vector mode
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.hexagon.V6.extractw"]
     fn extractw(_: HvxVector, _: i32) -> i32;
     #[link_name = "llvm.hexagon.V6.get.qfext"]

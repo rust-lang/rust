@@ -1,0 +1,10 @@
+---
+source: src/test/mod.rs
+---
+warning: `rustfmt_skip` is deprecated; use `rustfmt::skip`
+ --> tests/warning/source/deprecated_skip.rs:1
+  |
+1 | #[rustfmt_skip]
+  |
+
+warning: rustfmt has failed to format. See previous 1 errors.

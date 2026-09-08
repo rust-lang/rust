@@ -1,13 +1,14 @@
 use std::hash::Hash;
 
 use rustc_crate_store::Untracked;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::{
-    RawDefId, RawDefPathHash, RawSpan, StableHash, StableHashControls, StableHashCtxt, StableHasher,
+    RawDefId, RawSpan, StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span};
+use rustc_span::{BytePos, CachingSourceMapView, DUMMY_SP, Pos, Span};
 
 // Very often, we are hashing something that does not need the `CachingSourceMapView`, so we
 // initialize it lazily.
@@ -90,6 +91,20 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
 
+        #[inline]
+        fn pack_span_location(
+            line_lo: usize,
+            col_lo: BytePos,
+            line_hi: usize,
+            col_hi: BytePos,
+        ) -> u64 {
+            let col_lo_trunc = (col_lo.0 as u64) & 0xFF;
+            let line_lo_trunc = ((line_lo as u64) & 0xFF_FF_FF) << 8;
+            let col_hi_trunc = ((col_hi.0 as u64) & 0xFF) << 32;
+            let line_hi_trunc = ((line_hi as u64) & 0xFF_FF_FF) << 40;
+            col_lo_trunc | line_lo_trunc | col_hi_trunc | line_hi_trunc
+        }
+
         if !self.stable_hash_controls().hash_spans {
             return;
         }
@@ -148,25 +163,21 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         // issue #74890). A similar analysis applies if some query depends specifically on the
         // length of the span, but we only hash the end location. So hash both.
 
-        let col_lo_trunc = (col_lo.0 as u64) & 0xFF;
-        let line_lo_trunc = ((line_lo as u64) & 0xFF_FF_FF) << 8;
-        let col_hi_trunc = (col_hi.0 as u64) & 0xFF << 32;
-        let line_hi_trunc = ((line_hi as u64) & 0xFF_FF_FF) << 40;
-        let col_line = col_lo_trunc | line_lo_trunc | col_hi_trunc | line_hi_trunc;
+        let col_line = pack_span_location(line_lo, col_lo, line_hi, col_hi);
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
     }
 
     #[inline]
-    fn def_path_hash(&self, raw_def_id: RawDefId) -> RawDefPathHash {
+    fn def_path_hash(&self, raw_def_id: RawDefId) -> Fingerprint {
         let def_id = DefId::from_raw_def_id(raw_def_id);
         if let Some(def_id) = def_id.as_local() {
             self.untracked.definitions.read().def_path_hash(def_id)
         } else {
             self.untracked.cstore.read().def_path_hash(def_id)
         }
-        .to_raw_def_path_hash()
+        .0
     }
 
     /// Assert that the provided `StableHashCtxt` is configured with the default

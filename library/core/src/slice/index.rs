@@ -204,7 +204,7 @@ const unsafe impl<T> SliceIndex<[T]> for usize {
     #[track_caller]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
         assert_unsafe_precondition!(
-            check_language_ub, // okay because of the `assume` below
+            check_library_ub, // Hitting the `assume` provides worse const-eval and Miri diagnostics.
             "slice::get_unchecked requires that the index is within the slice",
             (this: usize = self, len: usize = slice.len()) => this < len
         );

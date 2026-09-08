@@ -280,7 +280,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .obligation
             .param_env
             .caller_bounds()
-            .iter()
             .filter_map(|c| c.as_trait_clause())
             // Micro-optimization: filter out predicates with different polarities.
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());

@@ -1,0 +1,14 @@
+error: expected one of `!`, `(`, `::`, `;`, `<`, or `where`, found keyword `const`
+  --> $DIR/raw-ident.rs:4:18
+   |
+LL | type Ty = &r#pin const ();
+   |                  ^^^^^ expected one of `!`, `(`, `::`, `;`, `<`, or `where`
+   |
+help: there is a keyword `in` with a similar name
+   |
+LL - type Ty = &r#pin const ();
+LL + type Ty = &in const ();
+   |
+
+error: aborting due to 1 previous error
+

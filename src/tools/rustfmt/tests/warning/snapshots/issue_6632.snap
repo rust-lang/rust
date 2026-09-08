@@ -1,0 +1,12 @@
+---
+source: src/test/mod.rs
+---
+error[internal]: line formatted, but exceeded maximum width (maximum: 100 (see `max_width` option), found: 103)
+ --> tests/warning/source/issue_6632.rs:8:8:83
+  |
+8 |                         Self::$variant(s) => s.service_name(),// BuildService::service_name(s.clone()),
+  |                                                                                                     ^^^
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+warning: rustfmt has failed to format. See previous 1 errors.

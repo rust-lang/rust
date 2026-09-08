@@ -62,6 +62,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     #[must_use]
     #[inline]
     pub fn allocator(&self) -> &A {
+        // SAFETY: `vec` is valid for reads.
         unsafe { self.vec.as_ref().allocator() }
     }
 
@@ -101,6 +102,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
         // 4. Do *not* drop self, as everything is put in a consistent state already, there is nothing to do
         let mut this = ManuallyDrop::new(self);
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let source_vec = this.vec.as_mut();
 
@@ -153,6 +155,7 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
+        // ignore-tidy-undocumented-unsafe
         self.iter.next().map(|elt| unsafe { ptr::read(elt as *const _) })
     }
 
@@ -165,6 +168,7 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
+        // ignore-tidy-undocumented-unsafe
         self.iter.next_back().map(|elt| unsafe { ptr::read(elt as *const _) })
     }
 }
@@ -178,6 +182,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
                 if self.0.tail_len > 0 {
+                    // ignore-tidy-undocumented-unsafe
                     unsafe {
                         let source_vec = self.0.vec.as_mut();
                         // memmove back untouched tail, update to new length
@@ -202,6 +207,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         if T::IS_ZST {
             // ZSTs have no identity, so we don't need to move them around, we only need to drop the correct amount.
             // this can be achieved by manipulating the Vec length instead of moving values out from `iter`.
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 let vec = vec.as_mut();
                 let old_len = vec.len();
@@ -225,6 +231,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         // lead to invalid pointer arithmetic below.
         let drop_ptr = iter.as_slice().as_ptr();
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             // drop_ptr comes from a slice::Iter which only gives us a &[T] but for drop_in_place
             // a pointer with mutable provenance is necessary. Therefore we must reconstruct

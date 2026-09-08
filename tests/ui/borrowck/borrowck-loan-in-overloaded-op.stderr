@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrowck-loan-in-overloaded-op.rs:21:20
+  --> $DIR/borrowck-loan-in-overloaded-op.rs:18:20
    |
 LL |     let x = Foo(Box::new(3));
    |         - move occurs because `x` has type `Foo`, which does not implement the `Copy` trait

@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CString, c_uint};
 use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -264,4 +264,16 @@ pub(crate) struct IntrinsicWrongArch<'a> {
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownLlvmTargetFeaturePrefix<'a> {
     pub feature: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "LLVM version mismatch: this compiler was built for LLVM {$expected_version}, but LLVM {$llvm_major}.{$llvm_minor}.{$llvm_patch} was found{$dll_loc}"
+)]
+pub(crate) struct LlvmVersionMismatch<'a> {
+    pub expected_version: c_uint,
+    pub llvm_major: c_uint,
+    pub llvm_minor: c_uint,
+    pub llvm_patch: c_uint,
+    pub dll_loc: &'a str,
 }

@@ -116,9 +116,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
                     break hir::PatKind::Tuple(pats, ddpos);
                 }
-                PatKind::Box(inner) => {
-                    break hir::PatKind::Box(self.lower_pat(inner));
-                }
                 PatKind::Deref(inner) => {
                     break hir::PatKind::Deref(self.lower_pat(inner));
                 }
@@ -292,17 +289,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         // will be resolved to the same `Res::Local`. Thus they just share a single
                         // `HirId`.
                         if id == p.id {
-                            self.ident_and_label_to_local_id.insert(id, hir_id.local_id);
+                            self.curr_owner.ident_and_label_to_local_id.insert(id, hir_id.local_id);
                             hir_id
                         } else {
                             hir::HirId {
-                                owner: self.current_hir_id_owner,
-                                local_id: self.ident_and_label_to_local_id[&id],
+                                owner: self.curr_owner.owner_id,
+                                local_id: self.curr_owner.ident_and_label_to_local_id[&id],
                             }
                         }
                     }
                     _ => {
-                        self.ident_and_label_to_local_id.insert(p.id, hir_id.local_id);
+                        self.curr_owner.ident_and_label_to_local_id.insert(p.id, hir_id.local_id);
                         hir_id
                     }
                 };

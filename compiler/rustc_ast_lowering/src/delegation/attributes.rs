@@ -43,17 +43,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let &DelegationResolution { span, sig_id, .. } = resolution;
 
         const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
-        let new_attrs = self.create_new_attrs(span, sig_id, self.attrs.get(&PARENT_ID));
+        let new_attrs = self.create_new_attrs(span, sig_id, self.curr_owner.attrs.get(&PARENT_ID));
 
         if !new_attrs.is_empty() {
-            let new_attrs = match self.attrs.get(&PARENT_ID) {
+            let new_attrs = match self.curr_owner.attrs.get(&PARENT_ID) {
                 Some(existing_attrs) => self.arena.alloc_from_iter(
                     existing_attrs.iter().map(|a| a.clone()).chain(new_attrs.into_iter()),
                 ),
                 None => self.arena.alloc_from_iter(new_attrs.into_iter()),
             };
 
-            self.attrs.insert(PARENT_ID, new_attrs);
+            self.curr_owner.attrs.insert(PARENT_ID, new_attrs);
         }
     }
 

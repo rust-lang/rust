@@ -11,7 +11,7 @@ impl StableHashCtxt for () {
     fn stable_hash_span(&mut self, _: RawSpan, _: &mut StableHasher) {
         panic!();
     }
-    fn def_path_hash(&self, _: RawDefId) -> RawDefPathHash {
+    fn def_path_hash(&self, _: RawDefId) -> Fingerprint {
         panic!();
     }
     fn stable_hash_controls(&self) -> StableHashControls {

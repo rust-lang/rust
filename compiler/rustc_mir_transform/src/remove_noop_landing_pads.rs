@@ -12,10 +12,10 @@ use crate::patch::MirPatch;
 pub(super) struct RemoveNoopLandingPads;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        // FIXME: isn't this an optimization? Or is the LLVM code so terrible we want this even with
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // FIXME: Should this really run on opt-level 0? Or is the LLVM code so terrible we want this even with
         // "no" optimizations?
-        PassPolicy::optional_non_optimization(sess.panic_strategy().unwinds())
+        PassPolicy::optional(ctx.panic_strategy().unwinds())
     }
 
     #[instrument(level = "debug", skip(self, _tcx, body))]

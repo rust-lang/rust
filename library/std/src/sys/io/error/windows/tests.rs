@@ -1,7 +1,7 @@
 use crate::io::Error;
 use crate::sys::pal::c;
 
-// tests `error_string` above
+// tests `format_error`
 #[test]
 fn ntstatus_error() {
     const STATUS_UNSUCCESSFUL: u32 = 0xc000_0001;

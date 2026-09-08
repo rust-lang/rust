@@ -46,10 +46,6 @@ macro_rules! gate_multi {
     }};
 }
 
-pub fn check_attribute(attr: &ast::Attribute, sess: &Session, features: &Features) {
-    PostExpansionVisitor { sess, features }.visit_attribute(attr)
-}
-
 struct PostExpansionVisitor<'a> {
     sess: &'a Session,
 
@@ -152,33 +148,9 @@ impl<'a> PostExpansionVisitor<'a> {
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
-    fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        // Check unstable flavors of the `#[doc]` attribute.
-        if attr.has_name(sym::doc) {
-            for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
-                macro_rules! gate_doc { ($($s:literal { $($name:ident => $feature:ident)* })*) => {
-                    $($(if meta_item_inner.has_name(sym::$name) {
-                        let msg = concat!("`#[doc(", stringify!($name), ")]` is ", $s);
-                        gate!(self, $feature, attr.span, msg);
-                    })*)*
-                }}
-
-                gate_doc!(
-                    "experimental" {
-                        cfg => doc_cfg
-                        auto_cfg => doc_cfg
-                        masked => doc_masked
-                        notable_trait => doc_notable_trait
-                    }
-                    "meant for internal use only" {
-                        attribute => rustdoc_internals
-                        keyword => rustdoc_internals
-                        fake_variadic => rustdoc_internals
-                        search_unbox => rustdoc_internals
-                    }
-                );
-            }
-        }
+    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
+        // Checked in attribute parsers, do NOT add checks here
+        visit::walk_attribute(self, attr)
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
@@ -339,9 +311,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     }
                 }
             }
-            PatKind::Box(..) => {
-                gate!(self, box_patterns, pattern.span, "box pattern syntax is experimental");
-            }
             _ => {}
         }
         visit::walk_pat(self, pattern)
@@ -415,6 +384,24 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             );
         }
         visit::walk_assoc_item(self, i, ctxt)
+    }
+
+    fn visit_test_binder_forall(&mut self, forall: &'a ast::TestBinderForall) {
+        self.check_late_bound_lifetime_defs(&forall.generics.params);
+        visit::walk_test_binder_forall(self, forall)
+    }
+
+    fn visit_test_binder_exists(&mut self, exists: &'a ast::TestBinderExists) {
+        self.check_late_bound_lifetime_defs(&exists.params);
+        visit::walk_test_binder_exists(self, exists)
+    }
+
+    fn visit_test_binder_bound_type_constraint(
+        &mut self,
+        bound_type: &'a ast::TestBinderBoundTypeConstraint,
+    ) -> Self::Result {
+        self.check_late_bound_lifetime_defs(&bound_type.params);
+        visit::walk_test_binder_bound_type_constraint(self, bound_type)
     }
 }
 
@@ -596,7 +583,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     // tidy-alphabetical-start
     soft_gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
-    soft_gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     soft_gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
     soft_gate_all_legacy_dont_use!(negative_impls, "negative impls are experimental");
     soft_gate_all_legacy_dont_use!(specialization, "specialization is experimental");

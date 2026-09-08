@@ -1,10 +1,10 @@
 //@ compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat
 
-#![feature(core_intrinsics)]
+#![feature(gpu_offload)]
 
 fn main() {
     // args_ty is not a tuple
-    core::intrinsics::offload::<_, _, ()>(kernel_0, [1, 1, 1], [1, 1, 1], 0, -1, 42);
+    core::offload::offload! { kernel = kernel_0, args = 42 }
     //~^ ERROR `{integer}` is not a tuple
 }
 

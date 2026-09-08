@@ -653,7 +653,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Tuple(elements, ddpos) => {
                 self.check_pat_tuple(pat.span, elements, ddpos, expected, pat_info)
             }
-            PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
             PatKind::Deref(inner) => self.check_pat_deref(pat.span, inner, expected, pat_info),
             PatKind::Ref(inner, pinned, mutbl) => {
                 self.check_pat_ref(pat, inner, pinned, mutbl, expected, pat_info)
@@ -762,9 +761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // that the expected type be of those types and not reference types.
             PatKind::Tuple(..) | PatKind::Range(..) | PatKind::Slice(..) => AdjustMode::peel_all(),
             // When checking an explicit deref pattern, only peel reference types.
-            // FIXME(deref_patterns): If box patterns and deref patterns need to coexist, box
-            // patterns may want `PeelKind::Implicit`, stopping on encountering a box.
-            PatKind::Box(_) | PatKind::Deref(_) => {
+            PatKind::Deref(_) => {
                 AdjustMode::Peel { kind: PeelKind::ExplicitDerefPat }
             }
             // A never pattern behaves somewhat like a literal or unit variant.
@@ -1386,7 +1383,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Wild
                         | PatKind::Never
                         | PatKind::Binding(..)
-                        | PatKind::Box(..)
                         | PatKind::Deref(_)
                         | PatKind::Ref(..)
                         | PatKind::Expr(..)
@@ -2707,32 +2703,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Applicability::MachineApplicable,
         );
         err
-    }
-
-    fn check_pat_box(
-        &self,
-        span: Span,
-        inner: &'tcx Pat<'tcx>,
-        expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx>,
-    ) -> Ty<'tcx> {
-        let tcx = self.tcx;
-        let (box_ty, inner_ty) = self
-            .check_dereferenceable(span, expected, inner)
-            .and_then(|()| {
-                // Here, `demand::subtype` is good enough, but I don't
-                // think any errors can be introduced by using `demand::eqtype`.
-                let inner_ty = self.next_ty_var(inner.span);
-                let box_ty = Ty::new_box(tcx, inner_ty);
-                self.demand_eqtype_pat(span, expected, box_ty, &pat_info.top_info)?;
-                Ok((box_ty, inner_ty))
-            })
-            .unwrap_or_else(|guar| {
-                let err = Ty::new_error(tcx, guar);
-                (err, err)
-            });
-        self.check_pat(inner, inner_ty, pat_info);
-        box_ty
     }
 
     fn check_pat_deref(

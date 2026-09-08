@@ -1257,7 +1257,8 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Use(..)
-            | hir::ItemKind::ExternCrate(..) => {}
+            | hir::ItemKind::ExternCrate(..)
+            | hir::ItemKind::TestBinderConstraints { .. } => {}
         }
     }
 

@@ -851,30 +851,6 @@ pub(crate) fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Vers
     None
 }
 
-pub(crate) fn find_gcc_supported_targets(sysroot_base: &Utf8Path, host: &str) -> Vec<String> {
-    // E.g. `lib/rustlib/x86_64-unknown-linux-gnu/codegen-backends/lib`.
-    let backends_dir =
-        sysroot_base.join("lib").join("rustlib").join(host).join("codegen-backends").join("lib");
-
-    match std::fs::read_dir(&backends_dir) {
-        Ok(entries) => {
-            // Search for `aarch64-unknown-linux-gnu/libgccjit.so` et cetera.
-            let target_tuples: Vec<_> = entries
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| entry.path().join("libgccjit.so").exists())
-                .filter_map(|entry| entry.file_name().into_string().ok())
-                .collect();
-
-            if target_tuples.is_empty() {
-                panic!("did not find `libgccjit.so` for any target in {backends_dir}");
-            }
-
-            target_tuples
-        }
-        Err(e) => panic!("unable to find `libgccjit.so` for any target in {backends_dir}: {e:?}",),
-    }
-}
-
 /// Takes a directive of the form `"<version1> [- <version2>]"`, returns the numeric representation
 /// of `<version1>` and `<version2>` as tuple: `(<version1>, <version2>)`.
 ///
@@ -1255,7 +1231,7 @@ fn ignore_unsupported_backend_target(config: &Config, line: &DirectiveLine<'_>) 
         return IgnoreDecision::Continue;
     };
 
-    if !config.gcc_supported_target_tuples.iter().any(|t| t == target) {
+    if target != "x86_64-unknown-linux-gnu" {
         IgnoreDecision::Ignore {
             reason: format!(
                 "backend `{}` cannot build for target `{target}`",

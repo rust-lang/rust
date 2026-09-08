@@ -154,6 +154,10 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// we bail out, setting a field on `EvalCtxt` that indicates the canonicalization must be
     /// rerun in the original typing mode.
     ///
+    /// Specifically, we always reveal auto traits for rigid aliases and thus we don't allow
+    /// incorrectly marked rigid local opaques. We ensure this by immediately bailing out
+    /// when normalizing local opaques.
+    ///
     /// `TypingMode::Coherence` is not replaced by this and is always kept as-is.
     ErasedNotCoherence(S),
 }
@@ -589,7 +593,7 @@ where
     Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
-    for clause in param_env.caller_bounds().iter() {
+    for clause in param_env.caller_bounds() {
         if let ty::ClauseKind::UnstableFeature(sym) = clause.kind().skip_binder() {
             if sym == symbol {
                 return true;

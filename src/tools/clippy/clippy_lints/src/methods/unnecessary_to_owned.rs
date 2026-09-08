@@ -495,7 +495,6 @@ fn get_input_traits_and_projections<'tcx>(
     (trait_predicates, projection_predicates)
 }
 
-#[expect(clippy::too_many_lines)]
 fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<'a>) -> bool {
     for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match node {
@@ -544,16 +543,15 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             return false;
                         }
 
-                        let mut trait_clauses =
-                            cx.tcx.param_env(callee_def_id).caller_bounds().iter().filter(|clause| {
-                                if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
-                                    && trait_predicate.trait_ref.self_ty() == param_ty
-                                {
-                                    true
-                                } else {
-                                    false
-                                }
-                            });
+                        let mut trait_clauses = cx.tcx.param_env(callee_def_id).caller_bounds().filter(|clause| {
+                            if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
+                                && trait_predicate.trait_ref.self_ty() == param_ty
+                            {
+                                true
+                            } else {
+                                false
+                            }
+                        });
 
                         let new_subst = cx
                             .tcx

@@ -829,7 +829,7 @@ impl FromClean<clean::Impl> for Impl {
             clean::ImplKind::Blanket(ty) => (false, Some(ty)),
         };
         let is_negative = match polarity {
-            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => false,
+            ty::ImplPolarity::Positive => false,
             ty::ImplPolarity::Negative => true,
         };
         Impl {

@@ -366,6 +366,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
+            | ItemKind::TestBinderConstraints { .. }
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(..) => {}
         }

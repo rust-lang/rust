@@ -34,13 +34,41 @@ macro_rules! impl_float_to_int {
                 }
                 #[inline]
                 fn to_int_checked(self) -> Option<$Int> {
-                    // `as` truncates toward zero and these bounds are exact for
-                    // that: `MAX + 1` rounds up to the first out-of-range value,
-                    // and the `- MIN` offset keeps the low comparison exact even
-                    // when `MIN - 1` is not representable. `NaN` and infinities
-                    // fail both comparisons.
-                    if self - (<$Int>::MIN as $Float) > -1.0 && self < <$Int>::MAX as $Float + 1.0 {
-                        Some(self as $Int)
+                    // We will compute LOW_THRESHOLD and HIGH_THRESHOLD
+                    // as <$Int>::MIN - 1 and <$Int>::MAX + 1 respectively,
+                    // or the next lower/higher value in case those are not
+                    // representable exactly. These thresholds represent the
+                    // first disallowed values.
+
+                    const LOW_THRESHOLD: $Float = {
+                        // The minimum of an integer type is representable or -INF
+                        // for all floats, as it is zero or a power of two.
+                        let int_min = <$Int>::MIN as $Float;
+                        let one_below_if_representable = int_min - 1.0;
+                        if one_below_if_representable == int_min {
+                            // We must allow int_min itself. In case int_min is
+                            // -INF this stays -INF, allowing any finite value.
+                            int_min.next_down()
+                        } else {
+                            one_below_if_representable
+                        }
+                    };
+
+                    const HIGH_THRESHOLD: $Float = {
+                        // The maximum of an integer type is always of the form
+                        // 2^k - 1 for some reasonable k. We can construct 2^k
+                        // exactly by summing 2^(k-1) twice, which fits in the
+                        // integer. The outcome will be exactly <$Int>::MAX + 1,
+                        // or INF allowing any finite value.
+                        let half = (<$Int>::MAX / 2) + 1;
+                        half as $Float + half as $Float
+                    };
+
+                    // NaN always fails these comparisons, and infinities at
+                    // least one.
+                    if LOW_THRESHOLD < self && self < HIGH_THRESHOLD {
+                        // SAFETY: we made sure we are in-bounds and finite.
+                        Some(unsafe { self.to_int_unchecked() })
                     } else {
                         None
                     }
@@ -308,8 +336,7 @@ macro_rules! impl_try_from_unbounded {
             type Error = TryFromIntError;
 
             /// Tries to create the target number type from a source
-            /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            /// number type. This never returns an error.
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
                 Ok(value as Self)
@@ -328,7 +355,7 @@ macro_rules! impl_try_from_lower_bounded {
 
             /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            #[doc = concat!("is less than [`", stringify!($target), "::MIN`].")]
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u >= 0 {
@@ -351,7 +378,7 @@ macro_rules! impl_try_from_upper_bounded {
 
             /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            #[doc = concat!("is greater than [`", stringify!($target), "::MAX`].")]
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u > (Self::MAX as $source) {

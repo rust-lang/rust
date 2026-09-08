@@ -2,6 +2,7 @@
 #![cfg(not(miri))]
 #![allow(internal_features)]
 #![feature(iter_next_chunk)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]
 #![feature(strict_provenance_lints)]

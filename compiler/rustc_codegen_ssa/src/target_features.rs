@@ -528,7 +528,7 @@ pub fn sanitizer_features_by_flags(sess: &Session, features: &mut Vec<String>) {
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
-        rust_target_features: |tcx, cnum| {
+        all_rust_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
                 // HACK: rustdoc would like to pretend that we have all the target features, so we

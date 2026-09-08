@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, RegionExt, Ty, TyCtxt, Unnormalized, fold_regions};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized, fold_regions};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
@@ -135,7 +135,8 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         | DefKind::Enum
         | DefKind::Trait
         | DefKind::TraitAlias
-        | DefKind::TyAlias => ty::List::empty(),
+        | DefKind::TyAlias
+        | DefKind::TestBinderConstraints => ty::List::empty(),
         DefKind::OpaqueTy
         | DefKind::Mod
         | DefKind::Variant

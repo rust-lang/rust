@@ -128,8 +128,8 @@ use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 pub(super) struct GVN;
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -861,6 +861,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     return None;
                 }
             }
+            ProjectionElem::PhantomDeref => bug!("PhantomDeref in GVN"),
             ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
             ProjectionElem::Field(f, _) => match self.get(value) {
                 Value::Aggregate(_, fields) => return Some((projection_ty, fields[f.as_usize()])),

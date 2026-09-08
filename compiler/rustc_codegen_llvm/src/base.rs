@@ -129,7 +129,8 @@ pub(crate) fn compile_codegen_unit(
             if let Some(entry) =
                 maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
             {
-                let mut attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
+                let mut attrs =
+                    attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default(), None, None);
                 // When pointer authentication is enabled, ensure that the ptrauth-* attributes are
                 // also attached to the entry wrapper.
                 //

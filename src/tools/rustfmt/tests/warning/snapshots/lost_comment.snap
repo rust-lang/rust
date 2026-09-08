@@ -1,0 +1,11 @@
+---
+source: src/test/mod.rs
+---
+error[internal]: not formatted because a comment would be lost
+ --> tests/warning/source/lost_comment.rs:1
+  |
+1 | fn main() { let _ = 1 /* This comment cannot be retained by the expression formatter. */ + 2; }
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+warning: rustfmt has failed to format. See previous 1 errors.

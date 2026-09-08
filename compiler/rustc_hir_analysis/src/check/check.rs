@@ -38,6 +38,7 @@ use crate::check::wfcheck::{
     check_associated_item, check_trait_item, check_type_defn, check_variances_for_type_defn,
     check_where_clauses, enter_wf_checking_ctxt,
 };
+use crate::collect::ItemCtxt;
 use crate::diagnostics;
 
 fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
@@ -952,10 +953,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     tcx.require_lang_item(LangItem::Sized, ty_span),
                 );
                 check_where_clauses(wfcx, def_id);
-
-                if tcx.is_type_const(def_id) {
-                    wfcheck::check_type_const(wfcx, def_id, ty, true)?;
-                }
+                wfcheck::check_const_item(wfcx, def_id, ty);
                 Ok(())
             }));
 
@@ -1162,6 +1160,19 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
+        DefKind::TestBinderConstraints => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().clauses_of(def_id);
+            let (_, body) =
+                tcx.hir_node_by_def_id(def_id).expect_item().expect_test_binder_constraints();
+            let icx = ItemCtxt::new(tcx, def_id);
+            let lowered = icx.lower_test_binder_body(body);
+            res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                wfcx.check_test_binder_body(lowered);
+                Ok(())
+            }));
+            return res;
+        }
 
         // These have no wf checks
         DefKind::AnonConst
@@ -1170,7 +1181,16 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         | DefKind::Use
         | DefKind::GlobalAsm
         | DefKind::Mod => return res,
-        _ => {}
+
+        DefKind::ForeignTy => {}
+
+        DefKind::Variant
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Ctor(..)
+        | DefKind::Field
+        | DefKind::LifetimeParam
+        | DefKind::SyntheticCoroutineBody => unreachable!("{def_id:?}: {:?}", tcx.def_kind(def_id)),
     }
     let node = tcx.hir_node_by_def_id(def_id);
     res.and(match node {
@@ -1273,7 +1293,7 @@ fn check_impl_items_against_trait<'tcx>(
 
     // Negative impls are not expected to have any items
     match impl_trait_header.polarity {
-        ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
+        ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
             if let [first_item_ref, ..] = *impl_item_refs {
                 let first_item_span = tcx.def_span(first_item_ref);

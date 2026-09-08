@@ -1,0 +1,23 @@
+error: redundant explicit link target
+  --> $DIR/redundant-explicit-links-ice.rs:7:13
+   |
+LL | //! [queue](macro.queue.html)
+   |      -----  ^^^^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+note: the lint level is defined here
+  --> $DIR/redundant-explicit-links-ice.rs:5:9
+   |
+LL | #![deny(rustdoc::redundant_explicit_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove explicit link target
+   |
+LL - //! [queue](macro.queue.html)
+LL + //! [queue]
+   |
+
+error: aborting due to 1 previous error
+

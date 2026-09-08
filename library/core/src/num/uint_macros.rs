@@ -515,8 +515,13 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `n` is greater than or equal to the number of
-        /// bits in `self`.
+        /// ## Overflow behavior
+        ///
+        /// If overflow checks are enabled (default in debug mode), this function will panic if `n`
+        /// is greater than or equal to the number of bits in `self`. If overflow checks are
+        /// disabled (default in release mode), there is no panic; instead, the value is shifted
+        /// by `n % Self::BITS`.
+        // FIXME(wrapping_funnel_shifts): link to `wrapping_funnel_shl` when stable.
         ///
         /// # Examples
         ///
@@ -543,21 +548,31 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         /// #![feature(funnel_shifts)]
+        /// # #![feature(cfg_overflow_checks)]
+        /// # #[cfg(overflow_checks)] {
         ///
         #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
         /// // Okay
         #[doc = concat!("let _ = a.rotate_left(", stringify!($SelfT), "::BITS);")]
-        /// // Panics
+        /// // Panics (only when overflow checks are enabled)
         #[doc = concat!("let _ = a.funnel_shl(a, ", stringify!($SelfT), "::BITS);")]
+        /// # }
+        /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
+        #[rustc_inherit_overflow_checks]
         pub const fn funnel_shl(self, right: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
-            // SAFETY: just checked that `shift` is in-range
-            unsafe { self.unchecked_funnel_shl(right, n) }
+            if intrinsics::overflow_checks() {
+                assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
+            }
+            // SAFETY: `n` is wrapped to within range
+            unsafe {
+                let n = n & (Self::BITS - 1);
+                self.unchecked_funnel_shl(right, n)
+            }
         }
 
         /// Performs a right funnel shift.
@@ -571,8 +586,13 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `n` is greater than or equal to the number of
-        /// bits in `self`.
+        /// ## Overflow behavior
+        ///
+        /// If overflow checks are enabled (default in debug mode), this function will panic if `n`
+        /// is greater than or equal to the number of bits in `self`. If overflow checks are
+        /// disabled (default in release mode), there is no panic; instead, the value is shifted
+        /// by `n % Self::BITS`.
+        // FIXME(wrapping_funnel_shifts): link to `wrapping_funnel_shr` when stable.
         ///
         /// # Examples
         ///
@@ -599,21 +619,31 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         /// #![feature(funnel_shifts)]
+        /// # #![feature(cfg_overflow_checks)]
+        /// # #[cfg(overflow_checks)] {
         ///
         #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
         /// // Okay
         #[doc = concat!("let _ = a.rotate_right(", stringify!($SelfT), "::BITS);")]
-        /// // Panics
+        /// // Panics (only when overflow checks are enabled)
         #[doc = concat!("let _ = a.funnel_shr(a, ", stringify!($SelfT), "::BITS);")]
+        /// # }
+        /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
+        #[rustc_inherit_overflow_checks]
         pub const fn funnel_shr(self, right: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
-            // SAFETY: just checked that `shift` is in-range
-            unsafe { self.unchecked_funnel_shr(right, n) }
+            if intrinsics::overflow_checks() {
+                assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
+            }
+            // SAFETY: `n` is wrapped to within range
+            unsafe {
+                let n = n & (Self::BITS - 1);
+                self.unchecked_funnel_shr(right, n)
+            }
         }
 
         /// Unchecked funnel shift left.
@@ -3892,28 +3922,6 @@ macro_rules! uint_impl {
             self.count_ones() == 1
         }
 
-        // Returns one less than next power of two.
-        // (For 8u8 next power of two is 8u8 and for 6u8 it is 8u8)
-        //
-        // 8u8.one_less_than_next_power_of_two() == 7
-        // 6u8.one_less_than_next_power_of_two() == 7
-        //
-        // This method cannot overflow, as in the `next_power_of_two`
-        // overflow cases it instead ends up returning the maximum value
-        // of the type, and can return 0 for 0.
-        #[inline]
-        const fn one_less_than_next_power_of_two(self) -> Self {
-            if self <= 1 { return 0; }
-
-            let p = self - 1;
-            // SAFETY: Because `p > 0`, it cannot consist entirely of leading zeros.
-            // That means the shift is always in-bounds, and some processors
-            // (such as intel pre-haswell) have more efficient ctlz
-            // intrinsics when the argument is non-zero.
-            let z = unsafe { intrinsics::ctlz_nonzero(p) };
-            <$SelfT>::MAX >> z
-        }
-
         /// Returns the smallest power of two greater than or equal to `self`.
         ///
         /// When return value overflows (i.e., `self > (1 << (N-1))` for type
@@ -3934,7 +3942,15 @@ macro_rules! uint_impl {
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub const fn next_power_of_two(self) -> Self {
-            self.one_less_than_next_power_of_two() + 1
+            if let Some(npot) = self.checked_next_power_of_two() {
+                npot
+            } else {
+                #[expect(arithmetic_overflow)]
+                {
+                    // Zero but in a way that panics in debug
+                    Self::MAX + 1
+                }
+            }
         }
 
         /// Returns the smallest power of two greater than or equal to `self`. If
@@ -3954,7 +3970,13 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn checked_next_power_of_two(self) -> Option<Self> {
-            self.one_less_than_next_power_of_two().checked_add(1)
+            let m1 = self.saturating_sub(1);
+            if m1.cast_signed() >= 0 {
+                let exp = m1.bit_width();
+                Some(1 << exp)
+            } else {
+                None
+            }
         }
 
         /// Returns the smallest power of two greater than or equal to `n`. If
@@ -3973,10 +3995,11 @@ macro_rules! uint_impl {
         #[inline]
         #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                    reason = "needs decision on wrapping behavior")]
+        #[rustc_const_unstable(feature = "wrapping_next_power_of_two", issue = "32463")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn wrapping_next_power_of_two(self) -> Self {
-            self.one_less_than_next_power_of_two().wrapping_add(1)
+            self.checked_next_power_of_two().unwrap_or(0)
         }
 
         /// Returns the memory representation of this integer as a byte array in

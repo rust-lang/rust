@@ -73,27 +73,17 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
             let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
             let output_path = tmpdir.join(format!("{raw_dylib_name}{name_suffix}.lib"));
 
-            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
+            let using_dlltool = common::is_using_dlltool(&sess.target);
 
             let items: Vec<ImportLibraryItem> = raw_dylib_imports
                 .iter()
                 .map(|import: &DllImport| {
                     if sess.target.arch == Arch::X86 {
                         ImportLibraryItem {
-                            name: common::i686_decorated_name(
-                                import,
-                                mingw_gnu_toolchain,
-                                false,
-                                false,
-                            ),
+                            name: common::i686_decorated_name(import, using_dlltool, false, false),
                             ordinal: import.ordinal(),
                             symbol_name: import.is_missing_decorations().then(|| {
-                                common::i686_decorated_name(
-                                    import,
-                                    mingw_gnu_toolchain,
-                                    false,
-                                    true,
-                                )
+                                common::i686_decorated_name(import, using_dlltool, false, true)
                             }),
                             is_data: import.symbol_type != DllImportSymbolType::Function,
                         }

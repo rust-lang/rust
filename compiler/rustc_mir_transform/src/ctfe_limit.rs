@@ -39,9 +39,9 @@ impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // This is part of CTFE diagnostics rather than an optimization.
-        PassPolicy::optional_non_optimization(true)
+        PassPolicy::optional(true)
     }
 }
 

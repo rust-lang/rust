@@ -390,8 +390,10 @@
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
+#![feature(trim_prefix_suffix)]
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
+#![feature(unsafe_pinned)]
 #![feature(used_with_arg)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
@@ -738,7 +740,7 @@ mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
-#[allow(clippy::len_zero, clippy::needless_borrow)] // FIXME
+#[allow(clippy::len_zero, clippy::needless_borrow, clippy::filter_map_next)] // FIXME
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]

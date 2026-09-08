@@ -627,7 +627,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
-            | DefKind::Impl { .. } => false,
+            | DefKind::Impl { .. }
+            | DefKind::TestBinderConstraints => false,
         }
     }
 
@@ -961,7 +962,8 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::OpaqueTy { def_id } => Some(self.variances_of(def_id)),
             ty::AliasTermKind::InherentTy { .. }
-            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::FreeTy { .. }
             | ty::AliasTermKind::FreeConst { .. }
             | ty::AliasTermKind::AnonConst { .. }

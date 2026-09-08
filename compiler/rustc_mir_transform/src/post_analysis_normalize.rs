@@ -18,7 +18,7 @@ impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
         PostAnalysisNormalizeVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Reveals opaque types and normalizes MIR while transitioning to the runtime dialect.
         PassPolicy::Required
     }

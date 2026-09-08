@@ -158,7 +158,7 @@ where
 
 /// Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
 /// Doesn't make a big difference when running this in Miri, but it means we can compare this
-/// with the LLVM backend by running `rustc -Zmir-opt-level=0 -Zsaturating-float-casts`.
+/// with the LLVM backend by running `rustc -Zmir-opt-level=0`.
 #[track_caller]
 #[inline(never)]
 fn assert_eq<T: PartialEq + Debug>(x: T, y: T) {

@@ -202,6 +202,7 @@ fixed_size_enum! {
         ( Macro(MACRO_KINDS_DERIVE_BANG)           )
         ( Macro(MACRO_KINDS_DERIVE_ATTR_BANG)      )
         ( SyntheticCoroutineBody                   )
+        ( TestBinderConstraints                    )
     } unreachable {
         ( Macro(_)                                 )
     }

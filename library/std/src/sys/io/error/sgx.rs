@@ -1,6 +1,6 @@
 use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
 
-use crate::io;
+use crate::{fmt, io};
 
 pub fn errno() -> i32 {
     RESULT_SUCCESS
@@ -54,12 +54,13 @@ pub fn decode_error_kind(code: i32) -> io::ErrorKind {
     }
 }
 
-pub fn error_string(errno: i32) -> String {
+pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     if errno == RESULT_SUCCESS {
-        "operation successful".into()
+        f.write_str("operation successful")
     } else if ((Error::UserRangeStart as _)..=(Error::UserRangeEnd as _)).contains(&errno) {
-        format!("user-specified error {errno:08x}")
+        write!(f, "user-specified error {errno:08x}")
     } else {
-        format!("{}", decode_error_kind(errno))
+        let kind = decode_error_kind(errno);
+        write!(f, "{kind}")
     }
 }

@@ -1,5 +1,7 @@
 //@ run-pass
 
+//! Test that assignment to DerefMut of a Reborrow type does not ICE.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 

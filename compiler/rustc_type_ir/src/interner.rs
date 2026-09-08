@@ -17,12 +17,12 @@ use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTrait
 use crate::relate::Relate;
 use crate::search_graph::RequiredDepth;
 use crate::solve::{
-    AccessedOpaques, CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect,
+    AccessedOpaques, CanonicalInputData, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
-    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex, Region, RegionKind,
-    TraitRef, search_graph,
+    self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex,
+    Region, RegionKind, RegionVid, TraitRef, search_graph,
 };
 
 /// The central trait in the shared abstraction layer, specifying all implementation-specific
@@ -211,16 +211,31 @@ pub trait Interner:
     /// Do not uplift, the underlying types differ between r-a and rustc.
     ///
     /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
-    type EarlyParamRegion: ParamLike;
+    type EarlyParamRegion: ParamLike + RegionName<Self>;
     /// (2026/08/13)
     /// Do not uplift, the underlying types differ between r-a and rustc.
     ///
     /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
     #[cfg(feature = "nightly")]
-    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash + StableHash;
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + StableHash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
 
     #[cfg(not(feature = "nightly"))]
-    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash;
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
 
@@ -266,8 +281,11 @@ pub trait Interner:
         self,
         def_id: Self::LocalOpaqueTyId,
     ) -> ty::EarlyBinder<Self, Self::Ty>;
-    fn is_type_const(self, def_id: Self::DefId) -> bool;
-    fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
+    fn is_direct_const(self, alias: ty::AliasConstKind<Self>) -> bool;
+    fn const_of_item(
+        self,
+        alias: ty::AliasConstKind<Self>,
+    ) -> Option<ty::EarlyBinder<Self, Self::Const>>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;
@@ -275,10 +293,18 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn alias_const_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasConstKind<Self>;
+    fn alias_const_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+        inherent_args: ty::AliasConstInherentArgsKind,
+    ) -> ty::AliasConstKind<Self>;
 
     // FIXME: remove in favor of explicit construction
-    fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
+    fn alias_term_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+        inherent_args: ty::AliasConstInherentArgsKind,
+    ) -> ty::AliasTermKind<Self>;
 
     fn trait_ref_and_own_args_for_alias(
         self,
@@ -293,9 +319,18 @@ pub trait Interner:
         I: Iterator<Item = T>,
         T: CollectAndApply<Self::GenericArg, Self::GenericArgs>;
 
-    fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool;
+    fn check_alias_term_args_compatible(
+        self,
+        term_kind: AliasTermKind<Self>,
+        args: Self::GenericArgs,
+    ) -> bool;
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
+    fn debug_assert_alias_term_args_compatible(
+        self,
+        term_kind: AliasTermKind<Self>,
+        args: Self::GenericArgs,
+    );
 
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
     /// are compatible with the `DefId`.
@@ -474,6 +509,7 @@ pub trait Interner:
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
+    fn span_delayed_bug(self, span: Self::Span, msg: impl ToString) -> Self::ErrorGuaranteed;
 
     fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool;
     fn coroutine_is_async(self, coroutine_def_id: Self::CoroutineId) -> bool;
@@ -499,7 +535,7 @@ pub trait Interner:
     fn mk_probe(self, probe: inspect::Probe<Self>) -> Self::Probe;
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
-        canonical_goal: CanonicalInput<Self>,
+        canonical_goal: Self::CanonicalInput,
         root_depth: usize,
     ) -> (QueryResult<Self>, Self::Probe, RequiredDepth);
 
@@ -511,6 +547,8 @@ pub trait Interner:
 
     fn get_re_static_lifetime(self) -> Region<Self>;
 
+    fn intern_re_var(self, rv: RegionVid) -> Region<Self>;
+
     fn intern_region(self, region_kind: RegionKind<Self>) -> Region<Self>;
 
     fn intern_bound_region(
@@ -520,6 +558,9 @@ pub trait Interner:
     ) -> Region<Self>;
 
     fn intern_canonical_bound(self, var: BoundVar) -> Region<Self>;
+
+    type CanonicalInput: Copy + Debug + Hash + Eq + Deref<Target = CanonicalInputData<Self>>;
+    fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> Self::CanonicalInput;
 }
 
 macro_rules! declare_lift_into {
@@ -711,7 +752,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 }
 
 impl<I: Interner> search_graph::Cx for I {
-    type Input = CanonicalInput<I>;
+    type Input = I::CanonicalInput;
     type Result = (QueryResult<I>, AccessedOpaques<I>);
     type AmbiguityKind = Certainty;
 

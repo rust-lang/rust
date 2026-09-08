@@ -367,7 +367,8 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_PARENS,
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS,
-        MAP_UNIT_FN
+        MAP_UNIT_FN,
+        REPEATED_REPRS
     );
 
     add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);

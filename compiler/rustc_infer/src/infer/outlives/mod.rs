@@ -20,7 +20,7 @@ pub mod obligations;
 pub mod test_type_match;
 pub(crate) mod verify;
 
-#[instrument(level = "debug", skip(param_env), ret)]
+#[instrument(level = "debug", skip(param_env))]
 pub fn explicit_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> impl Iterator<Item = OutlivesBound<'tcx>> {

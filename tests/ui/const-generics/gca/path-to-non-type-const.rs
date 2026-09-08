@@ -1,7 +1,12 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 
-#![feature(min_generic_const_args, macroless_generic_const_args, generic_const_args)]
+#![feature(
+    min_generic_const_args,
+    macroless_generic_const_args,
+    generic_const_args,
+    inherent_associated_types
+)]
 #![expect(incomplete_features)]
 
 trait Trait {
@@ -21,6 +26,14 @@ impl<const A: usize> Trait for GenericStructImpl<A> {
     const PROJECTED: usize = A;
 }
 
+impl StructImpl {
+    const INHERENT: usize = 1;
+}
+
+impl<const A: usize> GenericStructImpl<A> {
+    const INHERENT: usize = A;
+}
+
 struct Struct<const N: usize>;
 
 fn f<T: Trait>() {
@@ -31,4 +44,6 @@ fn main() {
     let _ = Struct::<FREE>;
     let _ = Struct::<{ <StructImpl as Trait>::PROJECTED }>;
     let _ = Struct::<{ <GenericStructImpl<2> as Trait>::PROJECTED }>;
+    let _ = Struct::<{ StructImpl::INHERENT }>;
+    let _ = Struct::<{ GenericStructImpl::<2>::INHERENT }>;
 }

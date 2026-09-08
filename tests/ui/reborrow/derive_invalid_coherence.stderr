@@ -1,11 +1,11 @@
 error: implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
-  --> $DIR/derive_invalid_coherence.rs:5:10
+  --> $DIR/derive_invalid_coherence.rs:8:10
    |
 LL | #[derive(Reborrow)]
    |          ^^^^^^^^
 
 error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
-  --> $DIR/derive_invalid_coherence.rs:21:5
+  --> $DIR/derive_invalid_coherence.rs:24:5
    |
 LL |     field: NotCopy,
    |     ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`
@@ -17,7 +17,7 @@ LL | struct NotCopy;
    |
 
 error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
-  --> $DIR/derive_invalid_coherence.rs:10:22
+  --> $DIR/derive_invalid_coherence.rs:13:22
    |
 LL | struct BadTarget<'a>(&'a ());
    |                      ^^^^^^ target field `0` has type `&'a ()`

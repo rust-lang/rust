@@ -250,17 +250,21 @@ pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> V
     if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
-        if matches!(
-            CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id),
-            LoadedMacro::MacroDef { def, .. } if !def.macro_rules
-        ) {
-            once(crate_name).chain(relative).collect()
+        let is_macro_2_0_or_builtin = if let Some(local_def_id) = def_id.as_local() {
+            let (_, macro_def, _) = tcx.hir_expect_item(local_def_id).expect_macro();
+            !macro_def.macro_rules
         } else {
-            vec![crate_name, *relative.last().expect("relative was empty")]
+            matches!(
+                CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id),
+                LoadedMacro::MacroDef { def, .. } if !def.macro_rules
+            )
+        };
+        if !is_macro_2_0_or_builtin {
+            return vec![crate_name, *relative.last().expect("relative was empty")];
         }
-    } else {
-        once(crate_name).chain(relative).collect()
     }
+
+    once(crate_name).chain(relative).collect()
 }
 
 /// Record an external fully qualified name in the external_paths cache.

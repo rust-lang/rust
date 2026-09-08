@@ -7,7 +7,7 @@
    LL|      1|fn main() {
    LL|      1|    let truthy = std::env::args().len() == 1;
    LL|       |
-   LL|      1|    let a
+   LL|       |    let a
    LL|       |        =
    LL|       |        |
    LL|       |        |
@@ -18,7 +18,7 @@
    LL|      1|    if truthy { a(); }
                                    ^0
    LL|       |
-   LL|      1|    let b
+   LL|       |    let b
    LL|       |        =
    LL|       |        |
    LL|       |        |
@@ -29,7 +29,7 @@
    LL|      1|    if truthy { b(); }
                                    ^0
    LL|       |
-   LL|      1|    let c
+   LL|       |    let c
    LL|       |        =
    LL|       |        |
    LL|       |        |
@@ -40,7 +40,7 @@
    LL|      1|    if truthy { c(); }
                                    ^0
    LL|       |
-   LL|      1|    let d
+   LL|       |    let d
    LL|       |        =
    LL|       |        |
    LL|       |        |

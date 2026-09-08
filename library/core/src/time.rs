@@ -345,6 +345,8 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of weeks.
     ///
+    /// For this method, one week is defined as 7 days, or 604,800 seconds.
+    ///
     /// # Panics
     ///
     /// Panics if the given number of weeks overflows the `Duration` size.
@@ -372,6 +374,8 @@ impl Duration {
     }
 
     /// Creates a new `Duration` from the specified number of days.
+    ///
+    /// For this method, one day is defined as 24 hours, or 86,400 seconds.
     ///
     /// # Panics
     ///
@@ -401,6 +405,8 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of hours.
     ///
+    /// For this method, one hour is defined as 60 minutes, or 3,600 seconds.
+    ///
     /// # Panics
     ///
     /// Panics if the given number of hours overflows the `Duration` size.
@@ -428,6 +434,8 @@ impl Duration {
     }
 
     /// Creates a new `Duration` from the specified number of minutes.
+    ///
+    /// For this method, one minute is defined as 60 seconds.
     ///
     /// # Panics
     ///
@@ -1361,7 +1369,7 @@ macro_rules! sum_durations {
         total_secs = total_secs
             .checked_add(total_nanos / NANOS_PER_SEC as u64)
             .expect("overflow in iter::sum over durations");
-        total_nanos = total_nanos % NANOS_PER_SEC as u64;
+        total_nanos %= NANOS_PER_SEC as u64;
         Duration::new(total_secs, total_nanos as u32)
     }};
 }

@@ -66,6 +66,12 @@ impl Dir {
         with_native_path(path, &|path| Self::open_with_native(path, opts))
     }
 
+    pub fn open_for_traversal(path: &Path) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::FILE_TRAVERSE);
+        with_native_path(path, &|path| Self::open_with_native(path, &opts))
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         // NtCreateFile will fail if given an absolute path and a non-null RootDirectory
         if path.is_absolute() {
@@ -85,6 +91,24 @@ impl Dir {
         let from = to_u16s_without_nul(from)?;
         let to = to_u16s_without_nul(to)?;
         self.rename_native(&from, to_dir, &to, is_dir)
+    }
+
+    pub fn create_dir(&self, path: &Path) -> io::Result<()> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        opts.write(true);
+        opts.create_new(true);
+        self.open_dir(path, &opts).map(|_| ())
+    }
+
+    pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
+        let path = to_u16s_without_nul(&path)?;
+        self.open_file_native(&path, &opts, true).map(|handle| Self { handle })
+    }
+
+    pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
+        let path = to_u16s_without_nul(&path)?;
+        self.remove_native(&path, true)
     }
 
     fn open_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {

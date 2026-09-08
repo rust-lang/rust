@@ -343,7 +343,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 });
 
-                this.maybe_forward_track_caller(body.span, closure_hir_id, expr.hir_id);
+                this.maybe_forward_track_caller(closure_hir_id, expr.hir_id);
 
                 (parameters, expr)
             });

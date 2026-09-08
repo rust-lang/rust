@@ -5,6 +5,7 @@ use std::{fs, io};
 
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
+use rustc_hir::Constness;
 use tracing::trace;
 use ty::print::PrettyPrinter;
 
@@ -340,12 +341,18 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
 
         // For `const fn` we want to render both the optimized MIR and the MIR for ctfe.
         if tcx.is_const_fn(def_id) {
-            render_body(w, tcx.optimized_mir(def_id))?;
-            writeln!(w)?;
-            writeln!(w, "// MIR FOR CTFE")?;
-            // Do not use `render_body`, as that would render the promoteds again, but these
-            // are shared between mir_for_ctfe and optimized_mir
-            writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
+            // In case where comptime const fn, should only render the MIR for ctfe,
+            // since comptime functions cannot have their MIR optimized
+            if matches!(tcx.constness(def_id), Constness::Const { always: true }) {
+                render_body(w, tcx.mir_for_ctfe(def_id))?;
+            } else {
+                render_body(w, tcx.optimized_mir(def_id))?;
+                writeln!(w)?;
+                writeln!(w, "// MIR FOR CTFE")?;
+                // Do not use `render_body`, as that would render the promoteds again, but these
+                // are shared between mir_for_ctfe and optimized_mir
+                writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
+            }
         } else {
             if let Some((val, ty)) = tcx.trivial_const(def_id) {
                 ty::print::with_forced_impl_filename_line! {
@@ -623,21 +630,21 @@ fn write_mir_intro<'tcx>(
     // Add an empty line before the first block is printed.
     writeln!(w)?;
 
-    if let Some(coverage_info_hi) = &body.coverage_info_hi {
-        write_coverage_info_hi(coverage_info_hi, w)?;
+    if let Some(early_info) = &body.coverage_early_info {
+        write_coverage_early_info(early_info, w)?;
     }
-    if let Some(function_coverage_info) = &body.function_coverage_info {
-        write_function_coverage_info(function_coverage_info, w)?;
+    if let Some(mir_info) = &body.coverage_mir_info {
+        write_coverage_mir_info(mir_info, w)?;
     }
 
     Ok(())
 }
 
-fn write_coverage_info_hi(
-    coverage_info_hi: &coverage::CoverageInfoHi,
+fn write_coverage_early_info(
+    early_info: &coverage::CoverageEarlyInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::CoverageInfoHi { num_block_markers: _, branch_spans } = coverage_info_hi;
+    let coverage::CoverageEarlyInfo { num_block_markers: _, branch_spans } = early_info;
 
     // Only add an extra trailing newline if we printed at least one thing.
     let mut did_print = false;
@@ -657,11 +664,11 @@ fn write_coverage_info_hi(
     Ok(())
 }
 
-fn write_function_coverage_info(
-    function_coverage_info: &coverage::FunctionCoverageInfo,
+fn write_coverage_mir_info(
+    mir_info: &coverage::CoverageMirInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::FunctionCoverageInfo { mappings, .. } = function_coverage_info;
+    let coverage::CoverageMirInfo { mappings, .. } = mir_info;
 
     for coverage::Mapping { kind, span } in mappings {
         writeln!(w, "{INDENT}coverage {kind:?} => {span:?};")?;
@@ -1249,13 +1256,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         };
                         let mut struct_fmt = fmt.debug_struct(&name);
 
-                        // FIXME(project-rfc-2229#48): This should be a list of capture names/places
-                        if let Some(def_id) = def_id.as_local()
-                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
-                        {
-                            for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir_name(var_id);
-                                struct_fmt.field(var_name.as_str(), place);
+                        if let Some(def_id) = def_id.as_local() {
+                            let captures = tcx.closure_captures(def_id);
+                            assert_eq!(captures.len(), places.len());
+                            for (&capture, place) in iter::zip(captures, places) {
+                                struct_fmt.field(capture.to_symbol().as_str(), place);
                             }
                         } else {
                             for (index, place) in places.iter().enumerate() {
@@ -1270,13 +1275,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let name = format!("{{coroutine@{:?}}}", tcx.def_span(def_id));
                         let mut struct_fmt = fmt.debug_struct(&name);
 
-                        // FIXME(project-rfc-2229#48): This should be a list of capture names/places
-                        if let Some(def_id) = def_id.as_local()
-                            && let Some(upvars) = tcx.upvars_mentioned(def_id)
-                        {
-                            for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir_name(var_id);
-                                struct_fmt.field(var_name.as_str(), place);
+                        if let Some(def_id) = def_id.as_local() {
+                            let captures = tcx.closure_captures(def_id);
+                            assert_eq!(captures.len(), places.len());
+                            for (&capture, place) in iter::zip(captures, places) {
+                                struct_fmt.field(capture.to_symbol().as_str(), place);
                             }
                         } else {
                             for (index, place) in places.iter().enumerate() {
@@ -1364,6 +1367,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::UnwrapUnsafeBinder(_) => {
                 write!(fmt, "unwrap_binder!(")?;
             }
+            ProjectionElem::PhantomDeref => {
+                write!(fmt, "reborrow!(")?;
+            }
         }
     }
 
@@ -1382,7 +1388,7 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::Downcast(None, index) => {
                 write!(fmt, " as variant#{index:?})")?;
             }
-            ProjectionElem::Deref => {
+            ProjectionElem::Deref | ProjectionElem::PhantomDeref => {
                 write!(fmt, ")")?;
             }
             ProjectionElem::Field(field, ty) => {
@@ -1494,7 +1500,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     ty::ConstKind::Alias(_, alias_const) => {
                         let kind = match alias_const.kind {
                             ty::AliasConstKind::Projection { def_id }
-                            | ty::AliasConstKind::Inherent { def_id }
+                            | ty::AliasConstKind::InherentSelf { def_id }
+                            | ty::AliasConstKind::InherentImpl { def_id }
                             | ty::AliasConstKind::Free { def_id }
                             | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
                         };

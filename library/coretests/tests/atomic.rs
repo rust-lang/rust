@@ -538,6 +538,29 @@ fn atomic_umin() {
     assert_eq!(ATOMIC.load(Relaxed), 0);
 }
 
+#[test]
+fn atomic_volatile() {
+    use Ordering::*;
+
+    let mut b = true;
+    let atomic = AtomicBool::from_ptr_raw(&raw mut b);
+    assert!(unsafe { atomic.load_volatile(Relaxed) });
+    unsafe { atomic.store_volatile(false, Relaxed) };
+    assert!(!b);
+
+    let mut ptr = std::ptr::null_mut::<i32>();
+    let atomic = AtomicPtr::from_ptr_raw(&raw mut ptr);
+    assert!(unsafe { atomic.load_volatile(Relaxed) }.is_null());
+    unsafe { atomic.store_volatile(std::ptr::without_provenance_mut(16), Relaxed) };
+    assert!(ptr.addr() == 16);
+
+    let mut int = 0i32;
+    let atomic = AtomicI32::from_ptr_raw(&raw mut int);
+    assert!(unsafe { atomic.load_volatile(Relaxed) } == 0);
+    unsafe { atomic.store_volatile(16, Relaxed) };
+    assert!(int == 16);
+}
+
 /* FIXME(#110395)
 #[test]
 fn atomic_const_from() {

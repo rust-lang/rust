@@ -440,8 +440,15 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
-    // `type const` don't have bodys
-    debug_assert!(!tcx.is_type_const(def), "CTFE tried to evaluate type-const: {:?}", def);
+    // directly represented consts don't have bodies
+    if cfg!(debug_assertions)
+        && matches!(tcx.def_kind(def), DefKind::Const { .. } | DefKind::AssocConst { .. })
+    {
+        debug_assert!(
+            tcx.const_of_item(def).is_none(),
+            "CTFE tried to evaluate directly represented const item: {def:?}"
+        );
+    }
 
     let is_static = tcx.is_static(def);
     let mut ecx = InterpCx::new(

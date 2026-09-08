@@ -37,6 +37,10 @@ icount = ["dep:gungraun"]
 benchmarking-reports = ["walltime", "criterion/plotters", "criterion/html_reports"]
 walltime = ["dep:criterion"]
 
+[lints.clippy]
+# This sometimes reads better
+needless-range-loop = "allow"
+
 [[bench]]
 name = "float_add"
 harness = false

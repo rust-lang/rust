@@ -2181,6 +2181,7 @@ GETFINALPATHNAMEBYHANDLE_FLAGS
 GetFinalPathNameByHandleW
 GetFullPathNameW
 GetLastError
+GetLogicalDrives
 GetModuleFileNameW
 GetModuleHandleA
 GetModuleHandleExW
@@ -2354,6 +2355,7 @@ PROFILE_KERNEL
 PROFILE_SERVER
 PROFILE_USER
 PROGRESS_CONTINUE
+QueryDosDeviceW
 QueryPerformanceCounter
 QueryPerformanceFrequency
 READ_CONTROL
@@ -2508,6 +2510,7 @@ UpdateProcThreadAttribute
 VOLUME_NAME_DOS
 VOLUME_NAME_GUID
 VOLUME_NAME_NONE
+VOLUME_NAME_NT
 WAIT_ABANDONED
 WAIT_ABANDONED_0
 WAIT_FAILED

@@ -73,7 +73,7 @@ pub(super) mod resolver {
 
         #[inline]
         pub(crate) fn owner_id(&self) -> LocalDefId {
-            self.0.owner.def_id
+            self.0.curr_owner.owner.def_id
         }
 
         /// (from `tests\ui\delegation\target-expr-removal-defs-inside.rs`):
@@ -91,7 +91,7 @@ pub(super) mod resolver {
         #[inline]
         pub(crate) fn is_definition(&self, id: NodeId) -> bool {
             self.0.resolver.owners.contains_key(&id)
-                || self.0.owner.node_id_to_def_id.contains_key(&id)
+                || self.0.curr_owner.owner.node_id_to_def_id.contains_key(&id)
         }
 
         #[inline]

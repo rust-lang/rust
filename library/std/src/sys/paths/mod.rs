@@ -15,9 +15,9 @@ cfg_select! {
         #[expect(dead_code)]
         mod unsupported;
         mod imp {
-            pub use super::motor::{chdir, current_exe, getcwd, temp_dir};
-            pub use super::unsupported::{
-                JoinPathsError, SplitPaths, home_dir, join_paths, split_paths,
+            pub use super::motor::{
+                JoinPathsError, SplitPaths, chdir, current_exe, getcwd, home_dir, join_paths,
+                split_paths, temp_dir,
             };
         }
     }

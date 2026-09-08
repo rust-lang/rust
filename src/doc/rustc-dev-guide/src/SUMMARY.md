@@ -51,19 +51,22 @@
 # Contributing to Rust
 
 - [Contribution procedures](./contributing.md)
+- [PR lifecycle](./pr-lifecycle.md)
+- [Writing rustc-dev-guide documentation](./contributing-to-guide.md)
 - [About the compiler team](./compiler-team.md)
 - [Using Git](./git.md)
 - [Mastering @rustbot](./rustbot.md)
 - [Running LLMs](./llm-guidance.md)
     - [Writing code with LLMs](./llm-guidance/writing.md)
     - [Reviewing code with LLMs](./llm-guidance/reviewing.md)
-- [Walkthrough: a typical contribution](./walkthrough.md)
+- [Walkthrough: adding a new test](./walkthroughs/test.md)
 - [Implementing new language features](./implementing-new-features.md)
 - [Stability guarantees](./stability-guarantees.md)
 - [Stability attributes](./stability.md)
 - [Stabilizing language features](./stabilization-guide.md)
     - [Stabilization report template](./stabilization-report-template.md)
 - [Feature Gates](./feature-gates.md)
+- [Walkthrough: a new language feature, from design to stabilization](./walkthroughs/lang-feature.md)
 - [Coding conventions](./conventions.md)
 - [Procedures for breaking changes](./bug-fix-procedure.md)
 - [Using external repositories](./external-repos.md)
@@ -274,5 +277,7 @@
 [Appendix D: Compiler Lecture Series](./appendix/compiler-lecture.md)
 
 [Appendix E: Bibliography](./appendix/bibliography.md)
+
+[Appendix F: Reading club sessions](./appendix/reading-club.md)
 
 [Appendix Z: HumorRust](./appendix/humorust.md)

@@ -1,3 +1,10 @@
+Version 1.98.1 (2026-09-03)
+===========================
+
+<a id="1.98.1"></a>
+
+* [rustc: fix miscompilation in generating vtables](https://github.com/rust-lang/rust/issues/161441)
+
 Version 1.98.0 (2026-08-20)
 ==========================
 
@@ -67,6 +74,8 @@ Stabilized APIs
 - [`Atomic<T>::get_mut_slice`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.Atomic.html#method.get_mut_slice)
 - [`Atomic<T>::from_mut_slice`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.Atomic.html#method.from_mut_slice)
 - [`std::range::legacy`](https://doc.rust-lang.org/stable/std/range/legacy/index.html)
+- [`bool::ok_or`](https://doc.rust-lang.org/stable/std/primitive.bool.html#method.ok_or)
+- [`bool::ok_or_else`](https://doc.rust-lang.org/stable/std/primitive.bool.html#method.ok_or_else)
 
 
 <a id="1.98.0-Compatibility-Notes"></a>

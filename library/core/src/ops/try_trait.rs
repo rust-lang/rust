@@ -148,12 +148,12 @@ pub const trait Try: [const] FromResidual {
     /// this type is typically a newtype of some sort to "color" the type
     /// so that it's distinguishable from the residuals of other types.
     ///
-    /// This is why `Result<T, E>::Residual` is not `E`, but `Result<Infallible, E>`.
+    /// This is why `Result<T, E>::Residual` is not `E`, but `Result<!, E>`.
     /// That way it's distinct from `ControlFlow<E>::Residual`, for example,
     /// and thus `?` on `ControlFlow` cannot be used in a method returning `Result`.
     ///
     /// If you're making a generic type `Foo<T>` that implements `Try<Output = T>`,
-    /// then typically you can use `Foo<std::convert::Infallible>` as its `Residual`
+    /// then typically you can use `Foo<!>` as its `Residual`
     /// type: that type will have a "hole" in the correct place, and will maintain the
     /// "foo-ness" of the residual so other types need to opt-in to interconversion.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
@@ -356,9 +356,9 @@ where
 /// and [`Try::Residual`] components, this allows putting them back together.
 ///
 /// For example,
-/// `Result<T, E>: Try<Output = T, Residual = Result<Infallible, E>>`,
+/// `Result<T, E>: Try<Output = T, Residual = Result<!, E>>`,
 /// and in the other direction,
-/// `<Result<Infallible, E> as Residual<T>>::TryType = Result<T, E>`.
+/// `<Result<!, E> as Residual<T>>::TryType = Result<T, E>`.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
 pub const trait Residual<O>: Sized {

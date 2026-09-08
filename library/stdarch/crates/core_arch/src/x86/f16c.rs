@@ -9,7 +9,7 @@ use crate::intrinsics::simd::*;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.vcvtps2ph.128"]
     fn llvm_vcvtps2ph_128(a: f32x4, rounding: i32) -> i16x8;
     #[link_name = "llvm.x86.vcvtps2ph.256"]

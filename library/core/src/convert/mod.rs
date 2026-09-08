@@ -815,10 +815,10 @@ const impl<T, U> TryFrom<U> for T
 where
     U: [const] Into<T>,
 {
-    type Error = Infallible;
+    type Error = !;
 
     #[inline]
-    fn try_from(value: U) -> Result<Self, Self::Error> {
+    fn try_from(value: U) -> Result<Self, !> {
         Ok(U::into(value))
     }
 }

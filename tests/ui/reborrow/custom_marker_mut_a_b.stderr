@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `a` as mutable more than once at a time
-  --> $DIR/custom_marker_mut_a_b.rs:14:20
+  --> $DIR/custom_marker_mut_a_b.rs:17:20
    |
 LL |     let b = method(a);
    |                    - first mutable borrow occurs here

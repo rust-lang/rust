@@ -6,7 +6,7 @@ extern crate core;
 use core::contracts::ensures;
 
 #[ensures()]
-//~^ ERROR expected an `Fn(&_)` closure, found `()` [E0277]
+//~^ ERROR `ensures` attribute requires an argument
 fn foo(x: u32) -> u32 {
     x * 2
 }

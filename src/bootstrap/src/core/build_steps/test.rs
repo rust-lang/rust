@@ -38,7 +38,7 @@ use crate::core::builder::{
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
-use crate::core::session::{CLang, GitRepo, Mode};
+use crate::core::session::{CLang, Mode};
 use crate::core::{android, debuggers};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -48,7 +48,6 @@ use crate::utils::helpers::{
     target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-
 mod compiletest;
 pub mod failed_tests;
 
@@ -1021,7 +1020,12 @@ impl CommandLineStep for StdarchVerify {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(StdarchVerify);
+        let builder = run.builder;
+        if builder.remote_tested(run.target) {
+            builder.info("remote testing is not supported by stdarch-verify. skipping");
+            return;
+        }
+        builder.ensure(StdarchVerify);
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1102,6 +1106,14 @@ impl CommandLineStep for IntrinsicTest {
             builder.info(&format!("Skipping intrinsic-test, as it is not available for {host}"));
             return;
         }
+        // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
+        // managed binaries findable by prepending their dirs to PATH.
+        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
+            eprintln!(
+                "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
+            );
+            return;
+        };
 
         let (input_file, skip_file, cflags, sde_runner) = if host.contains("x86_64-unknown-linux") {
             let Some(sde) = &builder.config.sde else {
@@ -1172,14 +1184,6 @@ impl CommandLineStep for IntrinsicTest {
         cmd.arg("--cc-arg-style").arg("gcc");
         cmd.env("CC", builder.cc(host));
         cmd.env("CFLAGS", cflags);
-        // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
-        // managed binaries findable by prepending their dirs to PATH.
-        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
-            eprintln!(
-                "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
-            );
-            return;
-        };
 
         let mut path_dirs: Vec<PathBuf> = Vec::new();
         if let Some(cargo_dir) = builder.initial_cargo.parent() {
@@ -1565,7 +1569,7 @@ impl CommandLineStep for RustdocGUI {
 
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
-        let out_dir = builder.test_out(self.target).join("rustdoc-gui");
+        let out_dir = builder.out.join(self.target).join("test").join("rustdoc-gui");
         build_stamp::clear_if_dirty(
             builder,
             &out_dir,
@@ -1580,7 +1584,7 @@ impl CommandLineStep for RustdocGUI {
             cmd.arg("--out-dir").arg(out_dir);
         }
 
-        if let Some(initial_cargo) = builder.config.initial_cargo.to_str() {
+        if let Some(initial_cargo) = builder.sess.initial_cargo.to_str() {
             cmd.arg("--initial-cargo").arg(initial_cargo);
         }
 
@@ -2620,13 +2624,9 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         // Provide `rust_test_helpers` for both host and target.
         if suite == "ui" || suite == "incremental" {
-            builder.ensure(TestHelpers { target: test_compiler.host });
-            builder.ensure(TestHelpers { target });
-            hostflags.push(format!(
-                "-Lnative={}",
-                builder.test_helpers_out(test_compiler.host).display()
-            ));
-            let target_helpers = builder.test_helpers_out(target);
+            let host_test_helpers = builder.ensure(TestHelpers { target: test_compiler.host });
+            let target_helpers = builder.ensure(TestHelpers { target });
+            hostflags.push(format!("-Lnative={}", host_test_helpers.display()));
             targetflags.push(format!("-Lnative={}", target_helpers.display()));
             if target.is_pauthtest() {
                 // For the pauthtest target, embed an rpath to the directory containing the helper
@@ -2835,9 +2835,9 @@ Please disable assertions with `rust.debug-assertions = false`.
         // requires that a C++ compiler was configured which isn't always the case.
         if !builder.config.dry_run() && mode == CompiletestMode::RunMake {
             let mut cflags = builder.cc_handled_cflags(target, CLang::C);
-            cflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
+            cflags.extend(builder.cc_unhandled_cflags(target, CLang::C));
             let mut cxxflags = builder.cc_handled_cflags(target, CLang::Cxx);
-            cxxflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
+            cxxflags.extend(builder.cc_unhandled_cflags(target, CLang::Cxx));
             cmd.arg("--cc")
                 .arg(builder.cc(target))
                 .arg("--cxx")
@@ -4251,28 +4251,28 @@ impl CommandLineStep for RustInstaller {
     }
 }
 
+/// Compiles native (C/C++) code that is used as helper code for tests.
+///
+/// Returns a path to the directory where the native test helpers have been built into.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestHelpers {
     pub target: TargetSelection,
 }
 
 impl CommandLineStep for TestHelpers {
-    type Output = ();
+    type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("tests/auxiliary/rust_test_helpers.c")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(TestHelpers { target: run.target })
+        run.builder.ensure(TestHelpers { target: run.target });
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` tests for ABI testing.
-    fn run(self, builder: &Builder<'_>) {
-        if builder.config.dry_run() {
-            return;
-        }
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         // The x86_64-fortanix-unknown-sgx target doesn't have a working C
         // toolchain. However, some x86_64 ELF objects can be linked
         // without issues. Use this hack to compile the test helpers.
@@ -4281,7 +4281,11 @@ impl CommandLineStep for TestHelpers {
         } else {
             self.target
         };
-        let dst = builder.test_helpers_out(target);
+        let dst = builder.native_dir(target).join("rust-test-helpers");
+        if builder.config.dry_run() {
+            return dst;
+        }
+
         let src = builder.src.join("tests/auxiliary/rust_test_helpers.c");
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
@@ -4311,7 +4315,7 @@ impl CommandLineStep for TestHelpers {
         if target.is_pauthtest() {
             let so = dst.join("librust_test_helpers.so");
             if up_to_date(&src, &so) {
-                return;
+                return dst;
             }
 
             let status = Command::new(builder.cc(target))
@@ -4331,6 +4335,7 @@ impl CommandLineStep for TestHelpers {
                 panic!("Linking of librust_test_helpers.so failed (target: {})", target.triple);
             }
         }
+        dst
     }
 }
 
@@ -4412,7 +4417,6 @@ impl CommandLineStep for CodegenCranelift {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/build_system/Cargo.toml"));
-        compile::rustc_cargo_env(builder, &mut cargo, target);
 
         // Avoid incremental cache issues when changing rustc
         cargo.env("CARGO_BUILD_INCREMENTAL", "false");
@@ -4538,7 +4542,6 @@ impl CommandLineStep for CodegenGCC {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_gcc/build_system/Cargo.toml"));
-        compile::rustc_cargo_env(builder, &mut cargo, target);
         add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
         // Avoid incremental cache issues when changing rustc
