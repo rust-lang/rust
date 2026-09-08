@@ -1,256 +1,90 @@
-error[E0425]: cannot find function `static_f` in `X`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:19
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                   ^^^^^^^^ not found in `X`
-
-error[E0425]: cannot find function `by_value` in `X`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:29
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                             ^^^^^^^^ not found in `X`
-
-error[E0425]: cannot find function `by_ref` in `X`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:39
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                       ^^^^^^ not found in `X`
-
-error[E0425]: cannot find function `by_mut_ref` in `X`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:47
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                               ^^^^^^^^^^ not found in `X`
-
-error[E0425]: cannot find function `add` in `X`
-  --> $DIR/inherent-impls-receiver-mapping.rs:61:18
-   |
-LL |         reuse X::add { self.0 }
-   |                  ^^^ not found in `X`
-
-error[E0599]: no method named `by_ref` found for struct `Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:26:11
-   |
-LL |     struct Y;
-   |     -------- method `by_ref` not found for this struct
-...
-LL |         y.by_ref();
-   |           ^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:39
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                       ^^^^^^
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `by_ref`, perhaps you need to implement one of them:
-           candidate #1: `Iterator`
-           candidate #2: `std::io::Read`
-           candidate #3: `std::io::Write`
-help: use associated function syntax instead
-   |
-LL -         y.by_ref();
-LL +         Y::by_ref();
-   |
-
-error[E0599]: no method named `by_mut_ref` found for struct `Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:28:11
-   |
-LL |     struct Y;
-   |     -------- method `by_mut_ref` not found for this struct
-...
-LL |         y.by_mut_ref();
-   |           ^^^^^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:47
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                               ^^^^^^^^^^
-help: use associated function syntax instead
-   |
-LL -         y.by_mut_ref();
-LL +         Y::by_mut_ref();
-   |
-
-error[E0599]: no method named `by_value` found for struct `Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:30:11
-   |
-LL |     struct Y;
-   |     -------- method `by_value` not found for this struct
-...
-LL |         y.by_value();
-   |           ^^^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:29
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                             ^^^^^^^^
-help: use associated function syntax instead
-   |
-LL -         y.by_value();
-LL +         Y::by_value();
-   |
-
-error[E0599]: no method named `by_value` found for reference `&Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:34:11
-   |
-LL |         y.by_value();
-   |           ^^^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:29
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                             ^^^^^^^^
-help: use associated function syntax instead
-   |
-LL -         y.by_value();
-LL +         Y::by_value();
-   |
-
-error[E0599]: no method named `by_ref` found for reference `&Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:36:11
-   |
-LL |         y.by_ref();
-   |           ^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:39
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                       ^^^^^^
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `by_ref`, perhaps you need to implement one of them:
-           candidate #1: `std::io::Read`
-           candidate #2: `std::io::Write`
-   = note: the trait `Iterator` defines an item `by_ref`, but is explicitly unimplemented
-help: use associated function syntax instead
-   |
-LL -         y.by_ref();
-LL +         Y::by_ref();
-   |
-
-error[E0599]: no method named `by_mut_ref` found for reference `&Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:38:11
-   |
-LL |         y.by_mut_ref();
-   |           ^^^^^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:47
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                               ^^^^^^^^^^
-help: use associated function syntax instead
-   |
-LL -         y.by_mut_ref();
-LL +         Y::by_mut_ref();
-   |
-
-error[E0599]: no method named `by_value` found for mutable reference `&mut Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:42:11
-   |
-LL |         y.by_value();
-   |           ^^^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:29
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                             ^^^^^^^^
-help: use associated function syntax instead
-   |
-LL -         y.by_value();
-LL +         Y::by_value();
-   |
-
-error[E0599]: the method `by_ref` exists for mutable reference `&mut Y`, but its trait bounds were not satisfied
-  --> $DIR/inherent-impls-receiver-mapping.rs:44:11
-   |
-LL |     struct Y;
-   |     -------- doesn't satisfy `Y: Iterator`
-...
-LL |         y.by_ref();
-   |           ^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:39
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                       ^^^^^^
-   = note: the following trait bounds were not satisfied:
-           `Y: Iterator`
-           which is required by `&mut Y: Iterator`
-note: the trait `Iterator` must be implemented
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `by_ref`, perhaps you need to implement one of them:
-           candidate #1: `std::io::Read`
-           candidate #2: `std::io::Write`
-   = note: the trait `Iterator` defines an item `by_ref`, but is explicitly unimplemented
-help: use associated function syntax instead
-   |
-LL -         y.by_ref();
-LL +         Y::by_ref();
-   |
-
-error[E0599]: no method named `by_mut_ref` found for mutable reference `&mut Y` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:46:11
-   |
-LL |         y.by_mut_ref();
-   |           ^^^^^^^^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:17:47
-   |
-LL |         reuse X::{static_f, by_value, by_ref, by_mut_ref} { self.get_x() }
-   |                                               ^^^^^^^^^^
-help: use associated function syntax instead
-   |
-LL -         y.by_mut_ref();
-LL +         Y::by_mut_ref();
-   |
-
-error[E0599]: no method named `add` found for struct `W` in the current scope
-  --> $DIR/inherent-impls-receiver-mapping.rs:66:14
-   |
-LL |     struct W(X);
-   |     -------- method `add` not found for this struct
-...
-LL |         W(X).add(W(X));
-   |              ^^^ this is an associated function, not a method
-   |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `W`
-  --> $DIR/inherent-impls-receiver-mapping.rs:61:18
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-receiver-mapping.rs:52:18
    |
 LL |         reuse X::add { self.0 }
    |                  ^^^
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `add`, perhaps you need to implement it:
-           candidate #1: `Add`
-help: use associated function syntax instead
+   |                  |
+   |                  expected `X`, found `W`
+   |                  arguments to this function are incorrect
    |
-LL -         W(X).add(W(X));
-LL +         W::add(W(X));
+note: method defined here
+  --> $DIR/inherent-impls-receiver-mapping.rs:45:12
    |
-help: one of the expressions' fields has a method of the same name
-   |
-LL |         W(X).0.add(W(X));
-   |              ++
+LL |         fn add(self, other: Self) -> Self {
+   |            ^^^       -----------
 
-error: aborting due to 15 previous errors
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-receiver-mapping.rs:52:18
+   |
+LL |         reuse X::add { self.0 }
+   |                  ^^^
+   |                  |
+   |                  expected `W`, found `X`
+   |                  expected `W` because of return type
+   |
+help: try wrapping the expression in `self_type_mapping::W`
+   |
+LL |         reuse X::self_type_mapping::W(add) { self.0 }
+   |                  +++++++++++++++++++++   +
 
-Some errors have detailed explanations: E0425, E0599.
-For more information about an error, try `rustc --explain E0425`.
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/inherent-impls-receiver-mapping.rs:23:9
+   |
+LL |         y.by_mut_ref();
+   |         ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |         let mut y = Y;
+   |             +++
+
+error[E0507]: cannot move out of `*y` which is behind a shared reference
+  --> $DIR/inherent-impls-receiver-mapping.rs:28:9
+   |
+LL |         y.by_value();
+   |         ^ ---------- `*y` moved due to this method call
+   |         |
+   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
+   |
+   = note: `receiver_mapping::Y::by_value` takes ownership of the receiver `self`, which moves `*y`
+note: if `Y` implemented `Clone`, you could clone the value
+  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
+   |
+LL |     struct Y;
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         y.by_value();
+   |         - you could clone this value
+
+error[E0596]: cannot borrow `*y` as mutable, as it is behind a `&` reference
+  --> $DIR/inherent-impls-receiver-mapping.rs:31:9
+   |
+LL |         y.by_mut_ref();
+   |         ^ `y` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |         let y = &mut Y;
+   |                  +++
+
+error[E0507]: cannot move out of `*y` which is behind a mutable reference
+  --> $DIR/inherent-impls-receiver-mapping.rs:35:9
+   |
+LL |         y.by_value();
+   |         ^ ---------- `*y` moved due to this method call
+   |         |
+   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
+   |
+note: if `Y` implemented `Clone`, you could clone the value
+  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
+   |
+LL |     struct Y;
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         y.by_value();
+   |         - you could clone this value
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0308, E0507, E0596.
+For more information about an error, try `rustc --explain E0308`.
