@@ -36,11 +36,6 @@ pub(super) struct BorrowCheckRootCtxt<'diag, 'tcx: 'diag> {
     /// Only used for deferred error reporting. See
     /// [`crate::region_infer::opaque_types::handle_unconstrained_hidden_type_errors`]
     unconstrained_hidden_type_errors: Vec<UnexpectedHiddenRegion<'tcx>>,
-    /// The region constraints computed by [borrowck_collect_region_constraints]. This uses
-    /// an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
-    /// their parents.
-    collect_region_constraints_results:
-        FxIndexMap<LocalDefId, CollectRegionConstraintsResult<'tcx>>,
     propagated_borrowck_results: FxHashMap<LocalDefId, PropagatedBorrowCheckResults<'tcx>>,
     tainted_by_errors: &'diag Cell<Option<ErrorGuaranteed>>,
     /// This should be `None` during normal compilation. See [`crate::consumers`] for more
@@ -60,7 +55,6 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             root_def_id,
             hidden_types: Default::default(),
             unconstrained_hidden_type_errors: Default::default(),
-            collect_region_constraints_results: Default::default(),
             propagated_borrowck_results: Default::default(),
             tainted_by_errors,
             consumer,
@@ -97,9 +91,15 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         }
     }
 
-    fn handle_opaque_type_uses(&mut self) {
+    fn handle_opaque_type_uses(
+        &mut self,
+        collect_region_constraints_results: &mut FxIndexMap<
+            LocalDefId,
+            CollectRegionConstraintsResult<'tcx>,
+        >,
+    ) {
         let mut per_body_info = Vec::new();
-        for (def_id, input) in &mut self.collect_region_constraints_results {
+        for (def_id, input) in collect_region_constraints_results.iter_mut() {
             let (num_entries, opaque_types) = clone_and_resolve_opaque_types(
                 &input.infcx,
                 &input.universal_region_relations,
@@ -122,11 +122,11 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             self.tcx,
             &mut self.hidden_types,
             &mut self.unconstrained_hidden_type_errors,
-            &mut self.collect_region_constraints_results,
+            collect_region_constraints_results,
         );
 
         for (input, (opaque_types_storage_num_entries, opaque_types)) in
-            self.collect_region_constraints_results.values_mut().zip(per_body_info)
+            collect_region_constraints_results.values_mut().zip(per_body_info)
         {
             if input.deferred_opaque_type_errors.is_empty() {
                 input.deferred_opaque_type_errors = apply_definition_site_hidden_types(
@@ -168,13 +168,13 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
     fn apply_closure_requirements_modulo_opaques(
         &mut self,
         diags_buffer: &mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
+        results: &mut FxIndexMap<LocalDefId, CollectRegionConstraintsResult<'tcx>>,
     ) {
         let mut closure_requirements_modulo_opaques = FxHashMap::default();
         // We need to `mem::take` both `self.collect_region_constraints_results` and
         // `input.deferred_closure_requirements` as we otherwise can't iterate over
         // them while mutably using the containing struct.
-        let collect_region_constraints_results =
-            mem::take(&mut self.collect_region_constraints_results);
+        let collect_region_constraints_results = mem::take(results);
         // We iterate over all bodies here, visiting nested bodies before their parent.
         for (def_id, mut input) in collect_region_constraints_results {
             // A body depends on opaque types if it either has any opaque type uses itself,
@@ -223,7 +223,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
                     let req = Self::compute_closure_requirements_modulo_opaques(&input);
                     closure_requirements_modulo_opaques.insert(def_id, req);
                 }
-                self.collect_region_constraints_results.insert(def_id, input);
+                results.insert(def_id, input);
             } else {
                 assert!(input.deferred_closure_requirements.is_empty());
                 let result = borrowck_check_region_constraints(self, diags_buffer, input);
@@ -276,9 +276,17 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             .nested_bodies_within(self.root_def_id)
             .iter()
             .chain(std::iter::once(self.root_def_id));
+
+        // The region constraints computed by [borrowck_collect_region_constraints]. This uses
+        // an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
+        // their parents.
+        let mut collect_region_constraints_results: FxIndexMap<
+            LocalDefId,
+            CollectRegionConstraintsResult<'tcx>,
+        > = FxIndexMap::default();
         for def_id in all_bodies {
             let result = borrowck_collect_region_constraints(self, def_id);
-            self.collect_region_constraints_results.insert(def_id, result);
+            collect_region_constraints_results.insert(def_id, result);
         }
 
         let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
@@ -290,10 +298,13 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         //
         // We eagerly finish borrowck for bodies which don't depend on
         // opaques.
-        self.apply_closure_requirements_modulo_opaques(diags_buffer);
+        self.apply_closure_requirements_modulo_opaques(
+            diags_buffer,
+            &mut collect_region_constraints_results,
+        );
 
         // We handle opaque type uses for all bodies together.
-        self.handle_opaque_type_uses();
+        self.handle_opaque_type_uses(&mut collect_region_constraints_results);
 
         // Now walk over all bodies which depend on opaque types and finish borrowck.
         //
@@ -301,7 +312,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         // depend on opaque types and then finish borrow checking the parent. Bodies
         // which don't depend on opaques have already been fully borrowchecked in
         // `apply_closure_requirements_modulo_opaques` as an optimization.
-        for (def_id, mut input) in mem::take(&mut self.collect_region_constraints_results) {
+        for (def_id, mut input) in mem::take(&mut collect_region_constraints_results) {
             for (def_id, args, locations) in mem::take(&mut input.deferred_closure_requirements) {
                 // We visit nested bodies before their parent, so we're already
                 // done with nested bodies at this point.
