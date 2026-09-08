@@ -318,11 +318,11 @@ struct CollectRegionConstraintsResult<'tcx> {
 /// the current body. This initializes the relevant data structures
 /// and then type checks the MIR body.
 fn borrowck_collect_region_constraints(
-    tcx: TyCtxt,
+    tcx: TyCtxt<'_>,
     root_def_id: LocalDefId,
     def: LocalDefId,
     polonius_input: bool,
-) -> CollectRegionConstraintsResult {
+) -> CollectRegionConstraintsResult<'_> {
     let infcx = BorrowckInferCtxt::new(tcx, def, root_def_id);
     let (input_body, promoted) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();

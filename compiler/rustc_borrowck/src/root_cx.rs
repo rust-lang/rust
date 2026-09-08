@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxBuildHasher, FxHashMap, FxIndexMap};
+use rustc_data_structures::sync::{Lock, par_for_each_in};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
@@ -59,10 +60,6 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             tainted_by_errors,
             consumer,
         }
-    }
-
-    pub(super) fn root_def_id(&self) -> LocalDefId {
-        self.root_def_id
     }
 
     pub(super) fn set_tainted_by_errors(&self, guar: ErrorGuaranteed) {
@@ -272,10 +269,11 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         // The region constraints computed by [borrowck_collect_region_constraints]. This uses
         // an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
         // their parents.
-        let mut collect_region_constraints_results: FxIndexMap<
+        let collect_region_constraints_results: FxIndexMap<
             LocalDefId,
             CollectRegionConstraintsResult<'tcx>,
-        > = FxIndexMap::with_capacity_and_hasher(nested_bodies.len(), FxBuildHasher::default());
+        > = FxIndexMap::with_capacity_and_hasher(nested_bodies.len() + 1, FxBuildHasher::default());
+        let collect_region_constraints_results = Lock::new(collect_region_constraints_results);
 
         // The list of all bodies we need to borrowck. This first looks at
         // nested bodies, and then their parents. This means accessing e.g.
@@ -285,15 +283,16 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
 
         let polonius_input = self.consumer.as_ref().map_or(false, |c| c.polonius_input())
             || self.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
-        for def_id in all_bodies {
-            let result = borrowck_collect_region_constraints(
-                self.tcx,
-                self.root_def_id(),
-                def_id,
-                polonius_input,
-            );
-            collect_region_constraints_results.insert(def_id, result);
-        }
+
+        let tcx = self.tcx;
+        let root_def_id = self.root_def_id;
+        par_for_each_in(all_bodies, |def_id| {
+            let result =
+                borrowck_collect_region_constraints(tcx, root_def_id, *def_id, polonius_input);
+            collect_region_constraints_results.lock().insert(*def_id, result);
+        });
+        let mut collect_region_constraints_results =
+            collect_region_constraints_results.into_inner();
 
         let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
 
