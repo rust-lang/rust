@@ -46,7 +46,7 @@ pub(crate) struct NllOutput<'tcx> {
 
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics, e.g.
     /// localized typeck and liveness constraints.
-    pub polonius_context: Option<PoloniusContext>,
+    pub polonius_context: Option<PoloniusContext<'tcx>>,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
@@ -121,7 +121,7 @@ pub(crate) fn compute_regions<'tcx>(
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     mut polonius_facts: Option<AllFacts<RustcFacts>>,
-    mut polonius_context: Option<PoloniusContext>,
+    mut polonius_context: Option<PoloniusContext<'tcx>>,
 ) -> NllOutput<'tcx> {
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
@@ -144,20 +144,20 @@ pub(crate) fn compute_regions<'tcx>(
         &lowered_constraints,
     );
 
-    let num_points = location_map.num_points();
-
     // If requested for `-Zpolonius=next`, compute loan liveness information.
     // This is done prior to `RegionInferenceContext::new`, because we may add
     // additional liveness constraints.
     if let Some(polonius_context) = polonius_context.as_mut() {
         let _timer = infcx.tcx.prof.generic_activity("borrowck_polonius_loan_liveness");
         polonius_context.compute_loan_liveness(
+            infcx.tcx,
             &mut lowered_constraints.liveness_constraints,
             lowered_constraints.outlives_constraints.outlives().iter().copied(),
             &universal_region_relations.universal_regions,
             body,
+            move_data,
+            &location_map,
             borrow_set,
-            num_points,
         );
     }
 
