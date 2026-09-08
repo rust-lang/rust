@@ -570,7 +570,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut result = EvaluatedToOk;
         for mut obligation in predicates {
             obligation.set_depth_from_parent(stack.depth());
-            let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
+            let eval = self.evaluate_predicate_recursively(stack, obligation)?;
             if let EvaluatedToErr = eval {
                 // fast-path - EvaluatedToErr is the top of the lattice,
                 // so we don't need to look on the other predicates.
