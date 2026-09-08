@@ -88,7 +88,7 @@ macro_rules! float_sum {
             fn $fn_add() {
                 use core::ops::{Add, Sub};
                 use imp::{$fn_add, $fn_sub};
-                use compiler_builtins::{assert_biteq, support::Float};
+                use compiler_builtins::{assert_biteq, support::Float, support::Hex};
 
                 fuzz_float_2(N, |x: $f, y: $f| {
                     let add0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Add::add, x, y);
@@ -118,35 +118,47 @@ macro_rules! float_sum {
                 let one = <$f as Float>::ONE;
 
                 let nan_cases = [
-                    (qnan, qnan, qnan, qnan),
-                    (qnan, snan, qnan, qnan),
-                    (qnan, neg_qnan, qnan, qnan),
-                    (qnan, neg_snan, qnan, qnan),
-                    (qnan, one, qnan, qnan),
-                    (snan, qnan, qsnan, qsnan),
-                    (snan, snan, qsnan, qsnan),
-                    (snan, neg_qnan, qsnan, qsnan),
-                    (snan, neg_snan, qsnan, qsnan),
-                    (snan, one, qsnan, qsnan),
-                    (neg_qnan, qnan, neg_qnan, neg_qnan),
-                    (neg_qnan, snan, neg_qnan, neg_qnan),
-                    (neg_qnan, neg_qnan, neg_qnan, neg_qnan),
-                    (neg_qnan, neg_snan, neg_qnan, neg_qnan),
-                    (neg_qnan, one, neg_qnan, neg_qnan),
-                    (neg_snan, qnan, neg_qsnan, neg_qsnan),
-                    (neg_snan, snan, neg_qsnan, neg_qsnan),
-                    (neg_snan, neg_qnan, neg_qsnan, neg_qsnan),
-                    (neg_snan, neg_snan, neg_qsnan, neg_qsnan),
-                    (neg_snan, one, neg_qsnan, neg_qsnan),
-                    (one, qnan, qnan, neg_qnan),
-                    (one, snan, qsnan, neg_qsnan),
-                    (one, neg_qnan, neg_qnan, qnan),
-                    (one, neg_snan, neg_qsnan, qsnan),
+                    (qnan, qnan, qnan),
+                    (qnan, snan, qnan),
+                    (qnan, neg_qnan, qnan),
+                    (qnan, neg_snan, qnan),
+                    (qnan, one, qnan),
+                    (snan, qnan, qsnan),
+                    (snan, snan, qsnan),
+                    (snan, neg_qnan, qsnan),
+                    (snan, neg_snan, qsnan),
+                    (snan, one, qsnan),
+                    (neg_qnan, qnan, neg_qnan),
+                    (neg_qnan, snan, neg_qnan),
+                    (neg_qnan, neg_qnan, neg_qnan),
+                    (neg_qnan, neg_snan, neg_qnan),
+                    (neg_qnan, one, neg_qnan),
+                    (neg_snan, qnan, neg_qsnan),
+                    (neg_snan, snan, neg_qsnan),
+                    (neg_snan, neg_qnan, neg_qsnan),
+                    (neg_snan, neg_snan, neg_qsnan),
+                    (neg_snan, one, neg_qsnan),
+                ];
+                // Our semantics are to return a quieted version of the first NaN, which means
+                // results are flipped for subtraction when the second input is the NaN.
+                let add_cases = [
+                    (one, qnan, qnan),
+                    (one, snan, qsnan),
+                    (one, neg_qnan, neg_qnan),
+                    (one, neg_snan, neg_qsnan),
+                ];
+                let sub_cases = [
+                    (one, qnan, neg_qnan),
+                    (one, snan, neg_qsnan),
+                    (one, neg_qnan, qnan),
+                    (one, neg_snan, qsnan),
                 ];
 
-                for (x, y, add_expected, sub_expected) in nan_cases {
-                    assert_biteq!($fn_add(x, y), add_expected);
-                    assert_biteq!($fn_sub(x, y), sub_expected);
+                for &(x, y, expected) in nan_cases.iter().chain(add_cases.iter()) {
+                    assert_biteq!($fn_add(x, y), expected, "{} + {}", Hex(x), Hex(y));
+                }
+                for &(x, y, expected) in nan_cases.iter().chain(sub_cases.iter()) {
+                    assert_biteq!($fn_sub(x, y), expected, "{} - {}", Hex(x), Hex(y));
                 }
             }
         )*
