@@ -1,3 +1,4 @@
+use gccjit::Function;
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, GlobalKind, ToRValue, Type, VarAttribute};
 use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
@@ -5,7 +6,7 @@ use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
@@ -22,7 +23,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         def_id: DefId,
         linkage: Linkage,
         visibility: Visibility,
-        symbol_name: &str,
+        global_name: &str,
     ) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
         let instance = Instance::mono(self.tcx, def_id);
@@ -73,7 +74,6 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         #[cfg(feature = "master")]
         self.add_static_aliases(gcc_type, global_name, attrs, &attrs.foreign_item_symbol_aliases);
 
-        // FIXME(antoyo): set linkage.
         self.instances.borrow_mut().insert(instance, global);
     }
 
@@ -186,10 +186,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     ) -> Function<'gcc> {
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         self.linkage.set(base::linkage_to_gcc(linkage));
-        let decl = self.declare_fn(symbol_name, fn_abi);
-        //let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        let fn_decl = self.declare_fn(symbol_name, fn_abi);
 
-        attributes::from_fn_attrs(self, decl, instance);
+        attributes::from_fn_attrs(self, fn_decl, instance, Some(fn_abi));
 
         #[cfg(feature = "master")]
         if base::linkage_needs_weak_attribute(linkage) {
@@ -202,17 +201,21 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // don't want the symbols to get exported.
         if linkage != Linkage::Internal && self.tcx.is_compiler_builtins(LOCAL_CRATE) {
             #[cfg(feature = "master")]
-            decl.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+            fn_decl.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
         } else if visibility != Visibility::Default {
             #[cfg(feature = "master")]
-            decl.add_attribute(FnAttribute::Visibility(base::visibility_to_gcc(visibility)));
+            fn_decl.add_attribute(FnAttribute::Visibility(base::visibility_to_gcc(visibility)));
         }
 
-        // FIXME(antoyo): call set_link_section() to allow initializing argc/argv.
+        #[cfg(feature = "master")]
+        if let Some(section) = _attrs.link_section {
+            fn_decl.add_attribute(FnAttribute::Section(section.as_str()));
+        }
+
         // FIXME(antoyo): set unique comdat.
         // FIXME(antoyo): use inline attribute from there in linkage.set() above.
+        // FIXME: Should we handle dso?
 
-        self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
-        self.function_instances.borrow_mut().insert(instance, decl);
+        fn_decl
     }
 }

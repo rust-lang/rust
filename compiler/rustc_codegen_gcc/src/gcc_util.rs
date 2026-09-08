@@ -9,7 +9,7 @@ use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::Session;
 use rustc_session::config::NATIVE_CPU;
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, RelocModel, StackProbeType, StackProtector};
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);

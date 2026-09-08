@@ -60,9 +60,6 @@ pub(crate) fn codegen(
                 let _timer = prof
                     .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
                 if lto_supported {
-                    // FIXME(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
-                    //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
-
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
                     context.add_command_line_option("-ffat-lto-objects");

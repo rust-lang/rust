@@ -11,8 +11,8 @@ use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
     create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
-    run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
-    split_args, walk_dir,
+    run_command, run_command_with_env, run_command_with_output_and_env,
+    run_command_with_output_and_env_no_err, rustc_version_info, split_args, walk_dir,
 };
 
 /// Exit code of `y.sh test` when the tests ran and reported failures, as opposed to the build
@@ -39,6 +39,7 @@ fn get_runners() -> Runners {
         ("Run failing ui pattern tests", test_failing_ui_pattern_tests),
     );
     runners.insert("--test-failing-rustc", ("Run failing rustc tests", test_failing_rustc));
+    runners.insert("--run-ui-tests", ("Run specified rustc UI tests", run_ui_tests));
     runners.insert("--projects", ("Run the tests of popular crates", test_projects));
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
     runners.insert("--test-release-libcore", ("Run libcore tests", test_release_libcore));
@@ -56,8 +57,10 @@ fn get_runners() -> Runners {
     );
     runners.insert("--extended-regex-tests", ("Run extended regex tests", extended_regex_tests));
     runners.insert("--mini-tests", ("Run mini tests", mini_tests));
+    runners.insert("--gcc-asm-tests", ("Run cg_gcc asm tests", test_asm));
     runners.insert("--cargo-tests", ("Run cargo tests", cargo_tests));
     runners.insert("--no-builtins-tests", ("Test #![no_builtins] attribute", no_builtins_tests));
+    runners.insert("--stdarch-tests", ("Run stdarch tests", test_stdarch as Runner));
     runners
 }
 
@@ -519,6 +522,26 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
+fn get_llvm_filecheck(env: &Env) -> Result<String, String> {
+    match run_command_with_env(
+        &[
+            &"bash",
+            &"-c",
+            &"which FileCheck-10 || \
+          which FileCheck-11 || \
+          which FileCheck-12 || \
+          which FileCheck-13 || \
+          which FileCheck-14 || \
+          which FileCheck",
+        ],
+        None,
+        Some(env),
+    ) {
+        Ok(cmd) => Ok(String::from_utf8_lossy(&cmd.stdout).trim().to_string()),
+        Err(_) => Err("Failed to retrieve LLVM FileCheck, ignoring...".to_owned()),
+    }
+}
+
 fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     let toolchain = format!(
         "+{channel}-{host}",
@@ -562,23 +585,10 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         let rustc = rustc.trim().to_owned();
         if rustc.is_empty() { Err("`rustc` path is empty".to_string()) } else { Ok(rustc) }
     })?;
-    let llvm_filecheck = match run_command_with_env(
-        &[
-            &"bash",
-            &"-c",
-            &"which FileCheck-10 || \
-          which FileCheck-11 || \
-          which FileCheck-12 || \
-          which FileCheck-13 || \
-          which FileCheck-14 || \
-          which FileCheck",
-        ],
-        rust_dir,
-        Some(env),
-    ) {
-        Ok(cmd) => String::from_utf8_lossy(&cmd.stdout).to_string(),
-        Err(_) => {
-            eprintln!("Failed to retrieve LLVM FileCheck, ignoring...");
+    let llvm_filecheck = match get_llvm_filecheck(env) {
+        Ok(l) => l,
+        Err(error) => {
+            eprintln!("{error}");
             // FIXME: the test tests/run-make/no-builtins-attribute will fail if we cannot find
             // FileCheck.
             String::new()
@@ -648,7 +658,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"0",
             &"--set",
             &"build.compiletest-allow-stage0=true",
-            &"tests/assembly-llvm/asm",
+            &"tests/assembly-gcc/asm",
             &"--compiletest-rustc-args",
             &rustc_args,
         ],
@@ -852,6 +862,39 @@ fn test_libcore_doctests(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
+fn test_stdarch(env: &Env, args: &TestArg) -> Result<(), String> {
+    println!("[TEST] stdarch");
+    let manifest_path = get_sysroot_dir().join("sysroot_src/library/stdarch/Cargo.toml");
+    let mut env = env.clone();
+
+    // `config.setup` already baked `CG_RUSTFLAGS` into `RUSTFLAGS`, so append the lint-allow to
+    // `RUSTFLAGS` directly (which `run_cargo_command` also propagates to `RUSTDOCFLAGS`).
+    let rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+    env.insert(
+        "RUSTFLAGS".to_string(),
+        format!("{rustflags} -Ainternal_features").trim().to_owned(),
+    );
+    env.insert("TARGET".to_string(), args.config_info.target_triple.clone());
+
+    let mut command: Vec<&dyn AsRef<OsStr>> =
+        vec![&"test", &"--manifest-path", &manifest_path, &"--"];
+    for test_name in &args.test_args {
+        command.push(test_name);
+    }
+    run_cargo_command(&command, None, &env, args)?;
+    Ok(())
+}
+
+fn test_alloc(env: &Env, args: &TestArg) -> Result<(), String> {
+    // FIXME: create a function "display_if_not_quiet" or something along the line.
+    println!("[TEST] alloc");
+    let path = get_sysroot_dir().join("sysroot_src/library/alloctests");
+    let _ = remove_dir_all(path.join("target"));
+    // FIXME(antoyo): run in release mode when we fix the failures.
+    run_cargo_command(&[&"test"], Some(&path), env, args)?;
+    Ok(())
+}
+
 fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     if !args.is_using_gcc_master_branch() {
         println!("Not using GCC master branch. Skipping `extended_rand_tests`.");
@@ -996,7 +1039,6 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
             "//@ known-bug",
             "-Cllvm-args",
             "//~",
-            "thread",
         ]
         .iter()
         .any(|check| line.contains(check))
@@ -1479,6 +1521,60 @@ fn remove_files_callback(file_path: &str) -> impl Fn(&Path) -> Result<bool, Stri
     }
 }
 
+fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
+    fn is_path_time_more_recent(ref_time: std::time::SystemTime, path: &str) -> bool {
+        std::fs::metadata(path)
+            .and_then(|metadata| metadata.modified())
+            .is_ok_and(|time| ref_time < time)
+    }
+
+    // FIXME: create a function "display_if_not_quiet" or something along the line.
+    println!("[TEST] cg_gcc assembly");
+    let llvm_filecheck = get_llvm_filecheck(env)?;
+
+    let target_dir = std::env::current_dir().unwrap().join("build_system/asm-tester/target");
+
+    // All this code is because `cargo` keeps recompiling this file, and we can't figure out why.
+    let binary_file_path = "build_system/asm-tester/target/debug/asm-tester";
+    let mut need_recompilation = true;
+    if let Ok(metadata) = std::fs::metadata(binary_file_path)
+        && let Ok(ref_time) = metadata.modified()
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/Cargo.toml")
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/Cargo.lock")
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/src/main.rs")
+    {
+        need_recompilation = false;
+    }
+
+    if need_recompilation {
+        let build_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
+            &"cargo",
+            &"build",
+            &"--manifest-path",
+            &"build_system/asm-tester/Cargo.toml",
+            &"--target-dir",
+            &target_dir,
+            &"--",
+        ];
+        run_command_with_output_and_env_no_err(&build_asm_args, Some(Path::new(".")), Some(env))?;
+    }
+
+    let mut test_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
+        &"build_system/asm-tester/target/debug/asm-tester",
+        &"--llvm-filecheck",
+        &llvm_filecheck,
+    ];
+    for test_arg in &args.test_args {
+        test_asm_args.push(&"--filter");
+        test_asm_args.push(test_arg);
+    }
+    test_asm_args.push(&"--");
+    for arg in args.config_info.rustc_command_vec().into_iter().skip(1) {
+        test_asm_args.push(arg);
+    }
+    run_command_with_output_and_env_no_err(&test_asm_args, Some(Path::new(".")), Some(env))
+}
+
 fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
     clean(env, args)?;
     mini_tests(env, args)?;
@@ -1490,6 +1586,7 @@ fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
     cargo_tests(env, args)?;
     no_builtins_tests(env, args)?;
     test_rustc(env, args)?;
+    test_asm(env, args)?;
 
     Ok(())
 }
@@ -1511,7 +1608,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    args.config_info.setup(&mut env, args.use_system_gcc)?;
+    args.config_info.setup(&mut env, args.use_system_gcc, true)?;
 
     if args.runners.is_empty() {
         run_all(&env, &args)?;

@@ -4,7 +4,7 @@ mod simd;
 #[cfg(feature = "master")]
 use std::iter;
 
-use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
+use gccjit::{CType, ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
 use rustc_abi::{Align, BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -82,7 +82,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",
         sym::ceilf64 => "ceil",
-        sym::powf128 => return float_intrinsic(cx, cx.type_f128(), "powf128"),
         sym::truncf32 => "truncf",
         sym::truncf64 => "trunc",
         // We match the LLVM backend and lower this to `rint`.
@@ -181,14 +180,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let simple = get_simple_intrinsic(self, name);
 
         let value = match name {
-            _ if simple.is_some() => {
-                let func = simple.expect("simple intrinsic function");
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
+            _ if let Some(func) = simple => self.cx.context.new_call(
+                self.location,
+                func,
+                &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+            ),
             // FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
             sym::minimumf32 | sym::minimumf64 | sym::maximumf32 | sym::maximumf64 => {
                 let (ty, func_name) = match name {
@@ -323,7 +319,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 unimplemented!();
             }
             sym::va_arg => {
-                unimplemented!();
+                let va_list = args[0].immediate();
+                let gcc_type = self.immediate_backend_type(result.layout);
+                self.va_arg(va_list, gcc_type)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
@@ -612,7 +610,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                 self.on_stack_function_params.borrow_mut().insert(func, FxHashSet::default());
 
-                crate::attributes::from_fn_attrs(self, func, instance);
+                crate::attributes::from_fn_attrs(self, func, instance, None);
 
                 func
             };
@@ -701,8 +699,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
 
-    fn va_start(&mut self, _va_list: RValue<'gcc>) {
-        unimplemented!();
+    fn va_start(&mut self, va_list: RValue<'gcc>) {
+        let func = self.context.get_builtin_function("__builtin_va_start");
+
+        let va_list_type = self.context.new_c_type(CType::VaList);
+        let va_list = self.context.new_cast(self.location, va_list, va_list_type.make_pointer());
+
+        // Pre-C23 requires that the last "normal" argument was passed to va_start.
+        // Just pass 0, this appears to be handled correctly.
+        let last_normal_arg = self.context.new_rvalue_from_int(self.int_type, 0);
+
+        let call = self.context.new_call(self.location, func, &[va_list, last_normal_arg]);
+        self.block.add_eval(self.location, call);
     }
 
     fn retag_reg(&mut self, _ptr: Self::Value, _info: &RetagInfo<Self::Value>) -> Self::Value {
@@ -960,7 +968,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let else_block = func.new_block("else");
         let after_block = func.new_block("after");
 
-        let result = func.new_local(None, self.u32_type, "zeros");
+        let result = self.new_temp(func, None, self.u32_type);
         let zero = self.cx.gcc_zero(arg.get_type());
         let cond = self.gcc_icmp(IntPredicate::IntEQ, arg, zero);
         self.llbb().end_with_conditional(None, cond, then_block, else_block);
@@ -1041,7 +1049,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // else call it on the 64 high bits and add 64. In the else case, 64 high bits can't be 0
             // because arg is not 0.
 
-            let result = self.current_func().new_local(None, result_type, "count_zeroes_results");
+            let result = self.new_temp(self.current_func(), None, result_type);
 
             let cz_then_block = self.current_func().new_block("cz_then");
             let cz_else_block = self.current_func().new_block("cz_else");
@@ -1156,8 +1164,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let loop_tail = func.new_block("tail");
 
         let counter_type = self.int_type;
-        let counter = self.current_func().new_local(None, counter_type, "popcount_counter");
-        let val = self.current_func().new_local(None, value_type, "popcount_value");
+        let counter = self.new_temp(self.current_func(), None, counter_type);
+        let val = self.new_temp(self.current_func(), None, value_type);
         let zero = self.gcc_zero(counter_type);
         self.llbb().add_assignment(self.location, counter, zero);
         self.llbb().add_assignment(self.location, val, value);

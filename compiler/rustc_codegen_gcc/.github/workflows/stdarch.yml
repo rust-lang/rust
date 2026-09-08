@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         cargo_runner: [
-          "sde -future -rtm_mode full --",
+          "sde -cpuid-in /home/runner/work/rustc_codegen_gcc/rustc_codegen_gcc/tests/cpuid.def -rtm_mode full --",
           "",
         ]
 
@@ -42,8 +42,14 @@ jobs:
     - name: Install more recent binutils
       run: |
         echo "deb http://archive.ubuntu.com/ubuntu plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
-        sudo apt-get update
+        sudo apt-get update -o Acquire::Retries=3
         sudo apt-get install binutils
+        installed="$(dpkg-query --showformat='${Version}' --show binutils)"
+        echo "Installed binutils: $installed"
+        if dpkg --compare-versions "$installed" lt "2.44"; then
+            echo "::error::binutils upgrade failed (got $installed, need >= 2.44); the apt fetch probably failed"
+            exit 1
+        fi
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}
@@ -51,10 +57,9 @@ jobs:
           mkdir intel-sde
           cd intel-sde
           version=10.8.0-2026-03-15
-          url_path=915934
           dir=sde-external-$version-lin
           file=$dir.tar.xz
-          wget https://downloadmirror.intel.com/$url_path/$file
+          wget http://ci-mirrors.rust-lang.org/$file
           tar xvf $file
           sudo mkdir /usr/share/intel-sde
           sudo cp -r $dir/* /usr/share/intel-sde
@@ -90,14 +95,15 @@ jobs:
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}
       run: |
-        CHANNEL=release TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml
+        # FIXME: remove --skip test_tile_ and --skip --skip test__tile when it's implemented.
+        ./y.sh test --release --stdarch-tests -- --skip test_tile_ --skip test__tile
 
     - name: Run stdarch tests
       if: ${{ matrix.cargo_runner }}
       run: |
         # FIXME: these tests fail when the sysroot is compiled with LTO because of a missing symbol in proc-macro.
-        # FIXME: remove --skip test_tile_ when it's implemented.
-        STDARCH_TEST_SKIP_FUNCTION="xsave,xsaveopt,xsave64,xsaveopt64" STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a --skip test_tile_
+        # FIXME: remove --skip test_tile_ and --skip --skip test__tile when it's implemented.
+        STDARCH_TEST_SKIP_FUNCTION="xsave,xsaveopt,xsave64,xsaveopt64" STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a --skip test_tile_ --skip test__tile
 
   # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
