@@ -252,6 +252,7 @@ fn impl_def_from_trait(
         trait_,
         &impl_def,
         &target_scope,
+        DefaultMethods::No,
     );
     let assoc_item_list = if let Some((first, other)) = assoc_items.split_first() {
         let first_item = if let ast::AssocItem::Fn(func) = first

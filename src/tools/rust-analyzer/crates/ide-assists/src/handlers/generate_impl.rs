@@ -205,6 +205,7 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_, '_>
                     hir_trait,
                     &impl_,
                     &target_scope,
+                    DefaultMethods::No,
                 );
                 let assoc_item_list = make.assoc_item_list(assoc_items);
                 make_impl_(Some(assoc_item_list))

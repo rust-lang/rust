@@ -204,6 +204,7 @@ pub fn add_trait_assoc_items_to_impl(
     trait_: hir::Trait,
     impl_: &ast::Impl,
     target_scope: &hir::SemanticsScope<'_>,
+    default_mode: DefaultMethods,
 ) -> Vec<ast::AssocItem> {
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
     original_items
@@ -240,7 +241,10 @@ pub fn add_trait_assoc_items_to_impl(
             ast::AssocItem::cast(editor.finish().new_root().clone()).unwrap()
         })
         .filter_map(|item| match item {
-            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
+            // We can check `fn_.body().is_none()`, but this is actually not what we want to check: some functions (`Drop::drop()`
+            // or `#[rustc_must_implement_one_of]`) have a default body that should be ignored. So the criteria is whether
+            // we requested required or defaulted methods, and not whether the method actually has a body.
+            ast::AssocItem::Fn(fn_) if default_mode == DefaultMethods::No => {
                 let (fn_editor, fn_) = SyntaxEditor::with_ast_node(&fn_);
                 let fill_expr: ast::Expr = match config.expr_fill_default {
                     ExprFillDefaultMode::Todo | ExprFillDefaultMode::Default => make.expr_todo(),
