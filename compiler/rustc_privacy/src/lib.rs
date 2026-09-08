@@ -31,8 +31,8 @@ use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, 
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, AssocContainer, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
+    self, AssocContainer, Const, GenericParamDefKind, PredicateProxy, TraitRef, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -130,8 +130,8 @@ where
         }
     }
 
-    fn visit_clause(&mut self, clause: ty::Clause<'tcx>) -> V::Result {
-        match clause.kind().skip_binder() {
+    fn visit_clause(&mut self, clause: ty::Binder<'tcx, ty::ClauseKind<'tcx>>) -> V::Result {
+        match clause.skip_binder() {
             ty::ClauseKind::Trait(ty::TraitClause { trait_ref, polarity: _ }) => {
                 self.visit_trait(trait_ref)
             }
@@ -160,7 +160,7 @@ where
 
     fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> V::Result {
         for &(clause, _) in clauses {
-            try_visit!(self.visit_clause(clause));
+            try_visit!(self.visit_clause(clause.kind()));
         }
         V::Result::output()
     }
@@ -172,8 +172,8 @@ where
 {
     type Result = V::Result;
 
-    fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> Self::Result {
-        self.visit_clause(p.as_clause().unwrap())
+    fn visit_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> Self::Result {
+        self.visit_clause(p.clause_kind_unchecked().unwrap())
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {

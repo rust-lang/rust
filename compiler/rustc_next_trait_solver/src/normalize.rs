@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, AliasTerm, Binder, FallibleTypeFolder, InferCtxtLike, Interner, TypeFoldable,
-    TypeSuperFoldable, TypeVisitableExt, UniverseIndex, eager_resolve_vars,
+    self as ty, AliasTerm, Binder, FallibleTypeFolder, InferCtxtLike, Interner, PredicateProxy,
+    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, UniverseIndex, eager_resolve_vars,
 };
 use tracing::instrument;
 
@@ -197,7 +197,7 @@ where
         Ok(normalized)
     }
 
-    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
+    fn try_fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Result<P, Self::Error> {
         if p.allow_normalization() { p.try_super_fold_with(self) } else { Ok(p) }
     }
 }
