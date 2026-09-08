@@ -323,6 +323,7 @@ impl<'db> AssocItemCollector<'db> {
                     ExpandTo::Items,
                     self.module_id.krate(self.db),
                     self.macro_depth + 1,
+                    self.def_map.recursion_limit(),
                     resolver,
                     &mut |ptr, call_id| {
                         self.macro_calls.push((ptr.map(|(_, it)| it.upcast()), call_id))

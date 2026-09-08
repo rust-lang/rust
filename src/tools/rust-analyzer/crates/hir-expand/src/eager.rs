@@ -26,8 +26,8 @@ use syntax::{
 use syntax_bridge::DocCommentDesugarMode;
 
 use crate::{
-    AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile,
-    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
+    AstId, EagerCallInfo, ExpandError, ExpandErrorKind, ExpandResult, ExpandTo, ExpansionSpanMap,
+    InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     ast::{self, AstNode},
     mod_path::ModPath,
 };
@@ -45,6 +45,7 @@ pub fn expand_eager_macro_input(
     def: MacroDefId,
     call_site: SyntaxContext,
     macro_depth: u32,
+    recursion_limit: u32,
     resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<MacroCallId>> {
@@ -79,6 +80,7 @@ pub fn expand_eager_macro_input(
             krate,
             call_site,
             macro_depth,
+            recursion_limit,
             resolver,
             eager_callback,
         )
@@ -155,6 +157,7 @@ fn eager_macro_recur(
     krate: Crate,
     call_site: SyntaxContext,
     macro_depth: u32,
+    recursion_limit: u32,
     macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
@@ -213,6 +216,14 @@ fn eager_macro_recur(
             }
         };
         let ast_id = curr.file_id.ast_id_map(db).ast_id(&call);
+
+        if macro_depth > recursion_limit {
+            return ExpandResult::only_err(ExpandError::new(
+                span_map.span_at(call.syntax().text_range().start()),
+                ExpandErrorKind::RecursionOverflow,
+            ));
+        }
+
         let ExpandResult { value, err } = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
                 let ExpandResult { value, err } = expand_eager_macro_input(
@@ -223,6 +234,7 @@ fn eager_macro_recur(
                     def,
                     call_site,
                     macro_depth + 1,
+                    recursion_limit,
                     macro_resolver,
                     eager_callback,
                 );
@@ -277,6 +289,7 @@ fn eager_macro_recur(
                     krate,
                     call_site,
                     macro_depth + 1,
+                    recursion_limit,
                     macro_resolver,
                     eager_callback,
                 );
