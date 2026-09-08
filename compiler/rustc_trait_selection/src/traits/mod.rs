@@ -857,13 +857,8 @@ pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>
         ocx.register_obligation(obligation);
     }
 
-    // Use `try_evaluate_obligations` to only return impossible for true errors,
-    // and not ambiguities or overflows. Since the new trait solver forces
-    // some currently undetected overlap between `dyn Trait: Trait` built-in
-    // vs user-written impls to AMBIGUOUS, this may return ambiguity even
-    // with no infer vars. There may also be ways to encounter ambiguity due
-    // to post-mono overflow.
-    !ocx.try_evaluate_obligations().no_errors()
+    // For codegen, ambiguity is effectively impossible.
+    !ocx.evaluate_obligations_error_on_ambiguity().no_errors()
 }
 
 fn instantiate_and_check_impossible_clauses<'tcx>(
