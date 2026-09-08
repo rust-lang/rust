@@ -166,6 +166,12 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 /// - No two ANDs are equivalent
 /// - All ANDs are in canonical form
 /// - If any AND is empty, i.e. trivially true, it is the only AND
+///
+/// FIXME(-Zassumptions-on-binders): We should consider a more general canonical form which also
+/// drops any AND that is a superset of another AND. Proving the superset requires strictly more
+/// than proving the subset, so it can never be the candidate which makes the OR hold. E.g.
+/// `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` really ought to just be `OR(AND('a: 'b))`. Only keeping
+/// an empty AND is the degenerate case of that rule.
 pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[And<I, S>]>);
 impl<I: Interner> Or<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -212,6 +218,10 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
                 return Self::new_true();
             }
 
+            // FIXME(-Zassumptions-on-binders): We only discard an AND which is equivalent to one
+            // we already have. More generally we should discard any AND which is a superset of
+            // another, as it requires strictly more to hold. E.g. the second AND in
+            // `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` is never the one which makes the OR true.
             if new_ands.iter().all(|c| !c.is_and_equivalent_to(&and)) {
                 new_ands.push(and)
             }
