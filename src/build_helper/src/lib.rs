@@ -33,4 +33,5 @@ pub const RUSTC_PGO_CRATES: &[&str] = &[
     "diesel-2.2.10",
     "bitmaps-3.2.1",
     "serde-1.0.219-new-solver",
+    "include-blob"
 ];
