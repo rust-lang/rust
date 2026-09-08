@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -334,7 +334,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &BorrowckInferCtxt<'tcx>,
         lowered_constraints: LoweredConstraints<'tcx>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        location_map: Rc<DenseLocationMap>,
+        location_map: Arc<DenseLocationMap>,
     ) -> Self {
         let universal_regions = &universal_region_relations.universal_regions;
 

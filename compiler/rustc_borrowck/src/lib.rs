@@ -17,7 +17,7 @@ use std::borrow::Cow;
 use std::cell::{OnceCell, RefCell};
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use borrow_set::LocalsStateAtExit;
 use polonius_engine::AllFacts;
@@ -303,7 +303,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     move_data: MoveData<'tcx>,
     borrow_set: BorrowSet<'tcx>,
     location_table: PoloniusLocationTable,
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
     known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
@@ -347,7 +347,7 @@ fn borrowck_collect_region_constraints(
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
 
-    let location_map = Rc::new(DenseLocationMap::new(body));
+    let location_map = Arc::new(DenseLocationMap::new(body));
 
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
@@ -370,7 +370,7 @@ fn borrowck_collect_region_constraints(
         &borrow_set,
         &mut polonius_facts,
         &move_data,
-        Rc::clone(&location_map),
+        Arc::clone(&location_map),
     );
 
     CollectRegionConstraintsResult {

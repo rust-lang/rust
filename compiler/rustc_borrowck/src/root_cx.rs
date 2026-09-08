@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::mem;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxBuildHasher, FxHashMap, FxIndexMap};
@@ -110,7 +110,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
                 &input.infcx,
                 &input.universal_region_relations,
                 &input.constraints,
-                Rc::clone(&input.location_map),
+                Arc::clone(&input.location_map),
                 &mut self.hidden_types,
                 &mut self.unconstrained_hidden_type_errors,
                 &opaque_types,
@@ -238,7 +238,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         compute_closure_requirements_modulo_opaques(
             &input.infcx,
             &input.body_owned,
-            Rc::clone(&input.location_map),
+            Arc::clone(&input.location_map),
             &input.universal_region_relations,
             &input.constraints,
         )

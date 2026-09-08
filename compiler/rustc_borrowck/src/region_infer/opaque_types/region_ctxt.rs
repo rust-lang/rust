@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_index::IndexVec;
@@ -38,7 +38,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     pub(super) fn new(
         infcx: &'a BorrowckInferCtxt<'tcx>,
         universal_region_relations: &'a Frozen<UniversalRegionRelations<'tcx>>,
-        location_map: Rc<DenseLocationMap>,
+        location_map: Arc<DenseLocationMap>,
         constraints: &MirTypeckRegionConstraints<'tcx>,
     ) -> RegionCtxt<'a, 'tcx> {
         let mut outlives_constraints = constraints.outlives_constraints.clone();
