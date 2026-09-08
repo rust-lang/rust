@@ -15,6 +15,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_span::sym;
 use rustc_structures::Limit;
+use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -27,7 +28,7 @@ use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -1037,24 +1038,23 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
-            && let ty::ClauseKind::Projection(projection_pred) = clause
-        {
-            p.kind()
-                .rebind(ty::ProjectionClause {
-                    projection_term: projection_pred.projection_term.fold_with(self),
-                    // Don't fold the term on the RHS of the projection predicate.
-                    // This is because for default trait methods with RPITITs, we
-                    // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
-                    // predicate, which would trivially cause a cycle when we do
-                    // anything that requires `TypingEnv::with_post_analysis_normalized`.
-                    term: projection_pred.term,
-                })
-                .upcast(self.tcx)
-        } else {
-            p.super_fold_with(self)
-        }
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
+        // We use `map_projection` to execute the closure only if `p` is a projection clause,
+        // to implement the logic described below (i.e. avoid folding the `term`).
+        // In all other cases, fold recursively, as normal.
+        p.map_projection(self.tcx, |bound_clause| {
+            let projection_clause = bound_clause.skip_binder();
+            bound_clause.rebind(ty::ProjectionClause {
+                projection_term: projection_clause.projection_term.fold_with(self),
+                // Don't fold the term on the RHS of the projection predicate.
+                // This is because for default trait methods with RPITITs, we
+                // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
+                // predicate, which would trivially cause a cycle when we do
+                // anything that requires `TypingEnv::with_post_analysis_normalized`.
+                term: projection_clause.term,
+            })
+        })
+        .unwrap_or_else(|| p.super_fold_with(self))
     }
 }
 

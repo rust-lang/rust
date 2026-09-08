@@ -11,8 +11,8 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Interner, Region, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self as ty, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 
 mod private {
@@ -717,7 +717,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_infer() { p.super_fold_with(self) } else { p }
     }
 

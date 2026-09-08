@@ -18,8 +18,9 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars, max_universe,
+    OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    eager_resolve_vars, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -1177,7 +1178,7 @@ where
                 }
             }
 
-            fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
+            fn visit_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Self::Result {
                 if p.has_non_region_infer() || p.has_placeholders() {
                     p.super_visit_with(self)
                 } else {
