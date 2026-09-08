@@ -70,6 +70,7 @@ mod entry;
 pub mod intrinsic;
 mod region;
 pub mod wfcheck;
+mod x86_interrupt;
 
 use std::borrow::Cow;
 use std::num::NonZero;

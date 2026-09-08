@@ -1898,6 +1898,50 @@ pub(crate) struct CmseImplTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag("invalid signature for `extern \"x86-interrupt\"` function")]
+#[note("invalid x86-interrupt parameter type: `{$ty}`")]
+#[note("functions with the \"x86-interrupt\" ABI must not use zero-sized types in their signature")]
+pub(crate) struct X86InterruptZeroSized<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag("invalid signature for `extern \"x86-interrupt\"` function")]
+#[note("invalid x86-interrupt parameter type: `{$ty}`")]
+#[note("functions with the \"x86-interrupt\" ABI must not use unsized types in their signature")]
+pub(crate) struct X86InterruptUnsized<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag("invalid signature for `extern \"x86-interrupt\"` function")]
+#[note("invalid x86-interrupt error code parameter type: `{$ty}`")]
+#[note(
+    "functions with the \"x86-interrupt\" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern"
+)]
+pub(crate) struct X86InterruptInvalidErrorCode<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag("invalid signature for `extern \"x86-interrupt\"` function")]
+#[note("invalid x86-interrupt frame parameter type: `{$ty}`")]
+#[note(
+    "functions with the \"x86-interrupt\" ABI must have a non-pointer frame parameter that is valid for any bit pattern"
+)]
+pub(crate) struct X86InterruptInvalidFrame<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
 #[diag("return type notation not allowed in this position yet")]
 pub(crate) struct BadReturnTypeNotation {
     #[primary_span]

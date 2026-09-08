@@ -47,6 +47,7 @@ use tracing::{debug, instrument};
 
 use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
+use crate::check::x86_interrupt;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
 use crate::diagnostics;
 use crate::diagnostics::InvalidReceiverTyHint;
@@ -1667,6 +1668,8 @@ fn check_fn_or_method<'tcx>(
             );
         }
     }
+
+    x86_interrupt::validate_x86_interrupt_abi(tcx, tcx.dcx(), sig, hir_decl, sig.abi());
 
     // If the function has a body, additionally require that the return type is sized.
     if let Some(body) = tcx.hir_maybe_body_owned_by(def_id) {
