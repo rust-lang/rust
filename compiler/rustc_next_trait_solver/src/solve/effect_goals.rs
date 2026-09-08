@@ -9,7 +9,7 @@ use rustc_type_ir::solve::{
     AliasBoundKind, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased, RerunNonErased,
     SizedTraitKind,
 };
-use rustc_type_ir::{self as ty, Interner, Unnormalized, elaborate};
+use rustc_type_ir::{self as ty, CallerBoundsIterator, Interner, Unnormalized, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -38,7 +38,17 @@ where
     fn trait_def_id(self, _: I) -> I::TraitId {
         self.def_id()
     }
-
+    fn non_fast_rejected_caller_bounds(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> impl Iterator<Item = I::Clause> {
+        goal.param_env.caller_bounds().non_trait_clauses().iter().filter(move |&assumption| {
+            match Self::fast_reject_assumption(ecx, goal, None, assumption) {
+                Ok(()) => true,
+                Err(NoSolution) => false,
+            }
+        })
+    }
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

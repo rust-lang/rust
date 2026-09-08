@@ -2,12 +2,11 @@ use std::iter;
 use std::marker::PhantomData;
 
 pub use clause_filter::NoClauses;
-pub use iterator::CallerBoundsIterator;
-use rustc_data_structures::either::Either;
-
 use clause_filter::*;
+pub use iterator::CallerBoundsIterator;
 use output_as::*;
 use polarity_filter::*;
+use rustc_data_structures::either::Either;
 use self_ty_filter::*;
 use trait_filter::*;
 

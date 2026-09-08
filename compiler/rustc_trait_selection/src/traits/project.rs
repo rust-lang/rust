@@ -799,7 +799,12 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::ParamEnv,
-        obligation.param_env.caller_bounds().non_trait_clauses().iter().filter_map(|i| i.as_projection_clause()),
+        obligation
+            .param_env
+            .caller_bounds()
+            .non_trait_clauses()
+            .iter()
+            .filter_map(|i| i.as_projection_clause()),
         false,
     );
 }
@@ -922,7 +927,14 @@ fn assemble_candidates_from_clauses<'cx, 'tcx>(
     env_clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
-    assemble_candidates_from_projection_clauses(selcx, obligation, candidate_set, ctor, env_clauses.filter_map(|i| i.as_projection_clause()), potentially_unnormalized_candidates);
+    assemble_candidates_from_projection_clauses(
+        selcx,
+        obligation,
+        candidate_set,
+        ctor,
+        env_clauses.filter_map(|i| i.as_projection_clause()),
+        potentially_unnormalized_candidates,
+    );
 }
 
 #[instrument(
