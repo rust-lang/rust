@@ -71,6 +71,7 @@ use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_lint_defs::{LintId, StableLintExpectationId};
 use rustc_macros::rustc_queries;
+use rustc_middle::middle::resolve::TypeRelativeDelegationRes;
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_span::def_id::{LOCAL_CRATE, ModId};
@@ -225,6 +226,11 @@ rustc_queries! {
         // Accesses untracked data
         eval_always
         desc { "getting the source span" }
+    }
+
+    query resolve_type_relative_delegations(_: ()) -> &'tcx FxIndexMap<LocalDefId, TypeRelativeDelegationRes> {
+        arena_cache
+        desc { "resolving type relative delegations" }
     }
 
     query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {

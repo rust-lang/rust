@@ -609,3 +609,24 @@ pub(crate) struct RestrictionAncestorOnly {
     pub(crate) span: Span,
     pub(crate) kind: ResolvingRestrictionKind,
 }
+
+#[derive(Diagnostic)]
+#[diag("ambiguous delegation to inherent impl function")]
+pub(crate) struct AmbiguousDelegationToInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("delegation to inherent impl must contain parent generics")]
+pub(crate) struct DelegationToInherentImplMustContainParentGenerics {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("parent segment of delegation to inherent impl can not contain infers")]
+pub(crate) struct DelegationToInherentImplParentContainsInfer {
+    #[primary_span]
+    pub span: Span,
+}

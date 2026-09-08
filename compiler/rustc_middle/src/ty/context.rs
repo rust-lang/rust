@@ -1283,6 +1283,10 @@ impl<'tcx> TyCtxt<'tcx> {
             None => Err(VarError::NotPresent),
         }
     }
+
+    pub fn is_method(self, id: DefId) -> bool {
+        self.opt_associated_item(id).is_some_and(|item| item.is_method())
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {

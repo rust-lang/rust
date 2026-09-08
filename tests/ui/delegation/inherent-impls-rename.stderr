@@ -1,9 +1,0 @@
-error[E0425]: cannot find function `bar` in `X`
-  --> $DIR/inherent-impls-rename.rs:11:10
-   |
-LL | reuse X::bar;
-   |          ^^^ not found in `X`
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0425`.
