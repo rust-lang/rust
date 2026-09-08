@@ -59,14 +59,14 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
-use rustc_data_structures::transitive_relation::TransitiveRelation;
+use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
-    TypeVisitableExt, eager_resolve_vars,
+    TypeVisitableExt, Upcast, eager_resolve_vars,
 };
 use rustc_span::Span;
 use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
@@ -234,9 +234,22 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
+        // `FreeRegionMap::relation` stores `'sub <= 'sup` edges while
+        // `Assumptions::region_outlives` expects `'longer: 'shorter` ones, so the
+        // edges have to be inverted here.
+        let mut region_outlives = TransitiveRelationBuilder::default();
+        for (r1, r2) in outlives_env.free_region_map().relation.base_edges() {
+            region_outlives.add(r2, r1);
+        }
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
-            outlives_env.known_type_outlives().into_iter().cloned().collect(),
-            outlives_env.free_region_map().relation.clone(),
+            self,
+            assumed_type_outlives(
+                self.tcx,
+                outlives_env.known_type_outlives(),
+                outlives_env.region_bound_pairs(),
+            ),
+            region_outlives.freeze(),
+            ty::UniverseIndex::ROOT,
         );
         let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
         self.destructure_solver_region_constraints(constraint, assumptions, self);
@@ -251,11 +264,14 @@ impl<'tcx> InferCtxt<'tcx> {
         // this is always ConstraintConversion but lol
         conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
+        region_bound_pairs: &RegionBoundPairs<'tcx>,
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
-            known_type_outlives.into_iter().cloned().collect(),
+            self,
+            assumed_type_outlives(self.tcx, known_type_outlives, region_bound_pairs),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
+            ty::UniverseIndex::ROOT,
         );
         self.destructure_solver_region_constraints(constraint, assumptions, conversion);
     }
@@ -379,6 +395,28 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
     }
+}
+
+/// The type outlives assumptions available in the root context, as clauses for
+/// [`region_constraint::Assumptions::new`] to elaborate.
+///
+/// `known_type_outlives` only contains the explicit `Ty: 'a` where clauses. The implied bounds,
+/// e.g. `T: 'a` from a `&'a T` argument, are only tracked in `region_bound_pairs` so we have to
+/// pull them in separately. Without them we'd fail to prove `T: 'a` for a `&'a T` argument
+/// whenever the only explicit bound on `T` mentions a different region.
+fn assumed_type_outlives<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
+    region_bound_pairs: &RegionBoundPairs<'tcx>,
+) -> Vec<ty::Clause<'tcx>> {
+    known_type_outlives
+        .iter()
+        .copied()
+        .chain(region_bound_pairs.iter().map(|&ty::OutlivesClause(kind, r)| {
+            ty::Binder::dummy(ty::OutlivesClause(kind.to_ty(tcx), r))
+        }))
+        .map(|c| c.map_bound(ty::ClauseKind::TypeOutlives).upcast(tcx))
+        .collect()
 }
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
