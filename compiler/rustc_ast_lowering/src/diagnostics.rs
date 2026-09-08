@@ -148,8 +148,17 @@ pub(crate) struct ClosureCannotBeStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("`move(expr)` is only supported in plain closures")]
-pub(crate) struct MoveExprOnlyInPlainClosures {
+#[diag("`move(expr)` is only supported in closures, `async`, `gen`, and `async gen` blocks")]
+pub(crate) struct MoveExprOnlyInSupportedContexts {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block"
+)]
+pub(crate) struct NestedMoveExprWithoutEnclosingContext {
     #[primary_span]
     pub span: Span,
 }
