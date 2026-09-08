@@ -586,7 +586,11 @@ impl Session {
                     );
                 }
                 Subcommand::Perf(args) => {
-                    return crate::core::build_steps::perf::perf(&Builder::new(self), args);
+                    return crate::core::build_steps::perf::perf(
+                        &Builder::new(self),
+                        args,
+                        &self.config.free_args,
+                    );
                 }
                 _cmd => {
                     debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
