@@ -92,8 +92,7 @@ where
         // and `assumption`'s trait refs directly inside this function in
         // order to prevent unsoundness (see below).
 
-        let goal_lang_item = ecx.cx().as_trait_lang_item(goal.predicate.trait_def_id(ecx.cx()));
-        Self::fast_reject_assumption(ecx, goal, goal_lang_item, assumption)?;
+        Self::fast_reject_assumption(ecx, goal, assumption)?;
 
         ecx.probe_trait_candidate(source).enter(|ecx| {
             let cx = ecx.cx();
@@ -224,8 +223,7 @@ where
         assumption: I::Clause,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        let goal_lang_item = ecx.cx().as_trait_lang_item(goal.predicate.trait_def_id(ecx.cx()));
-        Self::fast_reject_assumption(ecx, goal, goal_lang_item, assumption)?;
+        Self::fast_reject_assumption(ecx, goal, assumption)?;
 
         ecx.probe_trait_candidate(source)
             .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
@@ -236,7 +234,6 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution>;
 
