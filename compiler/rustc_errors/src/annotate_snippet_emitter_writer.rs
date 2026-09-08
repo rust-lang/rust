@@ -28,7 +28,7 @@ use crate::emitter::{
 use crate::formatting::{format_diag_message, format_diag_messages};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, Level, MultiSpan, Style, Subdiag,
-    SuggestionStyle, TerminalUrl,
+    Sublevel, SuggestionStyle, TerminalUrl,
 };
 
 /// Generates diagnostics using annotate-snippet
@@ -125,11 +125,20 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::level::Level<'
         }
         Level::Fatal | Level::Error => annotate_snippets::level::ERROR,
         Level::ForceWarning | Level::Warning => annotate_snippets::Level::WARNING,
-        Level::Note | Level::OnceNote => annotate_snippets::Level::NOTE,
-        Level::Help | Level::OnceHelp => annotate_snippets::Level::HELP,
+        Level::Note => annotate_snippets::Level::NOTE,
+        Level::Help => annotate_snippets::Level::HELP,
         Level::FailureNote => annotate_snippets::Level::NOTE.no_name(),
         Level::Allow => panic!("Should not call with Allow"),
         Level::Expect => panic!("Should not call with Expect"),
+    }
+}
+
+fn annotation_level_for_sublevel(level: Sublevel) -> annotate_snippets::level::Level<'static> {
+    match level {
+        Sublevel::Error => annotate_snippets::Level::ERROR,
+        Sublevel::Warning => annotate_snippets::Level::WARNING,
+        Sublevel::Note | Sublevel::OnceNote => annotate_snippets::Level::NOTE,
+        Sublevel::Help | Sublevel::OnceHelp => annotate_snippets::Level::HELP,
     }
 }
 
@@ -184,7 +193,7 @@ impl AnnotateSnippetEmitter {
         let Some(sm) = self.sm.as_ref() else {
             group = group.elements(children.iter().map(|c| {
                 let msg = format_diag_messages(&c.messages, args);
-                let level = annotation_level_for_level(c.level);
+                let level = annotation_level_for_sublevel(c.level);
                 level.message(msg)
             }));
 
@@ -247,7 +256,7 @@ impl AnnotateSnippetEmitter {
         }
 
         for c in children {
-            let level = annotation_level_for_level(c.level);
+            let level = annotation_level_for_sublevel(c.level);
 
             // If at least one portion of the message is styled, we need to
             // "pre-style" the message
