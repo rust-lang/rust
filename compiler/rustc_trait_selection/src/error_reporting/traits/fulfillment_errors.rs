@@ -10,8 +10,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions, msg,
-    pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Sublevel, Suggestions,
+    msg, pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::diagnostic::CustomDiagnostic;
 use rustc_hir::attrs::lang_items::LangItem;
@@ -2286,7 +2286,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     if let [child, ..] = &err.children[..]
-                        && child.level == Level::Help
+                        && child.level == Sublevel::Help
                         && let Some(line) = child.messages.get(0)
                         && let Some(line) = line.0.as_str()
                         && line.starts_with("the trait")

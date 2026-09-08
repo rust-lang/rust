@@ -26,7 +26,8 @@ use tracing::{debug, warn};
 use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
 use crate::{
-    CodeSuggestion, DiagInner, DiagMessage, Level, MultiSpan, Style, Subdiag, SuggestionStyle,
+    CodeSuggestion, DiagInner, DiagMessage, Level, MultiSpan, Style, Subdiag, Sublevel,
+    SuggestionStyle,
 };
 
 /// Describes the way the content of the `rendered` field of the json output is generated
@@ -209,7 +210,7 @@ pub trait Emitter {
                 );
 
                 children.push(Subdiag {
-                    level: Level::Note,
+                    level: Sublevel::Note,
                     messages: vec![(DiagMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
                 });
@@ -379,7 +380,7 @@ impl Emitter for EmitterWithNote {
     }
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
-        diag.sub(Level::Note, self.note.clone(), MultiSpan::new());
+        diag.sub(Sublevel::Note, self.note.clone(), MultiSpan::new());
         self.emitter.emit_diagnostic(diag);
     }
 }
