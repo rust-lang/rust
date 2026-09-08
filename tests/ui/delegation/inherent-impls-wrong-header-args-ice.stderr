@@ -9,13 +9,27 @@ help: indicate the anonymous lifetime
 LL | impl<'a, 'b, 'c, A, const C: usize> S<'_, A, C> {
    |                                       +++
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:24
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:15
    |
 LL |     reuse S::<(), ()>::foo_self;
-   |                        ^^^^^^^^ not found in `S`
+   |               ^
 
-error: aborting due to 2 previous errors
+error[E0747]: type provided when a constant was expected
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:19
+   |
+LL |     reuse S::<(), ()>::foo_self;
+   |                   ^^
 
-Some errors have detailed explanations: E0425, E0726.
-For more information about an error, try `rustc --explain E0425`.
+error[E0747]: type provided when a constant was expected
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:19
+   |
+LL |     reuse S::<(), ()>::foo_self;
+   |                   ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0726, E0747.
+For more information about an error, try `rustc --explain E0726`.
