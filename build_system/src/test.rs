@@ -1062,10 +1062,7 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
         eprintln!("nothing found for {file_path:?}");
     }
     // The files in this directory contain errors.
-    if file_path.contains("/error-emitter/") {
-        return Ok(true);
-    }
-    Ok(false)
+    Ok(file_path.contains("/error-emitter/"))
 }
 
 // # Parameters
