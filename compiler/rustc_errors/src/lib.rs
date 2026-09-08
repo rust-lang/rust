@@ -1665,7 +1665,6 @@ impl IntoDiagArg for Level {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum Style {
-    HeaderMsg,
     NoStyle,
     Highlight,
 }
