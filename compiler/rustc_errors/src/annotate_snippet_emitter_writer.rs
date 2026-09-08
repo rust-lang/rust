@@ -307,10 +307,8 @@ impl AnnotateSnippetEmitter {
                     // do not display this suggestion, it is meant only for tools
                 }
                 SuggestionStyle::HideCodeAlways => {
-                    let msg = format_diag_messages(
-                        &[(suggestion.msg.to_owned(), Style::HeaderMsg)],
-                        args,
-                    );
+                    let msg =
+                        format_diag_messages(&[(suggestion.msg.to_owned(), Style::NoStyle)], args);
                     group = group.element(annotate_snippets::Level::HELP.message(msg));
                 }
                 SuggestionStyle::HideCodeInline

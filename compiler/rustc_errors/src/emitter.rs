@@ -558,7 +558,7 @@ pub fn get_stderr_color_choice(color: ColorConfig, stderr: &std::io::Stderr) -> 
 impl Style {
     pub(crate) fn anstyle(&self) -> anstyle::Style {
         match self {
-            Style::HeaderMsg | Style::NoStyle => anstyle::Style::new(),
+            Style::NoStyle => anstyle::Style::new(),
             Style::Highlight => AnsiColor::Magenta.on_default().effects(Effects::BOLD),
         }
     }
