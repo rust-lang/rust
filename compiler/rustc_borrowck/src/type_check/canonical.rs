@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_data_structures::marker::{DynSend, DynSync};
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -191,7 +192,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         location: impl NormalizeLocation,
     ) -> T
     where
-        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
+        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + DynSend + DynSync + 'tcx,
     {
         self.normalize_with_category(value, location, ConstraintCategory::Boring)
     }
@@ -202,7 +203,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         location: impl NormalizeLocation,
     ) -> Result<T, ErrorGuaranteed>
     where
-        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
+        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + DynSend + DynSync + 'tcx,
     {
         self.fully_perform_op(
             location.to_locations(),
@@ -219,7 +220,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
     ) -> T
     where
-        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
+        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + DynSend + DynSync + 'tcx,
     {
         let param_env = self.infcx.param_env;
         let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(

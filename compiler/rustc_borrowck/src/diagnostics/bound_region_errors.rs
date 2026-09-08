@@ -1,6 +1,7 @@
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc;
 
+use rustc_data_structures::marker::{DynSend, DynSync};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::region_constraints::{Constraint, ConstraintKind, RegionConstraintData};
@@ -35,7 +36,7 @@ pub(crate) enum UniverseInfo<'tcx> {
     /// Relating two types which have binders.
     RelateTys { expected: Ty<'tcx>, found: Ty<'tcx> },
     /// Created from performing a `TypeOp`.
-    TypeOp(Rc<dyn TypeOpInfo<'tcx> + 'tcx>),
+    TypeOp(Arc<dyn TypeOpInfo<'tcx> + DynSend + DynSync + 'tcx>),
     /// Any other reason.
     Other,
 }
@@ -89,7 +90,7 @@ pub(crate) trait ToUniverseInfo<'tcx> {
 
 impl<'tcx> ToUniverseInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo::TypeOp(Rc::new(crate::type_check::InstantiateOpaqueType {
+        UniverseInfo::TypeOp(Arc::new(crate::type_check::InstantiateOpaqueType {
             base_universe: Some(base_universe),
             ..self
         }))
@@ -98,21 +99,24 @@ impl<'tcx> ToUniverseInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tc
 
 impl<'tcx> ToUniverseInfo<'tcx> for CanonicalTypeOpProvePredicateGoal<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo::TypeOp(Rc::new(PredicateQuery { canonical_query: self, base_universe }))
+        UniverseInfo::TypeOp(Arc::new(PredicateQuery { canonical_query: self, base_universe }))
     }
 }
 
-impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUniverseInfo<'tcx>
-    for CanonicalTypeOpNormalizeGoal<'tcx, T>
+impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + DynSend + DynSync + 'tcx>
+    ToUniverseInfo<'tcx> for CanonicalTypeOpNormalizeGoal<'tcx, T>
 {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo::TypeOp(Rc::new(NormalizeQuery { canonical_query: self, base_universe }))
+        UniverseInfo::TypeOp(Arc::new(NormalizeQuery { canonical_query: self, base_universe }))
     }
 }
 
 impl<'tcx> ToUniverseInfo<'tcx> for CanonicalTypeOpAscribeUserTypeGoal<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo::TypeOp(Rc::new(AscribeUserTypeQuery { canonical_query: self, base_universe }))
+        UniverseInfo::TypeOp(Arc::new(AscribeUserTypeQuery {
+            canonical_query: self,
+            base_universe,
+        }))
     }
 }
 
