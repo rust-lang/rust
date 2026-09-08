@@ -112,7 +112,7 @@ pub fn emit(cfg: &Config) {
     // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
     // these targets do not have full Thumb-2 support but only original Thumb-1.
     // We have to cfg our code accordingly.
-    let thumb_1 = split[0] == "thumbv6m" || split[0] == "thumbv8m.base";
+    let thumb1_only = split[0] == "thumbv6m" || split[0] == "thumbv8m.base";
 
     // Shorthand to detect i586 targets
     let x86_no_sse2 = cfg.target_arch == "x86" && !cfg.target_features.iter().any(|f| f == "sse2");
@@ -122,7 +122,7 @@ pub fn emit(cfg: &Config) {
 
     // Arch shorthand config is used in most crates.
     set_cfg("thumb", thumb);
-    set_cfg("thumb_1", thumb_1);
+    set_cfg("thumb1_only", thumb1_only);
     set_cfg("x86_no_sse2", x86_no_sse2);
 
     match cfg.library {
