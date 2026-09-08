@@ -761,6 +761,17 @@ impl Subcommand {
     pub(crate) fn check_all_targets(&self) -> bool {
         matches!(self, Subcommand::Check { all_targets: true, .. })
     }
+
+    pub fn dist_std(&self) -> bool {
+        match *self {
+            Subcommand::Build { dist_std, .. }
+            | Subcommand::Test { dist_std, .. }
+            | Subcommand::Bench { dist_std, .. }
+            | Subcommand::Dist { dist_std, .. }
+            | Subcommand::Install { dist_std, .. } => dist_std,
+            _ => false,
+        }
+    }
 }
 
 /// Returns the shell completion for a given shell, if the result differs from the current
