@@ -51,14 +51,19 @@ use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
-    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, InferCtxtLike,
-    Interner, IsRigid, OutlivesClause, Region, RegionKind, TyKind, TypeFoldable, TypeFolder,
-    TypingMode, UniverseIndex, Variance, max_universe, set_aliases_to_non_rigid,
+    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, ClauseKind, DebruijnIndex,
+    InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind, TyKind, TypeFoldable,
+    TypeFolder, TypingMode, UniverseIndex, Variance, elaborate, max_universe,
+    set_aliases_to_non_rigid,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct Assumptions<I: Interner> {
     pub type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
+    /// Known `'a: 'b` assumptions, stored as an edge from the outliving region to the
+    /// outlived one, i.e. an edge `('a, 'b)` means `'a: 'b`. Constructors expect a relation
+    /// with this direction, see [`regions_outlived_by`] and [`regions_outliving`] for how it
+    /// is consumed.
     pub region_outlives: TransitiveRelation<Region<I>>,
     pub inverse_region_outlives: TransitiveRelation<Region<I>>,
 }
@@ -72,7 +77,66 @@ impl<I: Interner> Assumptions<I> {
         }
     }
 
+    /// Builds assumptions from `clauses`, elaborating them and keeping the outlives ones.
+    ///
+    /// Callers hand us their clauses straight from the environment, so we have to elaborate
+    /// here to get at the implied outlives bounds:
+    /// - a `Ty: 'a` clause tells us that every region component of `Ty` outlives `'a`, e.g.
+    ///   `&'b u8: 'a` implies `'b: 'a`. Without it we'd fail to prove `'b: 'a` when leaving
+    ///   the binder these assumptions belong to.
+    /// - it also gives us the components as type outlives, e.g. `Vec<T>: 'a` implies `T: 'a`,
+    ///   which we need for placeholder and alias outlives.
+    /// - trait clauses imply their supertraits, so `T: Bound<'a>` where `trait Bound<'c>: 'c`
+    ///   gives us `T: 'a`. This is why we take clauses rather than just the outlives ones:
+    ///   filtering down to outlives before elaborating would throw those away.
+    ///
+    /// Only the clauses whose max universe is exactly `universe` are kept, which is what the
+    /// solver wants when computing the assumptions of a single binder. This happens after
+    /// elaboration on purpose, so a clause whose regions live in more than one universe still
+    /// contributes its implied bounds to each of them: `(&'b u8, &'c u8): 'a` gives us
+    /// `'c: 'a` in `'c`s universe even though the clause itself is in `'b`s.
+    ///
+    /// Use [`Assumptions::new_unelaborated`] when the caller needs the assumptions to be
+    /// exactly the clauses it passed in.
     pub fn new(
+        infcx: &impl InferCtxtLike<Interner = I>,
+        clauses: impl IntoIterator<Item = I::Clause>,
+        region_outlives: TransitiveRelation<Region<I>>,
+        universe: UniverseIndex,
+    ) -> Self {
+        let mut type_outlives = vec![];
+        let mut region_outlives_builder = TransitiveRelationBuilder::default();
+        for (r1, r2) in region_outlives.base_edges() {
+            region_outlives_builder.add(r1, r2);
+        }
+
+        let clauses = elaborate::elaborate(infcx.cx(), clauses)
+            .filter(|clause| max_universe(infcx, *clause) == universe);
+        for clause in clauses {
+            match clause.kind().skip_binder() {
+                // The type outlives assumptions are kept around as they are required for
+                // proving placeholder and alias outlives.
+                ClauseKind::TypeOutlives(_) => {
+                    type_outlives.push(clause.as_type_outlives_clause().unwrap());
+                }
+                ClauseKind::RegionOutlives(OutlivesClause(r1, r2)) => {
+                    // `elaborate` drops the components which are bound inside of the type and
+                    // bails on `for<'a> Ty: 'a`, so both regions here are free even though the
+                    // clause itself may still be under a binder.
+                    debug_assert!(!r1.is_bound() && !r2.is_bound());
+                    region_outlives_builder.add(r1, r2);
+                }
+                // Anything else can't be used as an outlives assumption.
+                _ => (),
+            }
+        }
+
+        Self::new_unelaborated(type_outlives, region_outlives_builder.freeze())
+    }
+
+    /// Builds assumptions from exactly the given clauses, see [`Assumptions::new`] for when
+    /// the clauses should get elaborated instead.
+    pub fn new_unelaborated(
         type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
         region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {

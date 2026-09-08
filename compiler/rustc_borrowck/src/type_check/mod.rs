@@ -201,6 +201,7 @@ pub(crate) fn type_check<'tcx>(
             solver_constraints,
             &mut converter,
             typeck.known_type_outlives_obligations,
+            typeck.region_bound_pairs,
             universal_region_relations.outlives.clone(),
         );
     }
