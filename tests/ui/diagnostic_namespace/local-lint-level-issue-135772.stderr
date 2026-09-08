@@ -1,0 +1,10 @@
+warning: unknown diagnostic attribute
+  --> $DIR/local-lint-level-issue-135772.rs:30:15
+   |
+LL | #[diagnostic::abcdef]
+   |               ^^^^^^
+   |
+   = note: `#[warn(unknown_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+
