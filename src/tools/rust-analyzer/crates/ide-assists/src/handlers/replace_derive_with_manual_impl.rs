@@ -233,6 +233,7 @@ fn impl_def_from_trait(
 
     let trait_items = filter_assoc_items(
         sema,
+        trait_,
         &ide_db::traits::trait_items_with_required(sema.db, trait_),
         DefaultMethods::No,
         ignore_items,

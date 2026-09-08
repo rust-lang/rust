@@ -4,7 +4,7 @@ use std::slice;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
-    HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
+    HasAttrs as HirHasAttrs, HasCrate, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
     db::HirDatabase,
 };
 use ide_db::{
@@ -158,11 +158,12 @@ pub enum DefaultMethods {
 
 pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
+    trait_: hir::Trait,
     items: &[(hir::AssocItem, IsRequiredAssocItem)],
     default_methods: DefaultMethods,
     ignore_items: IgnoreAssocItems,
 ) -> Vec<InFile<ast::AssocItem>> {
-    items
+    let mut result = items
         .iter()
         .copied()
         .filter(|(assoc_item, is_required)| {
@@ -179,16 +180,33 @@ pub fn filter_assoc_items(
 
             is_required.0 == (default_methods == DefaultMethods::No)
         })
+        .map(|(item, _)| (item, item.attrs(sema.db).unstable_feature(sema.db)))
         // Note: This throws away items with no source.
-        .filter_map(|(assoc_item, _)| {
+        .filter_map(|(assoc_item, unstable_feature)| {
             let item = match assoc_item {
                 hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
                 hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
                 hir::AssocItem::Const(it) => sema.source(it)?.map(ast::AssocItem::Const),
             };
-            Some(item)
+            Some((item, unstable_feature))
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    // Now, we want to filter unstable assoc items whose feature is not enabled, unless:
+    //  - it's required, or
+    //  - the trait has the same feature, so the user probably intends to enable it.
+    if default_methods == DefaultMethods::Only {
+        let trait_unstable_feature = trait_.attrs(sema.db).unstable_feature(sema.db);
+        let krate = trait_.krate(sema.db);
+        result.retain(|(_, item_unstable_feature)| {
+            *item_unstable_feature == trait_unstable_feature
+                || item_unstable_feature
+                    .as_ref()
+                    .is_none_or(|feature| krate.is_unstable_feature_enabled(sema.db, feature))
+        });
+    }
+
+    result.into_iter().map(|(item, _)| item).collect()
 }
 
 /// Given `original_items` retrieved from the trait definition (usually by
