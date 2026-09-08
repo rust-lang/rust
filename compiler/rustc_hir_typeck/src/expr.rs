@@ -430,6 +430,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
                     err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                 }
+                // The operand may be an uncalled function, in which case it is its return type
+                // the user meant to dereference. Only suggest the call when that return type is
+                // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
+                self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
+                    output.builtin_deref(true).is_some()
+                        || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
+                            self.type_implements_trait(deref_trait, [output], self.param_env)
+                                .may_apply()
+                        })
+                });
                 Ty::new_error(tcx, err.emit())
             }),
             hir::UnOp::Not => {
@@ -555,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 LangItem::IntoIterIntoIter | LangItem::IteratorNext
                     if expr.span.is_desugaring(DesugaringKind::ForLoop) =>
                 {
-                    Some(ObligationCauseCode::ForLoopIterator)
+                    Some(ObligationCauseCode::ForLoopIterator(arg.hir_id))
                 }
                 LangItem::TryTraitFromOutput
                     if expr.span.is_desugaring(DesugaringKind::TryBlock) =>
@@ -1327,7 +1337,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
             self.may_coerce(rhs, lhs)
         };
-        let (applicability, eq) = if self.may_coerce(rhs_ty, lhs_ty) {
+        // Never-to-any coercions do not imply that the operands can be compared, e.g. `String == !`.
+        let (applicability, eq) = if self.may_coerce_except_never(rhs_ty, lhs_ty) {
             (Applicability::MachineApplicable, true)
         } else if refs_can_coerce(rhs_ty, lhs_ty) {
             // The lhs and rhs are likely missing some references in either side. Subsequent
@@ -1342,7 +1353,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // if x == 1 && y == 2 { .. }
             //                 +
             let actual_lhs = self.check_expr(rhs_expr);
-            let may_eq = self.may_coerce(rhs_ty, actual_lhs) || refs_can_coerce(rhs_ty, actual_lhs);
+            let may_eq = self.may_coerce_except_never(rhs_ty, actual_lhs)
+                || refs_can_coerce(rhs_ty, actual_lhs);
             (Applicability::MaybeIncorrect, may_eq)
         } else if let ExprKind::Binary(
             Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
@@ -1353,7 +1365,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // if x == 1 && y == 2 { .. }
             //       +
             let actual_rhs = self.check_expr(lhs_expr);
-            let may_eq = self.may_coerce(actual_rhs, lhs_ty) || refs_can_coerce(actual_rhs, lhs_ty);
+            let may_eq = self.may_coerce_except_never(actual_rhs, lhs_ty)
+                || refs_can_coerce(actual_rhs, lhs_ty);
             (Applicability::MaybeIncorrect, may_eq)
         } else {
             (Applicability::MaybeIncorrect, false)

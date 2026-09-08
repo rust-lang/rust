@@ -1,3 +1,6 @@
+//! Test that deriving Reborrow errors on multiple lifetimes and non-Copy/Reborrow fields, and that
+//! CoerceShared errors if field types do not match.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, PhantomData, Reborrow};

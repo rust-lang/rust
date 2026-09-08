@@ -1,5 +1,5 @@
 warning: direct cast of function item into an integer
-  --> $DIR/project-into-field-okay.rs:44:59
+  --> $DIR/project-into-field-okay.rs:40:59
    |
 LL |     std::hint::black_box(stdarch_test_shim_svlen_f32_cntw as usize);
    |                                                           ^^^^^^^^
@@ -11,7 +11,7 @@ LL |     std::hint::black_box(stdarch_test_shim_svlen_f32_cntw as *const () as u
    |                                                           ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> $DIR/project-into-field-okay.rs:63:56
+  --> $DIR/project-into-field-okay.rs:59:56
    |
 LL |     std::hint::black_box(stdarch_test_shim_svcntw_cntw as usize);
    |                                                        ^^^^^^^^
@@ -22,7 +22,7 @@ LL |     std::hint::black_box(stdarch_test_shim_svcntw_cntw as *const () as usiz
    |                                                        ++++++++++++
 
 warning: unnecessary transmute
-  --> $DIR/project-into-field-okay.rs:74:14
+  --> $DIR/project-into-field-okay.rs:70:14
    |
 LL |     unsafe { transmute(_svcntw_pat(PATTERN)) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL +     unsafe { i64::cast_unsigned(_svcntw_pat(PATTERN)) }
    |
 
 warning: direct cast of function item into an integer
-  --> $DIR/project-into-field-okay.rs:87:60
+  --> $DIR/project-into-field-okay.rs:83:60
    |
 LL |     std::hint::black_box(stdarch_test_shim_svcntw_pat_cntw as usize);
    |                                                            ^^^^^^^^

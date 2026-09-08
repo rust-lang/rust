@@ -23,8 +23,9 @@
    },
    "i8": {
     "type": "char",
-    "pretty_print": "'D'",
-    "value": 68
+    "pretty_print": "68",
+    "value": 68,
+    "format": 9
    },
    "i16": {
     "type": "short",
@@ -48,8 +49,9 @@
    },
    "u8": {
     "type": "unsigned char",
-    "pretty_print": "'d'",
-    "value": 100
+    "pretty_print": "100",
+    "value": 100,
+    "format": 18
    },
    "u16": {
     "type": "unsigned short",
@@ -77,5 +79,17 @@
     "value": 3.5
    }
   }
- ]
+ ],
+ "types": {
+  "char": {
+   "size": 1,
+   "type_class": 4,
+   "basic_type": 3
+  },
+  "unsigned char": {
+   "size": 1,
+   "type_class": 4,
+   "basic_type": 4
+  }
+ }
 }

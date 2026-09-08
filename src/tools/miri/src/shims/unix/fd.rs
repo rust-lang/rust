@@ -10,7 +10,7 @@ use rustc_target::spec::Os;
 
 use crate::shims::FileDescriptionRef;
 use crate::shims::files::{DynFileDescriptionRef, FdNum, FileDescription};
-use crate::shims::sig::check_min_vararg_count;
+use crate::shims::sig::Varargs;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::shims::unix::*;
 use crate::*;
@@ -71,7 +71,7 @@ pub trait UnixFileDescription: FileDescription {
     fn ioctl<'tcx>(
         &self,
         _op: Scalar,
-        _arg: Option<&OpTy<'tcx>>,
+        _args: Varargs<'tcx, '_>,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         throw_unsup_format!("cannot use ioctl on {}", self.name());
@@ -181,16 +181,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         fd: &OpTy<'tcx>,
         op: &OpTy<'tcx>,
-        varargs: &[OpTy<'tcx>],
+        varargs: Varargs<'tcx, '_>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd)?.to_i32()?;
         let op = this.read_scalar(op)?;
-        // There is at most one relevant variadic argument.
-        // It exists depending on the device and the opcode and thus we can't
-        // use `check_min_vararg_count` here.
-        let arg = varargs.first();
 
         let Some(fd) = this.machine.fds.get(fd) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
@@ -206,7 +202,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Since some ioctl operations use the return value as an output parameter, we cannot strictly use the convention of
         // zero indicating success and -1 indicating an error.
-        let return_value = fd.as_unix(this).ioctl(op, arg, this)?;
+        let return_value = fd.as_unix(this).ioctl(op, varargs, this)?;
         interp_ok(Scalar::from_i32(return_value))
     }
 
@@ -214,7 +210,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         fd_num: &OpTy<'tcx>,
         cmd: &OpTy<'tcx>,
-        varargs: &[OpTy<'tcx>],
+        varargs: Varargs<'tcx, '_>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
@@ -251,7 +247,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fcntl(fd, F_DUPFD_CLOEXEC, ...)"
                 };
 
-                let [start] = check_min_vararg_count(cmd_name, varargs)?;
+                let ([start], _) = this.check_varargs(shim_varargs![i32], varargs, cmd_name)?;
                 let start = this.read_scalar(start)?.to_i32()?;
 
                 if let Some(fd) = this.machine.fds.get(fd_num) {
@@ -274,7 +270,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
                 };
 
-                let [flag] = check_min_vararg_count("fcntl(fd, F_SETFL, ...)", varargs)?;
+                let ([flag], _) =
+                    this.check_varargs(shim_varargs![i32], varargs, "fcntl(fd, F_SETFL, ...)")?;
                 let flag = this.read_scalar(flag)?.to_i32()?;
 
                 // Ignore flags that never get stored by SETFL.

@@ -678,6 +678,7 @@ pub(crate) fn rewrite_cond(
 // Abstraction over control flow expressions
 #[derive(Debug)]
 struct ControlFlow<'a> {
+    inner_attributes: Option<Vec<ast::Attribute>>,
     cond: Option<&'a ast::Expr>,
     block: &'a ast::Block,
     else_block: Option<&'a ast::Expr>,
@@ -702,6 +703,7 @@ fn extract_pats_and_cond(expr: &ast::Expr) -> (Option<&ast::Pat>, &ast::Expr) {
 
 // FIXME: Refactor this.
 fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'_>> {
+    let inner_attributes = inner_attributes(&expr.attrs);
     match expr.kind {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
             let (pat, cond) = extract_pats_and_cond(cond);
@@ -716,14 +718,30 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
             ))
         }
         ast::ExprKind::ForLoop(ref f) => Some(ControlFlow::new_for(
-            &f.pat, &f.iter, &f.body, f.label, expr.span, f.kind,
+            inner_attributes,
+            &f.pat,
+            &f.iter,
+            &f.body,
+            f.label,
+            expr.span,
+            f.kind,
         )),
-        ast::ExprKind::Loop(ref block, label, _) => {
-            Some(ControlFlow::new_loop(block, label, expr.span))
-        }
+        ast::ExprKind::Loop(ref block, label, _) => Some(ControlFlow::new_loop(
+            inner_attributes,
+            block,
+            label,
+            expr.span,
+        )),
         ast::ExprKind::While(ref cond, ref block, label) => {
             let (pat, cond) = extract_pats_and_cond(cond);
-            Some(ControlFlow::new_while(pat, cond, block, label, expr.span))
+            Some(ControlFlow::new_while(
+                inner_attributes,
+                pat,
+                cond,
+                block,
+                label,
+                expr.span,
+            ))
         }
         _ => None,
     }
@@ -745,6 +763,7 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         let matcher = choose_matcher(pat);
         ControlFlow {
+            inner_attributes: None,
             cond: Some(cond),
             block,
             else_block,
@@ -760,8 +779,14 @@ impl<'a> ControlFlow<'a> {
         }
     }
 
-    fn new_loop(block: &'a ast::Block, label: Option<ast::Label>, span: Span) -> ControlFlow<'a> {
+    fn new_loop(
+        inner_attributes: Vec<ast::Attribute>,
+        block: &'a ast::Block,
+        label: Option<ast::Label>,
+        span: Span,
+    ) -> ControlFlow<'a> {
         ControlFlow {
+            inner_attributes: Some(inner_attributes),
             cond: None,
             block,
             else_block: None,
@@ -778,6 +803,7 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_while(
+        inner_attributes: Vec<ast::Attribute>,
         pat: Option<&'a ast::Pat>,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
@@ -786,6 +812,7 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         let matcher = choose_matcher(pat);
         ControlFlow {
+            inner_attributes: Some(inner_attributes),
             cond: Some(cond),
             block,
             else_block: None,
@@ -802,6 +829,7 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_for(
+        inner_attributes: Vec<ast::Attribute>,
         pat: &'a ast::Pat,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
@@ -810,6 +838,7 @@ impl<'a> ControlFlow<'a> {
         kind: ForLoopKind,
     ) -> ControlFlow<'a> {
         ControlFlow {
+            inner_attributes: Some(inner_attributes),
             cond: Some(cond),
             block,
             else_block: None,
@@ -961,8 +990,50 @@ impl<'a> ControlFlow<'a> {
         };
 
         let label_string = rewrite_label(context, self.label);
+
+        // Do not include the label in the span.
+        let lo = self
+            .label
+            .map_or(self.span.lo(), |label| label.ident.span.hi());
+
+        // `for await` is spelled with two tokens, and the source is free to
+        // separate them with any whitespace or comments. Locate each token in
+        // turn rather than searching for the rendered keyword, and keep
+        // whatever sits in the gap.
+        let (keyword, after_kwd) = if self.keyword == "for await" {
+            let after_for = context
+                .snippet_provider
+                .span_after(mk_sp(lo, self.span.hi()), "for");
+            let before_await = context
+                .snippet_provider
+                .opt_span_before(mk_sp(after_for, self.span.hi()), "await")
+                .unknown_error()?;
+            let after_await = context
+                .snippet_provider
+                .opt_span_after(mk_sp(after_for, self.span.hi()), "await")
+                .unknown_error()?;
+
+            // "for" + whatever is in the gap + "await"
+            let kwd = combine_strs_with_missing_comments(
+                context,
+                "for",
+                "await",
+                mk_sp(after_for, before_await),
+                shape,
+                true,
+            )?;
+            (kwd, after_await)
+        } else {
+            (
+                self.keyword.to_owned(),
+                context
+                    .snippet_provider
+                    .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
+            )
+        };
+
         // 1 = space after keyword.
-        let offset = self.keyword.len() + label_string.len() + 1;
+        let offset = last_line_width(&keyword) + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
             Some(cond) => self.rewrite_pat_expr(context, cond, constr_shape, offset)?,
@@ -980,10 +1051,15 @@ impl<'a> ControlFlow<'a> {
             .config
             .max_width()
             .saturating_sub(constr_shape.used_width() + offset + brace_overhead);
+        let first_line_indent = if context.config.style_edition() >= StyleEdition::Edition2027 {
+            shape.indent.width()
+        } else {
+            shape.used_width()
+        };
         let force_newline_brace = (pat_expr_string.contains('\n')
             || pat_expr_string.len() > one_line_budget)
             && (!last_line_extendable(&pat_expr_string)
-                || last_line_offsetted(shape.used_width(), &pat_expr_string));
+                || last_line_offsetted(first_line_indent, &pat_expr_string));
 
         // Try to format if-else on single line.
         if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
@@ -1003,14 +1079,8 @@ impl<'a> ControlFlow<'a> {
         };
 
         // `for event in event`
-        // Do not include label in the span.
-        let lo = self
-            .label
-            .map_or(self.span.lo(), |label| label.ident.span.hi());
         let between_kwd_cond = mk_sp(
-            context
-                .snippet_provider
-                .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
+            after_kwd,
             if self.pat.is_none() {
                 cond_span.lo()
             } else if self.matcher.is_empty() {
@@ -1041,14 +1111,14 @@ impl<'a> ControlFlow<'a> {
             last_line_width(&pat_expr_string)
         } else {
             // 2 = spaces after keyword and condition.
-            label_string.len() + self.keyword.len() + pat_expr_string.len() + 2
+            label_string.len() + last_line_width(&keyword) + pat_expr_string.len() + 2
         };
 
         Ok((
             format!(
                 "{}{}{}{}{}",
                 label_string,
-                self.keyword,
+                keyword,
                 between_kwd_cond_comment.as_ref().map_or(
                     if pat_expr_string.is_empty() || pat_expr_string.starts_with('\n') {
                         ""
@@ -1138,8 +1208,15 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let block_str = {
             let old_val = context.is_if_else_block.replace(self.else_block.is_some());
             let old_is_loop = context.is_loop_block.replace(self.is_loop);
-            let result =
-                rewrite_block_with_visitor(context, "", self.block, None, None, block_shape, true);
+            let result = rewrite_block_with_visitor(
+                context,
+                "",
+                self.block,
+                self.inner_attributes.as_deref(),
+                None,
+                block_shape,
+                true,
+            );
             context.is_loop_block.replace(old_is_loop);
             context.is_if_else_block.replace(old_val);
             result?
@@ -1892,8 +1969,13 @@ pub(crate) fn rewrite_field(
         let expr = field.expr.rewrite_result(context, expr_shape);
         let is_lit = matches!(field.expr.kind, ast::ExprKind::Lit(_));
         match expr {
+            // A macro can give `Field: value` its own meaning, so shortening `a: a` to `a` may
+            // change what it expands to. In `winnow::seq!` the result no longer compiles.
             Ok(ref e)
-                if !is_lit && e.as_str() == name && context.config.use_field_init_shorthand() =>
+                if !is_lit
+                    && e.as_str() == name
+                    && context.config.use_field_init_shorthand()
+                    && !context.inside_macro() =>
             {
                 Ok(attrs_str + name)
             }

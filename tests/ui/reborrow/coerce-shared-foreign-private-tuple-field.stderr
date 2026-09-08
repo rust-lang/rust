@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` requires all target type fields to be accessible from the impl
-  --> $DIR/coerce-shared-foreign-private-tuple-field.rs:18:1
+  --> $DIR/coerce-shared-foreign-private-tuple-field.rs:21:1
    |
 LL | impl<'a> CoerceShared<ForeignPtrRef<'a>> for LocalPtrMut<'a> {}
    | ^^^^^^^^^^^^^^^^^^^^^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^

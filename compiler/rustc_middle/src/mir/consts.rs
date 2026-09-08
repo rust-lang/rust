@@ -320,6 +320,10 @@ impl<'tcx> Const<'tcx> {
     ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
+                if let Err(e) = c.error_reported() {
+                    return Err(ReportedErrorInfo::non_const_eval_error(e).into());
+                }
+
                 // FIXME(generic_const_exprs): We shouldn't encounter placeholders here
                 // and could change this to ICE when encountering them instead.
                 if c.has_non_region_param() || c.has_non_region_placeholders() {
@@ -474,7 +478,15 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn shrink(self, tcx: TyCtxt<'tcx>) -> ty::AliasConst<'tcx> {
         assert_eq!(self.promoted, None);
-        ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, self.def), self.args)
+        ty::AliasConst::new(
+            tcx,
+            ty::AliasConstKind::new_from_def_id(
+                tcx,
+                self.def,
+                ty::AliasConstInherentArgsKind::Impl,
+            ),
+            self.args,
+        )
     }
 }
 

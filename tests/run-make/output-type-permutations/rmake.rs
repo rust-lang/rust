@@ -6,6 +6,8 @@
 
 //@ ignore-cross-compile
 // Reason: some cross-compiled targets don't support various crate types and fail to link.
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use std::path::PathBuf;
 

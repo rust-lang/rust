@@ -364,6 +364,15 @@ impl NoArgsAttributeParser for TrackCallerParser {
                     });
                 }
             }
+            Target::Closure if !cx.features().closure_track_caller() => {
+                feature_err(
+                    cx.sess(),
+                    sym::closure_track_caller,
+                    attr_span,
+                    "`#[track_caller]` on closures is currently unstable",
+                )
+                .emit();
+            }
             _ => {}
         }
     }
@@ -671,6 +680,7 @@ impl SingleAttributeParser for SanitizeParser {
         r#"kcfi = "on|off""#,
         r#"memory = "on|off""#,
         r#"memtag = "on|off""#,
+        r#"safestack = "on|off""#,
         r#"shadow_call_stack = "on|off""#,
         r#"thread = "on|off""#,
         r#"realtime = "nonblocking|blocking|caller""#,
@@ -717,6 +727,7 @@ impl SingleAttributeParser for SanitizeParser {
                 sym::kcfi => apply(SanitizerSet::KCFI),
                 sym::memory => apply(SanitizerSet::MEMORY),
                 sym::memtag => apply(SanitizerSet::MEMTAG),
+                sym::safestack => apply(SanitizerSet::SAFESTACK),
                 sym::shadow_call_stack => apply(SanitizerSet::SHADOWCALLSTACK),
                 sym::thread => apply(SanitizerSet::THREAD),
                 sym::hwaddress | sym::kernel_hwaddress => {
@@ -743,6 +754,7 @@ impl SingleAttributeParser for SanitizeParser {
                             sym::kcfi,
                             sym::memory,
                             sym::memtag,
+                            sym::safestack,
                             sym::shadow_call_stack,
                             sym::thread,
                             sym::hwaddress,

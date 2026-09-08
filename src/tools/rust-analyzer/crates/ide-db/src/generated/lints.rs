@@ -11773,7 +11773,7 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         label: "nvptx_target_feature",
         description: r##"# `nvptx_target_feature`
 
-Target feaures on nvptx.
+Target features on nvptx.
 
 The tracking issue for this feature is: [#150254]
 

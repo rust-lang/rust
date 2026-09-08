@@ -108,8 +108,6 @@ LL | pub enum ColumnInsertValue<Col, Expr> where
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------ unsatisfied trait bound
-   = help: consider manually implementing `Debug` to avoid undesired bounds caused by "imperfect derives"
-   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 help: consider further restricting the associated type
    |
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,
@@ -239,8 +237,6 @@ LL | pub enum ColumnInsertValue<Col, Expr> where
 ...
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>,
    |                      ------------------------------------------------ unsatisfied trait bound
-   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
-   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 help: consider further restricting the associated type
    |
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,

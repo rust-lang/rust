@@ -38,7 +38,7 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, Varian
 use crate::config::{
     self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, DebugInfo,
     ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -422,6 +422,9 @@ pub struct Session {
 
     /// Config specifying targets' pointer authentication preference.
     pub pointer_auth_config: Option<PointerAuthConfig>,
+
+    /// Cached sanitizer set.
+    sanitizers: SanitizerSet,
 }
 
 #[derive(Clone, Copy)]
@@ -836,10 +839,7 @@ impl Session {
     }
 
     pub fn mir_opt_level(&self) -> usize {
-        self.opts
-            .unstable_opts
-            .mir_opt_level
-            .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+        self.opts.unstable_opts.mir_opt_level.unwrap_or_else(|| self.opts.optimize.mir_opt_level())
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -929,7 +929,7 @@ impl Session {
             let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
                 || self.opts.output_types.contains_key(&OutputType::Bitcode)
                 // AddressSanitizer and MemorySanitizer use alloca name when reporting an issue.
-                || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
+                || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
             !more_names
         }
     }
@@ -1178,7 +1178,7 @@ impl Session {
     }
 
     pub fn sanitizers(&self) -> SanitizerSet {
-        return self.opts.unstable_opts.sanitizer | self.target.options.default_sanitizers;
+        self.sanitizers
     }
 
     pub fn pointer_authentication(&self) -> bool {
@@ -1385,6 +1385,9 @@ pub fn build_session(
     let pointer_auth_config: Option<PointerAuthConfig> =
         PointerAuthConfig::from_raw(&sopts.unstable_opts.pointer_authentication, &target);
 
+    let sanitizers =
+        sopts.unstable_opts.sanitizer.combine_with_defaults(target.options.default_sanitizers);
+
     let sess = Session {
         target,
         host,
@@ -1420,6 +1423,7 @@ pub fn build_session(
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
+        sanitizers,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1497,7 +1501,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
     let supported_sanitizers = sess.target.options.supported_sanitizers;
-    let mut unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
+    let mut unsupported_sanitizers = sess.sanitizers() - supported_sanitizers;
     // Niche: if `fixed-x18`, or effectively switching on `reserved-x18` flag, is enabled
     // we should allow Shadow Call Stack sanitizer.
     if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == Arch::AArch64 {
@@ -1518,7 +1522,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot mix and match mutually-exclusive sanitizers.
-    if let Some((first, second)) = sess.opts.unstable_opts.sanitizer.mutually_exclusive() {
+    if let Some((first, second)) = sess.sanitizers().mutually_exclusive() {
         sess.dcx().emit_err(diagnostics::CannotMixAndMatchSanitizers {
             first: first.to_string(),
             second: second.to_string(),
@@ -1526,10 +1530,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None)
-        && !sess.opts.unstable_opts.sanitizer.is_empty()
-        && !sess.target.is_like_msvc
-    {
+    if sess.crt_static(None) && !sess.sanitizers().is_empty() && !sess.target.is_like_msvc {
         sess.dcx().emit_err(diagnostics::CannotEnableCrtStaticLinux);
     }
 

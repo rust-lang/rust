@@ -265,11 +265,6 @@ pub enum ImplPolarity {
     Positive,
     /// `impl !Trait for Type`
     Negative,
-    /// `#[rustc_reservation_impl] impl Trait for Type`
-    ///
-    /// This is a "stability hack", not a real Rust feature.
-    /// See #64631 for details.
-    Reservation,
 }
 
 impl fmt::Display for ImplPolarity {
@@ -277,7 +272,6 @@ impl fmt::Display for ImplPolarity {
         match self {
             Self::Positive => f.write_str("positive"),
             Self::Negative => f.write_str("negative"),
-            Self::Reservation => f.write_str("reservation"),
         }
     }
 }
@@ -288,7 +282,6 @@ impl ImplPolarity {
         match self {
             Self::Positive => "",
             Self::Negative => "!",
-            Self::Reservation => "",
         }
     }
 }
@@ -509,7 +502,10 @@ impl<I: Interner> ExistentialProjection<I> {
         ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 interner,
-                interner.alias_term_kind_from_def_id(self.def_id.into()),
+                interner.alias_term_kind_from_def_id(
+                    self.def_id.into(),
+                    ty::AliasConstInherentArgsKind::WithSelf,
+                ),
                 [self_ty.into()].iter().chain(self.args.iter()),
             ),
             term: self.term,

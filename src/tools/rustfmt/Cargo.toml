@@ -3,7 +3,6 @@ name = "rustfmt-nightly"
 version = "1.10.0"
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
-readme = "README.md"
 license = "Apache-2.0 OR MIT"
 build = "build.rs"
 categories = ["development-tools"]
@@ -35,7 +34,7 @@ rustfmt-format-diff = []
 generic-simd = []
 
 [dependencies]
-annotate-snippets = { version = "0.11" }
+annotate-snippets = { version = "0.12" }
 anyhow = "1.0"
 bytecount = "0.6.9"
 cargo_metadata = "0.23"
@@ -51,7 +50,7 @@ serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0"
 term = "1.1"
 thiserror = "1.0.40"
-toml = "0.9.5"
+toml = "1.1"
 tracing = { version = "0.1.37", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 unicode-segmentation = "1.9"
@@ -63,6 +62,7 @@ semver = "1.0.21"
 
 [dev-dependencies]
 tempfile = "3.23.0"
+insta = { version = "1.48.0", features = ["filters"] }
 
 # Rustc dependencies are loaded from the sysroot, Cargo doesn't know about them.
 

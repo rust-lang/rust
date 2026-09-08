@@ -195,6 +195,14 @@ impl<'a> Converter<'a> {
         }
     }
 
+    fn comment_kind(doc_style: Option<rustc_lexer::DocStyle>) -> SyntaxKind {
+        match doc_style {
+            Some(rustc_lexer::DocStyle::Outer) => OUTER_DOC_COMMENT,
+            Some(rustc_lexer::DocStyle::Inner) => INNER_DOC_COMMENT,
+            None => COMMENT,
+        }
+    }
+
     fn extend_token(&mut self, kind: &rustc_lexer::TokenKind, mut token_text: &str) {
         // A note on an intended tradeoff:
         // We drop some useful information here (see patterns with double dots `..`)
@@ -204,14 +212,14 @@ impl<'a> Converter<'a> {
 
         let syntax_kind = {
             match kind {
-                rustc_lexer::TokenKind::LineComment { doc_style: _ } => COMMENT,
-                rustc_lexer::TokenKind::BlockComment { doc_style: _, terminated } => {
+                rustc_lexer::TokenKind::LineComment { doc_style } => Self::comment_kind(*doc_style),
+                rustc_lexer::TokenKind::BlockComment { doc_style, terminated } => {
                     if !terminated {
                         errors.push(
                             "Missing trailing `*/` symbols to terminate the block comment".into(),
                         );
                     }
-                    COMMENT
+                    Self::comment_kind(*doc_style)
                 }
 
                 rustc_lexer::TokenKind::Frontmatter {

@@ -16465,7 +16465,7 @@ pub const fn _mm_cvtsi16_si128(a: i16) -> __m128i {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.ph.128"]
     fn vcmpph_128(a: __m128h, b: __m128h, imm5: i32, mask: __mmask8) -> __mmask8;
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.ph.256"]

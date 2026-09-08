@@ -57,8 +57,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
         {
             // The explicit `-> ()` in the closure signature might be necessary for multiple reasons:
             // - Implicit types in closure signatures are forbidden when `for<...>` is present
-            // - If the closure body ends with a function call, and that function's return type is generic, the
-            //   `-> ()` could be required for it to be inferred
+            // - If the closure body ends with a function call, and that function's return type is generic, the `-> ()`
+            //   could be required for it to be inferred
             //
             // There could be more reasons to have it, and, in general, we shouldn't discourage the users from
             // writing more type annotations than strictly necessary, because it can help readability and

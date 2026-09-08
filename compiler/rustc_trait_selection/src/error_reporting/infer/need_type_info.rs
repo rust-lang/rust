@@ -519,11 +519,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, term, ty);
+        let mut body_from_expansion = false;
         if let Some(body) =
             self.tcx.hir_maybe_body_owned_by(self.tcx.typeck_root_def_id_local(body_def_id))
         {
             let expr = body.value;
             local_visitor.visit_expr(expr);
+            body_from_expansion = body.value.span.from_expansion();
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
@@ -566,6 +568,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             term,
             &arg_data,
             typeck_results,
+            body_from_expansion,
             span,
         );
 
@@ -705,6 +708,7 @@ impl<'tcx> InferSourceKind<'tcx> {
         term: Term<'tcx>,
         arg_data: &'local InferenceDiagnosticsData,
         typeck_results: &TypeckResults<'tcx>,
+        body_from_expansion: bool,
         span: Span,
     ) -> Option<SourceKindSubdiag<'local>>
     where
@@ -799,7 +803,7 @@ impl<'tcx> InferSourceKind<'tcx> {
                     p.into_buffer()
                 };
 
-                let suggestion = if have_turbofish {
+                let suggestion = if have_turbofish || body_from_expansion {
                     None
                 } else if generic_args.len() == 1 && used_fallback {
                     match param.kind {

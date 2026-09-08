@@ -6,7 +6,7 @@
 //@ needs-llvm-components: aarch64
 
 #![crate_type = "lib"]
-#![feature(abi_unadjusted, link_llvm_intrinsics, no_core)]
+#![feature(link_llvm_intrinsics, no_core)]
 #![no_core]
 
 extern crate minicore;
@@ -16,7 +16,7 @@ use minicore::simd::i16x4;
 #[repr(C)]
 struct int16x4x2_t(i16x4, i16x4);
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.aarch64.neon.ld1x2.v4i16.p0"]
     fn vld1_s16_x2(t: *const i16) -> int16x4x2_t;
 }

@@ -15,6 +15,7 @@ use tracing::instrument;
 
 pub(crate) use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
 use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
+use crate::core::build_steps::llvm::{LlvmKind, get_llvm_build_status};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -687,6 +688,28 @@ impl Kind {
             }
         }
         .to_owned()
+    }
+
+    /// Is this a command similar to check, which only runs the compiler frontend and doesn't
+    /// build code for the target? (it can still build code for the host, i.e. proc macros).
+    pub fn is_check_like(&self) -> bool {
+        match self {
+            Kind::Check | Kind::Clippy | Kind::Fix | Kind::Doc => true,
+            Kind::Build
+            | Kind::Format
+            | Kind::Test
+            | Kind::Miri
+            | Kind::MiriSetup
+            | Kind::MiriTest
+            | Kind::Bench
+            | Kind::Clean
+            | Kind::Dist
+            | Kind::Install
+            | Kind::Run
+            | Kind::Setup
+            | Kind::Vendor
+            | Kind::Perf => false,
+        }
     }
 }
 
@@ -1377,7 +1400,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
 
         // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_ci_mode.download_from_ci() {
+        // FIXME: the libraries should be added elsewhere, not in this function...
+        if get_llvm_build_status(self, compiler.host).llvm_output().kind()
+            == LlvmKind::DownloadedFromCi
+        {
             let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
@@ -1462,11 +1488,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// The used Clippy is (or in the case of stage 0, already was) built using `build_compiler`.
     pub fn cargo_clippy_cmd(&self, build_compiler: Compiler) -> BootstrapCommand {
         if build_compiler.stage == 0 {
-            let cargo_clippy = self
-                .config
-                .initial_cargo_clippy
-                .clone()
-                .unwrap_or_else(|| self.sess.config.download_clippy());
+            let cargo_clippy =
+                self.config.external_cargo_clippy.clone().unwrap_or_else(|| {
+                    self.sess.config.download_clippy(&self.sess.initial_sysroot)
+                });
 
             let mut cmd = command(cargo_clippy);
             cmd.env("CARGO", &self.initial_cargo);

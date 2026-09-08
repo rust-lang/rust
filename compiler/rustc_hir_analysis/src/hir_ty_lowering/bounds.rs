@@ -477,7 +477,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                ty::AliasTerm::new_from_def_id(tcx, assoc_item.def_id, alias_args)
+                ty::AliasTerm::new_from_def_id(
+                    tcx,
+                    assoc_item.def_id,
+                    alias_args,
+                    ty::AliasConstInherentArgsKind::WithSelf,
+                )
             })
         };
 
@@ -552,7 +557,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         });
 
                         if let ty::AssocTag::Const = assoc_tag
-                            && !self.tcx().is_type_const(assoc_item.def_id)
+                            && !self.tcx().is_direct_const(assoc_item.def_id)
                             && !tcx.features().generic_const_args()
                         {
                             if tcx.features().min_generic_const_args() {

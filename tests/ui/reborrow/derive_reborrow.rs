@@ -1,5 +1,8 @@
 //@ run-pass
 
+//! Test that deriving Reborrow works for named fields, tuple fields, with generics behind
+//! referenes, and for markers.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 

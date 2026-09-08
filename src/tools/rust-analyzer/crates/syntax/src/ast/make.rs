@@ -1383,7 +1383,7 @@ fn expr_from_text_with_edition<E: Into<ast::Expr> + AstNode>(text: &str, edition
         Some(it) => it,
         None => {
             let node = std::any::type_name::<E>();
-            panic!("Failed to make ast node `{node}` from text {text}")
+            panic!("Failed to make expr node `{node}` from text `{text}`")
         }
     };
     let node = node.clone_subtree();
@@ -1403,7 +1403,7 @@ fn ast_from_text_with_edition<N: AstNode>(text: &str, edition: Edition) -> N {
         Some(it) => it,
         None => {
             let node = std::any::type_name::<N>();
-            panic!("Failed to make ast node `{node}` from text {text}")
+            panic!("Failed to make ast node `{node}` from text `{text}`")
         }
     };
     let node = node.clone_subtree();

@@ -1,0 +1,8 @@
+error: the constant `"foo"` is not of type `()`
+  --> $DIR/const-pattern-field-type-mismatch-162394.rs:16:5
+   |
+LL |     const A2: Foo = Self::FooA("foo");
+   |     ^^^^^^^^^^^^^ expected `()`, found `&'static str`
+
+error: aborting due to 1 previous error
+

@@ -479,23 +479,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let new_perm = match *ty.kind() {
+            _ if ty.is_box_global(*this.tcx) => {
+                // The `None` marks this as a Box.
+                NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
+            }
             ty::Ref(_, pointee, mutability) =>
                 NewPermission::new(pointee, Some(mutability), mode, this),
-            _ if ty.is_box() => {
-                let box_custom_allocator_unique =
-                    this.get_tree_borrows_params().box_custom_allocator_unique;
-                if box_custom_allocator_unique || ty.is_box_global(*this.tcx) {
-                    // The `None` marks this as a Box.
-                    NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
-                } else {
-                    // No retagging for boxes with custom allocators.
-                    None
-                }
-            }
 
             ty::RawPtr(..) => {
                 assert!(mode == RetagMode::Raw);
                 // We don't give new tags to raw pointers.
+                None
+            }
+            _ if ty.is_box() => {
+                // No retagging for boxes with custom allocators.
                 None
             }
             _ => panic!("tb_retag_ptr_value: invalid type {ty}"),

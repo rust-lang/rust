@@ -18,10 +18,10 @@ fn foo() {
     // nunc. Mauris consequat, enim vitae venenatis sollicitudin, dolor orci
     // bibendum enim, a sagittis nulla nunc quis elit. Phasellus augue. Nunc
     // suscipit, magna tincidunt lacinia faucibus, lacus tellus ornare purus, a
-    // pulvinar lacus orci eget nibh.  Maecenas sed nibh non lacus tempor faucibus.
-    // In hac habitasse platea dictumst. Vivamus a orci at nulla tristique
-    // condimentum. Donec arcu quam, dictum accumsan, convallis accumsan, cursus sit
-    // amet, ipsum.  In pharetra sagittis nunc.
+    // pulvinar lacus orci eget nibh.  Maecenas sed nibh non lacus tempor
+    // faucibus. In hac habitasse platea dictumst. Vivamus a orci at nulla
+    // tristique condimentum. Donec arcu quam, dictum accumsan, convallis
+    // accumsan, cursus sit amet, ipsum.  In pharetra sagittis nunc.
     let b = baz();
 
     let normalized = self.ctfont.all_traits().normalized_weight(); // [-1.0, 1.0]

@@ -85,30 +85,9 @@ impl<'a> Parser<'a> {
         self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
     }
 
-    fn parse_expr_catch_underscore(
-        &mut self,
-        restrictions: Restrictions,
-    ) -> PResult<'a, Box<Expr>> {
-        match self.parse_expr_res(restrictions) {
-            Ok(expr) => Ok(expr),
-            Err(err) => match self.token.ident() {
-                Some((Ident { name: kw::Underscore, .. }, IdentIsRaw::No))
-                    if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
-                {
-                    // Special-case handling of `foo(_, _, _)`
-                    let guar = err.emit();
-                    self.bump();
-                    Ok(self.mk_expr(self.prev_token.span, ExprKind::Err(guar)))
-                }
-                _ => Err(err),
-            },
-        }
-    }
-
     /// Parses a sequence of expressions delimited by parentheses.
     fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<Box<Expr>>> {
-        self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
-            .map(|(r, _)| r)
+        self.parse_paren_comma_seq(Self::parse_expr).map(|(r, _)| r)
     }
 
     /// Parses an expression, subject to the given restrictions.
@@ -563,9 +542,6 @@ impl<'a> Parser<'a> {
                 let operand_expr = this.parse_expr_dot_or_call(attrs)?;
                 this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
             }
-            token::Ident(..) if this.token.is_keyword(kw::Box) => {
-                make_it!(this, attrs, |this, _| this.parse_expr_box(lo))
-            }
             token::Ident(..)
                 if this.token.is_keyword(kw::Move)
                     && this.look_ahead(1, |t| *t == token::OpenParen) =>
@@ -601,19 +577,6 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(diagnostics::TildeAsUnaryOperator(lo));
 
         self.parse_expr_unary(lo, UnOp::Not)
-    }
-
-    /// Parse `box expr` - this syntax has been removed, but we still parse this
-    /// for now to provide a more useful error
-    fn parse_expr_box(&mut self, box_kw: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump(); // `box`
-        let (span, expr) = self.parse_expr_prefix_common(box_kw)?;
-        // Make a multipart suggestion instead of `span_to_snippet` in case source isn't available
-        let box_kw_and_lo = box_kw.until(self.interpolated_or_expr_span(&expr));
-        let hi = span.shrink_to_hi();
-        let sugg = diagnostics::AddBoxNew { box_kw_and_lo, hi };
-        let guar = self.dcx().emit_err(diagnostics::BoxSyntaxRemoved { span, sugg });
-        Ok((span, ExprKind::Err(guar)))
     }
 
     fn parse_expr_move(&mut self, move_kw: Span) -> PResult<'a, (Span, ExprKind)> {
@@ -1644,7 +1607,7 @@ impl<'a> Parser<'a> {
         let (es, trailing_comma) = match self.parse_seq_to_end(
             exp!(CloseParen),
             SeqSep::trailing_allowed(exp!(Comma)),
-            |p| p.parse_expr_catch_underscore(restrictions.intersection(Restrictions::ALLOW_LET)),
+            |p| p.parse_expr_res(restrictions.intersection(Restrictions::ALLOW_LET)),
         ) {
             Ok(x) => x,
             Err(err) => {

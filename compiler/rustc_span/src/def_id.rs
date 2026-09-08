@@ -4,7 +4,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::{
-    RawDefId, RawDefPathHash, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
+    RawDefId, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
@@ -115,16 +115,6 @@ impl DefPathHash {
     #[inline]
     pub fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> DefPathHash {
         DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
-    }
-
-    #[inline]
-    pub fn to_raw_def_path_hash(self) -> RawDefPathHash {
-        RawDefPathHash(self.0.to_le_bytes())
-    }
-
-    #[inline]
-    pub fn from_raw_def_path_hash(RawDefPathHash(a): RawDefPathHash) -> DefPathHash {
-        DefPathHash(Fingerprint::from_le_bytes(a))
     }
 }
 
@@ -453,7 +443,7 @@ impl ToStableHashKey for DefId {
 
     #[inline]
     fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        DefPathHash::from_raw_def_path_hash(hcx.def_path_hash(self.to_raw_def_id()))
+        DefPathHash(hcx.def_path_hash(self.to_raw_def_id()))
     }
 }
 

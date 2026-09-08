@@ -103,7 +103,10 @@ impl PathCompletionCtx<'_> {
         )
     }
 
-    pub(crate) fn required_thin_arrow(&self) -> Option<(&'static str, TextSize)> {
+    pub(crate) fn required_thin_arrow(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<(&'static str, TextSize)> {
         let PathKind::Type {
             location:
                 TypeLocation::TypeAscription(TypeAscriptionTarget::RetType {
@@ -117,10 +120,11 @@ impl PathCompletionCtx<'_> {
         if fn_item.ret_type().is_some_and(|it| it.thin_arrow_token().is_some()) {
             return None;
         }
+        let unmap = |node: &_| sema.original_range_opt(node).map(|it| it.range);
         let ret_type = fn_item.ret_type().and_then(|it| it.ty());
         match (ret_type, fn_item.param_list()) {
-            (Some(ty), _) => Some(("-> ", ty.syntax().text_range().start())),
-            (None, Some(param)) => Some((" ->", param.syntax().text_range().end())),
+            (Some(ty), _) => Some(("-> ", unmap(ty.syntax())?.start())),
+            (None, Some(param)) => Some((" ->", unmap(param.syntax())?.end())),
             (None, None) => None,
         }
     }

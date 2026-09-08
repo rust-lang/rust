@@ -1804,10 +1804,10 @@ impl AsInner<Slice> for OsStr {
 
 #[stable(feature = "osstring_from_str", since = "1.45.0")]
 impl FromStr for OsString {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(OsString::from(s))
     }
 }
@@ -1815,7 +1815,7 @@ impl FromStr for OsString {
 #[stable(feature = "osstring_extend", since = "1.52.0")]
 impl Extend<OsString> for OsString {
     #[inline]
-    fn extend<T: IntoIterator<Item = OsString>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = OsString>>(&mut self, iter: I) {
         for s in iter {
             self.push(&s);
         }
@@ -1825,7 +1825,7 @@ impl Extend<OsString> for OsString {
 #[stable(feature = "osstring_extend", since = "1.52.0")]
 impl<'a> Extend<&'a OsStr> for OsString {
     #[inline]
-    fn extend<T: IntoIterator<Item = &'a OsStr>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = &'a OsStr>>(&mut self, iter: I) {
         for s in iter {
             self.push(s);
         }
@@ -1835,7 +1835,7 @@ impl<'a> Extend<&'a OsStr> for OsString {
 #[stable(feature = "osstring_extend", since = "1.52.0")]
 impl<'a> Extend<Cow<'a, OsStr>> for OsString {
     #[inline]
-    fn extend<T: IntoIterator<Item = Cow<'a, OsStr>>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = Cow<'a, OsStr>>>(&mut self, iter: I) {
         for s in iter {
             self.push(&s);
         }

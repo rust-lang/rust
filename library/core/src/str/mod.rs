@@ -1263,8 +1263,7 @@ impl str {
     #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
     #[inline]
     pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
-        let inner =
-            self.as_bytes().split(IsAsciiWhitespace).filter(BytesIsNotEmpty).map(UnsafeBytesToStr);
+        let inner = self.as_bytes().split_ascii_whitespace().inner.map(UnsafeBytesToStr);
         SplitAsciiWhitespace { inner }
     }
 
@@ -3120,9 +3119,6 @@ impl str {
 
     /// Returns an iterator that escapes each char in `self` with [`char::escape_debug`].
     ///
-    /// Note: only extended grapheme codepoints that begin the string will be
-    /// escaped.
-    ///
     /// # Examples
     ///
     /// As an iterator:
@@ -3156,15 +3152,7 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_debug(&self) -> EscapeDebug<'_> {
-        let mut chars = self.chars();
-        EscapeDebug {
-            inner: chars
-                .next()
-                .map(|first| first.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL))
-                .into_iter()
-                .flatten()
-                .chain(chars.flat_map(CharEscapeDebugContinue)),
-        }
+        EscapeDebug { inner: self.chars().flat_map(CharEscapeDebug) }
     }
 
     /// Returns an iterator that escapes each char in `self` with [`char::escape_default`].
@@ -3328,12 +3316,8 @@ impl_fn_for_zst! {
     };
 
     #[derive(Clone)]
-    struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
-        c.escape_debug_ext(EscapeDebugExtArgs {
-            escape_grapheme_extender: false,
-            escape_single_quote: true,
-            escape_double_quote: true
-        })
+    struct CharEscapeDebug impl Fn = |c: char| -> char::EscapeDebug {
+        c.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL)
     };
 
     #[derive(Clone)]
@@ -3351,7 +3335,7 @@ impl_fn_for_zst! {
     };
 
     #[derive(Clone)]
-    struct IsAsciiWhitespace impl Fn = |byte: &u8| -> bool {
+    pub(crate) struct IsAsciiWhitespace impl Fn = |byte: &u8| -> bool {
         byte.is_ascii_whitespace()
     };
 
@@ -3361,7 +3345,7 @@ impl_fn_for_zst! {
     };
 
     #[derive(Clone)]
-    struct BytesIsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b [u8]| -> bool {
+    pub(crate) struct BytesIsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b [u8]| -> bool {
         !s.is_empty()
     };
 

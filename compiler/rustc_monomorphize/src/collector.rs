@@ -345,6 +345,8 @@ impl<'tcx> Extend<Spanned<MonoItem<'tcx>>> for MonoItems<'tcx> {
     where
         I: IntoIterator<Item = Spanned<MonoItem<'tcx>>>,
     {
+        let iter = iter.into_iter();
+        self.items.reserve(iter.size_hint().0);
         for item in iter {
             self.push(item)
         }
@@ -1663,7 +1665,7 @@ impl<'v> RootCollector<'_, 'v> {
                     let def_id = id.owner_id.to_def_id();
                     // Type Consts don't have bodies to evaluate
                     // nor do they make sense as a static.
-                    if self.tcx.is_type_const(def_id) {
+                    if self.tcx.const_of_item(def_id).is_some() {
                         // FIXME(mgca): Is this actually what we want? We may want to
                         // normalize to a ValTree then convert to a const allocation and
                         // collect that?

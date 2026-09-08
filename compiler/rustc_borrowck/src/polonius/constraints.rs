@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Location};
@@ -9,7 +7,7 @@ use rustc_mir_dataflow::points::PointIndex;
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
-use crate::polonius::ConstraintDirection;
+use crate::polonius::{ConstraintDirection, LiveRegionVariances};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
@@ -99,7 +97,7 @@ impl LocalizedConstraintGraph {
         &self,
         body: &Body<'tcx>,
         liveness: &LivenessValues,
-        live_region_variances: &BTreeMap<RegionVid, ConstraintDirection>,
+        live_region_variances: &LiveRegionVariances,
         universal_regions: &UniversalRegions<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
         visitor: &mut impl LocalizedConstraintGraphVisitor,
@@ -244,7 +242,7 @@ fn compute_forward_successor(
     region: RegionVid,
     next_point: PointIndex,
     live_regions: &SparseIntervalMatrix<RegionVid, PointIndex>,
-    live_region_variances: &BTreeMap<RegionVid, ConstraintDirection>,
+    live_region_variances: &LiveRegionVariances,
     is_universal_region: bool,
 ) -> Option<LocalizedNode> {
     // 1. Universal regions are semantically live at all points.
@@ -268,8 +266,11 @@ fn compute_forward_successor(
     // propagate liveness when needed.
     //
     // FIXME: add the missing variance information and remove this fallback bidirectional edge.
-    let direction =
-        live_region_variances.get(&region).unwrap_or(&ConstraintDirection::Bidirectional);
+    let direction = live_region_variances
+        .get(region)
+        .copied()
+        .flatten()
+        .unwrap_or(ConstraintDirection::Bidirectional);
 
     match direction {
         ConstraintDirection::Backward => {
@@ -294,7 +295,7 @@ fn compute_backward_successor(
     current_point: PointIndex,
     previous_point: PointIndex,
     live_regions: &SparseIntervalMatrix<RegionVid, PointIndex>,
-    live_region_variances: &BTreeMap<RegionVid, ConstraintDirection>,
+    live_region_variances: &LiveRegionVariances,
 ) -> Option<LocalizedNode> {
     // Liveness flows into the regions live at the next point. So, in a backwards view, we'll link
     // the region from the current point, if it's live there, to the previous point.
@@ -304,8 +305,11 @@ fn compute_backward_successor(
 
     // FIXME: add the missing variance information and remove this fallback bidirectional edge. See
     // the same comment in `compute_forward_successor`.
-    let direction =
-        live_region_variances.get(&region).unwrap_or(&ConstraintDirection::Bidirectional);
+    let direction = live_region_variances
+        .get(region)
+        .copied()
+        .flatten()
+        .unwrap_or(ConstraintDirection::Bidirectional);
 
     match direction {
         ConstraintDirection::Forward => {

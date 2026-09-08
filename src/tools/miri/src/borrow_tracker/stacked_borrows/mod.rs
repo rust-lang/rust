@@ -869,7 +869,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RetagMode::None => return interp_ok(None), // no retagging
         };
         let new_perm = if ty.is_box() {
-            NewPermission::from_box_ty(val.layout.ty, mode, this)
+            if ty.is_box_global(*this.tcx) {
+                NewPermission::from_box_ty(val.layout.ty, mode, this)
+            } else {
+                // Boxes with custom allocator are not retagged.
+                return interp_ok(None);
+            }
         } else {
             NewPermission::from_ref_ty(val.layout.ty, mode, this)
         };

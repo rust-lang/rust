@@ -4,10 +4,9 @@
 use either::Either;
 
 use crate::{
-    SyntaxElement, SyntaxNode, SyntaxToken, T,
-    ast::{self, AstChildren, AstNode, AstToken, support},
+    SyntaxNode, SyntaxToken, T,
+    ast::{self, AstChildren, AstNode, support},
     match_ast,
-    syntax_node::SyntaxElementChildren,
 };
 
 pub trait HasName: AstNode {
@@ -74,6 +73,14 @@ pub trait HasAttrs: AstNode {
         support::children(self.syntax())
     }
 
+    fn doc_comments(&self) -> AstChildren<ast::DocComment> {
+        support::children(self.syntax())
+    }
+
+    fn attrs_with_doc(&self) -> AstChildren<ast::AnyAttr> {
+        support::children(self.syntax())
+    }
+
     /// This may return the same node as called with (with `SourceFile`). The caller has the responsibility
     /// to avoid duplicate attributes.
     fn inner_attributes_node(&self) -> Option<SyntaxNode> {
@@ -102,68 +109,42 @@ pub trait HasAttrs: AstNode {
 
 /// Returns all attributes of this node, including inner attributes that may not be directly under this node
 /// but under a child.
-pub fn attrs_including_inner(owner: &dyn HasAttrs) -> impl Iterator<Item = ast::Attr> + Clone {
-    owner.attrs().filter(|attr| attr.kind().is_outer()).chain(
+pub fn attrs_with_doc_including_inner(
+    owner: &dyn HasAttrs,
+) -> impl Iterator<Item = ast::AnyAttr> + Clone {
+    owner.attrs_with_doc().filter(|attr| attr.kind().is_outer()).chain(
         owner
             .inner_attributes_node()
             .into_iter()
-            .flat_map(|node| support::children::<ast::Attr>(&node))
+            .flat_map(|node| support::children::<ast::AnyAttr>(&node))
             .filter(|attr| attr.kind().is_inner()),
     )
 }
 
-pub trait HasDocComments: HasAttrs {
-    fn doc_comments(&self) -> DocCommentIter {
-        DocCommentIter { iter: self.syntax().children_with_tokens() }
+pub fn attrs_including_inner(owner: &dyn HasAttrs) -> impl Iterator<Item = ast::Attr> + Clone {
+    AttrsIter::new(attrs_with_doc_including_inner(owner))
+}
+
+#[derive(Clone)]
+pub struct AttrsIter<I> {
+    inner: I,
+}
+
+impl<I: Iterator<Item = ast::AnyAttr>> AttrsIter<I> {
+    #[inline]
+    pub fn new(inner: I) -> Self {
+        Self { inner }
     }
 }
 
-impl DocCommentIter {
-    pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> DocCommentIter {
-        DocCommentIter { iter: syntax_node.children_with_tokens() }
-    }
+impl<I: Iterator<Item = ast::AnyAttr>> Iterator for AttrsIter<I> {
+    type Item = ast::Attr;
 
-    #[cfg(test)]
-    pub fn doc_comment_text(self) -> Option<String> {
-        let docs = itertools::Itertools::join(
-            &mut self.filter_map(|comment| comment.doc_comment().map(|it| it.0.to_owned())),
-            "\n",
-        );
-        if docs.is_empty() { None } else { Some(docs) }
-    }
-}
-
-pub struct DocCommentIter {
-    iter: SyntaxElementChildren,
-}
-
-impl Iterator for DocCommentIter {
-    type Item = ast::Comment;
-    fn next(&mut self) -> Option<ast::Comment> {
-        self.iter.by_ref().find_map(|el| {
-            el.into_token().and_then(ast::Comment::cast).filter(ast::Comment::is_doc)
-        })
-    }
-}
-
-pub struct AttrDocCommentIter {
-    iter: SyntaxElementChildren,
-}
-
-impl AttrDocCommentIter {
-    pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> AttrDocCommentIter {
-        AttrDocCommentIter { iter: syntax_node.children_with_tokens() }
-    }
-}
-
-impl Iterator for AttrDocCommentIter {
-    type Item = Either<ast::Attr, ast::Comment>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.find_map(|el| match el {
-            SyntaxElement::Node(node) => ast::Attr::cast(node).map(Either::Left),
-            SyntaxElement::Token(tok) => {
-                ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right)
-            }
+        self.inner.find_map(|attr| match attr {
+            ast::AnyAttr::Attr(it) => Some(it),
+            ast::AnyAttr::DocComment(_) => None,
         })
     }
 }

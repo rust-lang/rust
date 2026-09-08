@@ -64,7 +64,7 @@ impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
         self.promoted_fragments.set(promoted);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements promotion by extracting eligible values into separate constant MIR bodies.
         PassPolicy::Required
     }
@@ -299,7 +299,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
             // Never recurse.
-            ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
+            ProjectionElem::PhantomDeref
+            | ProjectionElem::OpaqueCast(..)
+            | ProjectionElem::Downcast(..) => {
                 return Err(Unpromotable);
             }
 

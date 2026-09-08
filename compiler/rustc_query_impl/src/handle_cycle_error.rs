@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::bug;
 use rustc_middle::queries::TaggedQueryKey;
-use rustc_middle::query::Cycle;
+use rustc_middle::query::QueryCycle;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
@@ -25,7 +25,7 @@ pub(crate) fn default(err: Diag<'_>) -> ! {
 pub(crate) fn fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    _: Cycle<'tcx>,
+    _: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
     let guar = err.delay_as_bug();
@@ -50,7 +50,7 @@ pub(crate) fn fn_sig<'tcx>(
 pub(crate) fn check_representability<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: LocalDefId,
-    cycle: Cycle<'tcx>,
+    cycle: QueryCycle<'tcx>,
     _err: Diag<'_>,
 ) {
     check_representability_inner(tcx, cycle);
@@ -59,13 +59,13 @@ pub(crate) fn check_representability<'tcx>(
 pub(crate) fn check_representability_adt_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: Ty<'tcx>,
-    cycle: Cycle<'tcx>,
+    cycle: QueryCycle<'tcx>,
     _err: Diag<'_>,
 ) {
     check_representability_inner(tcx, cycle);
 }
 
-fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> ! {
+fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: QueryCycle<'tcx>) -> ! {
     let mut item_and_field_ids = Vec::new();
     let mut representable_ids = FxHashSet::default();
     for frame in &cycle.frames {
@@ -99,7 +99,7 @@ fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> 
 pub(crate) fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    _cycle: Cycle<'tcx>,
+    _cycle: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> &'tcx [ty::Variance] {
     let _guar = err.delay_as_bug();
@@ -129,7 +129,7 @@ fn search_for_cycle_permutation<Q, T>(
 pub(crate) fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
-    cycle: Cycle<'tcx>,
+    cycle: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
     let _guar = err.delay_as_bug();
@@ -346,7 +346,7 @@ fn find_item_ty_spans(
 #[cold]
 pub(crate) fn create_cycle_error<'tcx>(
     tcx: TyCtxt<'tcx>,
-    Cycle { usage, frames }: &Cycle<'tcx>,
+    QueryCycle { usage, frames }: &QueryCycle<'tcx>,
     nested: bool,
 ) -> Diag<'tcx> {
     assert!(!frames.is_empty());

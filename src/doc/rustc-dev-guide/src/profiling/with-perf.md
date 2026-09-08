@@ -7,7 +7,7 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
 - Get a clean checkout of rust-lang/rust
 - Set the following settings in your `bootstrap.toml`:
   - `rust.debuginfo-level = 1` - enables line debuginfo
-  - leave `rust.override-allocator` unset - lets you do memory use profiling with valgrind
+  - leave `build.allocator` unset - lets you do memory use profiling with valgrind
   - leave everything else the defaults
 - Run `./x build` to get a full build
 - Make a rustup toolchain pointing to that result
@@ -54,7 +54,7 @@ In case to avoid the issue of `addr2line xxx/elf: could not read first record` w
 collected data from `cargo`, you may need use the latest version of `addr2line`:
 
 ```bash
-cargo install addr2line --features="bin"
+cargo install --locked addr2line --features="bin"
 ```
 
 ### Gathering a perf profile from a `perf.rust-lang.org` test
@@ -161,7 +161,7 @@ It's probably easiest to explain by walking through how I would analyze NLL perf
 You can install perf-focus using `cargo install`:
 
 ```bash
-cargo install perf-focus
+cargo install --locked perf-focus
 ```
 
 ### Example: How much time is spent in MIR borrowck?

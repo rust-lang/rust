@@ -13,11 +13,6 @@ error[E0107]: missing generics for trait `Fn`
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL |     println!("{:?}",(vfnfer[0] as dyn Fn<Args>)(3));
-   |                                         ++++++
 
 error: aborting due to 2 previous errors
 

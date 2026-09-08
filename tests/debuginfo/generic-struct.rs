@@ -1,3 +1,7 @@
+//@ revisions: msvc non-msvc
+
+//@ [msvc] only-msvc
+//@ [non-msvc] ignore-msvc
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
@@ -20,14 +24,20 @@
 //@ lldb-command:run
 
 //@ lldb-command:v int_int
-//@ lldb-check:[...]AGenericStruct<int, int>) int_int = {key:0, value:1}
+//@ [non-msvc] lldb-check:[...]AGenericStruct<int, int>) int_int = {key:0, value:1}
+//@ [msvc] lldb-check:[...]AGenericStruct<i32,i32>) int_int = {key:0, value:1}
 //@ lldb-command:v int_float
-//@ lldb-check:[...]AGenericStruct<int, double>) int_float = {key:2, value:3.5}
+//@ [non-msvc] lldb-check:[...]AGenericStruct<int, double>) int_float = {key:2, value:3.5}
+//@ [msvc] lldb-check:[...]AGenericStruct<i32,f64>) int_float = {value:3.5, key:2}
 //@ lldb-command:v float_int
-//@ lldb-check:[...]AGenericStruct<double, int>) float_int = {key:4.5, value:5}
+//@ [non-msvc] lldb-check:[...]AGenericStruct<double, int>) float_int = {key:4.5, value:5}
+//@ [msvc] lldb-check:[...]AGenericStruct<f64,i32>) float_int = {key:4.5, value:5}
 
 //@ lldb-command:v float_int_float
-//@ lldb-check:[...]AGenericStruct<double, generic_struct::AGenericStruct<int, double> >) float_int_float = {key:6.5, value:{key:7, value:8.5}}
+// ignore-tidy-linelength
+//@ [non-msvc]lldb-check:[...]AGenericStruct<double, generic_struct::AGenericStruct<int, double> >) float_int_float = {key:6.5, value:{key:7, value:8.5}}
+// ignore-tidy-linelength
+//@ [msvc] lldb-check:[...]AGenericStruct<f64,generic_struct::AGenericStruct<i32,f64> >) float_int_float = {value:{value:8.5, key:7}, key:6.5}
 
 // === CDB TESTS ===================================================================================
 

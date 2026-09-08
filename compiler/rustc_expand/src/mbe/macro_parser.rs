@@ -80,7 +80,6 @@ pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
 
@@ -732,17 +731,14 @@ impl TtParser {
         // `NamedParseResult`. Otherwise, it's an error.
         let mut ret_val = FxHashMap::default();
         for loc in matcher {
-            if let &MatcherLoc::MetaVarDecl { span, bind, .. } = loc
+            if let &MatcherLoc::MetaVarDecl { bind, .. } = loc
                 && ret_val
                     .insert(MacroRulesNormalizedIdent::new(bind), res.next().unwrap())
                     .is_some()
             {
                 // Duplicate binds are checked for when the macro definition is processed,
                 // and should have prevented the definition from ever being used.
-                span_bug!(
-                    span,
-                    "duplicate meta-variable binding went undetected at macro definition"
-                )
+                panic!("duplicate meta-variable binding went undetected at macro definition")
             }
         }
         ret_val

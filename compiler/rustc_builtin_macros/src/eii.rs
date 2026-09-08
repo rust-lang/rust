@@ -1,8 +1,8 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path, StmtKind,
-    Visibility, ast,
+    AttrKind, Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path,
+    StmtKind, SyntheticAttr, Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -147,10 +147,9 @@ fn eii_(
 
     let attrs_from_decl =
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
-    let (macro_attrs, foreign_item_attrs, default_func_attrs) =
-        split_attrs(ecx, item_span, attrs_from_decl);
+    let (macro_attrs, foreign_item_attrs) = split_attrs(ecx, item_span, attrs_from_decl);
 
-    let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, &meta_item) else {
+    let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
         // EII can't be used on items in statement position
         return vec![Annotatable::Item(item)];
@@ -166,7 +165,6 @@ fn eii_(
         eii_attr_span,
         item_span,
         foreign_item_name,
-        default_func_attrs,
     ) {
         module_items.push(default_impl);
     }
@@ -197,50 +195,57 @@ fn split_attrs(
     ecx: &mut ExtCtxt<'_>,
     span: Span,
     attrs: ThinVec<Attribute>,
-) -> (ThinVec<Attribute>, ThinVec<Attribute>, ThinVec<Attribute>) {
+) -> (ThinVec<Attribute>, ThinVec<Attribute>) {
     let mut macro_attributes = ThinVec::new();
     let mut foreign_item_attributes = ThinVec::new();
-    let mut default_attributes = ThinVec::new();
 
     for attr in attrs {
-        match attr.name() {
-            // Inline only matters for the default function being inlined into callsites
-            Some(sym::inline) => default_attributes.push(attr),
-            // If an eii is marked a lang item, that's because we want to call its declaration, so
-            // mark the foreign item as the lang item
-            Some(sym::lang) => foreign_item_attributes.push(attr),
-            // Deprecating an eii means deprecating the macro and the foreign item
-            Some(sym::deprecated) => {
+        match &attr.kind {
+            // Forward synthetic CfgTrace and CfgAttrTrace, these are applicable to both foreign item and macro.
+            AttrKind::Synthetic(SyntheticAttr::CfgTrace(_) | SyntheticAttr::CfgAttrTrace(_)) => {
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
-            }
-            // The stability of an EII affects the usage of the macro and calling the foreign item
-            Some(sym::stable) | Some(sym::unstable) => {
-                foreign_item_attributes.push(attr.clone());
-                macro_attributes.push(attr);
-            }
-            // `#[track_caller]` goes on the foreign item only: it's the symbol callers link
-            // against, so it must carry the flag for call sites to pass the caller location.
-            // Implementations derive it during codegen (see `EiiImpls` in `codegen_attrs.rs`),
-            // so it must not be routed onto the default impl here.
-            Some(sym::track_caller) => {
-                foreign_item_attributes.push(attr);
             }
             // Doc attributes should be forwarded to the macro and the foreign item, since those are
             // the two items you interact with as a user.
             // FIXME: idk yet how EIIs show up in docs, might want to customize
-            _ if attr.is_doc_comment() => {
+            AttrKind::DocComment(_, _) => {
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
             }
-            Some(sym::eii) => unreachable!("should already be filtered out"),
-            _ => {
-                ecx.dcx().emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+            AttrKind::Normal(normal) => {
+                match normal.item.name() {
+                    // If an eii is marked a lang item, that's because we want to call its declaration, so
+                    // mark the foreign item as the lang item
+                    Some(sym::lang) => foreign_item_attributes.push(attr),
+                    // Deprecating an eii means deprecating the macro and the foreign item
+                    Some(sym::deprecated) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // The stability of an EII affects the usage of the macro and calling the foreign item
+                    Some(sym::stable) | Some(sym::unstable) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // `#[track_caller]` goes on the foreign item only: it's the symbol callers link
+                    // against, so it must carry the flag for call sites to pass the caller location.
+                    // Implementations derive it during codegen (see `EiiImpls` in `codegen_attrs.rs`),
+                    // so it must not be routed onto the default impl here.
+                    Some(sym::track_caller) => {
+                        foreign_item_attributes.push(attr);
+                    }
+                    Some(sym::eii) => unreachable!("should already be filtered out"),
+                    _ => {
+                        ecx.dcx()
+                            .emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+                    }
+                }
             }
         }
     }
 
-    (macro_attributes, foreign_item_attributes, default_attributes)
+    (macro_attributes, foreign_item_attributes)
 }
 
 /// Decide on the name of the macro that can be used to implement the EII.
@@ -298,18 +303,15 @@ fn generate_default_impl(
     eii_attr_span: Span,
     item_span: Span,
     foreign_item_name: Ident,
-    attrs: ThinVec<Attribute>,
 ) -> Option<Box<ast::Item>> {
+    let attrs = ThinVec::new();
+
     match item_kind {
         ItemKind::Fn(func) => {
-            if func.body.is_none() {
-                return None;
-            }
+            func.body.as_ref()?;
         }
         ItemKind::Static(stat) => {
-            if stat.expr.is_none() {
-                return None;
-            }
+            stat.expr.as_ref()?;
         }
         _ => unreachable!("Target was checked earlier"),
     };

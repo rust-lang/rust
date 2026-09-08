@@ -148,8 +148,17 @@ pub(crate) struct ClosureCannotBeStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("`move(expr)` is only supported in plain closures")]
-pub(crate) struct MoveExprOnlyInPlainClosures {
+#[diag("`move(expr)` is only supported in closures, `async`, `gen`, and `async gen` blocks")]
+pub(crate) struct MoveExprOnlyInSupportedContexts {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block"
+)]
+pub(crate) struct NestedMoveExprWithoutEnclosingContext {
     #[primary_span]
     pub span: Span,
 }
@@ -608,4 +617,25 @@ pub(crate) struct RestrictionAncestorOnly {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) kind: ResolvingRestrictionKind,
+}
+
+#[derive(Diagnostic)]
+#[diag("ambiguous delegation to inherent impl function")]
+pub(crate) struct AmbiguousDelegationToInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("delegation to inherent impl must contain parent generics")]
+pub(crate) struct DelegationToInherentImplMustContainParentGenerics {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("parent segment of delegation to inherent impl can not contain infers")]
+pub(crate) struct DelegationToInherentImplParentContainsInfer {
+    #[primary_span]
+    pub span: Span,
 }

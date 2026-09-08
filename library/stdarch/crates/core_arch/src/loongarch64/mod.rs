@@ -21,7 +21,7 @@ pub fn rdtime_d() -> (i64, isize) {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.loongarch.crc.w.b.w"]
     fn __crc_w_b_w(a: i32, b: i32) -> i32;
     #[link_name = "llvm.loongarch.crc.w.h.w"]

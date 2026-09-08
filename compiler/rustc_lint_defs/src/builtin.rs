@@ -94,6 +94,7 @@ pub mod hardwired {
             REFINING_IMPL_TRAIT_INTERNAL,
             REFINING_IMPL_TRAIT_REACHABLE,
             RENAMED_AND_REMOVED_LINTS,
+            REPEATED_REPRS,
             REPR_C_ENUMS_LARGER_THAN_INT,
             RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
             RTSAN_NONBLOCKING_ASYNC,
@@ -274,6 +275,30 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #68585),
         report_in_deps: true,
     };
+}
+
+declare_lint! {
+    /// The `repeated_reprs` lint detects when the same representation is
+    /// specified more than once in a `#[repr(..)]` attribute.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[repr(C)]
+    /// #[repr(C)]
+    /// enum Foo { A }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// While some representations may be specified more than once, the compiler
+    /// will reject repeated uses of some others. For consistency, prefer to
+    /// only specify the representation once.
+    pub REPEATED_REPRS,
+    Warn,
+    "detects repeated representations in `#[repr(..)]` attributes",
 }
 
 declare_lint! {
@@ -798,7 +823,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// #![deny(dead_code_pub_in_binary)]
     ///
     /// pub fn unused_pub_fn() {}
@@ -1107,9 +1132,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// #![deny(warnings)]
-    /// fn foo() {}
+    /// struct non_standard_name;
     /// ```
     ///
     /// {{produces}}
@@ -1241,9 +1266,9 @@ declare_lint! {
     /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
     /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
-    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
-    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
+    /// [rfc-401]: https://rust-lang.github.io/rfcs/0401-coercions.html
+    /// [rfc-803]: https://rust-lang.github.io/rfcs/0803-type-ascription.html
+    /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_CASTS,
     Allow,
     "detects trivial casts which could be removed"
@@ -1276,9 +1301,9 @@ declare_lint! {
     /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
     /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
-    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
-    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
+    /// [rfc-401]: https://rust-lang.github.io/rfcs/0401-coercions.html
+    /// [rfc-803]: https://rust-lang.github.io/rfcs/0803-type-ascription.html
+    /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_NUMERIC_CASTS,
     Allow,
     "detects trivial casts of numeric types which could be removed"
@@ -1323,7 +1348,7 @@ declare_lint! {
     /// Note that support for this is only available on the nightly channel.
     /// See [RFC 1977] for more details, as well as the [Cargo documentation].
     ///
-    /// [RFC 1977]: https://github.com/rust-lang/rfcs/blob/master/text/1977-public-private-dependencies.md
+    /// [RFC 1977]: https://rust-lang.github.io/rfcs/1977-public-private-dependencies.html
     /// [Cargo documentation]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#public-dependency
     pub EXPORTED_PRIVATE_DEPENDENCIES,
     Warn,
@@ -1766,7 +1791,7 @@ declare_lint! {
     /// that it produces. See [RFC 2115] for historical context, and [issue
     /// #44752] for more details.
     ///
-    /// [RFC 2115]: https://github.com/rust-lang/rfcs/blob/master/text/2115-argument-lifetimes.md
+    /// [RFC 2115]: https://rust-lang.github.io/rfcs/2115-argument-lifetimes.html
     /// [issue #44752]: https://github.com/rust-lang/rust/issues/44752
     pub SINGLE_USE_LIFETIMES,
     Allow,
@@ -2067,7 +2092,7 @@ declare_lint! {
     /// [`while let`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-pattern-loops
     /// [`let`]: https://doc.rust-lang.org/reference/statements.html#let-statements
     /// [`loop`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#infinite-loops
-    /// [RFC 2086]: https://github.com/rust-lang/rfcs/blob/master/text/2086-allow-if-let-irrefutables.md
+    /// [RFC 2086]: https://rust-lang.github.io/rfcs/2086-allow-if-let-irrefutables.html
     pub IRREFUTABLE_LET_PATTERNS,
     Warn,
     "detects irrefutable patterns in `if let` and `while let` statements"
@@ -2337,7 +2362,7 @@ declare_lint! {
     /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'static>) {}
     /// > ```
     ///
-    /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
+    /// [RFC 2093]: https://rust-lang.github.io/rfcs/2093-infer-outlives.html
     /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
@@ -2407,7 +2432,7 @@ declare_lint! {
     ///
     /// [issue #57644]: https://github.com/rust-lang/rust/issues/57644
     /// [type aliases]: https://doc.rust-lang.org/reference/items/type-aliases.html#type-aliases
-    /// [RFC 2338]: https://github.com/rust-lang/rfcs/blob/master/text/2338-type-alias-enum-variants.md
+    /// [RFC 2338]: https://rust-lang.github.io/rfcs/2338-type-alias-enum-variants.html
     /// [qualified path]: https://doc.rust-lang.org/reference/paths.html#qualified-paths
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
@@ -2616,7 +2641,7 @@ declare_lint! {
     /// [`unsafe fn`]: https://doc.rust-lang.org/reference/unsafe-functions.html
     /// [`unsafe` block]: https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks
     /// [unsafe]: https://doc.rust-lang.org/reference/unsafety.html
-    /// [RFC #2585]: https://github.com/rust-lang/rfcs/blob/master/text/2585-unsafe-block-in-unsafe-fn.md
+    /// [RFC #2585]: https://rust-lang.github.io/rfcs/2585-unsafe-block-in-unsafe-fn.html
     /// [issue #71668]: https://github.com/rust-lang/rust/issues/71668
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
@@ -3632,7 +3657,7 @@ declare_lint! {
     Allow,
     "identifiers that will be parsed as a prefix in Rust 2021",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2021 "reserving-syntax"),
+        reason: fcw!(EditionSemanticsChange 2021 "reserving-syntax"),
     };
     crate_level_only
 }
@@ -4567,36 +4592,55 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(ambiguous_glob_imported_traits)]
     /// mod m1 {
-    ///    pub trait Trait {
-    ///            fn method1(&self) {}
-    ///        }
-    ///        impl Trait for u8 {}
+    ///    pub trait Foo {
+    ///        fn method1(&self) {}
     ///    }
-    ///    mod m2 {
-    ///        pub trait Trait {
-    ///            fn method2(&self) {}
-    ///        }
-    ///        impl Trait for u8 {}
-    ///    }
+    ///    impl Foo for u8 {}
+    /// }
+    /// mod m2 {
+    ///     pub trait Foo {
+    ///         fn method2(&self) {}
+    ///     }
+    ///     impl Foo for u8 {}
+    /// }
     ///
-    ///  fn main() {
-    ///      use m1::*;
-    ///      use m2::*;
-    ///      0u8.method1();
-    ///      0u8.method2();
-    ///  }
+    /// mod m3{
+    ///     pub struct Foo;
+    /// }
+    ///
+    /// fn trait_and_trait() {
+    ///     use m1::*;
+    ///     use m2::*;
+    ///     0u8.method1();
+    ///     0u8.method2();
+    /// }
+    ///
+    /// fn trait_and_non_trait(){
+    ///     use m1::*;
+    ///     use m3::*;
+    ///     0u8.method1();
+    /// }
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// When multiple traits with the same name are brought into scope through glob imports,
-    /// one trait becomes the "primary" one while the others are shadowed. Methods from the
-    /// shadowed traits (e.g. `method2`) become inaccessible, while methods from the "primary"
-    /// trait (e.g. `method1`) still resolve. Ideally, none of the ambiguous traits would be in scope,
-    /// but we have to allow this for now because of backwards compatibility.
-    /// This lint reports uses of these "primary" traits that are ambiguous.
+    /// Glob imports can bring multiple items with the same name into scope, creating an ambiguity
+    /// that name resolution has to resolve somehow. This lint reports two different situations
+    /// where that happens:
+    ///
+    /// When two or more traits with the same name are glob imported (as in `trait_and_trait`),
+    /// one of them becomes the "primary" trait, while the others are shadowed. Methods from
+    /// the primary trait (e.g. `method1`) still resolve, but methods from the shadowed trait
+    /// (e.g. `method2`) become inaccessible. Ideally none of the ambiguous traits would be
+    /// usable at all, but this is allowed for backwards compatibility (for now).
+    ///
+    /// When a trait and a non-trait item with the same name are both glob imported (as in
+    /// `trait_and_non_trait`), the trait is currently recovered from the ambiguity and treated
+    /// as in scope, specifically so that this lint can still be reported; method resolution is
+    /// therefore not affected today. This is only possible because the ambiguity is a lint and
+    /// not a hard error. Once it becomes one, the trait will no longer be placed into scope.
     ///
     /// This is a [future-incompatible] lint to transition this to a
     /// hard error in the future.
@@ -5489,10 +5533,10 @@ declare_lint! {
     ///
     /// ```rust,ignore (requires x86)
     /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    /// #![feature(link_llvm_intrinsics, abi_unadjusted)]
+    /// #![feature(link_llvm_intrinsics)]
     /// #![deny(deprecated_llvm_intrinsic)]
     ///
-    /// unsafe extern "unadjusted" {
+    /// unsafe extern "llvm-intrinsic" {
     ///     #[link_name = "llvm.x86.addcarryx.u32"]
     ///     fn foo(a: u8, b: u32, c: u32, d: &mut u32) -> u8;
     /// }

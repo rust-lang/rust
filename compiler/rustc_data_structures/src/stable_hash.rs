@@ -8,6 +8,8 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
+use crate::fingerprint::Fingerprint;
+
 #[cfg(test)]
 mod tests;
 
@@ -24,8 +26,8 @@ pub trait StableHashCtxt {
     /// The main event: stable hashing of a span.
     fn stable_hash_span(&mut self, span: RawSpan, hasher: &mut StableHasher);
 
-    /// Compute a `DefPathHash`.
-    fn def_path_hash(&self, def_id: RawDefId) -> RawDefPathHash;
+    /// Compute a `Fingerprint`, which can be trivially turned into a `DefPathHash`.
+    fn def_path_hash(&self, def_id: RawDefId) -> Fingerprint;
 
     /// Get the stable hash controls.
     fn stable_hash_controls(&self) -> StableHashControls;
@@ -42,10 +44,6 @@ pub struct RawSpan(pub u32, pub u16, pub u16);
 // A type used to work around `DefId` not being visible in this crate. It is the same size as
 // `DefId`.
 pub struct RawDefId(pub u32, pub u32);
-
-// A type used to work around `DefPathHash` not being visible in this crate. It is the same size as
-// `DefPathHash`.
-pub struct RawDefPathHash(pub [u8; 16]);
 
 /// Something that implements `StableHash` can be hashed in a way that is
 /// stable across multiple compilation sessions.

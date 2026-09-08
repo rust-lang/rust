@@ -59,12 +59,6 @@ fn normalize_canonicalized_projection<'tcx>(
                 0,
                 &mut obligations,
             );
-            obligations.extend(const_arg_has_type_obligation(
-                tcx,
-                param_env,
-                normalized_term,
-                goal,
-            ));
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
             // are recursive (given some generic parameters of the opaque's type variables).
@@ -114,7 +108,10 @@ fn normalize_canonicalized_free_alias<'tcx>(
             let normalized_term: ty::Term<'tcx> = if goal.kind.is_type() {
                 tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             } else {
-                tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+                traits::project::const_of_item_or_delayed_bug(tcx, def_id)
+                    .instantiate(tcx, goal.args)
+                    .skip_norm_wip()
+                    .into()
             };
             ocx.register_obligations(const_arg_has_type_obligation(
                 tcx,
@@ -147,12 +144,6 @@ fn normalize_canonicalized_inherent_projection<'tcx>(
                 0,
                 &mut obligations,
             );
-            obligations.extend(const_arg_has_type_obligation(
-                tcx,
-                param_env,
-                normalized_term,
-                goal,
-            ));
             ocx.register_obligations(obligations);
 
             Ok(NormalizationResult { normalized_term })

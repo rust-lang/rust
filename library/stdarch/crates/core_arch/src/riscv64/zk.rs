@@ -3,7 +3,7 @@ use stdarch_test::assert_instr;
 
 use crate::arch::asm;
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.aes64es"]
     fn _aes64es(rs1: i64, rs2: i64) -> i64;
 

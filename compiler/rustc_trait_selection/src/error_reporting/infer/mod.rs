@@ -79,7 +79,6 @@ use crate::error_reporting::traits::ambiguity::{
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
-use crate::solve::deeply_normalize_for_diagnostics;
 use crate::traits::{
     MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
     specialization_graph,
@@ -1374,7 +1373,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (ty::Alias(kind1, alias1), ty::Alias(kind2, alias2)) if kind1 == kind2 => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 match (alias1.kind, alias2.kind) {
-                    (ty::Projection { def_id: def_id1 }, ty::Projection { def_id: def_id2 }) => {
+                    (ty::Projection { def_id: def_id1 }, ty::Projection { def_id: def_id2 })
+                        // RPITIT projections use anonymous associated type and have no item name,
+                        // so it will be ICE from call of `tcx.item_name(def_id)` below, issue #161915.
+                        if !self.tcx.is_impl_trait_in_trait(def_id1)
+                            && !self.tcx.is_impl_trait_in_trait(def_id2) =>
+                    {
                         // `<Type as Trait>::Name<args>`
                         values.0.push_normal("<");
                         values.1.push_normal("<");
@@ -1572,10 +1576,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let (expected_found, exp_found, is_simple_error, values, param_env) = match values {
             None => (None, Mismatch::Fixed("type"), false, None, None),
             Some(ty::ParamEnvAnd { param_env, value: values }) => {
-                let mut values = self.resolve_vars_if_possible(values);
-                if self.next_trait_solver() {
-                    values = deeply_normalize_for_diagnostics(self, param_env, values);
-                }
+                let values = self.resolve_vars_if_possible(values);
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
                         match (expected.kind(), found.kind()) {
@@ -1613,7 +1614,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
                             ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
                             ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentConstSelf { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentConstImpl { def_id } => def_id.into(),
                         };
                         (false, Mismatch::Fixed(self.tcx.def_descr(def_id)))
                     }

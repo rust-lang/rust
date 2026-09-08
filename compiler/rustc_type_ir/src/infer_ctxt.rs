@@ -11,8 +11,8 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Interner, Region, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self as ty, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 
 mod private {
@@ -153,6 +153,10 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// If, during that attempt, we try to access information about opaques or generators
     /// we bail out, setting a field on `EvalCtxt` that indicates the canonicalization must be
     /// rerun in the original typing mode.
+    ///
+    /// Specifically, we always reveal auto traits for rigid aliases and thus we don't allow
+    /// incorrectly marked rigid local opaques. We ensure this by immediately bailing out
+    /// when normalizing local opaques.
     ///
     /// `TypingMode::Coherence` is not replaced by this and is always kept as-is.
     ErasedNotCoherence(S),
@@ -589,7 +593,7 @@ where
     Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
-    for clause in param_env.caller_bounds().iter() {
+    for clause in param_env.caller_bounds() {
         if let ty::ClauseKind::UnstableFeature(sym) = clause.kind().skip_binder() {
             if sym == symbol {
                 return true;
@@ -713,7 +717,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_infer() { p.super_fold_with(self) } else { p }
     }
 

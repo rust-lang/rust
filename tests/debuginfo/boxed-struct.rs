@@ -25,6 +25,7 @@
 
 #![allow(unused_variables)]
 
+#[repr(C)]
 struct StructWithSomePadding {
     x: i16,
     y: i32,
@@ -32,6 +33,7 @@ struct StructWithSomePadding {
     w: i64
 }
 
+#[repr(C)]
 struct StructWithDestructor {
     x: i16,
     y: i32,

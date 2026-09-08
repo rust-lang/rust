@@ -15,7 +15,7 @@ use rustc_target::spec::Os;
 use self::shims::time::system_time_to_duration;
 use crate::shims::files::FileHandle;
 use crate::shims::os_str::bytes_to_os_str;
-use crate::shims::sig::check_min_vararg_count;
+use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
 use crate::*;
 
@@ -399,7 +399,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         path_raw: &OpTy<'tcx>,
         flag: &OpTy<'tcx>,
-        varargs: &[OpTy<'tcx>],
+        varargs: Varargs<'tcx, '_>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
@@ -460,10 +460,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let o_creat = this.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
             flag &= !o_creat;
-            // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
-            // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
-            // (see https://github.com/rust-lang/rust/issues/71915).
-            let [mode] = check_min_vararg_count("open(pathname, O_CREAT, ...)", varargs)?;
+            // Get the mode.
+            let ([mode], _) = this.check_varargs(
+                if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
+                    // `mode_t` is big enough, no C integer promotion.
+                    shim_varargs![libc::mode_t]
+                } else {
+                    // Types smaller than int get promoted to int
+                    // (see https://github.com/rust-lang/rust/issues/71915).
+                    shim_varargs![i32]
+                },
+                varargs,
+                "open(pathname, O_CREAT, ...)",
+            )?;
             let mode = this.read_scalar(mode)?.to_u32()?;
 
             #[cfg(unix)]

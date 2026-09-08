@@ -14,7 +14,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
@@ -1090,20 +1090,6 @@ where
                 })
             }
 
-            ty::Adt(adt_def, ..) if adt_def.is_maybe_dangling() => {
-                Self::ty_and_layout_pointee_info_at(this.field(cx, 0), cx, offset).map(|info| {
-                    PointeeInfo {
-                        // Mark the pointer as raw
-                        // (thus removing noalias/readonly/etc in case of the llvm backend)
-                        safe: None,
-                        // Make sure we don't assert dereferenceability of the pointer.
-                        size: Size::ZERO,
-                        // Preserve the alignment assertion! That is required even inside `MaybeDangling`.
-                        align: info.align,
-                    }
-                })
-            }
-
             _ => {
                 let mut data_variant = match &this.variants {
                     // Within the discriminant field, only the niche itself is
@@ -1177,6 +1163,21 @@ where
                             }
                         }
                     }
+                }
+
+                // Patch result if we are a MaybeDangling-like type.
+                if this.ty.is_like_maybe_dangling()
+                    && let Some(info) = result
+                {
+                    result = Some(PointeeInfo {
+                        // Mark the pointer as raw
+                        // (thus removing noalias/readonly/etc in case of the llvm backend)
+                        safe: None,
+                        // Make sure we don't assert dereferenceability of the pointer.
+                        size: Size::ZERO,
+                        // Preserve the alignment assertion! That is required even inside `MaybeDangling`.
+                        align: info.align,
+                    });
                 }
 
                 result
@@ -1329,7 +1330,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptS
         | RustInvalid
         | Swift
-        | Unadjusted => false,
+        | LlvmIntrinsic => false,
         Rust | RustCall | RustCold | RustPreserveNone | RustTail => {
             tcx.sess.panic_strategy().unwinds()
         }
@@ -1373,12 +1374,36 @@ pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// but this hook allows e.g. codegen to return only `&FnAbi` from its
     /// `cx.fn_abi_of_*(...)`, without any `Result<...>` around it to deal with
     /// (and any `FnAbiError`s are turned into fatal errors or ICEs).
+    ///
+    /// Codegen backends should use [`codegen_handle_fn_abi_err`] as implementation.
     fn handle_fn_abi_err(
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
+}
+
+/// Implementation of [`FnAbiOfHelpers::handle_fn_abi_err`] for codegen backends.
+pub fn codegen_handle_fn_abi_err<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    err: FnAbiError<'tcx>,
+    span: Span,
+    fn_abi_request: FnAbiRequest<'tcx>,
+) -> ErrorGuaranteed {
+    match err {
+        FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
+            tcx.dcx().emit_err(Spanned { span, node: err })
+        }
+        _ => match fn_abi_request {
+            FnAbiRequest::OfFnPtr { sig, extra_args } => {
+                span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
+            }
+            FnAbiRequest::OfInstance { instance, extra_args } => {
+                span_bug!(span, "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",);
+            }
+        },
+    }
 }
 
 /// Blanket extension trait for contexts that can compute `FnAbi`s.

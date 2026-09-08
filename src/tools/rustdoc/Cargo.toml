@@ -7,7 +7,7 @@ edition = "2024"
 # the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
 # rustdoc a different name.
 [[bin]]
-name = "rustdoc_tool_binary"
+name = "rustdoc-tool-binary"
 path = "main.rs"
 
 [dependencies]

@@ -1,5 +1,7 @@
 //@ needs-target-std
-//
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 // This test checks that the object files we generate are actually
 // LLVM bitcode files (as used by linker LTO plugins) when compiling with
 // -Clinker-plugin-lto.

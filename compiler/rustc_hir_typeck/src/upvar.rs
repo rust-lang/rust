@@ -81,6 +81,83 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // it's our job to process these.
         assert!(self.deferred_call_resolutions.borrow().is_empty());
     }
+
+    pub(crate) fn infer_closure_kind_for_diagnostic(
+        &self,
+        closure_def_id: LocalDefId,
+    ) -> Option<(ty::ClosureKind, Option<(Span, Place<'tcx>)>)> {
+        let hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
+        let hir::Node::Expr(expr) = self.tcx.hir_node_by_def_id(closure_def_id) else {
+            return None;
+        };
+        let hir::ExprKind::Closure(&hir::Closure {
+            capture_clause,
+            body: body_id,
+            explicit_captures,
+            ..
+        }) = expr.kind
+        else {
+            return None;
+        };
+        let body = self.tcx.hir_body(body_id);
+
+        // We cannot reliably infer the closure kind if there are nested closures whose
+        // captures have not yet been analyzed.
+        struct HasNestedClosure(bool);
+        impl<'v> Visitor<'v> for HasNestedClosure {
+            fn visit_expr(&mut self, expr: &'v hir::Expr<'v>) {
+                if matches!(expr.kind, hir::ExprKind::Closure(..)) {
+                    self.0 = true;
+                    return;
+                }
+                intravisit::walk_expr(self, expr);
+            }
+        }
+        let mut has_nested = HasNestedClosure(false);
+        has_nested.visit_body(body);
+        if has_nested.0 {
+            return None;
+        }
+
+        let closure_fcx = FnCtxt::new(self, self.tcx.param_env(closure_def_id), closure_def_id);
+
+        let mut delegate = InferBorrowKind {
+            fcx: &closure_fcx,
+            closure_def_id,
+            capture_information: Default::default(),
+            fake_reads: Default::default(),
+        };
+
+        let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(body);
+
+        for capture in explicit_captures {
+            let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
+            delegate.consume(&PlaceWithHirId { hir_id: capture.var_hir_id, place }, hir_id);
+        }
+
+        let (_, closure_kind, mut origin) = self
+            .process_collected_capture_information(capture_clause, &delegate.capture_information);
+
+        // Bail out if a by-value capture has unresolved inference variables, since
+        // fallback might later resolve the type to `Copy` (making the closure `Fn`).
+        if closure_kind == ty::ClosureKind::FnOnce {
+            for (place, capture_info) in &delegate.capture_information {
+                if matches!(capture_info.capture_kind, ty::UpvarCapture::ByValue)
+                    && place.ty().has_infer()
+                {
+                    return None;
+                }
+            }
+        }
+
+        if !enable_precise_capture(expr.span) {
+            if let Some((_, ref mut place)) = origin {
+                place.projections.clear();
+            }
+        }
+
+        Some((closure_kind, origin))
+    }
 }
 
 /// Intermediate format to store the hir_id pointing to the use that resulted in the
@@ -213,18 +290,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // moved, and so on.
         let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(body);
 
-        // `consume_body` only sees how the lowered closure body uses those
-        // places. For `move(foo).clone()`, the body may only borrow the
-        // synthetic local for `foo`, but the source `move(...)` still requires
-        // capturing that local by value.
+        // Save the captures that must be upgraded to by-value after inferring
+        // the closure kind from the operations in the body.
         let explicit_captures = match self.tcx.hir_node(closure_hir_id).expect_expr().kind {
             hir::ExprKind::Closure(closure) => closure.explicit_captures,
             _ => bug!("expected closure expr for {:?}", closure_hir_id),
         };
-        for capture in explicit_captures {
-            let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
-            delegate.consume(&PlaceWithHirId { hir_id: capture.var_hir_id, place }, closure_hir_id);
-        }
 
         // There are several curious situations with coroutine-closures where
         // analysis is too aggressive with borrows when the coroutine-closure is
@@ -323,8 +394,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
 
-        let (capture_information, closure_kind, origin) = self
+        let (mut capture_information, closure_kind, origin) = self
             .process_collected_capture_information(capture_clause, &delegate.capture_information);
+
+        // `move(expr)` requires its synthetic local to be captured by value,
+        // regardless of how the closure body uses it. Apply that requirement
+        // after closure-kind inference so capturing a value does not by itself
+        // make the closure `FnOnce`.
+        for capture in explicit_captures {
+            let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
+            capture_information.push((
+                place,
+                ty::CaptureInfo {
+                    capture_kind_expr_id: Some(closure_hir_id),
+                    path_expr_id: Some(closure_hir_id),
+                    capture_kind: UpvarCapture::ByValue,
+                },
+            ));
+        }
 
         self.compute_min_captures(closure_def_id, capture_information, span);
 

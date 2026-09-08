@@ -1269,7 +1269,7 @@ fn generate_extern_block(intrinsics: &[IntrinsicInfo], mode: VectorMode) -> Stri
         mode.bytes()
     ));
     output.push_str("#[allow(improper_ctypes)]\n");
-    output.push_str("unsafe extern \"unadjusted\" {\n");
+    output.push_str("unsafe extern \"llvm-intrinsic\" {\n");
 
     for (builtin_name, instr_name, return_type, param_types) in &decls {
         let base_link = builtin_name.replace('_', ".");

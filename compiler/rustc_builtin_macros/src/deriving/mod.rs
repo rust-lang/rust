@@ -6,16 +6,12 @@ use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-macro path_local($x:ident) {
-    generic::ty::Path::new_local(sym::$x)
-}
-
-macro pathvec_std($($rest:ident)::+) {{
+macro pathvec($($rest:ident)::+) {{
     vec![ $( sym::$rest ),+ ]
 }}
 
 macro path_std($($x:tt)*) {
-    generic::ty::Path::new( pathvec_std!( $($x)* ) )
+    generic::ty::Path::new( pathvec!( $($x)* ) )
 }
 
 pub(crate) mod bounds;
@@ -101,10 +97,7 @@ fn call_intrinsic(
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    let span = cx.with_def_site_ctxt(span);
-    let path = cx.std_path(&[sym::intrinsics, sym::unreachable]);
-    let call = cx.expr_call_global(span, path, ThinVec::new());
-
+    let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
     cx.expr_block(Box::new(ast::Block {
         stmts: thin_vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,

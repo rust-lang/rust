@@ -15,7 +15,9 @@ use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner, Region, UniverseIndex, Unnormalized};
+use crate::{
+    self as ty, DebruijnIndex, Interner, PredicateProxy, Region, UniverseIndex, Unnormalized,
+};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -747,7 +749,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_param() { p.super_fold_with(self) } else { p }
     }
 
@@ -1028,7 +1030,7 @@ impl<I: Interner> BoundRegionKind<I> {
         match *self {
             ty::BoundRegionKind::Named(def_id) => {
                 let name = tcx.item_name(def_id);
-                if name.is_kw_underscore_lifetime() { None } else { Some(name) }
+                if name == I::Symbol::KW_UNDERSCORE_LIFETIME { None } else { Some(name) }
             }
             ty::BoundRegionKind::NamedForPrinting(name) => Some(name),
             _ => None,
@@ -1258,7 +1260,7 @@ impl<I: Interner> PlaceholderConst<I> {
     }
 
     pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
-        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {

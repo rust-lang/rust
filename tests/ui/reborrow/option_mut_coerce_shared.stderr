@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/option_mut_coerce_shared.rs:5:12
+  --> $DIR/option_mut_coerce_shared.rs:10:12
    |
 LL |     method(a);
    |     ------ ^ types differ in mutability
@@ -9,7 +9,7 @@ LL |     method(a);
    = note: expected enum `Option<&()>`
               found enum `Option<&mut ()>`
 note: function defined here
-  --> $DIR/option_mut_coerce_shared.rs:1:4
+  --> $DIR/option_mut_coerce_shared.rs:6:4
    |
 LL | fn method(a: Option<&()>) {}
    |    ^^^^^^ --------------

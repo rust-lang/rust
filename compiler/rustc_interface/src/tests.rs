@@ -17,7 +17,7 @@ use rustc_session::config::{
     LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options,
     OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry,
     Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
-    WasiExecModel, build_configuration, build_session_options, rustc_optgroups,
+    WasiExecModel, build_session_options, rustc_optgroups,
 };
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib};
@@ -75,8 +75,7 @@ where
             None,
             &USING_INTERNAL_FEATURES,
         );
-        let cfg = parse_cfg(sess.dcx(), matches.opt_strs("cfg"));
-        let cfg = build_configuration(&sess, cfg);
+        let cfg = parse_cfg(&sess, matches.opt_strs("cfg"));
         f(sess, cfg)
     });
 }
@@ -891,7 +890,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(sanitizer_kcfi_arity, Some(true));
     tracked!(sanitizer_memory_track_origins, 2);
     tracked!(sanitizer_recover, SanitizerSet::ADDRESS);
-    tracked!(saturating_float_casts, Some(true));
     tracked!(share_generics, Some(true));
     tracked!(simulate_remapped_rust_src_base, Some(PathBuf::from("/rustc/abc")));
     tracked!(small_data_threshold, Some(16));

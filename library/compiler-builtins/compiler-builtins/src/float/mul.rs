@@ -184,19 +184,17 @@ intrinsics! {
         mul(a, b)
     }
 
-    #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_fmul]
     pub extern "C" fn __mulsf3(a: f32, b: f32) -> f32 {
         mul(a, b)
     }
 
-    #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_dmul]
     pub extern "C" fn __muldf3(a: f64, b: f64) -> f64 {
         mul(a, b)
     }
 
-    #[ppc_alias = __mulkf3]
+    #[ppc_name = __mulkf3]
     #[cfg(f128_enabled)]
     pub extern "C" fn __multf3(a: f128, b: f128) -> f128 {
         mul(a, b)

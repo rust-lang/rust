@@ -26,16 +26,16 @@ use rustc_errors::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_lint_defs::builtin::REPR_C_ENUMS_LARGER_THAN_INT;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, RegionExt, Ty, TyCtxt, TypeVisitableExt, TypingMode,
-    Unnormalized, fold_regions,
+    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+    fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -45,7 +45,9 @@ use rustc_trait_selection::traits::{
     FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
 };
 use tracing::{debug, instrument};
+use ty::region_constraint::LeafRegionConstraint;
 
+use crate::check::wfcheck::{TestBinderBody, TestBinderExists, TestBinderForall};
 use crate::diagnostics::{self, ElidedLifetimesAreNotAllowedInDelegations};
 use crate::hir_ty_lowering::{HirTyLowerer, InherentAssocCandidate, RegionInferReason};
 
@@ -319,6 +321,168 @@ impl<'tcx> ItemCtxt<'tcx> {
 
         diag.emit()
     }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(super) fn lower_test_binder_body(
+        &self,
+        item: &hir::TestBinderBody<'tcx>,
+    ) -> TestBinderBody<'tcx> {
+        let hir::TestBinderBody { foralls, exists, constraints, predicates } = item;
+        let foralls = foralls.iter().map(|forall| self.lower_test_binder_forall(forall)).collect();
+        let exists = exists.iter().map(|exists| self.lower_test_binder_exists(exists)).collect();
+        let constraints = self.lower_test_binder_constraint(&constraints);
+        let mut clauses = Default::default();
+        for predicate in *predicates {
+            clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
+        }
+        let predicates = clauses.into_iter().map(|(c, span)| (c.kind(), span)).collect();
+        TestBinderBody { foralls, exists, constraints, predicates }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(super) fn lower_test_binder_forall(
+        &self,
+        forall: &hir::TestBinderForall<'tcx>,
+    ) -> TestBinderForall<'tcx> {
+        let bound_vars = self.tcx.late_bound_vars(forall.hir_id);
+        let value = self.lower_test_binder_body(forall.body);
+        let mut type_outlives = vec![];
+        let mut region_outlives = vec![];
+        for predicate in forall.generics.predicates {
+            self.lower_test_binder_assumptions(predicate, &mut type_outlives, &mut region_outlives);
+        }
+        let body =
+            crate::check::wfcheck::WithWhereClauses { value, type_outlives, region_outlives };
+        let binder = ty::Binder::bind_with_vars(body, bound_vars);
+        let assert_on_exit = forall
+            .assert_on_exit
+            .map(|assert_on_exit| self.lower_test_binder_constraint(assert_on_exit));
+        TestBinderForall { span: forall.span, binder, assert_on_exit }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(super) fn lower_test_binder_exists(
+        &self,
+        exists: &hir::TestBinderExists<'tcx>,
+    ) -> TestBinderExists<'tcx> {
+        let bound_vars = self.tcx.late_bound_vars(exists.hir_id);
+        let body = self.lower_test_binder_body(exists.body);
+        let binder = ty::Binder::bind_with_vars(body, bound_vars);
+        TestBinderExists { span: exists.span, binder }
+    }
+
+    // FIXME: this is likely too basic, and we'll want to evolve/make this more advanced over time.
+    // For example, right now, if the user writes `forall<'a> where Foo<'a>: 'b`, that's not gonna
+    // work - that should be destructured into `where 'a: 'b`, whether by hand (and checked it was
+    // indeed done so, via compiler) or automatically by the test framework, unsure, but something.
+    fn lower_test_binder_assumptions(
+        &self,
+        predicate: &hir::WherePredicate<'tcx>,
+        type_outlives: &mut Vec<ty::Binder<'tcx, ty::OutlivesClause<'tcx, Ty<'tcx>>>>,
+        region_outlives: &mut Vec<(ty::Region<'tcx>, ty::Region<'tcx>)>,
+    ) {
+        match predicate.kind {
+            hir::WherePredicateKind::BoundPredicate(p) => {
+                let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
+                let ty = self.lower_ty(p.bounded_ty);
+                for bound in p.bounds {
+                    match bound {
+                        hir::GenericBound::Trait(poly_trait_ref) => {
+                            self.dcx()
+                                .span_err(poly_trait_ref.span, "trait bounds aren't supported yet");
+                        }
+                        hir::GenericBound::Outlives(lifetime) => {
+                            let region = self
+                                .lowerer()
+                                .lower_lifetime(lifetime, RegionInferReason::RegionPredicate);
+                            let binder = ty::Binder::bind_with_vars(
+                                ty::OutlivesClause(ty, region),
+                                bound_vars,
+                            );
+                            type_outlives.push(binder);
+                        }
+                        hir::GenericBound::Use(_, span) => {
+                            self.dcx().span_err(*span, "use bounds aren't supported yet");
+                        }
+                    }
+                }
+            }
+            hir::WherePredicateKind::RegionPredicate(predicate) => {
+                let lhs = self
+                    .lowerer()
+                    .lower_lifetime(predicate.lifetime, RegionInferReason::RegionPredicate);
+                for bound in predicate.bounds {
+                    match bound {
+                        hir::GenericBound::Trait(poly_trait_ref) => {
+                            self.dcx()
+                                .span_err(poly_trait_ref.span, "trait bounds aren't supported yet");
+                        }
+                        hir::GenericBound::Outlives(lifetime) => {
+                            let rhs = self
+                                .lowerer()
+                                .lower_lifetime(lifetime, RegionInferReason::RegionPredicate);
+                            region_outlives.push((lhs, rhs));
+                        }
+                        hir::GenericBound::Use(_, span) => {
+                            self.dcx().span_err(*span, "use bounds aren't supported yet");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn lower_test_binder_constraint(
+        &self,
+        constraint: &hir::TestBinderConstraint<'tcx>,
+    ) -> SolverRegionConstraint<'tcx> {
+        match constraint {
+            hir::TestBinderConstraint::And { items } => items
+                .into_iter()
+                .map(|item| self.lower_test_binder_constraint(item))
+                .reduce(SolverRegionConstraint::build_and)
+                .unwrap_or(SolverRegionConstraint::new_true()),
+            hir::TestBinderConstraint::Or { items } => items
+                .into_iter()
+                .map(|item| self.lower_test_binder_constraint(item))
+                .reduce(SolverRegionConstraint::build_or)
+                .unwrap_or(SolverRegionConstraint::new_false()),
+            hir::TestBinderConstraint::Lifetime { lhs, rhs } => {
+                let span = lhs.ident.span.to(rhs.ident.span);
+                let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
+                let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
+                SolverRegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(
+                    lhs, rhs, span,
+                ))
+            }
+            hir::TestBinderConstraint::PlaceholderOutlives { lhs, rhs } => {
+                let span = lhs.span.to(rhs.ident.span);
+                let lhs = self.lower_ty(lhs);
+                let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
+                // note that we cannot check that lhs is a placeholder at this moment, as at this
+                // point it is a bound variable that is not yet instantiated with a placeholder.
+                // instead, we check it when we emit the region constraint.
+                SolverRegionConstraint::new_leaf(LeafRegionConstraint::PlaceholderTyOutlives(
+                    lhs, rhs, span,
+                ))
+            }
+            hir::TestBinderConstraint::AliasOutlives {
+                bound_type_constraint:
+                    hir::TestBinderBoundTypeConstraint { span, hir_id, params: _, lhs, rhs },
+            } => {
+                let bound_vars = self.tcx.late_bound_vars(*hir_id);
+                let &ty::Alias(_, lhs) = self.lower_ty(lhs).kind() else {
+                    self.dcx().span_err(lhs.span, "bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)");
+                    return SolverRegionConstraint::new_true();
+                };
+                let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
+                SolverRegionConstraint::new_leaf(LeafRegionConstraint::AliasTyOutlivesViaEnv(
+                    ty::Binder::bind_with_vars((lhs, rhs), bound_vars),
+                    *span,
+                ))
+            }
+        }
+    }
 }
 
 impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
@@ -327,7 +491,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
+        self.tcx.dcx().into_taintable(&self.tainted_by_errors)
     }
 
     fn item_def_id(&self) -> LocalDefId {
@@ -1411,7 +1575,6 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         .of_trait
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
     let selfty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
-    let is_rustc_reservation = find_attr!(tcx, def_id, RustcReservationImpl(..));
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 
@@ -1420,7 +1583,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
     ty::ImplTraitHeader {
         trait_ref: ty::EarlyBinder::bind(tcx, trait_ref),
         safety: of_trait.safety,
-        polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
+        polarity: polarity_of_impl(of_trait),
         constness: impl_.constness,
     }
 }
@@ -1467,26 +1630,10 @@ fn check_impl_constness(
     });
 }
 
-fn polarity_of_impl(
-    tcx: TyCtxt<'_>,
-    of_trait: &hir::TraitImplHeader<'_>,
-    is_rustc_reservation: bool,
-) -> ty::ImplPolarity {
+fn polarity_of_impl(of_trait: &hir::TraitImplHeader<'_>) -> ty::ImplPolarity {
     match of_trait.polarity {
-        hir::ImplPolarity::Negative(span) => {
-            if is_rustc_reservation {
-                let span = span.to(of_trait.trait_ref.path.span);
-                tcx.dcx().span_err(span, "reservation impls can't be negative");
-            }
-            ty::ImplPolarity::Negative
-        }
-        hir::ImplPolarity::Positive => {
-            if is_rustc_reservation {
-                ty::ImplPolarity::Reservation
-            } else {
-                ty::ImplPolarity::Positive
-            }
-        }
+        hir::ImplPolarity::Negative(_) => ty::ImplPolarity::Negative,
+        hir::ImplPolarity::Positive => ty::ImplPolarity::Positive,
     }
 }
 
@@ -1676,25 +1823,24 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
 fn const_of_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+) -> Option<ty::EarlyBinder<'tcx, Const<'tcx>>> {
     let ct_rhs = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => *ct,
-        hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(_, ct), .. }) => {
-            ct.expect("no default value for trait assoc const")
-        }
-        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => *ct,
-        _ => {
-            span_bug!(tcx.def_span(def_id), "`const_of_item` expected a const or assoc const item")
+        hir::Node::Item(&hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => ct,
+        hir::Node::TraitItem(&hir::TraitItem {
+            kind: hir::TraitItemKind::Const(_, ct), ..
+        }) => ct?,
+        hir::Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => ct,
+        node => {
+            span_bug!(
+                tcx.def_span(def_id),
+                "`const_of_item` expected a const or assoc const item, got {node:?}"
+            )
         }
     };
     let ct_arg = match ct_rhs {
-        hir::ConstItemRhs::TypeConst(ct_arg) => ct_arg,
+        hir::ConstItemRhs::Direct(ct_arg) => ct_arg,
         hir::ConstItemRhs::Body(_) => {
-            let e = tcx.dcx().span_delayed_bug(
-                tcx.def_span(def_id),
-                "cannot call const_of_item on a non-type_const",
-            );
-            return ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e));
+            return None;
         }
     };
     let icx = ItemCtxt::new(tcx, def_id);
@@ -1706,8 +1852,8 @@ fn const_of_item<'tcx>(
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {
-        ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e))
+        Some(ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e)))
     } else {
-        ty::EarlyBinder::bind(tcx, ct)
+        Some(ty::EarlyBinder::bind(tcx, ct))
     }
 }

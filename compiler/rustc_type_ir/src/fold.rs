@@ -55,7 +55,10 @@ use tracing::{debug, instrument};
 
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
-use crate::{self as ty, BoundVarIndexKind, Interner, Region};
+use crate::{
+    self as ty, Binder, BoundVarIndexKind, ClauseKind, Flags, Interner, ProjectionClause, Region,
+    TypeSuperVisitable,
+};
 
 /// This trait is implemented for every type that can be folded,
 /// providing the skeleton of the traversal.
@@ -145,13 +148,40 @@ pub trait TypeFolder<I: Interner>: Sized {
         c.super_fold_with(self)
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         p.super_fold_with(self)
     }
 
     fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
         c.super_fold_with(self)
     }
+}
+
+/// [Fold predicate](TypeFolder::fold_predicate) deliberately doesn't get access
+/// to an actual predicate. This way, we can compress lists of predicates, and hide
+/// this detail to folders. Instead, some type implementing this trait, [`PredicateProxy`]
+/// is passed, with its limited API.
+///
+/// Most [`TypeFolder`]s only use `fold_predicate` to inspect type flags.
+pub trait PredicateProxy<I: Interner>:
+    TypeSuperFoldable<I> + TypeSuperVisitable<I> + Flags + Copy
+{
+    fn allow_normalization(&self) -> bool;
+
+    /// Gets the underlying clause kind (if this predicate is a clause, otherwise `None`).
+    /// The fact that it's `unchecked`, is because no attempt is made to hide implementation
+    /// details. For example, in the future we may compress clauses together. Code calling
+    /// `clause_kind_unchecked` will have to correctly deal with these implementation details,
+    /// and have code handling any edgecase arising as a result.
+    fn clause_kind_unchecked(&self) -> Option<Binder<I, ClauseKind<I>>>;
+
+    /// If self is a projection clause, call `f` with it. The result will be rebound and returned as `Some`.
+    /// Otherwise, when self is not a projection clause, `None` is returned.
+    fn map_projection(
+        self,
+        cx: I,
+        f: impl FnOnce(Binder<I, ProjectionClause<I>>) -> Binder<I, ProjectionClause<I>>,
+    ) -> Option<Self>;
 }
 
 /// This trait is implemented for every folding traversal. There is a fold
@@ -187,7 +217,7 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
         c.try_super_fold_with(self)
     }
 
-    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
+    fn try_fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Result<P, Self::Error> {
         p.try_super_fold_with(self)
     }
 
@@ -430,7 +460,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
 
@@ -546,7 +576,7 @@ where
         if ct.has_regions() { ct.super_fold_with(self) } else { ct }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_regions() { p.super_fold_with(self) } else { p }
     }
 
@@ -692,7 +722,7 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if self.mode.needs_change(&p) { p.super_fold_with(self) } else { p }
     }
 

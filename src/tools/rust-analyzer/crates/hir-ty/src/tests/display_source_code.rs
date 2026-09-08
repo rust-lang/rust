@@ -85,7 +85,20 @@ fn render_dyn_for_ty() {
 trait Foo<'a> {}
 
 fn foo(foo: &dyn for<'a> Foo<'a>) {}
-    // ^^^ &(dyn Foo<'_> + 'static)
+    // ^^^ &(dyn Foo<'?0.0> + 'static)
+"#,
+    );
+}
+
+#[test]
+fn render_dyn_ty_under_enclosing_binder() {
+    check_types_source_code(
+        r#"
+//- minicore: fn
+fn test(f: impl for<'b> Fn(&dyn Fn() -> &'b u8)) {
+    f;
+  //^ impl Fn(&(dyn Fn() -> &u8 + 'static))
+}
 "#,
     );
 }

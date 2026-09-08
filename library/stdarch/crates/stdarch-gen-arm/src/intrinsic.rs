@@ -682,7 +682,7 @@ impl ToTokens for LLVMLink {
         let signature = self.signature.as_ref().unwrap();
         let links = self.links.as_ref().unwrap();
         tokens.append_all(quote! {
-            unsafe extern "unadjusted" {
+            unsafe extern "llvm-intrinsic" {
                 #(#links)*
                 #signature;
             }

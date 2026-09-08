@@ -23,7 +23,7 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::metadata::{ModChild, Reexport};
+use rustc_middle::middle::resolve::{ModChild, PartialRes, Reexport};
 use rustc_middle::ty::{TyCtxtFeed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{CRATE_MOD_ID, ModId};
@@ -319,14 +319,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     PathResult::NonModule(partial_res) => {
                         expected_found_error(partial_res.expect_full_res())
                     }
-                    PathResult::Failed { label, suggestion, message, segment, .. } => {
-                        Err(VisResolutionError::FailedToResolve(
-                            segment.span,
-                            segment.name,
+                    PathResult::Failed { label, suggestion, help, message, segment, .. } => {
+                        Err(VisResolutionError::FailedToResolve {
+                            span: segment.span,
+                            segment: segment.name,
                             label,
                             suggestion,
+                            help,
                             message,
-                        ))
+                        })
                     }
                     PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
                 }
@@ -459,7 +460,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::GlobalAsm
                 | DefKind::Closure
                 | DefKind::SyntheticCoroutineBody
-                | DefKind::Impl { .. },
+                | DefKind::Impl { .. }
+                | DefKind::TestBinderConstraints,
                 _,
             )
             | Res::Local(..)
@@ -987,7 +989,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Impl { .. }
             | ItemKind::ForeignMod(..)
             | ItemKind::GlobalAsm(..)
-            | ItemKind::ConstBlock(..) => {}
+            | ItemKind::ConstBlock(..)
+            | ItemKind::TestBinderConstraints(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()

@@ -326,7 +326,7 @@ fn find_path_suggestion(
             break;
         }
         // base_dir may be absolute
-        while let Some(base_next) = base_c.next() {
+        for base_next in base_c.by_ref() {
             if base_next == wanted_next {
                 without_base = Some(wanted_c.as_path());
                 break;
@@ -371,5 +371,5 @@ fn find_path_suggestion(
     root_absolute
         .chain(add)
         .chain(remove)
-        .find(|new_path| source_map.file_exists(&base_dir.join(&new_path)))
+        .find(|new_path| source_map.file_exists(&base_dir.join(new_path)))
 }

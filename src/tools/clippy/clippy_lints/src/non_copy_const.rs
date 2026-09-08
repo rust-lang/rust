@@ -3,10 +3,9 @@
 // For `declare_interior_mutable_const` there are three strategies used to
 // determine if a value has interior mutability:
 // * A type-based check. This is the least accurate, but can always run.
-// * A const-eval based check. This is the most accurate, but this requires that the value is
-//   defined and does not work with generics.
-// * A HIR-tree based check. This is less accurate than const-eval, but it can be applied to generic
-//   values.
+// * A const-eval based check. This is the most accurate, but this requires that the value is defined and does not work
+//   with generics.
+// * A HIR-tree based check. This is less accurate than const-eval, but it can be applied to generic values.
 //
 // For `borrow_interior_mutable_const` the same three strategies are applied
 // when checking a constant's value, but field and array index projections at
@@ -966,7 +965,7 @@ fn get_const_hir_value<'tcx>(
     };
     match ct_rhs {
         ConstItemRhs::Body(body_id) => Some((tcx.typeck(did), tcx.hir_body(body_id).value)),
-        ConstItemRhs::TypeConst(ct_arg) => match ct_arg.kind {
+        ConstItemRhs::Direct(ct_arg) => match ct_arg.kind {
             ConstArgKind::Anon(anon_const) => Some((tcx.typeck(did), tcx.hir_body(anon_const.body).value)),
             _ => None,
         },

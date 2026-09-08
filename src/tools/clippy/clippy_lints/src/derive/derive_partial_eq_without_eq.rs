@@ -76,14 +76,18 @@ fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) ->
         }
     }
 
-    let param_env = ParamEnv::new(tcx.mk_clauses_from_iter(ty_clauses.iter().map(|&(c, _)| c).chain(
-        params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-            ClauseKind::Trait(TraitClause {
-                trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                polarity: ty::ClausePolarity::Positive,
-            })
-            .upcast(tcx)
-        }),
-    )));
+    let param_env = ParamEnv::new(
+        tcx,
+        ty_clauses
+            .iter()
+            .map(|&(c, _)| c)
+            .chain(params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
+                ClauseKind::Trait(TraitClause {
+                    trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
+                    polarity: ty::ClausePolarity::Positive,
+                })
+                .upcast(tcx)
+            })),
+    );
     ty::TypingEnv::new(param_env, ty::TypingMode::non_body_analysis())
 }

@@ -12,7 +12,9 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
+use rustc_macros::{
+    Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, PrintAttribute, StableHash,
+};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
@@ -70,42 +72,6 @@ pub enum CguFields {
     ExpectedCguReuse { cfg: Symbol, module: Symbol, kind: CguKind },
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, PrintAttribute)]
-#[derive(StableHash, Encodable, Decodable)]
-pub enum DivergingFallbackBehavior {
-    /// Always fallback to `()` (aka "always spontaneous decay")
-    ToUnit,
-    /// Always fallback to `!` (which should be equivalent to never falling back + not making
-    /// never-to-any coercions unless necessary)
-    ToNever,
-    /// Don't fallback at all
-    NoFallback,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, PrintAttribute, Default)]
-#[derive(StableHash, Encodable, Decodable)]
-pub enum DivergingBlockBehavior {
-    /// This is the current stable behavior:
-    ///
-    /// ```rust
-    /// {
-    ///     return;
-    /// } // block has type = !, even though we are supposedly dropping it with `;`
-    /// ```
-    #[default]
-    Never,
-
-    /// Alternative behavior:
-    ///
-    /// ```ignore (very-unstable-new-attribute)
-    /// #![rustc_never_type_options(diverging_block_default = "unit")]
-    /// {
-    ///     return;
-    /// } // block has type = (), since we are dropping `!` from `return` with `;`
-    /// ```
-    Unit,
-}
-
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
 pub enum InlineAttr {
     None,
@@ -144,7 +110,8 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, Eq, StableHash, PrintAttribute)]
+#[derive(Copy, Clone, Debug)]
+#[derive(Encodable_NoContext, Decodable_NoContext, StableHash, PrintAttribute)]
 pub enum InstrumentFnAttr {
     /// `#[instrument_fn = "on"]`
     On,
@@ -172,7 +139,19 @@ impl OptimizeAttr {
     }
 }
 
-#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, StableHash, PrintAttribute)]
+#[derive(
+    PartialEq,
+    Eq,
+    Debug,
+    PartialOrd,
+    Ord,
+    Encodable,
+    Decodable,
+    Copy,
+    Clone,
+    StableHash,
+    PrintAttribute
+)]
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprRust,
@@ -188,7 +167,7 @@ pub enum TransparencyError {
     MultipleTransparencyAttrs(Span, Span),
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, PartialOrd, Ord)]
 #[derive(Encodable, Decodable, StableHash, PrintAttribute)]
 pub enum IntType {
     SignedInt(ast::IntTy),
@@ -1243,46 +1222,46 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dummy]`.
     RustcDummy,
 
-    /// Represents `#[rustc_dump_clauses]`
+    /// Represents the [`rustc_dump_clauses`](./attribute.rustc_dump_clauses.html) attribute.
     RustcDumpClauses,
 
-    /// Represents `#[rustc_dump_def_parents]`
+    /// Represents the [`rustc_dump_def_parents`](./attribute.rustc_dump_def_parents.html) attribute.
     RustcDumpDefParents,
 
-    /// Represents `#[rustc_dump_def_path]`
+    /// Represents the [`rustc_dump_def_path`](./attribute.rustc_dump_def_path.html) attribute.
     RustcDumpDefPath(Span),
 
-    /// Represents `#[rustc_dump_generics]`
+    /// Represents the [`rustc_dump_generics`](./attribute.rustc_dump_generics.html) attribute.
     RustcDumpGenerics,
 
-    /// Represents `#[rustc_dump_hidden_type_of_opaques]`
+    /// Represents the [`rustc_dump_hidden_type_of_opaques`](./attribute.rustc_dump_hidden_type_of_opaques.html) attribute.
     RustcDumpHiddenTypeOfOpaques,
 
-    /// Represents `#[rustc_dump_inferred_outlives]`
+    /// Represents the [`rustc_dump_inferred_outlives`](./attribute.rustc_dump_inferred_outlives.html) attribute.
     RustcDumpInferredOutlives,
 
-    /// Represents `#[rustc_dump_item_bounds]`
+    /// Represents the [`rustc_dump_item_bounds`](./attribute.rustc_dump_item_bounds.html) attribute.
     RustcDumpItemBounds,
 
-    /// Represents `#[rustc_dump_layout]`
+    /// Represents the [`rustc_dump_layout`](./attribute.rustc_dump_layout.html) attribute.
     RustcDumpLayout(ThinVec<RustcDumpLayoutKind>),
 
-    /// Represents `#[rustc_dump_object_lifetime_defaults]`.
+    /// Represents the [`rustc_dump_object_lifetime_defaults`](./attribute.rustc_dump_object_lifetime_defaults.html) attribute.
     RustcDumpObjectLifetimeDefaults,
 
-    /// Represents `#[rustc_dump_symbol_name]`
+    /// Represents the [`rustc_dump_symbol_name`](./attribute.rustc_dump_symbol_name.html) attribute.
     RustcDumpSymbolName(Span),
 
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
 
-    /// Represents `#[rustc_dump_variances]`
+    /// Represents the [`rustc_dump_variances`](./attribute.rustc_dump_variances.html) attribute.
     RustcDumpVariances,
 
-    /// Represents `#[rustc_dump_variances_of_opaques]`
+    /// Represents the [`rustc_dump_variances_of_opaques`](./attribute.rustc_dump_variances_of_opaques.html) attribute.
     RustcDumpVariancesOfOpaques,
 
-    /// Represents `#[rustc_dump_vtable]`
+    /// Represents the [`rustc_dump_vtable`](./attribute.rustc_dump_vtable.html) attribute.
     RustcDumpVtable(Span),
 
     /// Represents `#[rustc_dyn_incompatible_trait]`.
@@ -1355,12 +1334,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPtr,
 
-    /// Represents `#[rustc_never_type_options]`.
-    RustcNeverTypeOptions {
-        fallback: Option<DivergingFallbackBehavior>,
-        diverging_block_default: Option<DivergingBlockBehavior>,
-    },
-
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
@@ -1422,9 +1395,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_regions]`
     RustcRegions,
 
-    /// Represents `#[rustc_reservation_impl]`
-    RustcReservationImpl(Symbol),
-
     /// Represents `#[rustc_scalable_vector(N)]`
     RustcScalableVector {
         /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`
@@ -1452,9 +1422,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
-
-    /// Represents `#[rustc_test_entrypoint_marker]`
-    RustcTestEntrypointMarker,
 
     /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),

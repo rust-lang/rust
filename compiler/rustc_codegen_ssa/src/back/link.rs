@@ -3029,6 +3029,14 @@ fn linker_with_args(
         link_output_kind,
     );
 
+    if sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, config::Offload::Host(_))) {
+        cmd.link_dylib_by_name("omptarget", false, true);
+        cmd.link_dylib_by_name("omp", false, true);
+        cmd.link_args(["-z", "nostart-stop-gc"]);
+        cmd.link_arg("-rpath");
+        cmd.link_arg(std::path::absolute(&*sess.target_tlib_path.dir).unwrap());
+    }
+
     // Upstream rust crates and their non-dynamic native libraries.
     add_upstream_rust_crates(
         cmd,
@@ -4129,7 +4137,7 @@ fn add_lld_args(
     // `lld` as the linker.
     //
     // Note that wasm targets skip this step since the only option there anyway
-    // is to use LLD but the `wasm32-wasip2` target relies on a wrapper around
+    // is to use LLD but component-producing targets rely on a wrapper around
     // this, `wasm-component-ld`, which is overridden if this option is passed.
     if !sess.target.is_like_wasm {
         cmd.cc_arg("-fuse-ld=lld");

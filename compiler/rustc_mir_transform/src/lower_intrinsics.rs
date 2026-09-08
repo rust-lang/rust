@@ -339,7 +339,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements intrinsic semantics by lowering intrinsic calls to ordinary MIR operations.
         PassPolicy::Required
     }

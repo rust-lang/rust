@@ -1,0 +1,10 @@
+---
+source: src/test/mod.rs
+---
+error: invalid attribute
+ --> tests/warning/source/invalid_attribute.rs:1
+  |
+1 | #[rustfmt::invalid]
+  |
+
+warning: rustfmt has failed to format. See previous 1 errors.

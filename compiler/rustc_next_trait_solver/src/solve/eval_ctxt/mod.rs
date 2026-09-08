@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::region_constraint::{RegionConstraint, evaluate_solver_constraint};
+use rustc_type_ir::region_constraint::{self, RegionConstraint};
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{
@@ -18,8 +18,9 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, Region, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars,
+    OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    eager_resolve_vars, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -41,8 +42,8 @@ use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
-    Goal, GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
+    CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT, Goal,
+    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
     NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
     VisibleForLeakCheck, inspect,
 };
@@ -516,7 +517,7 @@ where
     pub(super) fn enter_canonical<T>(
         cx: I,
         search_graph: &'a mut SearchGraph<D>,
-        canonical_input: CanonicalInput<I>,
+        canonical_input: I::CanonicalInput,
         proof_tree_builder: &mut inspect::ProofTreeBuilder<D>,
         f: impl FnOnce(
             &mut EvalCtxt<'_, D>,
@@ -833,7 +834,7 @@ where
 
     fn build_stalled_on(
         &self,
-        canonical_goal: CanonicalInput<I>,
+        canonical_goal: I::CanonicalInput,
         maybe_info: MaybeInfo,
         stalled_vars: ThinVec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
@@ -1074,7 +1075,8 @@ where
             | ty::AliasTermKind::OpaqueTy { .. }
             | ty::AliasTermKind::FreeTy { .. } => self.next_ty_infer().into(),
             ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::AnonConst { .. }
             | ty::AliasTermKind::ProjectionConst { .. } => self.next_const_infer().into(),
         }
@@ -1176,7 +1178,7 @@ where
                 }
             }
 
-            fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
+            fn visit_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Self::Result {
                 if p.has_non_region_infer() || p.has_placeholders() {
                     p.super_visit_with(self)
                 } else {
@@ -1440,12 +1442,15 @@ where
                 if self.resolve_vars_if_possible(alias_const).has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
+                    // Evaluation failed because the const was too generic or was an invalid type
+                    // for const generics. The result of normalization is the alias itself,
+                    // unchanged, but marked as rigid.
+                    //
                     // We do not instantiate to the `alias_const` passed in, but rather
-                    // `goal.predicate.alias`. The `alias_const` passed in might correspond to the `impl`
-                    // form of a constant (with generic arguments corresponding to the impl block),
-                    // however, we want to structurally instantiate to the original, non-rebased,
-                    // trait `Self` form of the constant (with generic arguments being the trait
-                    // `Self` type).
+                    // `projection_term`, which is the unprocessed, original alias contained within
+                    // the goal. The `alias_const` passed in might be a Projection whose DefId is an
+                    // impl of the trait, however, we want to structurally instantiate to the
+                    // original DefId on the trait itself.
                     self.eq(
                         param_env,
                         projection_term.to_term(self.cx(), ty::IsRigid::Yes),
@@ -1608,6 +1613,75 @@ where
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
         }
 
+        #[derive(Default)]
+        struct NonTrivialVars {
+            vars: HashSet<RegionVid>,
+        }
+        impl<I> TypeVisitor<I> for NonTrivialVars
+        where
+            I: Interner,
+        {
+            type Result = ();
+            fn visit_ty(&mut self, t: I::Ty) {
+                // If a nested type doesn't have any `ReVar`s, then we won't insert
+                // anything into `vars` anyway, so skip for better perf.
+                if !t.has_infer_regions() {
+                    return;
+                }
+                t.super_visit_with(self);
+            }
+            fn visit_const(&mut self, c: I::Const) {
+                // The same goes for consts.
+                if !c.has_infer_regions() {
+                    return;
+                }
+                c.super_visit_with(self);
+            }
+            fn visit_region(&mut self, r: Region<I>) {
+                if let ty::ReVar(vid) = r.kind() {
+                    self.vars.insert(vid);
+                }
+            }
+        }
+
+        // If we have a constraint like `'re: '?1`, where '?1 can name 're and '?1 appears
+        // only on the RHS of region constraints, then this kind of constraint is also trivial,
+        // since we're able to pick '?1 := 'empty, and 're: 'empty is always true for any 're.
+        if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints
+            && !r.is_empty()
+        {
+            let mut vis = NonTrivialVars::default();
+            var_values.visit_with(&mut vis);
+            // We have to visit each component of `external_constraints` individually here
+            // because we skip the RHS of outlives constraints, and `TypeVisitor` doesn't
+            // have a method we can easily override in order to do this.
+            external_constraints.opaque_types.visit_with(&mut vis);
+            external_constraints.normalization_nested_goals.visit_with(&mut vis);
+            for (constraint, _) in r.iter() {
+                match constraint {
+                    ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, _)) => {
+                        sup.visit_with(&mut vis)
+                    }
+                    ty::RegionConstraint::Eq(eq) => eq.visit_with(&mut vis),
+                }
+            }
+
+            r.retain(|(outlives, _)| {
+                if let ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, re)) = *outlives
+                    && let Some(sup_re) = sup.as_region()
+                    && let ty::RegionKind::ReVar(vid) = re.kind()
+                    // This is only safe if we call `eager_resolve_vars` beforehand,
+                    // which we do.
+                    && self.delegate.universe_of_lt(vid).unwrap()
+                        .can_name(max_universe(&**self.delegate, sup_re))
+                {
+                    vis.vars.contains(&vid)
+                } else {
+                    true
+                }
+            });
+        }
+
         let canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
@@ -1663,7 +1737,7 @@ where
                 let constraint = self.delegate.get_solver_region_constraint();
                 debug_assert_eq!(
                     constraint,
-                    evaluate_solver_constraint(&constraint.clone().canonical_form())
+                    region_constraint::propagate_ambiguity(constraint.clone())
                 );
                 constraint
             } else {
@@ -1827,7 +1901,7 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
     I: Interner,
 >(
     cx: I,
-    canonical_goal: CanonicalInput<I>,
+    canonical_goal: I::CanonicalInput,
     root_depth: usize,
 ) -> (QueryResult<I>, I::Probe, RequiredDepth) {
     let mut inspect = inspect::ProofTreeBuilder::new();

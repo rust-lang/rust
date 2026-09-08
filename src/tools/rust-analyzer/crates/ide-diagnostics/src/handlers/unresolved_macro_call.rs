@@ -105,4 +105,16 @@ fn foo() {
     "#,
         );
     }
+
+    #[test]
+    fn tool_attribute_with_keyword_segment() {
+        check_diagnostics(
+            r#"
+#[diagnostic::Self(message = "foo")]
+trait Foo {}
+#[clippy::Self(message = "foo")]
+trait Bar {}
+        "#,
+        );
+    }
 }

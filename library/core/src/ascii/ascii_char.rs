@@ -635,7 +635,7 @@ impl AsciiChar {
     pub const fn eq_ignore_case(self, other: Self) -> bool {
         // FIXME(const-hack) `arg.to_u8().to_ascii_lowercase()` -> `arg.to_lowercase()`
         // once `PartialEq` is const for `Self`.
-        self.to_u8().to_ascii_lowercase() == other.to_u8().to_ascii_lowercase()
+        self.to_u8().eq_ignore_ascii_case(&other.to_u8())
     }
 
     /// Converts this value to its upper case equivalent in-place.

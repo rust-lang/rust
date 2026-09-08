@@ -11,7 +11,7 @@ use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, GenericArgsRef, RegionExt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::sym;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
@@ -43,12 +43,7 @@ pub(crate) fn check_drop_impl(
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
-            return Err(tcx.dcx().emit_err(diagnostics::DropImplPolarity::Negative {
-                span: tcx.def_span(drop_impl_did),
-            }));
-        }
-        ty::ImplPolarity::Reservation => {
-            return Err(tcx.dcx().emit_err(diagnostics::DropImplPolarity::Reservation {
+            return Err(tcx.dcx().emit_err(diagnostics::NegativeDropImplPolarity {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
@@ -153,7 +148,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
     let item_span = tcx.def_span(adt_def_id);
     let self_descr = tcx.def_descr(adt_def_id);
     let polarity = match tcx.impl_polarity(impl_def_id) {
-        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Positive => "",
         ty::ImplPolarity::Negative => "!",
     };
     let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
@@ -265,7 +260,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     let impl_span = tcx.def_span(impl_def_id.to_def_id());
     let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
     let polarity = match tcx.impl_polarity(impl_def_id) {
-        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Positive => "",
         ty::ImplPolarity::Negative => "!",
     };
     // Take the param-env of the adt and instantiate the args that show up in

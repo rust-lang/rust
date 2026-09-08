@@ -72,13 +72,13 @@ macro_rules! forward_ref_op_assign {
 macro_rules! impl_fn_for_zst {
     ($(
         $( #[$attr: meta] )*
-        struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )? Fn =
+        $vis:vis struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )? Fn =
             |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty
             $body: block;
     )+) => {
         $(
             $( #[$attr] )*
-            struct $Name;
+            $vis struct $Name;
 
             impl $( <$( $lifetime ),+> )? Fn<($( $ArgTy, )*)> for $Name {
                 #[inline]
@@ -107,4 +107,14 @@ macro_rules! impl_fn_for_zst {
             }
         )+
     }
+}
+
+/// Permanently unstable. Only used in internal rustc tests. Do not use.
+#[rustc_builtin_macro(test_binder_constraints)]
+#[unstable(feature = "test_binder_constraints", issue = "none")]
+#[macro_export]
+macro_rules! test_binder_constraints {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
 }

@@ -2,6 +2,8 @@
 //@ only-x86_64
 //@ needs-target-std
 //@ needs-crate-type: dylib
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::read::{File, Object, Symbol};

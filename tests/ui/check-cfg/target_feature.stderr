@@ -409,6 +409,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `vector-packed-decimal-enhancement-2`
 `vector-packed-decimal-enhancement-3`
 `vfp2`
+`vfp2sp`
 `vfp3`
 `vfp4`
 `vh`

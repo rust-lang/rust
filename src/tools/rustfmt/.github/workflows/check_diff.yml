@@ -32,6 +32,14 @@ on:
       rustfmt_configs:
         description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
         required: false
+      release_channel:
+        description: 'Configure which release channel to use when compiling rustfmt'
+        default: stable
+        type: choice
+        options:
+          - stable
+          - beta
+          - nightly
 
 permissions:
   contents: read

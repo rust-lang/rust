@@ -379,20 +379,13 @@ impl Diagnostic {
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
         let buf = String::from_utf8(buf).unwrap();
 
-        Diagnostic {
-            message: formatted_message.to_string(),
-            code,
-            level,
-            spans,
-            children,
-            rendered: Some(buf),
-        }
+        Diagnostic { message: formatted_message, code, level, spans, children, rendered: Some(buf) }
     }
 
     fn from_sub_diagnostic(subdiag: &Subdiag, args: &DiagArgMap, je: &JsonEmitter) -> Diagnostic {
         let formatted_message = format_diag_messages(&subdiag.messages, args);
         Diagnostic {
-            message: formatted_message.to_string(),
+            message: formatted_message,
             code: None,
             level: subdiag.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&subdiag.span, args, je),

@@ -11,9 +11,9 @@ use crate::ty::{
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 #[derive(TyDecodable, TyEncodable, StableHash, TypeVisitable, TypeFoldable)]
 pub enum CastKind {
-    /// thir::ExprKind::As
+    /// `thir::ExprKind::As`
     As,
-    /// thir::ExprKind::Use
+    /// `thir::ExprKind::ValueExpr`
     Use,
 }
 

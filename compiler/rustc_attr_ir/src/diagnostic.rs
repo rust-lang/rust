@@ -204,9 +204,9 @@ impl FormatString {
 /// ```rust,ignore (just an example)
 /// FormatArgs {
 ///     this: "FromResidual",
-///     this_resolved: "FromResidual<Option<Infallible>>",
+///     this_resolved: "FromResidual<Option<!>>",
 ///     item_context: "an async function",
-///     generic_args: [("Self", "u32"), ("R", "Option<Infallible>")],
+///     generic_args: [("Self", "u32"), ("R", "Option<!>")],
 /// }
 /// ```
 #[derive(Debug)]
@@ -444,7 +444,7 @@ pub enum LitOrArg {
 ///     crate_local: false,
 ///     direct: true,
 ///     generic_args: [("Self","u32"),
-///         ("R", "core::option::Option<core::convert::Infallible>"),
+///         ("R", "core::option::Option<!>"),
 ///         ("R", "core::option::Option<T>" ),
 ///     ],
 /// }

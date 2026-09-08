@@ -152,7 +152,7 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - _Applied to struct or struct fields of type `Span`, `Option<()>`, `bool`, or `()`._
   - Adds a warning subdiagnostic.
   - Value is the warning's message.
-- `#[suggestion{,_hidden,_short,_verbose}("message", code = "...", applicability = "...")]`
+- `#[suggestion("message", code = "...", applicability = "...", style = "...")]`
   (_Optional_)
   - _Applied to `(Span, MachineApplicability)` or `Span` fields._
   - Adds a suggestion subdiagnostic.
@@ -165,6 +165,9 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - `applicability = "..."` (_Optional_)
     - String which must be one of `machine-applicable`, `maybe-incorrect`,
       `has-placeholders` or `unspecified`.
+  - `style = "..."` (_Optional_)
+    - Value is the style of the suggestion.
+    - String which must be one of `normal`, `short`, `hidden`, `verbose` or `tool-only`.
 - `#[subdiagnostic]`
   - _Applied to a type that implements `Subdiagnostic` (from `#[derive(Subdiagnostic)]`)._
   - Adds the subdiagnostic represented by the subdiagnostic struct.
@@ -209,7 +212,7 @@ Each `Subdiagnostic` should have one attribute applied to the struct or each var
 - `#[note(..)]` for defining a note
 - `#[help(..)]` for defining a help
 - `#[warning(..)]` for defining a warning
-- `#[suggestion{,_hidden,_short,_verbose}(..)]` for defining a suggestion
+- `#[suggestion(..)]` for defining a suggestion
 
 All of the above must provide a diagnostic message as the first positional argument.
 See [translation documentation](./translation.md) to learn more about how
@@ -305,7 +308,7 @@ Additionally, subdiagnostics can access arguments from the main diagnostic with 
   - Message (_Mandatory_)
     - The diagnostic message that will be shown to the user.
     - See [translation documentation](./translation.md).
-- `#[suggestion{,_hidden,_short,_verbose}("message", code = "...", applicability = "...")]`
+- `#[suggestion("message", code = "...", applicability = "...", style = "...")]`
   - _Applied to struct or enum variant.
     Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
@@ -324,13 +327,22 @@ Additionally, subdiagnostics can access arguments from the main diagnostic with 
       - `maybe-incorrect`
       - `has-placeholders`
       - `unspecified`
-- `#[multipart_suggestion{,_hidden,_short,_verbose}("message", applicability = "...")]`
+  - `style = "..."` (_Optional_)
+    - Value is the style of the suggestion.
+    - String which must be one of:
+      - `normal` (the default)
+      - `short`
+      - `hidden`
+      - `verbose`
+      - `tool-only`
+- `#[multipart_suggestion("message", applicability = "...", style = "...")]`
   - _Applied to struct or enum variant.
     Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a multipart suggestion.
   - Message (_Mandatory_): see `#[suggestion]`
   - `applicability = "..."` (_Optional_): see `#[suggestion]`
+  - `style = "..."` (_Optional_): see `#[suggestion]`
 - `#[primary_span]` (_Mandatory_ for labels and suggestions; _optional_ otherwise; not applicable
 to multipart suggestions)
   - _Applied to `Span` fields._

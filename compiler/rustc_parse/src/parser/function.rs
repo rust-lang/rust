@@ -778,12 +778,10 @@ impl<'a> Parser<'a> {
                     };
                 }
 
-                this.eat_incorrect_doc_comment_for_param_type();
                 (pat, this.parse_ty_for_param()?)
             } else {
                 debug!("parse_param_general ident_to_pat");
                 let parser_snapshot_before_ty = this.create_snapshot_for_diagnostic();
-                this.eat_incorrect_doc_comment_for_param_type();
                 let mut ty = this.parse_ty_for_param();
 
                 if let Ok(t) = &ty {
@@ -853,7 +851,7 @@ impl<'a> Parser<'a> {
         };
         // Is `pin const self` `n` tokens ahead?
         let is_isolated_pin_const_self = |this: &Self, n| {
-            this.look_ahead(n, |token| token.is_ident_named(sym::pin))
+            this.is_keyword_ahead(n, &[kw::Pin])
                 && this.is_keyword_ahead(n + 1, &[kw::Const])
                 && is_isolated_self(this, n + 2)
         };
@@ -862,8 +860,7 @@ impl<'a> Parser<'a> {
             |this: &Self, n| this.is_keyword_ahead(n, &[kw::Mut]) && is_isolated_self(this, n + 1);
         // Is `pin mut self` `n` tokens ahead?
         let is_isolated_pin_mut_self = |this: &Self, n| {
-            this.look_ahead(n, |token| token.is_ident_named(sym::pin))
-                && is_isolated_mut_self(this, n + 1)
+            this.is_keyword_ahead(n, &[kw::Pin]) && is_isolated_mut_self(this, n + 1)
         };
         // Parse `self` or `self: TYPE`. We already know the current token is `self`.
         let parse_self_possibly_typed = |this: &mut Self, m| {

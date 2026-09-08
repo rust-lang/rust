@@ -72,7 +72,7 @@ cfg_select_nofmt! {
         pub mod generic;
     }
     _ => {
-        mod generic;
+        pub(crate) mod generic;
     }
 }
 

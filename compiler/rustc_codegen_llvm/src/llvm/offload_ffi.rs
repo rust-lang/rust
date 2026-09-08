@@ -1,4 +1,5 @@
 use std::ffi::{CStr, c_char};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use super::ffi::{Module, TargetMachine, Value};
@@ -6,7 +7,10 @@ use super::ffi::{Module, TargetMachine, Value};
 type LLVMRustBundleImagesFn = unsafe extern "C" fn(&Module, &TargetMachine, *const c_char) -> bool;
 type LLVMRustOffloadEmbedBufferInModuleFn = unsafe extern "C" fn(&Module, *const c_char) -> bool;
 type LLVMRustOffloadMapperFn = unsafe extern "C" fn(&Value, &Value, *const &Value);
+type LLVMRustOffloadWrapImagesFn =
+    unsafe extern "C" fn(&Module, *const c_char, *const c_char) -> bool;
 
+use rustc_fs_util::path_to_c_string;
 use rustc_session::config::host_tuple;
 use rustc_session::filesearch;
 
@@ -16,6 +20,8 @@ pub(crate) struct RustOffloadWrapper {
     LLVMRustBundleImages: LLVMRustBundleImagesFn,
     LLVMRustOffloadEmbedBufferInModule: LLVMRustOffloadEmbedBufferInModuleFn,
     LLVMRustOffloadMapper: LLVMRustOffloadMapperFn,
+    LLVMRustOffloadWrapImages: LLVMRustOffloadWrapImagesFn,
+    lld_path: Option<PathBuf>,
     // Keep the dynamic library loaded while the function pointers are used.
     _lib: libloading::Library,
 }
@@ -71,10 +77,21 @@ impl RustOffloadWrapper {
         unsafe { (self.LLVMRustOffloadMapper)(v1, v2, vs.as_ptr()) }
     }
 
+    pub(crate) unsafe fn llvm_rust_offload_wrap_images(
+        &self,
+        host_m: &Module,
+        device_bin_path: &CStr,
+    ) -> bool {
+        let lld_c = self.lld_path.as_deref().map(path_to_c_string).unwrap_or_default();
+        unsafe {
+            (self.LLVMRustOffloadWrapImages)(host_m, lld_c.as_ptr(), device_bin_path.as_ptr())
+        }
+    }
+
     fn call_dynamic(
         sysroot: &rustc_session::config::Sysroot,
     ) -> Result<Self, RustOffloadLibraryError> {
-        let rust_offload_path = Self::get_rust_offload_path(sysroot)?;
+        let (rust_offload_path, lld_path) = Self::get_offload_and_lld_paths(sysroot)?;
         let lib = unsafe { libloading::Library::new(rust_offload_path)? };
 
         let llvm_rust_bundle_images =
@@ -86,48 +103,47 @@ impl RustOffloadWrapper {
         };
         let llvm_rust_offload_wrapper =
             *unsafe { lib.get::<LLVMRustOffloadMapperFn>(b"LLVMRustOffloadMapper\0")? };
+        let llvm_rust_offload_wrap_images =
+            *unsafe { lib.get::<LLVMRustOffloadWrapImagesFn>(b"LLVMRustOffloadWrapImages\0")? };
 
         Ok(Self {
             LLVMRustBundleImages: llvm_rust_bundle_images,
             LLVMRustOffloadEmbedBufferInModule: llvm_rust_offload_embed_buffer_in_module,
             LLVMRustOffloadMapper: llvm_rust_offload_wrapper,
+            LLVMRustOffloadWrapImages: llvm_rust_offload_wrap_images,
+            lld_path,
             _lib: lib,
         })
     }
 
-    fn get_rust_offload_path(
+    fn get_offload_and_lld_paths(
         sysroot: &rustc_session::config::Sysroot,
-    ) -> Result<String, RustOffloadLibraryError> {
+    ) -> Result<(PathBuf, Option<PathBuf>), RustOffloadLibraryError> {
         let llvm_version_major = unsafe { LLVMRustVersionMajor() };
+        let mut searched = Vec::new();
 
-        let path_buf = sysroot
-            .all_paths()
-            .find_map(|p| {
-                let candidate = filesearch::make_target_lib_path(p, host_tuple())
-                    .join(format!("libRustOffload-{}", llvm_version_major))
-                    .with_extension(std::env::consts::DLL_EXTENSION);
+        for root in sysroot.all_paths() {
+            let rust_offload_path = filesearch::make_target_lib_path(root, host_tuple())
+                .join(format!("libRustOffload-{llvm_version_major}"))
+                .with_extension(std::env::consts::DLL_EXTENSION);
 
-                candidate.exists().then_some(candidate)
-            })
-            .ok_or_else(|| {
-                let candidates = sysroot
-                    .all_paths()
-                    .map(|p| p.join("lib").display().to_string())
-                    .collect::<Vec<String>>()
-                    .join("\n* ");
-                RustOffloadLibraryError::NotFound {
-                    err: format!(
-                        "failed to find a `libRustOffload-{llvm_version_major}` \
-                    in the sysroot candidates:\n* {candidates}"
-                    ),
-                }
-            })?;
+            if !rust_offload_path.is_file() {
+                searched.push(rust_offload_path);
+                continue;
+            }
 
-        Ok(path_buf
-            .to_str()
-            .ok_or_else(|| RustOffloadLibraryError::LoadFailed {
-                err: format!("invalid UTF-8 in path: {}", path_buf.display()),
-            })?
-            .to_string())
+            let lld_path = filesearch::make_target_bin_path(root, host_tuple())
+                .join(format!("rust-lld{}", std::env::consts::EXE_SUFFIX));
+            let lld_path = lld_path.is_file().then_some(lld_path);
+
+            return Ok((rust_offload_path, lld_path));
+        }
+
+        Err(RustOffloadLibraryError::NotFound {
+            err: format!(
+                "could not find libRustOffload-{llvm_version_major} in the sysroot candidates:\n* {}",
+                searched.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join("\n* ")
+            ),
+        })
     }
 }
