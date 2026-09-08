@@ -78,7 +78,7 @@ pub(crate) struct SourceAnalyzer<'db> {
     pub(crate) file_id: HirFileId,
     pub(crate) resolver: Resolver<'db>,
     pub(crate) body_or_sig: Option<BodyOrSig<'db>>,
-    pub(crate) type_owner: TypeOwnerId<'db>,
+    pub(crate) type_owner: TypeOwnerId,
     pub(crate) infer_body: Option<InferBodyId<'db>>,
 }
 
