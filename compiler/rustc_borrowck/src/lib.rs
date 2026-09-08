@@ -317,12 +317,13 @@ struct CollectRegionConstraintsResult<'tcx> {
 /// Start borrow checking by collecting the region constraints for
 /// the current body. This initializes the relevant data structures
 /// and then type checks the MIR body.
-fn borrowck_collect_region_constraints<'tcx>(
-    root_cx: &BorrowCheckRootCtxt<'_, 'tcx>,
+fn borrowck_collect_region_constraints(
+    tcx: TyCtxt,
+    root_def_id: LocalDefId,
     def: LocalDefId,
-) -> CollectRegionConstraintsResult<'tcx> {
-    let tcx = root_cx.tcx;
-    let infcx = BorrowckInferCtxt::new(tcx, def, root_cx.root_def_id());
+    polonius_input: bool,
+) -> CollectRegionConstraintsResult {
+    let infcx = BorrowckInferCtxt::new(tcx, def, root_def_id);
     let (input_body, promoted) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();
     let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
@@ -348,8 +349,6 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
-    let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
-        || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
 
@@ -362,7 +361,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         deferred_closure_requirements,
         polonius_context,
     } = type_check::type_check(
-        root_cx,
+        root_def_id,
         &infcx,
         body,
         &promoted,

@@ -283,8 +283,15 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         // checked that closure.
         let all_bodies = nested_bodies.iter().chain(std::iter::once(self.root_def_id));
 
+        let polonius_input = self.consumer.as_ref().map_or(false, |c| c.polonius_input())
+            || self.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
         for def_id in all_bodies {
-            let result = borrowck_collect_region_constraints(self, def_id);
+            let result = borrowck_collect_region_constraints(
+                self.tcx,
+                self.root_def_id(),
+                def_id,
+                polonius_input,
+            );
             collect_region_constraints_results.insert(def_id, result);
         }
 
