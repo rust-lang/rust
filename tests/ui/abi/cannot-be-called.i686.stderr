@@ -61,14 +61,14 @@ LL | fn gpu_kernel_ptr(f: extern "gpu-kernel" fn()) {
 error: functions with the "x86-interrupt" ABI cannot be called
   --> $DIR/cannot-be-called.rs:68:5
    |
-LL |     x86(&raw const BYTE);
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |     x86([0; 5]);
+   |     ^^^^^^^^^^^
    |
 note: an `extern "x86-interrupt"` function can only be called using inline assembly
   --> $DIR/cannot-be-called.rs:68:5
    |
-LL |     x86(&raw const BYTE);
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |     x86([0; 5]);
+   |     ^^^^^^^^^^^
 
 error: functions with the "x86-interrupt" ABI cannot be called
   --> $DIR/cannot-be-called.rs:102:5
