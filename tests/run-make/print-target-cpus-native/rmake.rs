@@ -1,6 +1,7 @@
 //@ ignore-cross-compile
 //@ needs-llvm-components: aarch64 x86
 // FIXME(#132514): Is needs-llvm-components actually necessary for this test?
+//@ ignore-backends: gcc
 
 use run_make_support::{assert_contains_regex, rfs, rustc, target};
 

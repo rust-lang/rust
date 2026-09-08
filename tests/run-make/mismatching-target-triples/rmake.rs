@@ -5,6 +5,7 @@
 // error message is used.
 // See https://github.com/rust-lang/rust/issues/10814
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 use run_make_support::rustc;
 
