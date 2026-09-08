@@ -39,7 +39,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
-use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_structures::CrateType;
@@ -281,6 +280,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MoveSizeLimit { .. } => (),
             AttributeKind::MustNotSupend { .. } => (),
             AttributeKind::MustUse { .. } => (),
+            AttributeKind::Naked(..) => (),
             AttributeKind::NeedsAllocator => (),
             AttributeKind::NeedsPanicRuntime => (),
             AttributeKind::NoBuiltins => (),
