@@ -1,3 +1,4 @@
+use rustc_ast::ItemKind;
 use rustc_attr_ir::{
     CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, UsedBy, find_attr,
 };
@@ -8,6 +9,7 @@ use rustc_structures::SanitizerSet;
 
 use super::prelude::*;
 use crate::attributes::AttributeSafety;
+use crate::context::FinalizeCheckFn;
 use crate::diagnostics::{
     EmptyExportName, EmptySection, NakedFunctionIncompatibleAttribute, NullOnExport,
     NullOnObjcClass, NullOnObjcSelector, NullOnSection, ObjcClassExpectedStringLiteral,
@@ -326,6 +328,50 @@ impl AttributeParser for NakedParser {
         }
 
         Some(AttributeKind::Naked(span))
+    }
+
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        Some((
+            |cx, _| match cx.target {
+                Target::Fn
+                | Target::Method(
+                    MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+                ) => {
+                    let Some(item) = cx.target_item else {
+                        return;
+                    };
+
+                    let ItemKind::Fn(fn_item) = &item.kind else {
+                        return;
+                    };
+
+                    let fn_sig = &fn_item.sig;
+                    let abi = fn_sig.header.ext;
+
+                    if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
+                        let abi_type = match abi {
+                            rustc_ast::ast::Extern::None => "Rust".into(),
+                            rustc_ast::ast::Extern::Explicit(name, _) => {
+                                name.symbol_unescaped.to_string()
+                            }
+                            rustc_ast::ast::Extern::Implicit(_) => unreachable!(),
+                        };
+                        feature_err(
+                            cx.sess(),
+                            sym::naked_functions_rustic_abi,
+                            fn_sig.span,
+                            format!(
+                                "`#[naked]` is currently unstable on `extern \"{}\"` functions",
+                                abi_type
+                            ),
+                        )
+                        .emit();
+                    }
+                }
+                _ => {}
+            },
+            self.span?,
+        ))
     }
 }
 
