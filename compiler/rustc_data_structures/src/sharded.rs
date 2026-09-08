@@ -129,6 +129,16 @@ impl<T> Sharded<T> {
             Self::Shards(shards) => Either::Right(shards.iter().map(|shard| shard.0.try_lock())),
         }
     }
+
+    #[inline]
+    pub fn into_shards(self) -> impl Iterator<Item = T> {
+        match self {
+            Self::Single(single) => Either::Left(iter::once(single.into_inner())),
+            Self::Shards(shards) => {
+                Either::Right(shards.into_iter().map(|shard| shard.0.into_inner()))
+            }
+        }
+    }
 }
 
 #[inline]
@@ -164,6 +174,21 @@ impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
         let shard = self.lock_shard_by_hash(hash);
         let (_, value) = shard.find(hash, |(k, _)| k.borrow() == key)?;
         Some(value.clone())
+    }
+
+    #[inline]
+    pub fn remove<Q>(&self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hash = make_hash(&key);
+        let mut shard = self.lock_shard_by_hash(hash);
+
+        match table_entry(&mut shard, hash, &key) {
+            Entry::Occupied(e) => Some(e.remove().0.1),
+            Entry::Vacant(_) => None,
+        }
     }
 
     #[inline]
@@ -207,6 +232,10 @@ impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
                 shard.insert_unique(hash, (key, value), |(k, _)| make_hash(k));
             }
         }
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item = (K, V)> {
+        self.into_shards().map(|table| table.into_iter()).flatten()
     }
 }
 
