@@ -43,14 +43,13 @@ where
 ///   - otherwise: return the normalized result. It can be (partially) inferred
 ///     even if the evaluation result is ambiguous.
 fn normalize_with_universes<'tcx, T>(
-    at: At<'_, 'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<Normalized<'tcx, T>, PredicateObligation<'tcx>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
-    let infcx = at.infcx;
     let value = value.skip_normalization();
     let value = infcx.deeply_resolve_ignoring_regions(value);
 
@@ -61,10 +60,10 @@ where
     let mut stalled_goals = vec![];
     let mut folder = NormalizationFolder::new(infcx, universes, |alias_term| {
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-        let infer_term = delegate.next_term_var_of_alias_kind(alias_term, at.cause.span);
+        let infer_term = delegate.next_term_var_of_alias_kind(alias_term, cause.span);
         let predicate = ty::ProjectionClause { projection_term: alias_term, term: infer_term };
-        let goal = Goal::new(infcx.tcx, at.param_env, predicate);
-        let result = match delegate.evaluate_root_goal(goal, at.cause.span, None) {
+        let goal = Goal::new(infcx.tcx, param_env, predicate);
+        let result = match delegate.evaluate_root_goal(goal, cause.span, None) {
             Ok(result) => result,
             Err(_) => {
                 return Err(Obligation::new(
@@ -94,7 +93,7 @@ where
 }
 
 struct ReplaceAliasWithInfer<'me, 'tcx> {
-    at: At<'me, 'tcx>,
+    at: InferCtxt<'me, 'tcx>,
     obligations: PredicateObligations<'tcx>,
     universes: Vec<Option<UniverseIndex>>,
 }
@@ -182,7 +181,7 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
 pub fn deeply_normalize<'tcx, T, E>(
-    at: At<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     value: Unnormalized<'tcx, T>,
 ) -> Result<T, ThinVec<E>>
 where
@@ -190,7 +189,7 @@ where
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
     assert!(!value.as_ref().skip_normalization().has_escaping_bound_vars());
-    deeply_normalize_with_skipped_universes(at, value, vec![])
+    deeply_normalize_with_skipped_universes(infcx, value, vec![])
 }
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
@@ -200,7 +199,7 @@ where
 /// entered before passing `value` to the function. This is currently needed for
 /// `normalize_erasing_regions`, which skips binders as it walks through a type.
 pub fn deeply_normalize_with_skipped_universes<'tcx, T, E>(
-    at: At<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<T, ThinVec<E>>
@@ -210,7 +209,7 @@ where
 {
     let (value, coroutine_goals) =
         deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
-            at, value, universes,
+            infcx, value, universes,
         )?;
     assert_eq!(coroutine_goals, vec![]);
 
@@ -227,9 +226,11 @@ where
 /// This returns a set of stalled obligations involving coroutines if the typing mode of
 /// the underlying infcx has any stalled coroutine def ids.
 pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<'tcx, T, E>(
-    at: At<'_, 'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
+    param_env: ty::ParamEnv<'tcx>, 
+    cause: &ObligationCause<'tcx>,
 ) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
@@ -240,9 +241,9 @@ where
             thin_vec![E::from_solver_error(at.infcx, NextSolverError::TrueError(obligation))]
         })?;
 
-    let mut fulfill_cx = FulfillmentCtxt::new(at.infcx);
+    let mut fulfill_cx = FulfillmentCtxt::new(infcx);
     for pred in obligations {
-        fulfill_cx.register_predicate_obligation(at.infcx, pred);
+        fulfill_cx.register_predicate_obligation(infcx, pred);
     }
 
     let errors = fulfill_cx.try_evaluate_obligations(at.infcx);
