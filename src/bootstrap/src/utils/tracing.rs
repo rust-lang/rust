@@ -1,5 +1,5 @@
 //! Wrapper macros for `tracing` macros to avoid having to write `cfg(feature = "tracing")`-gated
-//! `debug!`/`trace!` everytime, e.g.
+//! `debug!`/`trace!` every time, e.g.
 //!
 //! ```rust,ignore (example)
 //! #[cfg(feature = "tracing")]

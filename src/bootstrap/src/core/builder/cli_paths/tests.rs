@@ -125,7 +125,7 @@ macro_rules! declare_tests {
 // - Follow the instructions for `cargo-insta` in bootstrap's README.md
 //
 // These snapshot tests capture _current_ behavior, to prevent unintended
-// changes or regressions. If the current behavior is wrong or undersirable,
+// changes or regressions. If the current behavior is wrong or undesirable,
 // then any fix will necessarily have to re-bless the affected tests!
 declare_tests!(
     // tidy-alphabetical-start

@@ -35,7 +35,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Command {
     cmd: StdCommand,
-    // Convience for providing a quick stdin buffer.
+    // Convenience for providing a quick stdin buffer.
     stdin_buf: Option<Box<[u8]>>,
 
     // Configurations for child process's std{in,out,err} handles.

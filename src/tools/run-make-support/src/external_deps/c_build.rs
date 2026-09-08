@@ -23,7 +23,7 @@ pub fn build_native_static_lib_optimized(lib_name: &str) -> PathBuf {
 }
 
 #[track_caller]
-fn build_native_static_lib_internal(lib_name: &str, optimzed: bool) -> PathBuf {
+fn build_native_static_lib_internal(lib_name: &str, optimized: bool) -> PathBuf {
     let obj_file = if is_windows_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
     let src = format!("{lib_name}.c");
     let lib_path = static_lib_name(lib_name);
@@ -32,7 +32,7 @@ fn build_native_static_lib_internal(lib_name: &str, optimzed: bool) -> PathBuf {
     if !is_windows_msvc() {
         cc.arg("-v");
     }
-    if optimzed {
+    if optimized {
         cc.optimize();
     }
     cc.arg("-c").out_exe(&obj_file).input(src).optimize().run();
