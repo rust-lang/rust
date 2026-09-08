@@ -3,9 +3,9 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxBuildHasher, FxHashMap, FxIndexMap};
 use rustc_data_structures::sharded::ShardedHashMap;
-use rustc_data_structures::sync::par_for_each_in;
+use rustc_data_structures::sync::{is_dyn_thread_safe, par_for_each_in};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
@@ -268,13 +268,6 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         let nested_bodies = self.tcx.nested_bodies_within(self.root_def_id);
 
         let capacity = nested_bodies.len() + 1;
-        // The region constraints computed by [borrowck_collect_region_constraints]. This uses
-        // an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
-        // their parents.
-        let collect_region_constraints_results: ShardedHashMap<
-            LocalDefId,
-            CollectRegionConstraintsResult<'tcx>,
-        > = ShardedHashMap::with_capacity(capacity);
 
         // The list of all bodies we need to borrowck. This first looks at
         // nested bodies, and then their parents. This means accessing e.g.
@@ -287,17 +280,38 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
 
         let tcx = self.tcx;
         let root_def_id = self.root_def_id;
-        par_for_each_in(all_bodies.clone(), |def_id| {
-            let result =
-                borrowck_collect_region_constraints(tcx, root_def_id, *def_id, polonius_input);
-            collect_region_constraints_results.insert_unique(*def_id, result);
-        });
 
-        // We need to resort the results by the def id order here.
-        let mut collect_region_constraints_results = all_bodies
-            .into_iter()
-            .map(|def_id| (def_id, collect_region_constraints_results.remove(&def_id).unwrap()))
-            .collect();
+        // Use a different strategy when running under multiple threads, so that we don't have to
+        // re-sort the results when we have a single thread
+        let mut collect_region_constraints_results = if is_dyn_thread_safe() {
+            // The region constraints computed by [borrowck_collect_region_constraints]. This has
+            // to guarantee that iterating over it visits nested bodies before
+            // their parents, so it has to keep the order from `all_bodies`.
+            let results: ShardedHashMap<LocalDefId, CollectRegionConstraintsResult<'tcx>> =
+                ShardedHashMap::with_capacity(capacity);
+
+            par_for_each_in(all_bodies.clone(), |def_id| {
+                let result =
+                    borrowck_collect_region_constraints(tcx, root_def_id, *def_id, polonius_input);
+                results.insert_unique(*def_id, result);
+            });
+
+            // We need to resort the results by the def id order here.
+            all_bodies
+                .into_iter()
+                .map(|def_id| (def_id, results.remove(&def_id).unwrap()))
+                .collect()
+        } else {
+            let mut results: FxIndexMap<LocalDefId, CollectRegionConstraintsResult<'tcx>> =
+                FxIndexMap::with_capacity_and_hasher(capacity, FxBuildHasher::default());
+
+            for def_id in all_bodies {
+                let result =
+                    borrowck_collect_region_constraints(tcx, root_def_id, def_id, polonius_input);
+                results.insert(def_id, result);
+            }
+            results
+        };
 
         let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
 
