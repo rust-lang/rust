@@ -207,12 +207,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let else_block_span = this.thir[*else_block].span;
                         let (true_block, false_block) =
                             this.in_if_then_scope(last_remainder_scope, else_block_span, |this| {
-                                // Bypass `lower_if_condition` and call `lower_let_expr` directly,
+                                // Bypass `lower_if_condition` and call `lower_fallible_let` directly,
                                 // since we don't have an actual THIR let-expression here.
-                                this.lower_let_expr(
+                                this.lower_fallible_let(
                                     block,
-                                    *initializer,
                                     pattern,
+                                    *initializer,
                                     None,
                                     initializer_span,
                                     DeclareLetBindings::No,
