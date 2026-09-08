@@ -67,6 +67,7 @@
       - [thumbv7m-none-eabi](./platform-support/thumbv7m-none-eabi.md)
       - [thumbv8m.base-none-eabi](./platform-support/thumbv8m.base-none-eabi.md)
       - [thumbv8m.main-none-eabi\*](./platform-support/thumbv8m.main-none-eabi.md)
+      - [thumbv8.1m.main-none-eabi\*](./platform-support/thumbv8.1m.main-none-eabi.md)
       - [armebv7r-none-eabi{,hf}](platform-support/armebv7r-none-eabi.md)
     - [arm\*-unknown-linux-\*](./platform-support/arm-linux.md)
         - [armeb-unknown-linux-gnueabi](platform-support/armeb-unknown-linux-gnueabi.md)
