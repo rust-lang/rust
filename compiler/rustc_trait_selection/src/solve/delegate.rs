@@ -374,6 +374,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 region_obligations,
                 region_constraints,
                 region_assumptions,
+                // We're only called with `-Zassumptions-on-binders` disabled, in which
+                // case the solver never emits new-style region constraints. With it
+                // enabled the solver instead returns `ExternalRegionConstraints::NextGen`,
+                // reading the constraint straight out of the `InferCtxt`.
+                Default::default(),
             )
         });
 

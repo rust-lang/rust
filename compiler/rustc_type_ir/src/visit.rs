@@ -52,7 +52,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, Region, TypeFlags};
+use crate::{self as ty, Interner, PredicateProxy, Region, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -116,7 +116,7 @@ pub trait TypeVisitor<I: Interner>: Sized {
         c.super_visit_with(self)
     }
 
-    fn visit_predicate(&mut self, p: I::Predicate) -> Self::Result {
+    fn visit_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Self::Result {
         p.super_visit_with(self)
     }
 
@@ -485,7 +485,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    fn visit_predicate(&mut self, predicate: I::Predicate) -> Self::Result {
+    fn visit_predicate<P: PredicateProxy<I>>(&mut self, predicate: P) -> Self::Result {
         // Note: no `super_visit_with` call.
         if predicate.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
@@ -597,7 +597,7 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     }
 
     #[inline]
-    fn visit_predicate(&mut self, predicate: I::Predicate) -> Self::Result {
+    fn visit_predicate<P: PredicateProxy<I>>(&mut self, predicate: P) -> Self::Result {
         if predicate.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {

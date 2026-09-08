@@ -11,7 +11,9 @@ impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 
 trait Trait<'a, AA, BB> where Self: Sized {
     reuse S::<(), ()>::foo_self;
-    //~^ ERROR: cannot find function `foo_self` in `S`
+    //~^ ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: type provided when a constant was expected
+    //~| ERROR: type provided when a constant was expected
 }
 
 fn main() {}

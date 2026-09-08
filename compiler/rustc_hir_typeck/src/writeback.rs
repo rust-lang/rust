@@ -21,9 +21,9 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    Unnormalized, fold_regions,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, PredicateProxy, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, Unnormalized, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
@@ -1032,7 +1032,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
         self.handle_term(ct, ty::Const::outer_exclusive_binder, ty::Const::new_error)
     }
 
-    fn fold_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, predicate: P) -> P {
         assert!(
             !self.should_normalize,
             "normalizing predicates in writeback is not generally sound"

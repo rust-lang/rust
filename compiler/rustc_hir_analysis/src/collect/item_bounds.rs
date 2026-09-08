@@ -2,8 +2,8 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::{
-    self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
-    Upcast, shift_vars,
+    self, GenericArgs, PredicateProxy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast, shift_vars,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
@@ -347,7 +347,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if !p.has_bound_vars() { p } else { p.super_fold_with(self) }
     }
 }

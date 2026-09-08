@@ -5,8 +5,8 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, CanonicalizerState,
-    Flags, InferCtxtLike, Interner, PlaceholderConst, PlaceholderType, Region, TypeFlags,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    Flags, InferCtxtLike, Interner, PlaceholderConst, PlaceholderType, PredicateProxy, Region,
+    TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use thin_vec::ThinVec;
 
@@ -583,7 +583,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         Const::new_canonical_bound(self.cx(), var)
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if !p.flags().intersects(NEEDS_CANONICAL) { p } else { p.super_fold_with(self) }
     }
 
