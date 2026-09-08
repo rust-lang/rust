@@ -68,4 +68,18 @@ core::test_binder_constraints! {
     }
 }
 
+// Ambiguity shared by every OR alternative is still required after canonicalization.
+#[cfg(fail)]
+core::test_binder_constraints! {
+    impl {
+        forall<'a, U, V> {
+            //[fail]~^ ERROR unable to satisfy constraints involving placeholders
+            or {
+                for<> <U as Project>::Assoc: 'a,
+                for<> <V as Project>::Assoc: 'a,
+            }
+        }
+    }
+}
+
 fn main() {}

@@ -594,18 +594,6 @@ pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::h
         return RegionConstraint::new_leaf(ambig.clone());
     }
 
-    // An OR only depends on ambiguity if every alternative contains an ambiguous leaf.
-    // Keep mixed ORs intact: a concrete candidate may be satisfied later, e.g. when an
-    // alias outlives constraint is checked against the root assumptions. Keep the ambiguous
-    // alternatives too, so rejecting the concrete candidates still leaves ambiguity.
-    let mut ambiguities =
-        constraint.or_constraint.0.iter().map(|and| and.0.iter().find(|c| c.is_ambig()));
-    if let Some(Some(ambig)) = ambiguities.next()
-        && ambiguities.all(|ambig| ambig.is_some())
-    {
-        return RegionConstraint::new_leaf(ambig.clone());
-    }
-
     constraint
 }
 
