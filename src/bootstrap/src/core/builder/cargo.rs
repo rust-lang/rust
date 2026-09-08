@@ -718,6 +718,10 @@ impl Builder<'_> {
             build_stamp::clear_if_dirty(self, &out_dir, &backend);
         }
 
+        if mode != Mode::DistStd {
+            self.apply_profile_settings(&mut cargo, mode);
+        }
+
         if self.config.cmd.timings() {
             cargo.arg("--timings");
         }
@@ -740,8 +744,6 @@ impl Builder<'_> {
             let rustdoc = self.rustdoc_for_compiler(compiler);
             build_stamp::clear_if_dirty(self, &my_out, &rustdoc);
         }
-
-        let profile_var = |name: &str| cargo_profile_var(name, &self.config, mode);
 
         // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
@@ -1077,42 +1079,9 @@ impl Builder<'_> {
             cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
         }
 
-        cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
-
         if let Some(stack_protector) = &self.config.rust_stack_protector {
             rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
         }
-
-        let debuginfo_level = match mode {
-            Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
-            Mode::Std | Mode::DistStd => self.config.rust_debuginfo_level_std,
-            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
-                self.config.rust_debuginfo_level_tools
-            }
-        };
-        cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
-        if let Some(opt_level) = &self.config.rust_optimize.get_opt_level() {
-            cargo.env(profile_var("OPT_LEVEL"), opt_level);
-        }
-        cargo.env(
-            profile_var("DEBUG_ASSERTIONS"),
-            match mode {
-                Mode::Std | Mode::DistStd => self.config.std_debug_assertions,
-                Mode::Rustc | Mode::Codegen => self.config.rustc_debug_assertions,
-                Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
-                    self.config.tools_debug_assertions
-                }
-            }
-            .to_string(),
-        );
-        cargo.env(
-            profile_var("OVERFLOW_CHECKS"),
-            if mode.is_std() {
-                self.config.rust_overflow_checks_std.to_string()
-            } else {
-                self.config.rust_overflow_checks.to_string()
-            },
-        );
 
         match self.config.split_debuginfo(target) {
             SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
@@ -1407,15 +1376,6 @@ impl Builder<'_> {
             cargo.arg("--verbose");
         }
 
-        match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
-            (Mode::Std | Mode::DistStd, Some(n), _) | (_, _, Some(n)) => {
-                cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
-            }
-            _ => {
-                // Don't set anything
-            }
-        }
-
         if self.config.locked_deps {
             cargo.arg("--locked");
         }
@@ -1518,12 +1478,66 @@ impl Builder<'_> {
             kind: cmd_kind,
         }
     }
+
+    fn apply_profile_settings(&self, cargo: &mut BootstrapCommand, mode: Mode) {
+        let profile_var = |name: &str| cargo_profile_var(name, &self.config, mode);
+
+        cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
+
+        let debuginfo_level = match mode {
+            Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
+            Mode::Std | Mode::DistStd => self.config.rust_debuginfo_level_std,
+            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
+                self.config.rust_debuginfo_level_tools
+            }
+        };
+        cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
+
+        if let Some(opt_level) = &self.config.rust_optimize.get_opt_level() {
+            cargo.env(profile_var("OPT_LEVEL"), opt_level);
+        }
+
+        cargo.env(
+            profile_var("DEBUG_ASSERTIONS"),
+            match mode {
+                Mode::Std | Mode::DistStd => self.config.std_debug_assertions,
+                Mode::Rustc | Mode::Codegen => self.config.rustc_debug_assertions,
+                Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
+                    self.config.tools_debug_assertions
+                }
+            }
+            .to_string(),
+        );
+
+        cargo.env(
+            profile_var("OVERFLOW_CHECKS"),
+            if mode.is_std() {
+                self.config.rust_overflow_checks_std.to_string()
+            } else {
+                self.config.rust_overflow_checks.to_string()
+            },
+        );
+
+        match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
+            (Mode::Std, Some(n), _) => {
+                cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
+            }
+            (m, _, Some(n)) if m != Mode::DistStd => {
+                cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
+            }
+            _ => {
+                // Don't set anything
+            }
+        }
+    }
 }
 
 pub(crate) fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
     let profile = match (mode, config.rust_optimize.is_release()) {
         // Some std configuration exists in its own profile
-        (Mode::DistStd, _) => "DIST",
+        (Mode::DistStd, _) => {
+            panic!("Attempted to override the distributed std's profile with {name}")
+        }
         (_, true) => "RELEASE",
         (_, false) => "DEV",
     };
