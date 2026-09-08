@@ -135,6 +135,7 @@ pub mod hardwired {
             UNREACHABLE_PATTERNS,
             UNSAFE_ATTR_OUTSIDE_UNSAFE,
             UNSAFE_OP_IN_UNSAFE_FN,
+            UNSATISFIED_HRTB_ARG,
             UNSTABLE_NAME_COLLISIONS,
             UNSTABLE_SYNTAX_PRE_EXPANSION,
             UNSUPPORTED_CALLING_CONVENTIONS,
@@ -5042,6 +5043,57 @@ declare_lint! {
     "detects missing unsafe keyword on extern declarations",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "unsafe-extern"),
+    };
+}
+
+declare_lint! {
+    /// The `unsatisfied_hrtb_arg` lint detects arguments of [higher-ranked
+    /// trait bounds] that don't satisfy the bounds declared on their own
+    /// types.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// trait Bound {}
+    /// struct W<'a, T: Bound>(&'a T);
+    ///
+    /// fn wf<T>() where for<'a> W<'a, T>: Sized {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler previously accepted higher-ranked trait bounds without
+    /// checking that their arguments satisfy the bounds declared on the
+    /// argument types, if the arguments of the type mention one of the bound
+    /// variables (like `'a` in the above example). `W` requires that
+    /// `T: Bound`, which isn't satisfied in `wf`, yet the compiler used to
+    /// accept this code.
+    ///
+    /// To fix this, add the bound that `W` requires to `wf`:
+    ///
+    /// ```rust
+    /// trait Bound {}
+    /// struct W<'a, T: Bound>(&'a T);
+    ///
+    /// fn wf<T: Bound>() where for<'a> W<'a, T>: Sized {}
+    /// ```
+    ///
+    /// This is a lint instead of a hard error because many existing projects
+    /// were found to hit this error. It will become a hard error in a future
+    /// release.
+    ///
+    /// See [issue #162200] for more details.
+    ///
+    /// [higher-ranked trait bounds]: https://doc.rust-lang.org/reference/trait-bounds.html#higher-ranked-trait-bounds
+    /// [issue #162200]: https://github.com/rust-lang/rust/issues/162200
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub UNSATISFIED_HRTB_ARG,
+    Warn,
+    "arguments of higher-ranked trait bounds that don't satisfy the bounds their types declare",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #162200),
     };
 }
 
