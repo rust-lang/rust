@@ -326,6 +326,10 @@ impl<'tcx> MonoItems<'tcx> {
         self.items.entry(item.node).or_insert(item.span);
     }
 
+    fn reserve(&mut self, additional: usize) {
+        self.items.reserve(additional);
+    }
+
     fn items(&self) -> impl Iterator<Item = MonoItem<'tcx>> {
         self.items.keys().cloned()
     }
@@ -487,7 +491,9 @@ fn collect_items_rec<'tcx>(
                     def_path_str,
                 });
             };
+            used_items.reserve(used.len());
             used_items.extend(used.into_iter().copied());
+            mentioned_items.reserve(mentioned.len());
             mentioned_items.extend(mentioned.into_iter().copied());
         }
         MonoItem::GlobalAsm(item_id) => {
