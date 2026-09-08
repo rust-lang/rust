@@ -1640,23 +1640,6 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    fn color(self) -> anstyle::Style {
-        match self {
-            Bug | Fatal | Error | DelayedBug => AnsiColor::BrightRed.on_default(),
-            ForceWarning | Warning => {
-                if cfg!(windows) {
-                    AnsiColor::BrightYellow.on_default()
-                } else {
-                    AnsiColor::Yellow.on_default()
-                }
-            }
-            Note | OnceNote => AnsiColor::BrightGreen.on_default(),
-            Help | OnceHelp => AnsiColor::BrightCyan.on_default(),
-            FailureNote => anstyle::Style::new(),
-            Allow | Expect => unreachable!(),
-        }
-    }
-
     pub fn to_str(self) -> &'static str {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
@@ -1682,20 +1665,9 @@ impl IntoDiagArg for Level {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum Style {
-    MainHeaderMsg,
     HeaderMsg,
-    LineAndColumn,
-    LineNumber,
-    Quotation,
-    UnderlinePrimary,
-    UnderlineSecondary,
-    LabelPrimary,
-    LabelSecondary,
     NoStyle,
-    Level(Level),
     Highlight,
-    Addition,
-    Removal,
 }
 
 // FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.

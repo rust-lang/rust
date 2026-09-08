@@ -166,9 +166,7 @@ impl AnnotateSnippetEmitter {
         // If at least one portion of the message is styled, we need to
         // "pre-style" the message
         let mut title = if msgs.iter().any(|(_, style)| style != &crate::Style::NoStyle) {
-            annotation_level
-                .clone()
-                .secondary_title(Cow::Owned(self.pre_style_msgs(msgs, *level, args)))
+            annotation_level.clone().secondary_title(Cow::Owned(self.pre_style_msgs(msgs, args)))
         } else {
             annotation_level.clone().primary_title(format_diag_messages(msgs, args))
         };
@@ -255,7 +253,7 @@ impl AnnotateSnippetEmitter {
             // If at least one portion of the message is styled, we need to
             // "pre-style" the message
             let msg = if c.messages.iter().any(|(_, style)| style != &crate::Style::NoStyle) {
-                Cow::Owned(self.pre_style_msgs(&c.messages, c.level, args))
+                Cow::Owned(self.pre_style_msgs(&c.messages, args))
             } else {
                 format_diag_messages(&c.messages, args)
             };
@@ -544,16 +542,11 @@ impl AnnotateSnippetEmitter {
         .short_message(self.short_message)
     }
 
-    fn pre_style_msgs(
-        &self,
-        msgs: &[(DiagMessage, Style)],
-        level: Level,
-        args: &DiagArgMap,
-    ) -> String {
+    fn pre_style_msgs(&self, msgs: &[(DiagMessage, Style)], args: &DiagArgMap) -> String {
         msgs.iter()
             .filter_map(|(m, style)| {
                 let text = format_diag_message(m, args);
-                let style = style.anstyle(level);
+                let style = style.anstyle();
                 if text.is_empty() { None } else { Some(format!("{style}{text}{style:#}")) }
             })
             .collect()
