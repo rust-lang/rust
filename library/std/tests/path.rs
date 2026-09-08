@@ -1759,13 +1759,49 @@ pub fn test_push() {
 
         tp!(r"\\?\C:\bar", "../foo", r"\\?\C:\foo");
         tp!(r"\\?\C:\bar", "../../foo", r"\\?\C:\foo");
+        tp!(r"\\?\C:\foo\bar", "../baz", r"\\?\C:\foo\baz");
+        tp!(r"\\?\C:\foo\bar\", "../baz", r"\\?\C:\foo\baz");
+        tp!(r"\\?\C:\foo\bar\", "..", r"\\?\C:\foo");
+        tp!(r"\\?\C:\foo", "..", r"\\?\C:\");
+        tp!(r"\\?\C:\", "..", r"\\?\C:\");
+        tp!(r"\\?\C:\foo\..", "..", r"\\?\C:\foo\..");
         tp!(r"\\?\C:\", "../foo", r"\\?\C:\foo");
         tp!(r"\\?\C:", r"D:\foo/./", r"D:\foo/./");
         tp!(r"\\?\C:", r"\\?\D:\foo\.\", r"\\?\D:\foo\.\");
+        tp!(r"\\?\C:", r"\..", r"\\?\C:\");
+        tp!(r"\\?\C:", r"\\foo\\\..", r"\\?\C:\");
+        tp!(r"\\?\C:", r"foo\foo\..\..", r"\\?\C:");
+        tp!(r"\\?\C:\foo\..\..\bar", r"..\..\..\", r"\\?\C:\foo\..\..");
+        tp!(r"\\?\C:\foo\..", r"..\bar", r"\\?\C:\foo\..\bar");
+        tp!(r"\\?\C:\foo\..\..", r"..\bar", r"\\?\C:\foo\..\..\bar");
+        tp!(r"\\?\C:\foo\..", r"..\..\..\bar", r"\\?\C:\foo\..\bar");
+        tp!(r"\\?\C:\foo\..\", r"..\..\..\bar", r"\\?\C:\foo\..\bar");
+        tp!(r"\\?\C:\foo\..\\", r"..", r"\\?\C:\foo\..");
+        tp!(r"\\?\C:\foo\.", r"..", r"\\?\C:\foo\.");
+        tp!(r"\\?\C:\foo\..\", r"..", r"\\?\C:\foo\..");
+        tp!(r"\\?\C:\foo\\\\bar", r"..", r"\\?\C:\foo");
+        tp!(r"\\?\C:\foo\", r".", r"\\?\C:\foo");
+        tp!(r"\\?\C:\foo\\", r"bar", r"\\?\C:\foo\bar");
+        tp!(r"\\?\C:\foo\\\\bar", r"baz", r"\\?\C:\foo\bar\baz");
         tp!(r"\\?\A:\x\y", "/foo", r"\\?\A:\foo");
         tp!(r"\\?\A:", r"..\foo\.", r"\\?\A:\foo");
         tp!(r"\\?\A:\x\y", r".\foo\.", r"\\?\A:\x\y\foo");
         tp!(r"\\?\A:\x\y", r"", r"\\?\A:\x\y\");
+
+        tp!(r"\\?\UNC\server\share\foo", r"..", r"\\?\UNC\server\share\");
+        tp!(r"\\?\UNC\server\share\", r"..", r"\\?\UNC\server\share\");
+        tp!(r"\\?\UNC\server\share\foo\bar", "../baz", r"\\?\UNC\server\share\foo\baz");
+        tp!(r"\\?\UNC\server\share\foo\bar\", "../baz", r"\\?\UNC\server\share\foo\baz");
+        tp!(r"\\?\UNC\server\share\foo\bar\", "..", r"\\?\UNC\server\share\foo");
+        tp!(r"\\?\UNC\server\share\foo", "..", r"\\?\UNC\server\share\");
+        tp!(r"\\?\UNC\server\share\", "..", r"\\?\UNC\server\share\");
+        tp!(r"\\?\UNC\server\share\foo\..", "..", r"\\?\UNC\server\share\foo\..");
+        tp!(r"\\?\UNC\server\share\", "../foo", r"\\?\UNC\server\share\foo");
+        tp!(r"\\?\UNC\server\share", r"D:\foo/./", r"D:\foo/./");
+        tp!(r"\\?\UNC\server\share", r"\\?\D:\foo\.\", r"\\?\D:\foo\.\");
+        tp!(r"\\?\UNC\server\share", r"\..", r"\\?\UNC\server\share\");
+
+        tp!(r"\\?\PIPE\foo", r"\", r"\\?\PIPE\");
     }
 }
 
