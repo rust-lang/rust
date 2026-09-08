@@ -163,7 +163,7 @@ impl<'tcx> InferCtxt<'tcx> {
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
-        assert!(!self.tcx.assumptions_on_binders());
+        assert!(!self.tcx.assumptions_on_binders_any());
 
         // `is_global` means the type has no params, infer, placeholder, or non-`'static`
         // free regions. If the type has none of these things, then we can skip registering
@@ -261,7 +261,7 @@ impl<'tcx> InferCtxt<'tcx> {
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
     ) {
-        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.tcx.assumptions_on_binders_any());
         assert!(self.next_trait_solver());
 
         let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
@@ -302,7 +302,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         b, a, category,
                     );
                 }
-                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
+                TypeOutlives(..) | AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
                     unreachable!()
                 }
             }
@@ -326,7 +326,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
-        if self.tcx.assumptions_on_binders() {
+        if self.tcx.assumptions_on_binders_any() {
             self.destructure_solver_region_constraints_for_regionck(outlives_env);
         }
 

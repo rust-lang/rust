@@ -173,7 +173,7 @@ pub(crate) fn type_check<'tcx>(
 
     let polonius_context = typeck.polonius_context;
 
-    if infcx.tcx.assumptions_on_binders() {
+    if infcx.tcx.assumptions_on_binders_any() {
         let mut converter = constraint_conversion::ConstraintConversion::new(
             typeck.infcx,
             typeck.universal_regions,

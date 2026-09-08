@@ -67,7 +67,7 @@ where
             current_index: _,
         } = replacer;
 
-        if infcx.cx().assumptions_on_binders() {
+        if infcx.cx().assumptions_on_binders_any() {
             for (old, new) in old_universes.into_iter().zip(universe_indices.iter()) {
                 if let (None, Some(new)) = (old, new) {
                     // FIXME(-Zassumptions-on-binders): `replace_bound_vars` does not have enough
