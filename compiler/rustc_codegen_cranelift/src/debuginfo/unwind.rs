@@ -204,7 +204,7 @@ impl UnwindContext {
 
                     let mut data = DataDescription::new();
                     data.define(gcc_except_table.writer.into_vec().into_boxed_slice());
-                    data.set_segment_section("", ".gcc_except_table", 0);
+                    data.set_custom_section(".gcc_except_table");
 
                     for reloc in &gcc_except_table.relocs {
                         match reloc.name {

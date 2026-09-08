@@ -6,7 +6,6 @@
     extern_types,
     decl_macro,
     rustc_attrs,
-    rustc_private,
     transparent_unions,
     pattern_types,
     auto_traits,
