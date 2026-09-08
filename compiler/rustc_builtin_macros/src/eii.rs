@@ -1,8 +1,8 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path, StmtKind,
-    Visibility, ast,
+    AttrKind, Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path,
+    StmtKind, SyntheticAttr, Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -200,37 +200,47 @@ fn split_attrs(
     let mut foreign_item_attributes = ThinVec::new();
 
     for attr in attrs {
-        match attr.name() {
-            // If an eii is marked a lang item, that's because we want to call its declaration, so
-            // mark the foreign item as the lang item
-            Some(sym::lang) => foreign_item_attributes.push(attr),
-            // Deprecating an eii means deprecating the macro and the foreign item
-            Some(sym::deprecated) => {
+        match &attr.kind {
+            // Forward synthetic CfgTrace and CfgAttrTrace, these are applicable to both foreign item and macro.
+            AttrKind::Synthetic(SyntheticAttr::CfgTrace(_) | SyntheticAttr::CfgAttrTrace(_)) => {
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
-            }
-            // The stability of an EII affects the usage of the macro and calling the foreign item
-            Some(sym::stable) | Some(sym::unstable) => {
-                foreign_item_attributes.push(attr.clone());
-                macro_attributes.push(attr);
-            }
-            // `#[track_caller]` goes on the foreign item only: it's the symbol callers link
-            // against, so it must carry the flag for call sites to pass the caller location.
-            // Implementations derive it during codegen (see `EiiImpls` in `codegen_attrs.rs`),
-            // so it must not be routed onto the default impl here.
-            Some(sym::track_caller) => {
-                foreign_item_attributes.push(attr);
             }
             // Doc attributes should be forwarded to the macro and the foreign item, since those are
             // the two items you interact with as a user.
             // FIXME: idk yet how EIIs show up in docs, might want to customize
-            _ if attr.is_doc_comment() => {
+            AttrKind::DocComment(_, _) => {
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
             }
-            Some(sym::eii) => unreachable!("should already be filtered out"),
-            _ => {
-                ecx.dcx().emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+            AttrKind::Normal(normal) => {
+                match normal.item.name() {
+                    // If an eii is marked a lang item, that's because we want to call its declaration, so
+                    // mark the foreign item as the lang item
+                    Some(sym::lang) => foreign_item_attributes.push(attr),
+                    // Deprecating an eii means deprecating the macro and the foreign item
+                    Some(sym::deprecated) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // The stability of an EII affects the usage of the macro and calling the foreign item
+                    Some(sym::stable) | Some(sym::unstable) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // `#[track_caller]` goes on the foreign item only: it's the symbol callers link
+                    // against, so it must carry the flag for call sites to pass the caller location.
+                    // Implementations derive it during codegen (see `EiiImpls` in `codegen_attrs.rs`),
+                    // so it must not be routed onto the default impl here.
+                    Some(sym::track_caller) => {
+                        foreign_item_attributes.push(attr);
+                    }
+                    Some(sym::eii) => unreachable!("should already be filtered out"),
+                    _ => {
+                        ecx.dcx()
+                            .emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+                    }
+                }
             }
         }
     }
