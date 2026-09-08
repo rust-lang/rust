@@ -415,49 +415,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         data.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
-            let (segment_name, section_name) = if tcx.sess.target.is_like_darwin {
-                // See https://github.com/llvm/llvm-project/blob/main/llvm/lib/MC/MCSectionMachO.cpp
-                let mut parts = section_name.as_str().split(',');
-                let Some(segment_name) = parts.next() else {
-                    tcx.dcx().fatal(format!(
-                        "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
-                        section_name
-                    ));
-                };
-                let Some(section_name) = parts.next() else {
-                    tcx.dcx().fatal(format!(
-                        "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
-                        section_name
-                    ));
-                };
-                if section_name.len() > 16 {
-                    tcx.dcx().fatal(format!(
-                        "#[link_section = \"{}\"] is not valid for macos target: section name bigger than 16 bytes",
-                        section_name
-                    ));
-                }
-                let section_type = parts.next().unwrap_or("regular");
-                if section_type != "regular" && section_type != "cstring_literals" {
-                    tcx.dcx().fatal(format!(
-                        "#[link_section = \"{}\"] is not supported: unsupported section type {}",
-                        section_name, section_type,
-                    ));
-                }
-                let _attrs = parts.next();
-                if parts.next().is_some() {
-                    tcx.dcx().fatal(format!(
-                        "#[link_section = \"{}\"] is not valid for macos target: too many components",
-                        section_name
-                    ));
-                }
-                // FIXME(bytecodealliance/wasmtime#8901) set S_CSTRING_LITERALS section type when
-                // cstring_literals is specified
-                (segment_name, section_name)
-            } else {
-                ("", section_name.as_str())
-            };
-            // FIXME pass correct section flags on Mach-O
-            data.set_segment_section(segment_name, section_name, 0);
+            data.set_custom_section(section_name.as_str());
         }
 
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
