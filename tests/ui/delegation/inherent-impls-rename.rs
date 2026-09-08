@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(fn_delegation)]
 
 struct X;
@@ -9,6 +11,5 @@ impl X {
 }
 
 reuse X::bar;
-//~^ ERROR: cannot find function `bar` in `X`
 
 fn main() {}

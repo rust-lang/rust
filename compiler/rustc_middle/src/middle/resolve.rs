@@ -190,6 +190,8 @@ pub struct ResolverGlobalCtxt {
     // Information about delegations which is used when handling recursive delegations
     // and ensures easy access to delegation-only `LocalDefId`s.
     pub delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
+    pub delegation_inherent_fn_map:
+        FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInherentFnKind>>,
 }
 
 #[derive(Debug)]
@@ -261,14 +263,44 @@ pub struct ResolverAstLowering<'tcx> {
     pub disambiguators: LocalDefIdMap<Steal<PerParentDisambiguatorState>>,
 }
 
+#[derive(Debug, Clone, Copy, StableHash)]
+pub enum DelegationResolution {
+    /// Corresponds to paths that are fully resolved by resolver (i.e., `reuse Trait::foo`).
+    Full(DefId /* Signature and call path resolutions are the same */),
+
+    /// We can encounter cases like delegation to inherent impl function from trait impl,
+    /// in this case we will have resolved signature id, but the call-path itself will
+    /// not be resolved, so we will need to use type-relative resolution routine during
+    /// AST -> HIR lowering.
+    PartialCall(DefId /* Signature resolution, call path is unresolved */),
+
+    /// Corresponds to paths that are partially resolved by resolver (i.e., `reuse Struct::foo`).
+    Partial,
+
+    Error(ErrorGuaranteed),
+}
+
 #[derive(Debug, StableHash)]
 pub struct DelegationInfo {
-    // `DefId` (either the resolution at delegation.id or item_id in case of a trait impl) for
-    // signature resolution, for details see
-    // https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914.
-    /// Refers to the next element in a delegation resolution chain. Usually points to the final
-    /// resolution, as most "chains" are just one step to a trait or an impl.
-    pub resolution_id: Result<DefId, ErrorGuaranteed>,
+    // `DefId` (either the resolution at delegation.id or item_id in case of a trait impl) for signature resolution,
+    // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
+    /// Refers to the next element in a delegation resolution chain.
+    /// Usually points to the final resolution, as most "chains" are just
+    /// one step to a trait or an impl.
+    pub resolution: DelegationResolution,
+}
+
+#[derive(Debug, StableHash)]
+pub enum TypeRelativeDelegationRes {
+    Ok(DefId),
+    Ambig(ErrorGuaranteed),
+    Error(ErrorGuaranteed),
+}
+
+#[derive(Debug, StableHash)]
+pub enum DelegationInherentFnKind {
+    Single(LocalDefId),
+    Ambig,
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]
