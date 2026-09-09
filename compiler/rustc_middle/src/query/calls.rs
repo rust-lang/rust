@@ -3,13 +3,15 @@
 
 use std::ops::Deref;
 
+use rustc_data_structures::sharded;
+use rustc_errors::FatalError;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::{IntoQueryKey, QueryCache, QueryMode, QueryVTable};
+use crate::query::{ActiveKeyStatus, IntoQueryKey, QueryCache, QueryMode, QueryVTable};
 use crate::ty::{self, TyCtxt};
 
 #[derive(Copy, Clone)]
@@ -223,51 +225,87 @@ pub(crate) fn query_feed<'tcx, C>(
 {
     let format_value = query.format_value;
 
-    // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, &query.cache, key) {
-        Some(old) => {
-            // The query already has a cached value for this key.
-            // That's OK if both values are the same, i.e. they have the same hash,
-            // so now we check their hashes.
-            if let Some(hash_value_fn) = query.hash_value_fn {
-                let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
-                });
-                if old_hash != value_hash {
-                    // We have an inconsistency. This can happen if one of the two
-                    // results is tainted by errors. In this case, delay a bug to
-                    // ensure compilation is doomed, and keep the `old` value.
-                    tcx.dcx().delayed_bug(format!(
-                        "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                        old value: {old}\nnew value: {value}",
-                        old = format_value(&old),
-                        value = format_value(&value),
-                    ));
-                }
-            } else {
-                // The query is `no_hash`, so we have no way to perform a sanity check.
-                // If feeding the same value multiple times needs to be supported,
-                // the query should not be marked `no_hash`.
-                bug!(
+    let check_consistency = |old| {
+        // The query already has a cached value for this key.
+        // That's OK if both values are the same, i.e. they have the same hash,
+        // so now we check their hashes.
+        if let Some(hash_value_fn) = query.hash_value_fn {
+            let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
+                (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
+            });
+            if old_hash != value_hash {
+                // We have an inconsistency. This can happen if one of the two
+                // results is tainted by errors. In this case, delay a bug to
+                // ensure compilation is doomed, and keep the `old` value.
+                tcx.dcx().delayed_bug(format!(
                     "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                    old value: {old}\nnew value: {value}",
+                        old value: {old}\nnew value: {value}",
                     old = format_value(&old),
                     value = format_value(&value),
-                )
+                ));
             }
+        } else {
+            // The query is `no_hash`, so we have no way to perform a sanity check.
+            // If feeding the same value multiple times needs to be supported,
+            // the query should not be marked `no_hash`.
+            bug!(
+                "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                    old value: {old}\nnew value: {value}",
+                old = format_value(&old),
+                value = format_value(&value),
+            )
         }
+    };
+
+    let cache = &query.cache;
+
+    // Check whether the in-memory cache already has a value for this key.
+    match try_get_cached(tcx, cache, key) {
+        Some(old) => check_consistency(old),
         None => {
-            // There is no cached value for this key, so feed the query by
-            // adding the provided value to the cache.
-            let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
-            let dep_node_index = tcx.dep_graph.with_feed_task(
-                dep_node,
-                tcx,
-                &value,
-                query.hash_value_fn,
-                query.format_value,
-            );
-            query.cache.complete(key, value, dep_node_index);
+            let key_hash = sharded::make_hash(&key);
+
+            // This code does several things:
+            // 1) It updates query cache with fed value under state lock meaning if
+            //    we try to feed query for a single key from different threads we
+            //    will not encounter ICE from #162316 (races on `VecCache`'s slot initialization).
+            //    In this scenario, after we acquired lock we perform second attempt to get cached
+            //    value as other thread may have updated it under this lock just before we entered.
+            //    In this case we need to check the consistency of fed value.
+            // 2) If we try to feed query while it is executing we emit a bug, as in a single threaded
+            //    compiler it may be possible to feed query during its execution technically, but it
+            //    does not seem right semantically, and in a multi-threaded compiler if we wait
+            //    until other thread sets the value for further consistency checks we may encounter
+            //    deadlocks.
+            // 3) If query has poisoned status we emit fatal error as in other handlers of this status.
+            // 4) Checking for cached value in `try_execute_query` is performed under the state lock too,
+            //    so if we fed the value here, when trying to execute this query fed value will be seen.
+            let shard = query.state.active.lock_shard_by_hash(key_hash);
+            match shard.find(key_hash, |kv| kv.0 == key) {
+                None => match try_get_cached(tcx, cache, key) {
+                    Some(old) => check_consistency(old),
+                    None => {
+                        // There is no cached value for this key, so feed the query by
+                        // adding the provided value to the cache.
+                        let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
+                        let dep_node_index = tcx.dep_graph.with_feed_task(
+                            dep_node,
+                            tcx,
+                            &value,
+                            query.hash_value_fn,
+                            query.format_value,
+                        );
+
+                        query.cache.complete(key, value, dep_node_index)
+                    }
+                },
+                Some((_, status)) => match status {
+                    ActiveKeyStatus::Started(_) => {
+                        bug!("trying to feed query while it is executing")
+                    }
+                    ActiveKeyStatus::Poisoned => FatalError.raise(),
+                },
+            }
         }
     }
 }
