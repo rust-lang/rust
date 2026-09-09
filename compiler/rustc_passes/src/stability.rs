@@ -10,7 +10,7 @@ use rustc_feature::{EnabledLangFeature, EnabledLibFeature, UNSTABLE_LANG_FEATURE
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModId};
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, AmbigArg, ConstStability, Constness, DefaultBodyStability, FieldDef, HirId, Item,
     ItemKind, Path, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,

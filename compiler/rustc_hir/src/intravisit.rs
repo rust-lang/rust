@@ -518,27 +518,23 @@ pub trait Visitor<'v>: Sized {
     ) -> Self::Result {
         walk_test_binder_bound_type_constraint(self, bound_type)
     }
-}
 
-pub trait VisitorExt<'v>: Visitor<'v> {
-    /// Extension trait method to visit types in unambiguous positions, this is not
-    /// directly on the [`Visitor`] trait as this method should never be overridden.
-    ///
     /// Named `visit_ty_unambig` instead of `visit_unambig_ty` to aid in discovery
     /// by IDes when `v.visit_ty` is written.
-    fn visit_ty_unambig(&mut self, t: &'v Ty<'v>) -> Self::Result {
+    ///
+    /// This method cannot be overridden.
+    final fn visit_ty_unambig(&mut self, t: &'v Ty<'v>) -> Self::Result {
         walk_unambig_ty(self, t)
     }
-    /// Extension trait method to visit consts in unambiguous positions, this is not
-    /// directly on the [`Visitor`] trait as this method should never be overridden.
-    ///
+
     /// Named `visit_const_arg_unambig` instead of `visit_unambig_const_arg` to aid in
     /// discovery by IDes when `v.visit_const_arg` is written.
-    fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
+    ///
+    /// This method cannot be overridden.
+    final fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
         walk_unambig_const_arg(self, c)
     }
 }
-impl<'v, V: Visitor<'v>> VisitorExt<'v> for V {}
 
 pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> V::Result {
     let Param { hir_id, pat, ty_span: _, span: _ } = param;
