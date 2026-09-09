@@ -251,16 +251,11 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
-        self.destructure_solver_region_constraints(constraint, assumptions, self);
+        self.destructure_solver_region_constraints(assumptions, self);
     }
 
-    /// Unlike regionck, borrowck doesn't keep these constraints in the `InferCtxt`.
-    /// It stores them in `MirTypeckRegionConstraints` alongside its other region
-    /// constraints, so it hands us the constraint to destructure.
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
-        constraint: SolverRegionConstraint<'tcx>,
         // this is always ConstraintConversion but lol
         conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
@@ -273,19 +268,19 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(constraint, assumptions, conversion);
+        self.destructure_solver_region_constraints(assumptions, conversion);
     }
 
     #[instrument(level = "debug", skip(self, conversion))]
     pub fn destructure_solver_region_constraints(
         &self,
-        constraint: SolverRegionConstraint<'tcx>,
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
     ) {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
 
+        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
         debug!(?constraint);
         let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
             self,
