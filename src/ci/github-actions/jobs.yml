@@ -811,7 +811,6 @@ auto:
         --host=
         --target=i686-pc-windows-msvc
         --enable-profiler
-        --disable-docs
       SCRIPT: python x.py dist bootstrap --include-default-paths
       CODEGEN_BACKENDS: llvm
     <<: *job-windows
