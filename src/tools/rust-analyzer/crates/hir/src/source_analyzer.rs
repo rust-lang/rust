@@ -350,21 +350,18 @@ impl<'db> SourceAnalyzer<'db> {
     }
 
     fn trait_environment(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
-        self.param_and(self.body_or_sig.as_ref().map_or_else(
-            || ParamEnv::empty(DbInterner::new_no_crate(db)),
-            |body_or_sig| {
-                let def = match *body_or_sig {
-                    BodyOrSig::Body { def, .. } => def.generic_def(db),
-                    BodyOrSig::VariantFields { def, .. } => match def {
-                        VariantId::EnumVariantId(def) => def.loc(db).parent.into(),
-                        VariantId::StructId(def) => def.into(),
-                        VariantId::UnionId(def) => def.into(),
-                    },
-                    BodyOrSig::Sig { def, .. } => def,
-                };
-                db.trait_environment(def)
-            },
-        ))
+        self.param_and(self.body_or_sig.as_ref().map_or_else(ParamEnv::empty, |body_or_sig| {
+            let def = match *body_or_sig {
+                BodyOrSig::Body { def, .. } => def.generic_def(db),
+                BodyOrSig::VariantFields { def, .. } => match def {
+                    VariantId::EnumVariantId(def) => def.loc(db).parent.into(),
+                    VariantId::StructId(def) => def.into(),
+                    VariantId::UnionId(def) => def.into(),
+                },
+                BodyOrSig::Sig { def, .. } => def,
+            };
+            db.trait_environment(def)
+        }))
     }
 
     pub(crate) fn evaluate_where_clause(
