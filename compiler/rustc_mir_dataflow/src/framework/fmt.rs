@@ -4,7 +4,7 @@
 use std::fmt;
 
 use rustc_index::Idx;
-use rustc_index::bit_set::{ChunkedBitSet, DenseBitSet, MixedBitSet};
+use rustc_index::bit_set::{ChunkedBitSet, DenseBitSet, DenseBitSetStorage, MixedBitSet};
 
 use super::lattice::MaybeReachable;
 
@@ -73,9 +73,10 @@ where
 
 // Impls
 
-impl<T, C> DebugWithContext<C> for DenseBitSet<T>
+impl<T, C, S: DenseBitSetStorage> DebugWithContext<C> for DenseBitSet<T, S>
 where
     T: Idx + DebugWithContext<C>,
+    DenseBitSet<T, S>: Eq,
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter().map(|i| DebugWithAdapter { this: i, ctxt })).finish()
@@ -133,6 +134,8 @@ where
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            MixedBitSet::Empty => DenseBitSet::<T>::new_empty(0).fmt_with(ctxt, f),
+            MixedBitSet::Tiny(set) => set.fmt_with(ctxt, f),
             MixedBitSet::Small(set) => set.fmt_with(ctxt, f),
             MixedBitSet::Large(set) => set.fmt_with(ctxt, f),
         }
@@ -140,6 +143,8 @@ where
 
     fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match (self, old) {
+            (MixedBitSet::Empty, MixedBitSet::Empty) => DenseBitSet::<T>::new_empty(0).fmt_diff_with(&DenseBitSet::<T>::new_empty(0), ctxt, f),
+            (MixedBitSet::Tiny(set), MixedBitSet::Tiny(old)) => set.fmt_diff_with(old, ctxt, f),
             (MixedBitSet::Small(set), MixedBitSet::Small(old)) => set.fmt_diff_with(old, ctxt, f),
             (MixedBitSet::Large(set), MixedBitSet::Large(old)) => set.fmt_diff_with(old, ctxt, f),
             _ => panic!("MixedBitSet size mismatch"),

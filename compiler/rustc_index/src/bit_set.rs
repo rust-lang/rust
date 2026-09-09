@@ -1,11 +1,12 @@
 use std::marker::PhantomData;
-use std::ops::{Bound, Range, RangeBounds};
+use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::rc::Rc;
 use std::{fmt, iter, slice};
 
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
+use smallvec::SmallVec;
 
 use crate::{Idx, IndexVec};
 
@@ -76,16 +77,66 @@ fn inclusive_start_end<T: Idx>(
 ///
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Eq, PartialEq, Hash)]
-pub struct DenseBitSet<T> {
+pub struct DenseBitSet<T, S = Vec<Word>> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: S,
     marker: PhantomData<T>,
 }
 
-impl<T> DenseBitSet<T> {
+impl<T, S> DenseBitSet<T, S> {
     /// Gets the domain size.
     pub fn domain_size(&self) -> usize {
         self.domain_size
+    }
+}
+
+pub trait DenseBitSetStorage: AsRef<[Word]> + AsMut<[Word]> + DerefMut<Target = [Word]> {}
+
+impl DenseBitSetStorage for Vec<Word> {}
+impl<const N: usize> DenseBitSetStorage for SmallVec<[Word; N]> {}
+
+// workaround because arrays don't implement DerefMut
+#[repr(transparent)]
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct ArrayStorage<const N: usize> {
+    inner: [Word; N],
+}
+impl<const N: usize> AsRef<[Word]> for ArrayStorage<N> {
+    #[inline]
+    fn as_ref(&self) -> &[Word] {
+        &self.inner
+    }
+}
+
+impl<const N: usize> AsMut<[Word]> for ArrayStorage<N> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [Word] {
+        &mut self.inner
+    }
+}
+
+impl<const N: usize> Deref for ArrayStorage<N> {
+    type Target = [Word];
+    #[inline]
+    fn deref(&self) -> &[Word] {
+        self.inner.as_ref()
+    }
+}
+
+impl<const N: usize> DerefMut for ArrayStorage<N> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.inner.as_mut()
+    }
+}
+
+impl<const N: usize> DenseBitSetStorage for ArrayStorage<N> {}
+
+impl<T: Idx, const N: usize> DenseBitSet<T, ArrayStorage<N>> {
+    /// Creates a new, empty bitset with a given `domain_size`.
+    #[inline]
+    pub fn new_empty_in_array(domain_size: usize) -> DenseBitSet<T, ArrayStorage<N>> {
+        DenseBitSet { domain_size, words: ArrayStorage { inner: [0; N] }, marker: PhantomData }
     }
 }
 
@@ -106,7 +157,9 @@ impl<T: Idx> DenseBitSet<T> {
         result.clear_excess_bits();
         result
     }
+}
 
+impl<T: Idx, S: DenseBitSetStorage> DenseBitSet<T, S> {
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
@@ -133,9 +186,9 @@ impl<T: Idx> DenseBitSet<T> {
 
     /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
-    pub fn superset(&self, other: &DenseBitSet<T>) -> bool {
+    pub fn superset<OS: DenseBitSetStorage>(&self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
+        self.words.iter().zip(&*other.words).all(|(a, b)| (a & b) == *b)
     }
 
     /// Is the set empty?
@@ -284,7 +337,7 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     /// Sets `self = self | !other`.
-    pub fn union_not(&mut self, other: &DenseBitSet<T>) {
+    pub fn union_not<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) {
         assert_eq!(self.domain_size, other.domain_size);
 
         // FIXME(Zalathar): If we were to forcibly _set_ all excess bits before
@@ -299,21 +352,21 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     /// Returns true if `self` was modified.
-    pub fn union(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn union<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a | b)
     }
 
     /// Returns true if `self` was modified.
-    pub fn subtract(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn subtract<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a & !b)
     }
 
     /// Returns true if `self` was modified.
-    pub fn intersect(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn intersect<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        update_words(&mut self.words, &other.words, |a, b| a & b)
+        update_words(&mut *self.words, &other.words, |a, b| a & b)
     }
 }
 
@@ -323,7 +376,7 @@ impl<T: Idx> From<GrowableBitSet<T>> for DenseBitSet<T> {
     }
 }
 
-impl<T> Clone for DenseBitSet<T> {
+impl<T, S: Clone> Clone for DenseBitSet<T, S> {
     fn clone(&self) -> Self {
         DenseBitSet {
             domain_size: self.domain_size,
@@ -338,13 +391,13 @@ impl<T> Clone for DenseBitSet<T> {
     }
 }
 
-impl<T: Idx> fmt::Debug for DenseBitSet<T> {
+impl<T: Idx, S: DenseBitSetStorage> fmt::Debug for DenseBitSet<T, S> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl<T: Idx> ToString for DenseBitSet<T> {
+impl<T: Idx, S: DenseBitSetStorage> ToString for DenseBitSet<T, S> {
     fn to_string(&self) -> String {
         let mut result = String::new();
         let mut sep = '[';
@@ -353,7 +406,7 @@ impl<T: Idx> ToString for DenseBitSet<T> {
 
         // i tracks how many bits we have printed so far.
         let mut i = 0;
-        for word in &self.words {
+        for word in &*self.words {
             let mut word = *word;
             for _ in 0..WORD_BYTES {
                 // for each byte in `word`:
@@ -502,6 +555,18 @@ enum Chunk {
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 crate::static_assert_size!(Chunk, 16);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(MixedBitSet<usize>, 32);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize>, 32);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize, usize>, 16);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize, [Word;2]>, 24);
 
 impl<T> ChunkedBitSet<T> {
     pub fn domain_size(&self) -> usize {
@@ -1054,13 +1119,17 @@ where
 /// will panic if the bitsets have differing domain sizes.
 #[derive(PartialEq, Eq)]
 pub enum MixedBitSet<T> {
-    Small(DenseBitSet<T>),
+    Empty,
+    Tiny(DenseBitSet<T, ArrayStorage<1>>),
+    Small(DenseBitSet<T, ArrayStorage<2>>),
     Large(ChunkedBitSet<T>),
 }
 
 impl<T> MixedBitSet<T> {
     pub fn domain_size(&self) -> usize {
         match self {
+            MixedBitSet::Empty => 0,
+            MixedBitSet::Tiny(set) => set.domain_size() ,
             MixedBitSet::Small(set) => set.domain_size(),
             MixedBitSet::Large(set) => set.domain_size(),
         }
@@ -1070,8 +1139,13 @@ impl<T> MixedBitSet<T> {
 impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> MixedBitSet<T> {
-        if domain_size <= CHUNK_BITS {
-            MixedBitSet::Small(DenseBitSet::new_empty(domain_size))
+        let num_words = num_words(domain_size);
+        if num_words == 0 {
+            MixedBitSet::Empty
+        } else if num_words == 1 {
+            MixedBitSet::Tiny(DenseBitSet::new_empty_in_array(domain_size))
+        } else if num_words <= 2 {
+            MixedBitSet::Small(DenseBitSet::new_empty_in_array(domain_size))
         } else {
             MixedBitSet::Large(ChunkedBitSet::new_empty(domain_size))
         }
@@ -1080,6 +1154,8 @@ impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn is_empty(&self) -> bool {
         match self {
+            MixedBitSet::Empty => true,
+            MixedBitSet::Tiny(set) => set.is_empty(),
             MixedBitSet::Small(set) => set.is_empty(),
             MixedBitSet::Large(set) => set.is_empty(),
         }
@@ -1088,6 +1164,8 @@ impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         match self {
+            MixedBitSet::Empty => panic!("contains on empty"),
+            MixedBitSet::Tiny(set) => set.contains(elem),
             MixedBitSet::Small(set) => set.contains(elem),
             MixedBitSet::Large(set) => set.contains(elem),
         }
@@ -1096,6 +1174,8 @@ impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
         match self {
+            MixedBitSet::Empty => panic!("insert on empty"),
+            MixedBitSet::Tiny(set) => set.insert(elem),
             MixedBitSet::Small(set) => set.insert(elem),
             MixedBitSet::Large(set) => set.insert(elem),
         }
@@ -1103,6 +1183,8 @@ impl<T: Idx> MixedBitSet<T> {
 
     pub fn insert_all(&mut self) {
         match self {
+            MixedBitSet::Empty => {},
+            MixedBitSet::Tiny(set) => set.insert_all(),
             MixedBitSet::Small(set) => set.insert_all(),
             MixedBitSet::Large(set) => set.insert_all(),
         }
@@ -1111,6 +1193,8 @@ impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn remove(&mut self, elem: T) -> bool {
         match self {
+            MixedBitSet::Empty => panic!("remove on empty"),
+            MixedBitSet::Tiny(set) => set.remove(elem),
             MixedBitSet::Small(set) => set.remove(elem),
             MixedBitSet::Large(set) => set.remove(elem),
         }
@@ -1118,6 +1202,8 @@ impl<T: Idx> MixedBitSet<T> {
 
     pub fn iter(&self) -> MixedBitIter<'_, T> {
         match self {
+            MixedBitSet::Empty => MixedBitIter::Empty,
+            MixedBitSet::Tiny(set) => MixedBitIter::Tiny(set.iter()),
             MixedBitSet::Small(set) => MixedBitIter::Small(set.iter()),
             MixedBitSet::Large(set) => MixedBitIter::Large(set.iter()),
         }
@@ -1126,6 +1212,8 @@ impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn clear(&mut self) {
         match self {
+            MixedBitSet::Empty => {},
+            MixedBitSet::Tiny(set) => set.clear(),
             MixedBitSet::Small(set) => set.clear(),
             MixedBitSet::Large(set) => set.clear(),
         }
@@ -1134,6 +1222,8 @@ impl<T: Idx> MixedBitSet<T> {
     /// Returns true if `self` was modified.
     pub fn union(&mut self, other: &MixedBitSet<T>) -> bool {
         match (self, other) {
+            (MixedBitSet::Empty, MixedBitSet::Empty) => false,
+            (MixedBitSet::Tiny(set), MixedBitSet::Tiny(other)) => set.union(other),
             (MixedBitSet::Small(set), MixedBitSet::Small(other)) => set.union(other),
             (MixedBitSet::Large(set), MixedBitSet::Large(other)) => set.union(other),
             _ => panic!("MixedBitSet size mismatch"),
@@ -1143,6 +1233,8 @@ impl<T: Idx> MixedBitSet<T> {
     /// Returns true if `self` was modified.
     pub fn subtract(&mut self, other: &MixedBitSet<T>) -> bool {
         match (self, other) {
+            (MixedBitSet::Empty, MixedBitSet::Empty) => false,
+            (MixedBitSet::Tiny(set), MixedBitSet::Tiny(other)) => set.subtract(other),
             (MixedBitSet::Small(set), MixedBitSet::Small(other)) => set.subtract(other),
             (MixedBitSet::Large(set), MixedBitSet::Large(other)) => set.subtract(other),
             _ => panic!("MixedBitSet size mismatch"),
@@ -1153,6 +1245,8 @@ impl<T: Idx> MixedBitSet<T> {
 impl<T> Clone for MixedBitSet<T> {
     fn clone(&self) -> Self {
         match self {
+            MixedBitSet::Empty => MixedBitSet::Empty,
+            MixedBitSet::Tiny(set) => MixedBitSet::Tiny(set.clone()),
             MixedBitSet::Small(set) => MixedBitSet::Small(set.clone()),
             MixedBitSet::Large(set) => MixedBitSet::Large(set.clone()),
         }
@@ -1164,6 +1258,8 @@ impl<T> Clone for MixedBitSet<T> {
     /// faster implementation, which is important because this function is hot.
     fn clone_from(&mut self, from: &Self) {
         match (self, from) {
+            (MixedBitSet::Empty, MixedBitSet::Empty) => {},
+            (MixedBitSet::Tiny(set), MixedBitSet::Tiny(from)) => set.clone_from(from),
             (MixedBitSet::Small(set), MixedBitSet::Small(from)) => set.clone_from(from),
             (MixedBitSet::Large(set), MixedBitSet::Large(from)) => set.clone_from(from),
             _ => panic!("MixedBitSet size mismatch"),
@@ -1174,6 +1270,8 @@ impl<T> Clone for MixedBitSet<T> {
 impl<T: Idx> fmt::Debug for MixedBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            MixedBitSet::Empty => DenseBitSet::<T>::new_empty(0).fmt(w),
+            MixedBitSet::Tiny(set) => set.fmt(w),
             MixedBitSet::Small(set) => set.fmt(w),
             MixedBitSet::Large(set) => set.fmt(w),
         }
@@ -1181,6 +1279,8 @@ impl<T: Idx> fmt::Debug for MixedBitSet<T> {
 }
 
 pub enum MixedBitIter<'a, T: Idx> {
+    Empty,
+    Tiny(BitIter<'a, T>),
     Small(BitIter<'a, T>),
     Large(ChunkedBitIter<'a, T>),
 }
@@ -1189,6 +1289,8 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
         match self {
+            MixedBitIter::Empty => None,
+            MixedBitIter::Tiny(iter) => iter.next(),
             MixedBitIter::Small(iter) => iter.next(),
             MixedBitIter::Large(iter) => iter.next(),
         }
