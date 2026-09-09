@@ -1554,7 +1554,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             return;
         }
         ScalableElt::ElementCount(..) if fields.len() >= 2 => {
-            tcx.dcx().struct_span_err(span, "scalable vectors cannot have multiple fields").emit();
+            tcx.dcx().span_err(span, "scalable vectors cannot have multiple fields");
             return;
         }
         ScalableElt::Container if fields.is_empty() => {
