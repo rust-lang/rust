@@ -278,7 +278,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        !tcx.instantiate_and_check_impossible_clauses((def_id, &args))
+        tcx.mono_item_is_instantiable((def_id, args))
     }
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
