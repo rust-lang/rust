@@ -272,6 +272,8 @@ declare_features! (
     (internal, lang_items, "1.0.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (internal, link_cfg, "1.14.0", None),
+    /// Allows using `#[link_name="__enzyme_*"]`.
+    (internal, link_enzyme_intrinsics, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `?Trait` trait bounds in more contexts.
     (internal, more_maybe_bounds, "1.82.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
