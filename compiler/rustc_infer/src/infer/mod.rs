@@ -723,7 +723,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
+        self.tcx.dcx().into_taintable(&self.tainted_by_errors)
     }
 
     pub fn next_trait_solver(&self) -> bool {

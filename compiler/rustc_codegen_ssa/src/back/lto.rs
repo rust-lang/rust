@@ -145,17 +145,17 @@ pub(super) fn check_lto_allowed(cgcx: &CodegenContext, dcx: DiagCtxtHandle<'_>) 
     // Make sure we actually can run LTO
     for crate_type in cgcx.crate_types.iter() {
         if !crate_type_allows_lto(*crate_type) {
-            dcx.handle().emit_fatal(LtoDisallowed);
+            dcx.emit_fatal(LtoDisallowed);
         } else if *crate_type == CrateType::Dylib {
             if !cgcx.dylib_lto {
-                dcx.handle().emit_fatal(LtoDylib);
+                dcx.emit_fatal(LtoDylib);
             }
         } else if *crate_type == CrateType::ProcMacro && !cgcx.dylib_lto {
-            dcx.handle().emit_fatal(LtoProcMacro);
+            dcx.emit_fatal(LtoProcMacro);
         }
     }
 
     if cgcx.prefer_dynamic && !cgcx.dylib_lto {
-        dcx.handle().emit_fatal(DynamicLinkingWithLTO);
+        dcx.emit_fatal(DynamicLinkingWithLTO);
     }
 }
