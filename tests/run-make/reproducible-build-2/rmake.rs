@@ -11,6 +11,9 @@
 //@ ignore-windows-gnu
 // GNU Linker for Windows is non-deterministic.
 
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use run_make_support::{bin_name, is_windows_msvc, rfs, rust_lib_name, rustc};
 
 fn main() {

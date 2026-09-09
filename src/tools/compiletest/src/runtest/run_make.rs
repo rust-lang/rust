@@ -203,6 +203,11 @@ impl TestCx<'_> {
             // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
+        if let Some(codegen_backend) = &self.config.override_codegen_backend {
+            // In case it's a different codegen backend than LLVM.
+            cmd.env("RUSTC_CODEGEN_BACKEND", codegen_backend.as_str());
+        }
+
         // The `run-make-cargo` and `build-std` suites need an in-tree `cargo`, `run-make` does not.
         if matches!(self.config.suite, TestSuite::RunMakeCargo | TestSuite::BuildStd) {
             cmd.env(
