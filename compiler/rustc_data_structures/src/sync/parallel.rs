@@ -7,7 +7,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use parking_lot::Mutex;
 
 use crate::FatalErrorMarker;
-use crate::sync::{DynSend, DynSync, FromDyn, IntoDynSyncSend, mode};
+use crate::sync::{CacheAligned, DynSend, DynSync, FromDyn, IntoDynSyncSend, mode};
 
 /// A guard used to hold panics that occur during a parallel section to later by unwound.
 /// This is used for the parallel compiler to prevent fatal errors from non-deterministically
@@ -237,19 +237,19 @@ pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterato
         if let Some(proof) = mode::check_dyn_thread_safe() {
             let map = proof.derive(map);
 
-            let mut items: Vec<(Option<I>, Option<R>)> =
-                t.into_iter().map(|i| (Some(i), None)).collect();
+            let mut items: Vec<CacheAligned<(Option<I>, Option<R>)>> =
+                t.into_iter().map(|i| CacheAligned((Some(i), None))).collect();
 
             par_slice(
                 &mut items,
                 guard,
                 |i| {
-                    i.1 = Some(map(i.0.take().unwrap()));
+                    i.0.1 = Some(map(i.0.0.take().unwrap()));
                 },
                 proof,
             );
 
-            items.into_iter().filter_map(|i| i.1).collect()
+            items.into_iter().filter_map(|i| i.0.1).collect()
         } else {
             t.into_iter().filter_map(|i| guard.run(|| map(i))).collect()
         }
