@@ -1346,7 +1346,7 @@ impl u64 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
-    midpoint_impl! { u64, u128, unsigned }
+    midpoint_impl! { u64, unsigned }
     widening_mul_impl! { u64, u128 }
     widening_carryless_mul_impl! { u64, u128 }
     carrying_carryless_mul_impl! { u64, u128 }
