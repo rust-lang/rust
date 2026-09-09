@@ -1940,7 +1940,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 /// Returns a pair of boolean indicating whether we should preserve the object and
 /// dwarf object files on the filesystem for their debug information. This is often
 /// useful with split-dwarf like schemes.
-fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
+pub(crate) fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
     // If the objects don't have debuginfo there's nothing to preserve.
     if sess.opts.debuginfo == config::DebugInfo::None {
         return (false, false);

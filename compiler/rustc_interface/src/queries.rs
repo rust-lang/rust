@@ -102,6 +102,8 @@ impl Linker {
                 "metadata",
                 &[("rmeta", path)],
                 &[],
+                None,
+                &[],
             );
             work_products.insert(id, product);
         }
@@ -117,6 +119,7 @@ impl Linker {
                 sess,
                 incr_comp_session.as_ref(),
                 &self.dep_graph,
+                &self.output_filenames,
                 work_products,
             )
         });
