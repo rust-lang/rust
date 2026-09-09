@@ -1,6 +1,12 @@
 // exact-check
 // ignore-order
 
+// The FooBar type is defined in upstream_type,
+// but used in downstream_type. This means both crates'
+// search indexes contain TypeData for it,
+// but only upstream_type defines EntryData.
+// This test case ensures we can merge them
+// when running in CCI mode.
 // https://github.com/rust-lang/rust/issues/162334
 const EXPECTED = [
     {
