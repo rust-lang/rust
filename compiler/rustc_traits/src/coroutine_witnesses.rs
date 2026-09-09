@@ -84,10 +84,6 @@ fn compute_assumptions<'tcx>(
             region_obligations,
             &region_constraints,
             region_assumptions,
-            // We return early above unless the old solver is used globally, while
-            // `-Zassumptions-on-binders` enables the next solver globally. So there
-            // are never any new-style region constraints to pass along here.
-            Default::default(),
         )
         .constraints
         .fold_with(&mut OpportunisticRegionResolver::new(&infcx));

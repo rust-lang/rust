@@ -246,15 +246,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         mut outlives_constraints,
         universe_causes,
         type_tests,
-        solver_constraints,
     } = constraints;
-
-    // These have already been destructured into `outlives_constraints` at the
-    // end of MIR type checking.
-    assert!(
-        solver_constraints.is_true(),
-        "solver region constraints not lowered to NLL = {solver_constraints:#?}",
-    );
 
     let fr_static = universal_regions.fr_static;
     let compute_sccs =
