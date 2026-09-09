@@ -2,6 +2,7 @@
 
 #![allow(incomplete_features)]
 #![feature(macroless_generic_const_args)]
+#![feature(macroless_const_item_generic_const_args)]
 #![feature(generic_const_args, min_generic_const_args)]
 #![feature(min_adt_const_params)]
 
