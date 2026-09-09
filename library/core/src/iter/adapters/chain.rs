@@ -304,6 +304,7 @@ where
 {
 }
 
+#[stable(feature = "chain_exact_size", since = "CURRENT_RUSTC_VERSION")]
 impl<A, B> ExactSizeIterator for Chain<A, B>
 where
     A: ExactSizeIterator,
