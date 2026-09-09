@@ -10,4 +10,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+# Workaround for issue where the home dir of `msys64` sometimes doesn't exist on github runners
+echo $HOME
+mkdir -p $HOME
+
 git config --replace-all --global core.autocrlf false
