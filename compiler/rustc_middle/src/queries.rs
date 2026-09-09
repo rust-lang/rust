@@ -2649,6 +2649,13 @@ rustc_queries! {
         }
     }
 
+    query mono_item_is_instantiable(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
+        desc {
+            "checking whether `{}` is instantiable during monomorphization",
+            tcx.def_path_str(key.0)
+        }
+    }
+
     query is_impossible_associated_item(key: (DefId, DefId)) -> bool {
         desc {
             "checking if `{}` is impossible to reference within `{}`",
