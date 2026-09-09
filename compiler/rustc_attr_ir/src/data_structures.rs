@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::path::PathBuf;
+use std::range::RangeInclusive;
 
 pub use ReprAttr::*;
 use rustc_abi::Align;
@@ -123,8 +124,7 @@ pub enum InstrumentFnAttr {
 
 #[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct EditionRedirect {
-    pub start: Edition,
-    pub end: Edition,
+    pub range: RangeInclusive<Edition>,
     pub span: Span,
 }
 
