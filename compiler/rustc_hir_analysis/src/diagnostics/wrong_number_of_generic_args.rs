@@ -628,6 +628,14 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             return;
         }
 
+        // Do not suggest angle-bracketed arguments that require the unstable feature.
+        if !self.tcx.features().unboxed_closures()
+            && self.tcx.is_trait(self.def_id)
+            && self.tcx.trait_def(self.def_id).paren_sugar
+        {
+            return;
+        }
+
         match self.gen_args_info {
             MissingLifetimes { .. } => {
                 self.suggest_adding_lifetime_args(err);
