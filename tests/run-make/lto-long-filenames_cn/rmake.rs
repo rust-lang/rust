@@ -5,6 +5,8 @@
 // as this is not something rustc can fix by itself,
 // we just skip the test on windows-gnu for now. Hence:
 //@ ignore-windows-gnu
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{rfs, rustc};
 

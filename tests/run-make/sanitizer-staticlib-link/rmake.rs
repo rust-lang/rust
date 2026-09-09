@@ -10,6 +10,8 @@
 
 //@ needs-sanitizer-support
 //@ needs-sanitizer-address
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 //@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 

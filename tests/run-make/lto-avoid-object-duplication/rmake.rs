@@ -15,6 +15,8 @@
 // Only checking on Unix platforms should suffice.
 //FIXME(Oneirical): This could be adapted to work on Windows by checking how
 // that output differs.
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{llvm_objdump, regex, rust_lib_name, rustc, static_lib_name};
 

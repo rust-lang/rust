@@ -1,4 +1,6 @@
 //@ only-x86_64-unknown-linux-gnu
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use std::fs;
 use std::path::Path;

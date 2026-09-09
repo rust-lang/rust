@@ -7,6 +7,8 @@
 //@ ignore-cross-compile
 // Reason: the binary is executed
 //@ needs-profiler-runtime
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{llvm_profdata, rfs, run, rustc};
 

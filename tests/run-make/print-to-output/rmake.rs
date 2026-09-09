@@ -6,6 +6,7 @@
 // will fail on LLVM built without all of the components listed above. If adding a new target that
 // relies on a llvm component not listed above, it will need to be added to the required llvm
 // components above.
+//@ ignore-backends: gcc
 
 use std::path::PathBuf;
 

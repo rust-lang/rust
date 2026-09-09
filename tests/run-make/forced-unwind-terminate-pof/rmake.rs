@@ -7,6 +7,8 @@
 //@ ignore-cross-compile
 //@ ignore-windows
 //Reason: pthread (POSIX threads) is not available on Windows
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{run, rustc};
 

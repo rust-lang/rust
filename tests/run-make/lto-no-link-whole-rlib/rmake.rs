@@ -5,6 +5,8 @@
 
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{build_native_static_lib, run, rustc};
 
