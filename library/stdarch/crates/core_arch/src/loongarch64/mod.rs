@@ -179,7 +179,6 @@ pub unsafe fn asrtgt(a: i64, b: i64) {
 
 /// Loads the page table directory entry
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -188,7 +187,6 @@ pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
 
 /// Loads the page table entry
 #[inline(always)]
-#[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn ldpte<const IMM8: i64>(a: i64) {
     static_assert_uimm_bits!(IMM8, 8);

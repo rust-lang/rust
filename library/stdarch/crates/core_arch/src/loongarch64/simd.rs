@@ -393,7 +393,6 @@ macro_rules! impl_gsv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr, const, unsafe) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(1)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub unsafe fn $name<const IMM: i32>(a: $gty) -> $oty {
             static_assert_simm_bits!(IMM, $ibs);
@@ -409,7 +408,6 @@ macro_rules! impl_sv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(0)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: i32>() -> $oty {
             static_assert_simm_bits!(IMM, $ibs);
@@ -422,7 +420,6 @@ macro_rules! impl_sv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr, const) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(0)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: i32>() -> $oty {
             static_assert_simm_bits!(IMM, $ibs);
@@ -484,7 +481,6 @@ macro_rules! impl_vgs {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr, const, unsafe) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(2)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub unsafe fn $name<const IMM: i32>(a: $oty, b: $gty) {
             static_assert_simm_bits!(IMM, $ibs);
@@ -499,7 +495,6 @@ macro_rules! impl_vuv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(1)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: u32>(a: $oty) -> $oty {
             static_assert_uimm_bits!(IMM, (size_of::<<$ity as SimdExt>::Elem>() * 8).ilog2());
@@ -514,7 +509,6 @@ macro_rules! impl_vuv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(1)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: u32>(a: $oty) -> $oty {
             static_assert_uimm_bits!(IMM, $ibs);
@@ -529,7 +523,6 @@ macro_rules! impl_vuv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr, const) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(1)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: u32>(a: $oty) -> $oty {
             static_assert_uimm_bits!(IMM, $ibs);
@@ -548,7 +541,6 @@ macro_rules! impl_vug {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(1)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: u32>(a: $oty) -> $gty {
             static_assert_uimm_bits!(IMM, $ibs);
@@ -567,7 +559,6 @@ macro_rules! impl_vsv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(1)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: i32>(a: $oty) -> $oty {
             static_assert_simm_bits!(IMM, $ibs);
@@ -606,7 +597,6 @@ macro_rules! impl_vvuv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr, const) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(2)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: u32>(a: $oty, b: $oty) -> $oty {
             static_assert_uimm_bits!(IMM, $ibs);
@@ -626,7 +616,6 @@ macro_rules! impl_vugv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(2)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: u32>(a: $oty, b: $gty) -> $oty {
             static_assert_uimm_bits!(IMM, $ibs);
