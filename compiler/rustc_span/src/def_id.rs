@@ -551,3 +551,32 @@ impl From<LocalModId> for DefId {
         typed.0.into()
     }
 }
+
+/// DefId which can only be used to check visibilities.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, Decodable, Debug)]
+pub struct VisibilityDefId(pub DefId);
+
+impl<T: Into<DefId>> From<T> for VisibilityDefId {
+    #[inline]
+    fn from(value: T) -> Self {
+        Self(value.into())
+    }
+}
+
+/// DefId which can only be used to check visibilities.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, Encodable, Decodable, Debug)]
+pub struct VisibilityModId(pub VisibilityDefId);
+
+impl<T: Into<ModId>> From<T> for VisibilityModId {
+    #[inline]
+    fn from(value: T) -> Self {
+        VisibilityModId(VisibilityDefId(value.into().to_def_id()))
+    }
+}
+
+impl From<VisibilityModId> for VisibilityDefId {
+    #[inline]
+    fn from(id: VisibilityModId) -> Self {
+        id.0
+    }
+}

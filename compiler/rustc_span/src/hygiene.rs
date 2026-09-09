@@ -41,7 +41,9 @@ use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::{debug, trace};
 
-use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, ModId, StableCrateId};
+use crate::def_id::{
+    CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, ModId, StableCrateId, VisibilityModId,
+};
 use crate::edition::Edition;
 use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
@@ -337,6 +339,11 @@ impl ExpnId {
             last_macro = Some(expn_data.call_site);
         }
         last_macro
+    }
+
+    #[inline]
+    pub fn is_local(&self) -> bool {
+        self.krate == LOCAL_CRATE
     }
 }
 
@@ -707,7 +714,7 @@ impl SyntaxContext {
     }
 
     #[inline]
-    pub(crate) const fn as_u32(self) -> u32 {
+    pub const fn as_u32(self) -> u32 {
         self.0
     }
 
@@ -1031,7 +1038,7 @@ pub struct ExpnData {
     /// if this `ExpnData` corresponds to a macro invocation
     pub macro_def_id: Option<DefId>,
     /// The normal module (`mod`) in which the expanded macro was defined.
-    pub parent_module: Option<ModId>,
+    pub parent_module: Option<VisibilityModId>,
     /// Suppresses the `unsafe_code` lint for code produced by this macro.
     pub(crate) allow_internal_unsafe: bool,
     /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
@@ -1070,7 +1077,7 @@ impl ExpnData {
             allow_internal_unstable,
             edition,
             macro_def_id,
-            parent_module,
+            parent_module: parent_module.map(Into::into),
             disambiguator: 0,
             allow_internal_unsafe,
             local_inner_macros,
@@ -1095,7 +1102,7 @@ impl ExpnData {
             allow_internal_unstable: None,
             edition,
             macro_def_id,
-            parent_module,
+            parent_module: parent_module.map(Into::into),
             disambiguator: 0,
             allow_internal_unsafe: false,
             local_inner_macros: false,
@@ -1319,7 +1326,7 @@ impl HygieneEncodeContext {
     pub fn encode<T>(
         &self,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
+        mut encode_ctxt: impl FnMut(&mut T, SyntaxContext, &SyntaxContextKey),
         mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
@@ -1344,7 +1351,7 @@ impl HygieneEncodeContext {
             });
             for (ctxt, ctxt_key) in all_ctxt_data {
                 if self.serialized_ctxts.lock().insert(ctxt) {
-                    encode_ctxt(encoder, ctxt.0, &ctxt_key);
+                    encode_ctxt(encoder, ctxt, &ctxt_key);
                 }
             }
 
