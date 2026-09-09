@@ -1,5 +1,5 @@
 types! {
-    #![unstable(feature = "stdarch_loongarch", issue = "117427")]
+    #![stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 
     /// 256-bit wide integer vector type, LoongArch-specific
     ///

@@ -607,7 +607,7 @@ fn gen_bind_body(
     let function = format!(
         r#"
 #[inline]{target_feature}
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 {fn_decl}{{
     {call_params}
 }}

@@ -6,21 +6,21 @@
 mod types;
 
 #[rustfmt::skip]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub use self::types::*;
 
 #[rustfmt::skip]
 mod generated;
 
 #[rustfmt::skip]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub use self::generated::*;
 
 #[rustfmt::skip]
 mod portable;
 
 #[rustfmt::skip]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub use self::portable::*;
 
 #[rustfmt::skip]

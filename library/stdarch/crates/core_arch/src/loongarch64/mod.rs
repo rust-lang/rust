@@ -4,9 +4,9 @@ mod lasx;
 mod lsx;
 mod simd;
 
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub use self::lasx::*;
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub use self::lsx::*;
 
 use crate::arch::asm;
