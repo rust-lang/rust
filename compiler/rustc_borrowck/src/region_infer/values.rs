@@ -354,7 +354,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
 
     /// Returns just the universal regions that are contained in a given region's value.
     pub(crate) fn universal_regions_outlived_by(&self, r: N) -> impl Iterator<Item = RegionVid> {
-        self.free_regions.row(r).map(|set| set.iter()).into_flat_iter()
+        self.free_regions.row(r).map(|set| set.into_iter()).into_flat_iter()
     }
 
     /// Returns all the elements contained in a given region's value.
@@ -364,7 +364,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
         self.placeholders
             .row(r)
-            .map(|set| set.iter())
+            .map(|set| set.into_iter())
             .into_flat_iter()
             .map(move |p| self.placeholder_indices.lookup_placeholder(p))
     }
