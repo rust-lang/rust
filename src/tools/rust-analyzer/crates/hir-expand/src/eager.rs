@@ -62,7 +62,7 @@ pub fn expand_eager_macro_input(
         macro_depth,
     };
     let arg_id = MacroCallId::new(db, loc);
-    #[allow(deprecated)] // builtin eager macros are never derives
+    #[expect(deprecated, reason = "builtin eager macros are never derives")]
     let (_, _, span) = arg_id.macro_arg(db);
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         arg_id.parse_macro_expansion(db);

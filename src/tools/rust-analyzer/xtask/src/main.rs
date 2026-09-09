@@ -13,6 +13,8 @@
     clippy::print_stderr,
     clippy::print_stdout,
     clippy::disallowed_methods,
+    // 1. We want to be dependency-light
+    // 2. Speed of hash maps doesn't matter, as xtask is dev tooling
     clippy::disallowed_types
 )]
 

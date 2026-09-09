@@ -115,7 +115,10 @@ impl ExprScopes {
     }
 
     /// If `scope` refers to a macro def scope, returns the corresponding `MacroId`.
-    #[allow(clippy::borrowed_box)] // If we return `&MacroDefId` we need to move it, this way we just clone the `Box`.
+    #[expect(
+        clippy::borrowed_box,
+        reason = "If we return `&MacroDefId` we need to move it, this way we just clone the `Box`."
+    )]
     pub fn macro_def(&self, scope: ScopeId) -> Option<&Box<MacroDefId>> {
         match &self.scopes[scope].kind {
             ScopeKind::MacroDef(macro_def) => Some(macro_def),

@@ -391,6 +391,6 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
         }
         _ => false,
     });
-    #[allow(clippy::let_and_return)]
+    #[allow(clippy::let_and_return, reason = "the name clarifies the meaning of the boolean")]
     is_not_orphan
 }
