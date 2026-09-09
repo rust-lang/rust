@@ -614,6 +614,8 @@ declare_features! (
     /// Allows using `#[link(kind = "link-arg", name = "...")]`
     /// to pass custom arguments to the linker.
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
+    /// Allows annotating pointer and length parameters for buffer length lints.
+    (unstable, lint_c_buffer_length, "CURRENT_RUSTC_VERSION", Some(162563)),
     /// Target features on loongarch.
     (unstable, loongarch_target_feature, "1.73.0", Some(150252)),
     /// Allows use of loop optimization hints via attributes.

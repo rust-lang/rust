@@ -986,6 +986,12 @@ pub enum AttributeKind {
     /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     LintAsPtr,
 
+    /// Represents `#[lint::c_buffer_length(pointer, length)]`.
+    LintCBufferLength {
+        pointer: Ident,
+        length: Ident,
+    },
+
     /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
     LintCheck(ThinVec<LintCheck>),
 

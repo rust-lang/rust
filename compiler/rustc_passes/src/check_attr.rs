@@ -182,6 +182,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr: &AttributeKind,
     ) {
         match attr {
+            AttributeKind::LintCBufferLength { pointer, length } => {
+                self.check_c_buffer_length(hir_id, target, *pointer, *length)
+            }
             AttributeKind::ProcMacro => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
             }
@@ -549,6 +552,39 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 });
             }
             _ => {}
+        }
+    }
+
+    /// Checks use of buffer/length parameters in `#[lint::c_buffer_length]`
+    fn check_c_buffer_length(&self, hir_id: HirId, target: Target, pointer: Ident, length: Ident) {
+        if !matches!(target, Target::Fn | Target::ForeignFn) {
+            return;
+        }
+        let def_id = hir_id.owner.def_id;
+        let names = self.tcx.fn_arg_idents(def_id);
+        let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().skip_binder();
+        for (ident, is_pointer) in [(pointer, true), (length, false)] {
+            let reason = match names
+                .iter()
+                .zip(sig.inputs())
+                .find(|(name, _)| name.is_some_and(|n| n.name == ident.name))
+            {
+                None => "the name must refer to a parameter of this function",
+                Some((_, ty)) => {
+                    if is_pointer && !ty.is_raw_ptr() {
+                        "the buffer parameter must have a raw pointer type"
+                    } else if !is_pointer && !ty.is_integral() {
+                        "the length parameter must have an integer type"
+                    } else {
+                        continue;
+                    }
+                }
+            };
+            self.dcx().emit_err(diagnostics::CBufferLengthParameter {
+                span: ident.span,
+                name: ident.name,
+                reason,
+            });
         }
     }
 

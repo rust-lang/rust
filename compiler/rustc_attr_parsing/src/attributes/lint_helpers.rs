@@ -2,7 +2,7 @@ use rustc_attr_ir::{ReprAttr, find_attr};
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
-use crate::diagnostics::RustcPubTransparent;
+use crate::diagnostics::{InvalidCBufferLength, RustcPubTransparent};
 
 pub(crate) struct LintAsPtrParser;
 impl NoArgsAttributeParser for LintAsPtrParser {
@@ -16,6 +16,36 @@ impl NoArgsAttributeParser for LintAsPtrParser {
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintAsPtr;
+}
+
+pub(crate) struct LintCBufferLengthParser;
+
+impl SingleAttributeParser for LintCBufferLengthParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::c_buffer_length];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["pointer, length"]);
+    const STABILITY: AttributeStability = unstable!(lint_c_buffer_length);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let parsed = (|| {
+            let list = args.as_list()?;
+            if list.len() != 2 {
+                return None;
+            }
+            let mut items = list.mixed();
+            let pointer = items.next()?.meta_item_no_args()?.ident()?;
+            let length = items.next()?.meta_item_no_args()?.ident()?;
+            (pointer.name != length.name).then_some((pointer, length))
+        })();
+        let Some((pointer, length)) = parsed else {
+            args.ignore_args();
+            cx.emit_err(InvalidCBufferLength { span: cx.attr_span });
+            return None;
+        };
+
+        Some(AttributeKind::LintCBufferLength { pointer, length })
+    }
 }
 
 pub(crate) struct LintNeverReturnsNullPtrParser;
