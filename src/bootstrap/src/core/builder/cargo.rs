@@ -882,7 +882,10 @@ impl Builder<'_> {
         let mut rustdocflags = rustflags.clone();
 
         match mode {
-            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
+            Mode::Std => {
+                rustflags.arg("-Zshare-generics");
+            }
+            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
             Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => {
                 // Build proc macros both for the host and the target unless proc-macros are not
                 // supported by the target.
