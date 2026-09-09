@@ -52,10 +52,12 @@ where
         let normalizes_to =
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
 
-        // FIXME: Explain this hack. Why this is needed and why should be done here
-        // FIXME: Maybe we need probing for whole this call as the following lines
-        // directly add `hidden_types_of_opaques` to the context without probing or
-        // instantiating the response.
+        // For the reason why we need this hack, see the comments on
+        // [`ty::OpaqueHiddenTyBound::opt_unmentioned_projection_bound`].
+        // We register this hacky bound as lazy as possible, at here instead of at the normalization
+        // of the initial hidden type. That's because we might acquire the originally unmentioned
+        // bound while proving other goals and if so we might fail the evaluation due to having
+        // multiple candidates due to this hacky bound.
         if self.typing_mode().should_add_hidden_types_of_opaques()
             && unconstrained_term.as_type().is_some()
             && alias.self_ty().is_ty_var()
@@ -67,7 +69,7 @@ where
                 hidden_bounds.iter().flat_map(|(_, bounds)| bounds).copied(),
                 goal.predicate,
             ) {
-                self.add_opaque_hidden_type_bounds_in_storage(&[(alias.self_ty(), unmentioned)]);
+                self.add_opaque_hidden_ty_bounds_in_storage(&[(alias.self_ty(), unmentioned)]);
             }
         }
 

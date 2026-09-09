@@ -116,7 +116,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let RawExternalConstraintsData {
             region_constraints,
             opaque_types,
-            opaque_hidden_type_bounds: mut opaque_hidden_type_bounds_candidates,
+            opaque_hidden_ty_bounds: mut opaque_hidden_ty_bounds_candidates,
             normalization_nested_goals,
         } = external_constraints;
         let region_constraints = if region_constraints.has_type_flags(NEEDS_CANONICAL) {
@@ -137,23 +137,23 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             };
 
         // Filter out irrelevant hidden tys, in a fixed-point iteration to make them less bulky.
-        let mut opaque_hidden_type_bounds = vec![];
-        while !opaque_hidden_type_bounds_candidates.is_empty() {
-            let prev_len = opaque_hidden_type_bounds.len();
-            opaque_hidden_type_bounds_candidates.retain(|bounds @ (hidden_ty, _)| {
+        let mut opaque_hidden_ty_bounds = vec![];
+        while !opaque_hidden_ty_bounds_candidates.is_empty() {
+            let prev_len = opaque_hidden_ty_bounds.len();
+            opaque_hidden_ty_bounds_candidates.retain(|bounds @ (hidden_ty, _)| {
                 if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind()
                     && canonicalizer
                         .state
                         .sub_root_lookup_table
                         .contains_key(&delegate.sub_unification_table_root_var(vid))
                 {
-                    opaque_hidden_type_bounds.push(bounds.clone().fold_with(&mut canonicalizer));
+                    opaque_hidden_ty_bounds.push(bounds.clone().fold_with(&mut canonicalizer));
                     false
                 } else {
                     true
                 }
             });
-            if opaque_hidden_type_bounds.len() == prev_len {
+            if opaque_hidden_ty_bounds.len() == prev_len {
                 break;
             }
         }
@@ -164,9 +164,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             external_constraints: delegate.cx().mk_external_constraints(ExternalConstraintsData {
                 region_constraints,
                 opaque_types: delegate.cx().mk_predefined_opaques_in_body(&opaque_types),
-                opaque_hidden_type_bounds: delegate
+                opaque_hidden_ty_bounds: delegate
                     .cx()
-                    .mk_opaque_hidden_ty_bounds_in_body(&opaque_hidden_type_bounds),
+                    .mk_opaque_hidden_ty_bounds_in_body(&opaque_hidden_ty_bounds),
                 normalization_nested_goals,
             }),
         };

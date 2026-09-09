@@ -421,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let opaque_hidden_ty_bounds_in_body = if self.next_trait_solver() {
             self.tcx.mk_opaque_hidden_ty_bounds_in_body_from_iter(
-                self.inner.borrow_mut().opaque_types().iter_opaque_hidden_type_bounds(),
+                self.inner.borrow_mut().opaque_types().iter_opaque_hidden_ty_bounds(),
             )
         } else {
             ty::List::empty()
@@ -683,7 +683,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_types_storage`");
         }
     }
-    infcx.add_opaque_hidden_type_bounds_in_storage(opaque_hidden_ty_bounds_in_body);
+    infcx.add_opaque_hidden_ty_bounds_in_storage(opaque_hidden_ty_bounds_in_body);
     let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 
     // We accept not-yet-defined opaque types in the autoderef

@@ -14,9 +14,18 @@ use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
 pub struct OpaqueTypeStorage<'tcx> {
     opaque_types: FxIndexMap<OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>>,
     duplicate_entries: Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-    // FIXME: document those two fields
+    // Note:
+    //   OpaqueHiddenTy ::= OpaqueTy
+    //                    | Projection<OpaqueHiddenTy>
+    //
+    // When we normalize a `OpaqueHiddenTy`, we store its self-bounds here, to support non-defining
+    // usages of sucu hidden types. The key is an expected term for the normalization and the value
+    // is those self-bounds.
     hidden_types_of_opaques: FxIndexMap<Ty<'tcx>, FxIndexSet<ty::OpaqueHiddenTyBound<'tcx>>>,
-    opaque_hidden_type_bounds: Vec<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)>,
+    // The flattened version of the above `hidden_types_of_opaques`. This is a pure duplication
+    // but we need this to track things linearly, so that we can track the number of those bounds
+    // in `OpaqueTypeStorageEntries` without a map and can lookup `opaque_hidden_ty_bounds` in O(1).
+    opaque_hidden_ty_bounds: Vec<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)>,
 }
 
 /// The number of entries in the opaque type storage at a given point.
@@ -27,7 +36,7 @@ pub struct OpaqueTypeStorage<'tcx> {
 pub struct OpaqueTypeStorageEntries {
     opaque_types: usize,
     duplicate_entries: usize,
-    opaque_hidden_type_bounds: usize,
+    opaque_hidden_ty_bounds: usize,
 }
 
 impl rustc_type_ir::inherent::OpaqueTypeStorageEntries for OpaqueTypeStorageEntries {
@@ -35,9 +44,9 @@ impl rustc_type_ir::inherent::OpaqueTypeStorageEntries for OpaqueTypeStorageEntr
         let OpaqueTypeStorageEntries {
             opaque_types,
             duplicate_entries: _,
-            opaque_hidden_type_bounds,
+            opaque_hidden_ty_bounds,
         } = self;
-        opaques != opaque_types || hidden_ty_bounds != opaque_hidden_type_bounds
+        opaques != opaque_types || hidden_ty_bounds != opaque_hidden_ty_bounds
     }
 }
 
@@ -83,11 +92,11 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
             }
         };
 
-        let truncate_to = self.opaque_hidden_type_bounds.len() - removed;
+        let truncate_to = self.opaque_hidden_ty_bounds.len() - removed;
         debug_assert!(
-            (&self.opaque_hidden_type_bounds[truncate_to..]).iter().all(|(h, _)| *h == hidden_ty)
+            (&self.opaque_hidden_ty_bounds[truncate_to..]).iter().all(|(h, _)| *h == hidden_ty)
         );
-        self.opaque_hidden_type_bounds.truncate(truncate_to);
+        self.opaque_hidden_ty_bounds.truncate(truncate_to);
     }
 
     pub fn is_empty(&self) -> bool {
@@ -95,12 +104,12 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
             opaque_types,
             duplicate_entries,
             hidden_types_of_opaques,
-            opaque_hidden_type_bounds,
+            opaque_hidden_ty_bounds,
         } = self;
         opaque_types.is_empty()
             && duplicate_entries.is_empty()
             && hidden_types_of_opaques.is_empty()
-            && opaque_hidden_type_bounds.is_empty()
+            && opaque_hidden_ty_bounds.is_empty()
     }
 
     pub(crate) fn take_opaque_types(
@@ -113,9 +122,9 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
             opaque_types,
             duplicate_entries,
             hidden_types_of_opaques,
-            opaque_hidden_type_bounds,
+            opaque_hidden_ty_bounds,
         } = self;
-        let _ = std::mem::take(opaque_hidden_type_bounds);
+        let _ = std::mem::take(opaque_hidden_ty_bounds);
         (
             std::mem::take(opaque_types).into_iter().chain(std::mem::take(duplicate_entries)),
             std::mem::take(hidden_types_of_opaques).into_iter(),
@@ -126,12 +135,12 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         OpaqueTypeStorageEntries {
             opaque_types: self.opaque_types.len(),
             duplicate_entries: self.duplicate_entries.len(),
-            opaque_hidden_type_bounds: self.opaque_hidden_type_bounds.len(),
+            opaque_hidden_ty_bounds: self.opaque_hidden_ty_bounds.len(),
         }
     }
 
-    pub fn num_opaque_hidden_type_bounds(&self) -> usize {
-        self.opaque_hidden_type_bounds.len()
+    pub fn num_opaque_hidden_ty_bounds(&self) -> usize {
+        self.opaque_hidden_ty_bounds.len()
     }
 
     pub fn opaque_types_added_since(
@@ -149,7 +158,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         &self,
         prev_entries: OpaqueTypeStorageEntries,
     ) -> impl Iterator<Item = (Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)> {
-        self.opaque_hidden_type_bounds.iter().skip(prev_entries.opaque_hidden_type_bounds).copied()
+        self.opaque_hidden_ty_bounds.iter().skip(prev_entries.opaque_hidden_ty_bounds).copied()
     }
     /// Only returns the opaque types from the lookup table. These are used
     /// when normalizing opaque types and have a unique key.
@@ -180,7 +189,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
             opaque_types,
             duplicate_entries,
             hidden_types_of_opaques: _,
-            opaque_hidden_type_bounds: _,
+            opaque_hidden_ty_bounds: _,
         } = self;
         opaque_types.iter().map(|(k, v)| (*k, *v)).chain(duplicate_entries.iter().copied())
     }
@@ -192,21 +201,21 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
             opaque_types: _,
             duplicate_entries: _,
             hidden_types_of_opaques,
-            opaque_hidden_type_bounds: _,
+            opaque_hidden_ty_bounds: _,
         } = self;
         hidden_types_of_opaques.iter().map(|(hidden, bounds)| (*hidden, bounds))
     }
 
-    pub fn iter_opaque_hidden_type_bounds(
+    pub fn iter_opaque_hidden_ty_bounds(
         &self,
     ) -> impl Iterator<Item = (Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)> {
         let OpaqueTypeStorage {
             opaque_types: _,
             duplicate_entries: _,
             hidden_types_of_opaques: _,
-            opaque_hidden_type_bounds,
+            opaque_hidden_ty_bounds,
         } = self;
-        opaque_hidden_type_bounds.iter().copied()
+        opaque_hidden_ty_bounds.iter().copied()
     }
 
     #[inline]
@@ -265,7 +274,7 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
             opaque_types: _,
             duplicate_entries: _,
             hidden_types_of_opaques,
-            opaque_hidden_type_bounds,
+            opaque_hidden_ty_bounds,
         } = self.storage;
         let prev_len = match hidden_types_of_opaques.entry(hidden_ty) {
             Entry::Occupied(mut entry) => {
@@ -275,7 +284,7 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
                 if entry.len() == len {
                     return;
                 }
-                opaque_hidden_type_bounds
+                opaque_hidden_ty_bounds
                     .extend(iter::repeat(hidden_ty).zip(entry.iter().skip(len).copied()));
                 Some(len)
             }
@@ -285,8 +294,7 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
                     return;
                 }
                 let entry = vacant.insert(bounds);
-                opaque_hidden_type_bounds
-                    .extend(iter::repeat(hidden_ty).zip(entry.iter().copied()));
+                opaque_hidden_ty_bounds.extend(iter::repeat(hidden_ty).zip(entry.iter().copied()));
                 None
             }
         };

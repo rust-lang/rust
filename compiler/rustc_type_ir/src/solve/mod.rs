@@ -634,7 +634,7 @@ impl<I: Interner> ExternalRegionConstraints<I> {
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: ExternalRegionConstraints<I>,
     pub opaque_types: I::PredefinedOpaques,
-    pub opaque_hidden_type_bounds: I::OpaqueHiddenTyBounds,
+    pub opaque_hidden_ty_bounds: I::OpaqueHiddenTyBounds,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
@@ -650,7 +650,7 @@ impl<I: Interner> ExternalConstraintsData<I> {
         Self {
             region_constraints,
             opaque_types: cx.mk_predefined_opaques_in_body(&[]),
-            opaque_hidden_type_bounds: cx.mk_opaque_hidden_ty_bounds_in_body(&[]),
+            opaque_hidden_ty_bounds: cx.mk_opaque_hidden_ty_bounds_in_body(&[]),
             normalization_nested_goals: NestedNormalizationGoals::default(),
         }
     }
@@ -659,12 +659,12 @@ impl<I: Interner> ExternalConstraintsData<I> {
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
-            opaque_hidden_type_bounds,
+            opaque_hidden_ty_bounds,
             normalization_nested_goals,
         } = self;
         region_constraints.is_empty()
             && opaque_types.is_empty()
-            && opaque_hidden_type_bounds.is_empty()
+            && opaque_hidden_ty_bounds.is_empty()
             && normalization_nested_goals.is_empty()
     }
 }

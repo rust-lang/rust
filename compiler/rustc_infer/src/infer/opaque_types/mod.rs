@@ -249,7 +249,7 @@ impl<'tcx> InferCtxt<'tcx> {
         inner.opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
     }
 
-    pub fn add_opaque_hidden_type_bounds_in_storage(
+    pub fn add_opaque_hidden_ty_bounds_in_storage(
         &self,
         bounds: &[(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)],
     ) {

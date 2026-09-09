@@ -340,14 +340,14 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
         self.inner.borrow_mut().opaque_types().num_entries()
     }
-    fn num_opaque_hidden_type_bounds(&self) -> usize {
-        self.inner.borrow_mut().opaque_types().num_opaque_hidden_type_bounds()
+    fn num_opaque_hidden_ty_bounds(&self) -> usize {
+        self.inner.borrow_mut().opaque_types().num_opaque_hidden_ty_bounds()
     }
     fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         self.inner.borrow_mut().opaque_types().iter_lookup_table().map(|(k, h)| (k, h.ty)).collect()
     }
     fn clone_opaque_hidden_ty_bounds(&self) -> Vec<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)> {
-        self.inner.borrow_mut().opaque_types().iter_opaque_hidden_type_bounds().collect()
+        self.inner.borrow_mut().opaque_types().iter_opaque_hidden_ty_bounds().collect()
     }
     fn clone_opaque_types_added_since(
         &self,
@@ -410,7 +410,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
         bounds: &[(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)],
     ) {
-        self.add_opaque_hidden_type_bounds_in_storage(bounds);
+        self.add_opaque_hidden_ty_bounds_in_storage(bounds);
     }
 
     fn reset_opaque_types(&self) {

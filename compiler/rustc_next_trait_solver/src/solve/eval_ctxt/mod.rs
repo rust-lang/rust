@@ -800,7 +800,7 @@ where
 
         drop(tracing_span);
 
-        let before_instantiate_response = self.delegate.num_opaque_hidden_type_bounds();
+        let before_instantiate_response = self.delegate.num_opaque_hidden_ty_bounds();
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -810,13 +810,13 @@ where
             self.origin_span,
         );
 
-        // `hidden_types_of_opaques` may vary modulo regions which might be able to be unified in
+        // `opaque_hidden_ty_bounds` may vary modulo regions which might be able to be unified in
         // the caller in the end. So, instead of the response has any, check whether the storage
         // entries actually changed.
         //
-        // FIXME: Add a test for this
+        // See `tests/ui/traits/next-solver/opaques/non-defining-use-stall-on-no-actual-change-in-the-caller.rs`
         let has_changed = if !has_only_region_constraints_or_opaque_hidden_ty_bounds(response)
-            || self.delegate.num_opaque_hidden_type_bounds() != before_instantiate_response
+            || self.delegate.num_opaque_hidden_ty_bounds() != before_instantiate_response
         {
             HasChanged::Yes
         } else {
@@ -1416,7 +1416,7 @@ where
     ) {
         self.delegate.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds);
     }
-    pub(super) fn add_opaque_hidden_type_bounds_in_storage(
+    pub(super) fn add_opaque_hidden_ty_bounds_in_storage(
         &self,
         bounds: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
     ) {
@@ -1722,9 +1722,7 @@ where
             });
         }
 
-        external_constraints
-            .opaque_hidden_type_bounds
-            .retain(|(hidden_ty, _)| hidden_ty.is_ty_var());
+        external_constraints.opaque_hidden_ty_bounds.retain(|(hidden_ty, _)| hidden_ty.is_ty_var());
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1799,17 +1797,17 @@ where
         // to the `var_values`.
         let initial_entries = self.initial_opaque_types_storage_num_entries;
         let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
-        let opaque_hidden_type_bounds =
+        let opaque_hidden_ty_bounds =
             self.delegate.clone_opaque_hidden_ty_bounds_added_since(initial_entries);
 
         if self.typing_mode().is_erased_not_coherence() {
-            assert!(opaque_types.is_empty() && opaque_hidden_type_bounds.is_empty());
+            assert!(opaque_types.is_empty() && opaque_hidden_ty_bounds.is_empty());
         }
 
         RawExternalConstraintsData {
             region_constraints,
             opaque_types,
-            opaque_hidden_type_bounds,
+            opaque_hidden_ty_bounds,
             normalization_nested_goals,
         }
     }
