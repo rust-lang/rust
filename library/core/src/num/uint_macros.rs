@@ -1119,7 +1119,7 @@ macro_rules! uint_impl {
             // Thus, rather than using `overflowing_sub` that produces a wrapping
             // subtraction, check it ourself so we can use an unchecked one.
 
-            if self < rhs {
+            if intrinsics::unlikely(self < rhs) {
                 None
             } else {
                 // SAFETY: just checked this can't overflow
