@@ -1,4 +1,4 @@
-error: Undefined Behavior: ABI mismatch: `pipe` is a non-variadic function, but the caller is using a variadic signature
+error: Undefined Behavior: ABI mismatch: `pipe` is a non-variadic function, but the caller is using a c-variadic signature
   --> tests/fail/shims/vararg_caller_signature_mismatch.rs:LL:CC
    |
 LL |     let res = unsafe { pipe(fds.as_mut_ptr()) };

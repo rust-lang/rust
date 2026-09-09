@@ -42,7 +42,7 @@ fn wake_nobody() {
 
 fn wake_dangling() {
     let futex = Box::new(0);
-    let ptr: *const i32 = &*futex;
+    let ptr: *const u32 = &*futex;
     drop(futex);
 
     // Expect error since this is now "unmapped" memory.
@@ -55,7 +55,7 @@ fn wake_dangling() {
 }
 
 fn wait_wrong_val() {
-    let futex: i32 = 123;
+    let futex: u32 = 123;
 
     // Only wait if the futex value is 456.
     unsafe {
@@ -76,7 +76,7 @@ fn wait_wrong_val() {
 fn wait_timeout() {
     let start = Instant::now();
 
-    let futex: i32 = 123;
+    let futex: u32 = 123;
 
     // Wait for 100ms, with nobody waking us up early.
     unsafe {
@@ -120,12 +120,12 @@ fn wait_absolute_timeout() {
         assert_eq!(
             libc::syscall(
                 libc::SYS_futex,
-                addr_of!(FUTEX),
-                libc::FUTEX_WAIT_BITSET,
-                123,
+                addr_of!(FUTEX),         // uaddr
+                libc::FUTEX_WAIT_BITSET, // op
+                123,                     // val
                 &timeout,
-                0usize,
-                u32::MAX,
+                ptr::null::<u32>(), // uaddr2
+                u32::MAX,           // val3 (bitset)
             ),
             -1,
         );
@@ -181,12 +181,12 @@ fn wait_wake_bitset() {
             assert_eq!(
                 libc::syscall(
                     libc::SYS_futex,
-                    addr_of!(FUTEX),
-                    libc::FUTEX_WAKE_BITSET,
-                    10, // Wake up at most 10 threads.
+                    addr_of!(FUTEX),         // uaddr
+                    libc::FUTEX_WAKE_BITSET, // op
+                    10,                      // val (max wake up count)
                     ptr::null::<libc::timespec>(),
-                    0usize,
-                    0b1001, // bitset
+                    ptr::null::<u32>(), // uaddr2
+                    0b1001,             // val3 (bitset)
                 ),
                 0, // Didn't match any thread.
             );
@@ -196,12 +196,12 @@ fn wait_wake_bitset() {
             assert_eq!(
                 libc::syscall(
                     libc::SYS_futex,
-                    addr_of!(FUTEX),
-                    libc::FUTEX_WAKE_BITSET,
-                    10, // Wake up at most 10 threads.
+                    addr_of!(FUTEX),         // uaddr
+                    libc::FUTEX_WAKE_BITSET, // op
+                    10,                      // val (max wake up count)
                     ptr::null::<libc::timespec>(),
-                    0usize,
-                    0b0110, // bitset
+                    ptr::null::<u32>(), // uaddr2
+                    0b0110,             // val3 (bitset)
                 ),
                 1, // Woken up one thread.
             );
@@ -214,12 +214,12 @@ fn wait_wake_bitset() {
         assert_eq!(
             libc::syscall(
                 libc::SYS_futex,
-                addr_of!(FUTEX),
-                libc::FUTEX_WAIT_BITSET,
-                0,
+                addr_of!(FUTEX),         // uaddr
+                libc::FUTEX_WAIT_BITSET, // op
+                0,                       // val
                 ptr::null::<libc::timespec>(),
-                0usize,
-                0b0100, // bitset
+                ptr::null::<u32>(), // uaddr2
+                0b0100,             // val3 (bitset)
             ),
             0,
         );
@@ -255,7 +255,7 @@ fn concurrent_wait_wake() {
             unsafe {
                 let ret = libc::syscall(
                     libc::SYS_futex,
-                    addr_of!(FUTEX),
+                    addr_of!(FUTEX).cast::<u32>(),
                     libc::FUTEX_WAIT,
                     HELD,
                     ptr::null::<libc::timespec>(),
@@ -277,7 +277,7 @@ fn concurrent_wait_wake() {
         FUTEX.store(FREE, Ordering::Relaxed);
         unsafe {
             DATA = 1;
-            libc::syscall(libc::SYS_futex, addr_of!(FUTEX), libc::FUTEX_WAKE, 1);
+            libc::syscall(libc::SYS_futex, addr_of!(FUTEX).cast::<u32>(), libc::FUTEX_WAKE, 1);
         }
 
         t.join().unwrap();

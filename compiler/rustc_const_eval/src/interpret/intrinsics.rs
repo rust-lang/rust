@@ -71,6 +71,7 @@ pub enum VarArgCompatible {
     /// `T` and `U` are definitely not compatible.
     Incompatible,
     /// `T` and `U` are corresponding signed and unsigned integer types.
+    /// This is compatible only if the value can be represented in both types.
     CastIntTo { source_is_signed: bool },
 }
 
@@ -817,17 +818,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// integers of the same size but different signedness, the passed value must be representable
     /// in both types.
     fn validate_c_variadic_argument(
-        &mut self,
+        &self,
         arg_mplace: &MPlaceTy<'tcx, M::Provenance>,
         callee_type: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let callee_ty = callee_type.ty;
         let caller_ty = arg_mplace.layout.ty;
-
-        // Identical types are clearly compatible.
-        if caller_ty == callee_ty {
-            return interp_ok(());
-        }
 
         match self.validate_c_variadic_compatible_ty(arg_mplace.layout.ty, callee_type.ty)? {
             VarArgCompatible::Compatible => interp_ok(()),
@@ -866,12 +862,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// - `T` and `U` are both pointers, and their target types are compatible.
     /// - `T` is a pointer to [`std::ffi::c_void`] and `U` is a pointer to [`i8`] or [`u8`],
     /// or vice versa.
+    ///
+    /// This is designed to match the C rules for variadics, it is incomparable to what we allow in
+    /// terms of ABI mismatches for regular (fixed) function arguments.
     pub fn validate_c_variadic_compatible_ty(
-        &mut self,
+        &self,
         caller_type: Ty<'tcx>,
         callee_type: Ty<'tcx>,
     ) -> InterpResult<'tcx, VarArgCompatible> {
-        if caller_type == callee_type {
+        // FIXME: Accepting two copies of the same repr(C) type as compatible is currently not
+        // guaranteed by our `VaList::next_arg` docs, but it is needed for Miri itself when it
+        // checks whether shims were called with the right arguments. We should eventually put this
+        // into the docs as well.
+        if self.identical_c_types(caller_type, callee_type) {
             return interp_ok(VarArgCompatible::Compatible);
         }
 
@@ -884,7 +887,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let is_c_char = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(UintTy::U8) | ty::Int(IntTy::I8));
 
         match (caller_type.kind(), callee_type.kind()) {
-            (ty::RawPtr(caller_target_ty, _), ty::RawPtr(callee_target_ty, _)) => {
+            // Some types look different but are actually the same for ABI purposes.
+            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
+                // E.g. cast between `usize` and `u64` on a 64-bit platform.
+                interp_ok(VarArgCompatible::Compatible)
+            }
+            // C allows different types if...
+            // - "both types are pointers to qualified or unqualified versions of compatible types"
+            // - "one type is pointer to qualified or unqualified void and the other is a pointer to a qualified or
+            //   unqualified character type"
+            //
+            // As usual for the ABI, we treat references and raw pointers alike.
+            (
+                ty::RawPtr(caller_target_ty, _) | ty::Ref(_, caller_target_ty, _),
+                ty::RawPtr(callee_target_ty, _) | ty::Ref(_, callee_target_ty, _),
+            ) => {
                 // In C, types can be qualified by a combination of `const`, `volatile` and
                 // `restrict`. These properties are irrelevant for the ABI, and don't have an
                 // equivalent in rust.
@@ -910,16 +927,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     }
                 }
             }
+            // - "one type is a signed integer type, the other type is the corresponding unsigned integer type,
+            //   and the value is representable in both types"
             (ty::Int(_), ty::Uint(_)) => {
                 interp_ok(VarArgCompatible::CastIntTo { source_is_signed: true })
             }
             (ty::Uint(_), ty::Int(_)) => {
                 interp_ok(VarArgCompatible::CastIntTo { source_is_signed: false })
             }
-            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
-                // E.g. cast between `usize` and `u64` on a 64-bit platform.
-                interp_ok(VarArgCompatible::Compatible)
-            }
+            // - "or, the type of the next argument is nullptr_t and type is a pointer type that has the same
+            //   representation and alignment requirements as a pointer to a character type"
+            //   This one does not have an equivalent form in Rust.
             _ => interp_ok(VarArgCompatible::Incompatible),
         }
     }
