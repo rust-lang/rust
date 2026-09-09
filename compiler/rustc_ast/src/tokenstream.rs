@@ -15,6 +15,7 @@ use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
+use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::ast::AttrStyle;
@@ -964,13 +965,13 @@ pub struct TokenCursor {
     // Token streams surrounding the current one. The `next_idx` within each cursor
     // is always greater than zero and always points one past the current
     // `TokenTree::Delimited`.
-    stack: Vec<TokenTreeCursor>,
+    stack: SmallVec<[TokenTreeCursor; 2]>,
 }
 
 impl TokenCursor {
     #[inline]
     pub fn new(stream: TokenStream) -> Self {
-        TokenCursor { curr: TokenTreeCursor::new(stream), stack: vec![] }
+        TokenCursor { curr: TokenTreeCursor::new(stream), stack: Default::default() }
     }
 
     /// Gets the next token and advances the cursor by one.
@@ -1115,7 +1116,7 @@ mod size_asserts {
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
-    static_assert_size!(LazyAttrTokenStreamInner, 88);
+    static_assert_size!(LazyAttrTokenStreamInner, 104);
     static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
