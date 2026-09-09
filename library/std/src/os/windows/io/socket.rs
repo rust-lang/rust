@@ -3,6 +3,7 @@
 #![stable(feature = "io_safety", since = "1.63.0")]
 
 use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
+use crate::alloc::Allocator;
 use crate::marker::PhantomData;
 use crate::mem::{self, ManuallyDrop};
 #[cfg(not(target_vendor = "uwp"))]
@@ -275,7 +276,7 @@ impl<T: AsSocket + ?Sized> AsSocket for crate::rc::UniqueRc<T> {
 }
 
 #[stable(feature = "as_windows_ptrs", since = "1.71.0")]
-impl<T: AsSocket> AsSocket for Box<T> {
+impl<T: AsSocket, A: Allocator> AsSocket for Box<T, A> {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
         (**self).as_socket()
