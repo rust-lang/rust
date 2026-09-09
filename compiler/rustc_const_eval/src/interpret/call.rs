@@ -9,7 +9,7 @@ use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
+use rustc_middle::ty::{self, AdtDef, FieldDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_target::callconv::{ArgAbi, FnAbi};
 use tracing::field::Empty;
@@ -229,6 +229,48 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
+    /// Determine whether the given types are identical types from the perspective of C.
+    pub(super) fn identical_c_types(&self, caller_type: Ty<'tcx>, callee_type: Ty<'tcx>) -> bool {
+        if caller_type == callee_type {
+            return true;
+        }
+
+        // C considers two structs to be the same if they have the same name and the same
+        // fields. We need a similar rules that that e.g. if caller and callee use the "same"
+        // type from two different versions of the same crate, that call is accepted.
+        let ty::Adt(caller_adt, caller_args) = caller_type.kind() else { return false };
+        let ty::Adt(callee_adt, callee_args) = callee_type.kind() else { return false };
+
+        if !(
+            // They must both be structs.
+            (caller_adt.is_struct() && callee_adt.is_struct())
+            // They must have equal `repr`, and it must be `repr(C)`.
+            && (caller_adt.repr().c() && caller_adt.repr().equal_up_to_seed(&callee_adt.repr()))
+            // They must have the same name.
+            && self.tcx.item_name(caller_adt.did()) == self.tcx.item_name(callee_adt.did())
+        ) {
+            return false;
+        }
+
+        // All fields must have the same names and types as well, where "same type" recursively
+        // uses this check.
+        let caller_fields = &caller_adt.non_enum_variant().fields;
+        let callee_fields = &callee_adt.non_enum_variant().fields;
+        caller_fields.len() == callee_fields.len()
+            && caller_fields.iter().zip(callee_fields).all(|(caller_field, callee_field)| {
+                if caller_field.name != callee_field.name {
+                    return false; // Bail on different name.
+                }
+                // Ensure the normalized type is the same.
+                let normalized_field_ty = |field: &FieldDef, args| {
+                    self.tcx.normalize_erasing_regions(self.typing_env, field.ty(*self.tcx, args))
+                };
+                let caller_ty = normalized_field_ty(caller_field, caller_args);
+                let callee_ty = normalized_field_ty(callee_field, callee_args);
+                self.identical_c_types(caller_ty, callee_ty)
+            })
+    }
+
     /// Check if these two layouts look like they are fn-ABI-compatible.
     /// (We also compare the `PassMode`, so this doesn't have to check everything. But it turns out
     /// that only checking the `PassMode` is insufficient.)
@@ -252,8 +294,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         let caller = unfold(caller)?;
         let callee = unfold(callee)?;
-        // Not-quite-so-fast path: if the types are equal now, they are compatible.
-        if caller.ty == callee.ty {
+        // Not-quite-so-fast path: if the types are c-equal now, they are compatible.
+        // FIXME: This is *not* currently guaranteed by our ABI compatibility docs, but it is needed
+        // for Miri itself when it checks whether shims were called with the right arguments.
+        // We should eventually put this into the docs as well.
+        if self.identical_c_types(caller.ty, callee.ty) {
             return interp_ok(true);
         }
         // Now see if these inner types are compatible.
