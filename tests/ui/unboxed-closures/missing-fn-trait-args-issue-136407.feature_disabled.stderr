@@ -13,11 +13,6 @@ error[E0107]: missing generics for trait `Fn`
    |
 LL | pub fn shared<T: Fn>() {}
    |                  ^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL | pub fn shared<T: Fn<Args>>() {}
-   |                    ++++++
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/missing-fn-trait-args-issue-136407.rs:13:19
@@ -34,11 +29,6 @@ error[E0107]: missing generics for trait `FnMut`
    |
 LL | pub fn mutable<T: FnMut>() {}
    |                   ^^^^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL | pub fn mutable<T: FnMut<Args>>() {}
-   |                        ++++++
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/missing-fn-trait-args-issue-136407.rs:17:16
@@ -55,11 +45,6 @@ error[E0107]: missing generics for trait `FnOnce`
    |
 LL | pub fn once<T: FnOnce>() {}
    |                ^^^^^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL | pub fn once<T: FnOnce<Args>>() {}
-   |                      ++++++
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/missing-fn-trait-args-issue-136407.rs:21:24
@@ -76,11 +61,6 @@ error[E0107]: missing generics for trait `AsyncFn`
    |
 LL | pub fn async_shared<T: AsyncFn>() {}
    |                        ^^^^^^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL | pub fn async_shared<T: AsyncFn<Args>>() {}
-   |                               ++++++
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/missing-fn-trait-args-issue-136407.rs:25:25
@@ -97,11 +77,6 @@ error[E0107]: missing generics for trait `AsyncFnMut`
    |
 LL | pub fn async_mutable<T: AsyncFnMut>() {}
    |                         ^^^^^^^^^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL | pub fn async_mutable<T: AsyncFnMut<Args>>() {}
-   |                                   ++++++
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/missing-fn-trait-args-issue-136407.rs:29:22
@@ -118,11 +93,6 @@ error[E0107]: missing generics for trait `AsyncFnOnce`
    |
 LL | pub fn async_once<T: AsyncFnOnce>() {}
    |                      ^^^^^^^^^^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL | pub fn async_once<T: AsyncFnOnce<Args>>() {}
-   |                                 ++++++
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/missing-fn-trait-args-issue-136407.rs:33:23
@@ -139,11 +109,6 @@ error[E0107]: trait takes 1 generic argument but 0 generic arguments were suppli
    |
 LL | pub fn with_output<T: Fn<Output = ()>>() {}
    |                       ^^ expected 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL | pub fn with_output<T: Fn<Args, Output = ()>>() {}
-   |                          +++++
 
 error: aborting due to 14 previous errors
 
