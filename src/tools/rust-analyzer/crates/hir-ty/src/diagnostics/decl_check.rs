@@ -717,11 +717,12 @@ impl<'a> DeclValidator<'a> {
             CaseType::UpperCamelCase => to_camel_case,
         };
         let edition = self.edition(item_id);
-        let Some(replacement) =
-            to_expected_case_type(&name.display(self.db, edition).to_smolstr()).map(|new_name| {
-                Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
-            })
-        else {
+        let Some(replacement) = to_expected_case_type(name.as_str()).map(|mut new_name| {
+            if is_raw_identifier(&new_name, edition) {
+                new_name.insert_str(0, "r#");
+            }
+            Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
+        }) else {
             return;
         };
 
