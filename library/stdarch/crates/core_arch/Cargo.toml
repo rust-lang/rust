@@ -9,7 +9,6 @@ authors = [
 description = "`core::arch` - Rust's core library architecture-specific intrinsics."
 homepage = "https://github.com/rust-lang/stdarch"
 repository = "https://github.com/rust-lang/stdarch"
-readme = "README.md"
 keywords = ["core", "simd", "arch", "intrinsics"]
 categories = ["hardware-support", "no-std"]
 license = "MIT OR Apache-2.0"
