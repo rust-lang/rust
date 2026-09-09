@@ -23,6 +23,8 @@ extern crate rustc_index;
 extern crate rustc_log;
 extern crate rustc_session;
 extern crate rustc_span;
+#[cfg(feature = "jit")]
+extern crate rustc_structures;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 

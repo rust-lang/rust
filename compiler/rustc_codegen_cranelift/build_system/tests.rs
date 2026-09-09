@@ -478,6 +478,8 @@ impl<'a> TestRunner<'a> {
         cmd.arg("--check-cfg=cfg(jit)");
         cmd.arg("--check-cfg=cfg(target_has_reliable_f128)");
         cmd.arg("--edition=2024");
+        // implicitly passed when building inside the rust repo
+        cmd.arg("-Zforce-unstable-if-unmarked");
         cmd.args(args);
         cmd
     }
