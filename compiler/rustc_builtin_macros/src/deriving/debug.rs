@@ -227,7 +227,8 @@ fn show_fieldless_enum(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let fmt = substr.nonselflike_args[0].clone();
-    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone()) {
+    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone())
+    {
         return BlockOrExpr::new_mixed(stmts, Some(expr));
     }
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
@@ -362,8 +363,7 @@ fn show_fieldless_enum_concat_str(
 
     let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
 
-    let discriminant_let_stmt =
-        cx.stmt_let(span, false, variant_index_ident, variant_index_expr);
+    let discriminant_let_stmt = cx.stmt_let(span, false, variant_index_ident, variant_index_expr);
 
     // __d expression
     let discriminant_expr = cx.expr_ident(span, variant_index_ident);
