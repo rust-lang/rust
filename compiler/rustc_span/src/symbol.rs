@@ -2816,6 +2816,8 @@ struct InternerInner {
     byte_strs: Vec<&'static [u8]>,
 }
 
+const HASH_UP_TO: usize = 32;
+
 impl Interner {
     // These arguments are `&str`, but because of the sharing, we are
     // effectively pre-interning all these strings for both `Symbol` and
@@ -2831,8 +2833,11 @@ impl Interner {
         let mut byte_strs: Vec<&'static [u8]> = Vec::with_capacity(size_hint);
 
         for v in values {
-            match indices.entry(hasher.hash_one(&v), |&(s, _)| s == v, |&(s, _)| hasher.hash_one(s))
-            {
+            match indices.entry(
+                hasher.hash_one(&v[0..HASH_UP_TO]),
+                |&(s, _)| s == v,
+                |&(s, _)| hasher.hash_one(&s[0..HASH_UP_TO]),
+            ) {
                 Entry::Occupied(v) => conflicting_values.push(v.get().0),
                 Entry::Vacant(view) => {
                     view.insert((v, byte_strs.len() as u32));
@@ -2862,13 +2867,13 @@ impl Interner {
     #[inline]
     fn intern_inner(&self, byte_str: &[u8]) -> u32 {
         let hasher = FxBuildHasher::default();
-        let hash_of_byte_str = hasher.hash_one(byte_str);
+        let hash_of_byte_str = hasher.hash_one(&byte_str[0..HASH_UP_TO]);
 
         self.0.with_lock(|inner| {
             match inner.indices.entry(
                 hash_of_byte_str,
                 |&(s, _)| s == byte_str,
-                |&(s, _)| hasher.hash_one(s),
+                |&(s, _)| hasher.hash_one(&s[0..HASH_UP_TO]),
             ) {
                 Entry::Occupied(v) => v.get().1,
                 Entry::Vacant(view) => {
