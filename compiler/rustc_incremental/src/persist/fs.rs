@@ -335,7 +335,7 @@ pub fn finalize_session_directory(
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
     let result = std_fs::rename(&*incr_comp_session_dir, &new_path).or_else(|e| {
-        if e.kind() != ErrorKind::PermissionDenied {
+        if !cfg!(windows) || e.kind() != ErrorKind::PermissionDenied {
             return Err(e);
         }
 
