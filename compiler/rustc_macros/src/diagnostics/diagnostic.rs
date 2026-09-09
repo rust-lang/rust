@@ -48,9 +48,7 @@ impl<'a> DiagnosticDerive<'a> {
 
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         structure.gen_impl(quote! {
-            gen impl<'_sess, G> rustc_errors::Diagnostic<'_sess, G> for @Self
-                where G: rustc_errors::EmissionGuarantee
-            {
+            gen impl<'_sess, G> rustc_errors::Diagnostic<'_sess, G> for @Self {
                 #[track_caller]
                 fn into_diag(
                     self,

@@ -6,8 +6,8 @@ use rustc_abi::ExternAbi;
 use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, IntoDiagArg,
+    Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
@@ -275,7 +275,7 @@ pub(crate) struct SuggestAnnotations {
     pub suggestions: Vec<SuggestAnnotation>,
 }
 impl Subdiagnostic for SuggestAnnotations {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         if self.suggestions.is_empty() {
             return;
         }
@@ -338,7 +338,7 @@ pub(crate) struct TypeMismatchFruTypo {
 }
 
 impl Subdiagnostic for TypeMismatchFruTypo {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
@@ -561,7 +561,7 @@ pub(crate) struct RemoveSemiForCoerce {
 }
 
 impl Subdiagnostic for RemoveSemiForCoerce {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(
             self.expr,
@@ -704,7 +704,7 @@ pub(crate) struct BreakNonLoop<'a> {
     pub break_expr_span: Span,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
+impl<'a, G> Diagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, msg!("`break` with value from a `{$kind}` loop"));
@@ -906,7 +906,7 @@ pub(crate) enum CastUnknownPointerSub {
 }
 
 impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
                 let msg = msg!("needs more type information");
@@ -1202,7 +1202,7 @@ pub(crate) struct NakedFunctionsAsmBlock {
     pub non_asms: Vec<Span>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
+impl<G> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(

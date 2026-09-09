@@ -3,8 +3,6 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
-#![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
@@ -35,7 +33,7 @@ pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
     BugAbort, Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic,
-    EmissionGuarantee, FatalAbort, StringPart, Subdiag, Subdiagnostic,
+    FatalAbort, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -1565,19 +1563,19 @@ impl DelayedDiagInner {
     }
 }
 
-/// | Level        | is_error | EmissionGuarantee | Top-level | Used in lints?
-/// | -----        | -------- | ----------------- | --------- | --------------
-/// | Bug          | yes      | BugAbort          | yes       | -
-/// | Fatal        | yes      | FatalAbort        | yes       | -
-/// | Error        | yes      | ErrorGuaranteed   | yes       | yes
-/// | DelayedBug   | yes      | ErrorGuaranteed   | yes       | -
-/// | ForceWarning | -        | ()                | yes       | lint-only
-/// | Warning      | -        | ()                | yes       | yes
-/// | Note         | -        | ()                | rare      | -
-/// | Help         | -        | ()                | rare      | -
-/// | FailureNote  | -        | ()                | rare      | -
-/// | Allow        | -        | ()                | yes       | lint-only
-/// | Expect       | -        | ()                | yes       | lint-only
+/// | Level        | is_error | emit return type | Top-level | Used in lints?
+/// | -----        | -------- | ---------------- | --------- | --------------
+/// | Bug          | yes      | BugAbort         | yes       | -
+/// | Fatal        | yes      | FatalAbort       | yes       | -
+/// | Error        | yes      | ErrorGuaranteed  | yes       | yes
+/// | DelayedBug   | yes      | ErrorGuaranteed  | yes       | -
+/// | ForceWarning | -        | ()               | yes       | lint-only
+/// | Warning      | -        | ()               | yes       | yes
+/// | Note         | -        | ()               | rare      | -
+/// | Help         | -        | ()               | rare      | -
+/// | FailureNote  | -        | ()               | rare      | -
+/// | Allow        | -        | ()               | yes       | lint-only
+/// | Expect       | -        | ()               | yes       | lint-only
 ///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {

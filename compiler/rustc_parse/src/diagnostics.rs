@@ -7,8 +7,8 @@ use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, Token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
-    Level, Subdiagnostic, SuggestionStyle, msg,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, IntoDiagArg, Level,
+    Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
@@ -1537,7 +1537,7 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
+impl<'a, G> Diagnostic<'a, G> for ExpectedIdentifier {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
@@ -1603,7 +1603,7 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
+impl<'a, G> Diagnostic<'a, G> for ExpectedSemi {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
@@ -2010,7 +2010,7 @@ pub(crate) struct FnTraitMissingParen {
 }
 
 impl Subdiagnostic for FnTraitMissingParen {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         diag.span_label(self.span, msg!("`Fn` bounds require arguments in parentheses"));
         diag.span_suggestion_short(
             self.span.shrink_to_hi(),
@@ -3697,7 +3697,7 @@ pub(crate) struct UseDerefMacro {
 }
 
 impl Subdiagnostic for UseDerefMacro {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let Self { field, before, after } = self;
 
         let mut parts = Vec::new();
@@ -4355,7 +4355,7 @@ pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
 }
 
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         for (c, span) in self.spans {
             diag.span_label(span, format!("{c:?}"));
         }
@@ -4369,7 +4369,7 @@ pub(crate) enum HiddenUnicodeCodepointsDiagSub {
 
 // Used because of multiple multipart_suggestion and note
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(

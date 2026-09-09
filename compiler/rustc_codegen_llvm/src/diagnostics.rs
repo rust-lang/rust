@@ -2,9 +2,7 @@ use std::ffi::{CString, c_uint};
 use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{
-    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, format_diag_message, msg,
-};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, format_diag_message, msg};
 use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
@@ -22,7 +20,7 @@ pub(crate) struct SanitizerMemtagRequiresMte;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
+impl<G> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         // Reuse the formatted primary message from `LlvmError` without emitting it.
         let diag: Diag<'_, ()> = self.0.into_diag(dcx, level);
@@ -141,7 +139,7 @@ pub(crate) enum LlvmError<'a> {
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
+impl<G> Diagnostic<'_, G> for WithLlvmError<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {

@@ -1720,7 +1720,7 @@ impl<'a> Parser<'a> {
         );
         err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
 
-        let help_base_case = |mut err: Diag<'_, _>, base| {
+        let help_base_case = |mut err: Diag<'_, ErrorGuaranteed>, base| {
             err.help(format!("use `{}= 1` instead", kind.op.chr()));
             err.emit();
             Ok(base)

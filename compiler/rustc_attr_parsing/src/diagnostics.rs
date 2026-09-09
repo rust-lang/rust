@@ -3,8 +3,7 @@ use std::num::IntErrorKind;
 use rustc_attr_ir::{AttrPath, MirDialect, MirPhase};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, E0264, EmissionGuarantee, Level,
-    MultiSpan,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, E0264, Level, MultiSpan,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
@@ -1473,9 +1472,7 @@ impl<'a> AttributeParseError<'a> {
         diag: &mut Diag<'_, G>,
         possibilities: &[Symbol],
         strings: bool,
-    ) where
-        G: EmissionGuarantee,
-    {
+    ) {
         let quote = if strings { '"' } else { '`' };
         match possibilities {
             &[] => {}
@@ -1508,9 +1505,7 @@ impl<'a> AttributeParseError<'a> {
         diag: &mut Diag<'_, G>,
         possibilities: &[Symbol],
         strings: bool,
-    ) where
-        G: EmissionGuarantee,
-    {
+    ) {
         let description = self.description();
 
         let quote = if strings { '"' } else { '`' };
@@ -1539,10 +1534,7 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
-    fn render_suggestions<G>(&self, diag: &mut Diag<'_, G>)
-    where
-        G: EmissionGuarantee,
-    {
+    fn render_suggestions<G>(&self, diag: &mut Diag<'_, G>) {
         let description = self.description();
 
         match &self.suggestions {
@@ -1591,7 +1583,7 @@ impl AttributeParseErrorSuggestions {
     }
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
+impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let name = self.path.to_string();
 
