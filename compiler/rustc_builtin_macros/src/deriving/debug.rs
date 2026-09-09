@@ -233,7 +233,7 @@ fn show_fieldless_enum(
     type_ident: Ident,
 ) -> BlockOrExpr {
     let fmt = formatter_ident(cx, span);
-    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, fmt.clone()) {
+    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, substr, fmt.clone()) {
         return BlockOrExpr::new_mixed(stmts, Some(expr));
     }
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
@@ -275,6 +275,7 @@ fn show_fieldless_enum_concat_str(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
+    substr: &Substructure<'_>,
     fmt: Box<ast::Expr>,
 ) -> Option<(ThinVec<ast::Stmt>, Box<ast::Expr>)> {
     // Minimum variants count where this optimization starts to pay off.
@@ -343,21 +344,35 @@ fn show_fieldless_enum_concat_str(
         starts_array_body,
     );
 
-    // let __d = ::core::intrinsics::discriminant_value(self) as usize;
-    let discriminant_ident = Ident::from_str_and_span("__d", span);
-    let discriminant_intrinsic_path = cx.std_path(&[sym::intrinsics, sym::discriminant_value]);
-    let discriminant_cast_expr = cx.expr(
-        span,
-        ast::ExprKind::Cast(
-            cx.expr_call_global(span, discriminant_intrinsic_path, thin_vec![cx.expr_self(span)]),
-            cx.ty_path(ast::Path::from_ident(Ident::new(sym::usize, span))),
-        ),
-    );
+    let variant_index_ident = Ident::from_str_and_span("__d", span);
+    let arms = def
+        .variants
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let variant_path = cx.path(span, vec![substr.type_ident, v.ident]);
+            let pat = match &v.data {
+                ast::VariantData::Tuple(fields, _) => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_tuple_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Struct { fields, .. } => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
+            };
+            cx.arm(span, pat, cx.expr_usize(span, i))
+        })
+        .collect::<ThinVec<_>>();
+
+    let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
+
     let discriminant_let_stmt =
-        cx.stmt_let(span, false, discriminant_ident, discriminant_cast_expr);
+        cx.stmt_let(span, false, variant_index_ident, variant_index_expr);
 
     // __d expression
-    let discriminant_expr = cx.expr_ident(span, discriminant_ident);
+    let discriminant_expr = cx.expr_ident(span, variant_index_ident);
 
     // __NAMES expression
     let names_expr = cx.expr_ident(span, names_ident);
