@@ -1280,7 +1280,19 @@ impl ::core::fmt::Debug for Fieldless10 {
         static __OFFSET: [usize; 11] =
             [0usize, 5usize, 9usize, 11usize, 19usize, 20usize, 33usize,
                     39usize, 46usize, 53usize, 62usize];
-        let __d = ::core::intrinsics::discriminant_value(self) as usize;
+        let __d =
+            match self {
+                Fieldless10::AAAAA => 0usize,
+                Fieldless10::BBBB => 1usize,
+                Fieldless10::CC => 2usize,
+                Fieldless10::DDDDDDDD => 3usize,
+                Fieldless10::E => 4usize,
+                Fieldless10::FFFFFFFFFFFFF => 5usize,
+                Fieldless10::GGGGGG => 6usize,
+                Fieldless10::Hatsune => 7usize,
+                Fieldless10::IIIIIII => 8usize,
+                Fieldless10::JJJJJJJJJ => 9usize,
+            };
         ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES,
             &__OFFSET, __d)
     }
