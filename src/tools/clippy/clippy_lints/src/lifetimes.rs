@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::attrs::lang_items;
 use rustc_hir::intravisit::{
-    IgnoreNested, NestedFilter, Visitor, VisitorExt as _, walk_fn_decl, walk_generic_args, walk_generic_param,
+    IgnoreNested, NestedFilter, Visitor, walk_fn_decl, walk_generic_args, walk_generic_param,
     walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
     walk_where_predicate,
 };

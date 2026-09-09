@@ -55,6 +55,7 @@
 // === LLDB TESTS ==================================================================================
 
 //@ lldb-command:type format add -f decimal char
+//@ lldb-command:type format add -f decimal 'signed char'
 //@ lldb-command:type format add -f decimal 'unsigned char'
 //@ lldb-command:run
 

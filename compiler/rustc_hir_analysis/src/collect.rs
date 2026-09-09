@@ -26,7 +26,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
