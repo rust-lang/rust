@@ -2,7 +2,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -40,11 +40,7 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
             let all_dead_locals = replace_flattened_locals(tcx, body, replacements);
             if !all_dead_locals.is_empty() {
                 excluded.union(&all_dead_locals);
-                excluded = {
-                    let mut growable = GrowableBitSet::from(excluded);
-                    growable.ensure(body.local_decls.len());
-                    growable.into()
-                };
+                excluded = excluded.enlarge(body.local_decls.len());
             } else {
                 break;
             }
