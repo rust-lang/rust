@@ -426,9 +426,9 @@ dependencies = [
 
 [[package]]
 name = "wasip2"
-version = "1.0.4+wasi-0.2.12"
+version = "2.0.0+wasi-0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67efb37e106e55ce722a510d6b5f9c17f083e5fc79afc2badeb12cc313d9487"
+checksum = "96744b5e833bfd2d84c6faa7569693ce9e04a47c0a4d5519e6442f18af1a0fed"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -437,9 +437,9 @@ dependencies = [
 
 [[package]]
 name = "wasip3"
-version = "0.7.1+wasi-0.3.0"
+version = "0.8.0+wasi-0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75e9ed91ee5a995b6fe16c89d4511a8c12eb76967be20b57557618e02e781bcc"
+checksum = "42a999271e77c083825863fc85404197523b3f3cebe9b402aece658ebea90065"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -456,9 +456,9 @@ version = "0.61.100"
 
 [[package]]
 name = "wit-bindgen"
-version = "0.57.1"
+version = "0.61.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
+checksum = "e473fd0095479f9689ac7d2a52c427cc96bb2b973ace50238dfcc1ab1cd52d93"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
