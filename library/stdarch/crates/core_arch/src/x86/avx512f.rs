@@ -21648,14 +21648,8 @@ pub const fn _mm_maskz_srai_epi64<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_srav_epi32(a: __m512i, count: __m512i) -> __m512i {
-    unsafe {
-        let count = count.as_u32x16();
-        let no_overflow: u32x16 = simd_lt(count, u32x16::splat(u32::BITS));
-        let count = simd_select(no_overflow, transmute(count), i32x16::splat(31));
-        simd_shr(a.as_i32x16(), count).as_m512i()
-    }
+pub fn _mm512_srav_epi32(a: __m512i, count: __m512i) -> __m512i {
+    unsafe { transmute(vpsravd(a.as_i32x16(), count.as_i32x16())) }
 }
 
 /// Shift packed 32-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21665,13 +21659,7 @@ pub const fn _mm512_srav_epi32(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_srav_epi32(
-    src: __m512i,
-    k: __mmask16,
-    a: __m512i,
-    count: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_srav_epi32(src: __m512i, k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srav_epi32(a, count).as_i32x16();
         transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
@@ -21685,8 +21673,7 @@ pub const fn _mm512_mask_srav_epi32(
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_srav_epi32(k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
+pub fn _mm512_maskz_srav_epi32(k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srav_epi32(a, count).as_i32x16();
         transmute(simd_select_bitmask(k, shf, i32x16::ZERO))
@@ -21700,13 +21687,7 @@ pub const fn _mm512_maskz_srav_epi32(k: __mmask16, a: __m512i, count: __m512i) -
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_srav_epi32(
-    src: __m256i,
-    k: __mmask8,
-    a: __m256i,
-    count: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_srav_epi32(src: __m256i, k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srav_epi32(a, count).as_i32x8();
         transmute(simd_select_bitmask(k, shf, src.as_i32x8()))
@@ -21720,8 +21701,7 @@ pub const fn _mm256_mask_srav_epi32(
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_srav_epi32(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
+pub fn _mm256_maskz_srav_epi32(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srav_epi32(a, count).as_i32x8();
         transmute(simd_select_bitmask(k, shf, i32x8::ZERO))
@@ -21735,8 +21715,7 @@ pub const fn _mm256_maskz_srav_epi32(k: __mmask8, a: __m256i, count: __m256i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_srav_epi32(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_mask_srav_epi32(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srav_epi32(a, count).as_i32x4();
         transmute(simd_select_bitmask(k, shf, src.as_i32x4()))
@@ -21750,8 +21729,7 @@ pub const fn _mm_mask_srav_epi32(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_srav_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_maskz_srav_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srav_epi32(a, count).as_i32x4();
         transmute(simd_select_bitmask(k, shf, i32x4::ZERO))
@@ -21765,14 +21743,8 @@ pub const fn _mm_maskz_srav_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_srav_epi64(a: __m512i, count: __m512i) -> __m512i {
-    unsafe {
-        let count = count.as_u64x8();
-        let no_overflow: u64x8 = simd_lt(count, u64x8::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, transmute(count), i64x8::splat(63));
-        simd_shr(a.as_i64x8(), count).as_m512i()
-    }
+pub fn _mm512_srav_epi64(a: __m512i, count: __m512i) -> __m512i {
+    unsafe { transmute(vpsravq(a.as_i64x8(), count.as_i64x8())) }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21782,13 +21754,7 @@ pub const fn _mm512_srav_epi64(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_srav_epi64(
-    src: __m512i,
-    k: __mmask8,
-    a: __m512i,
-    count: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_srav_epi64(src: __m512i, k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srav_epi64(a, count).as_i64x8();
         transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
@@ -21802,8 +21768,7 @@ pub const fn _mm512_mask_srav_epi64(
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_srav_epi64(k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
+pub fn _mm512_maskz_srav_epi64(k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srav_epi64(a, count).as_i64x8();
         transmute(simd_select_bitmask(k, shf, i64x8::ZERO))
@@ -21817,14 +21782,8 @@ pub const fn _mm512_maskz_srav_epi64(k: __mmask8, a: __m512i, count: __m512i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_srav_epi64(a: __m256i, count: __m256i) -> __m256i {
-    unsafe {
-        let count = count.as_u64x4();
-        let no_overflow: u64x4 = simd_lt(count, u64x4::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, transmute(count), i64x4::splat(63));
-        simd_shr(a.as_i64x4(), count).as_m256i()
-    }
+pub fn _mm256_srav_epi64(a: __m256i, count: __m256i) -> __m256i {
+    unsafe { transmute(vpsravq256(a.as_i64x4(), count.as_i64x4())) }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21834,13 +21793,7 @@ pub const fn _mm256_srav_epi64(a: __m256i, count: __m256i) -> __m256i {
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_srav_epi64(
-    src: __m256i,
-    k: __mmask8,
-    a: __m256i,
-    count: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_srav_epi64(src: __m256i, k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srav_epi64(a, count).as_i64x4();
         transmute(simd_select_bitmask(k, shf, src.as_i64x4()))
@@ -21854,8 +21807,7 @@ pub const fn _mm256_mask_srav_epi64(
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_srav_epi64(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
+pub fn _mm256_maskz_srav_epi64(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srav_epi64(a, count).as_i64x4();
         transmute(simd_select_bitmask(k, shf, i64x4::ZERO))
@@ -21869,14 +21821,8 @@ pub const fn _mm256_maskz_srav_epi64(k: __mmask8, a: __m256i, count: __m256i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_srav_epi64(a: __m128i, count: __m128i) -> __m128i {
-    unsafe {
-        let count = count.as_u64x2();
-        let no_overflow: u64x2 = simd_lt(count, u64x2::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, transmute(count), i64x2::splat(63));
-        simd_shr(a.as_i64x2(), count).as_m128i()
-    }
+pub fn _mm_srav_epi64(a: __m128i, count: __m128i) -> __m128i {
+    unsafe { transmute(vpsravq128(a.as_i64x2(), count.as_i64x2())) }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21886,8 +21832,7 @@ pub const fn _mm_srav_epi64(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_srav_epi64(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_mask_srav_epi64(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srav_epi64(a, count).as_i64x2();
         transmute(simd_select_bitmask(k, shf, src.as_i64x2()))
@@ -21901,8 +21846,7 @@ pub const fn _mm_mask_srav_epi64(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_srav_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_maskz_srav_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srav_epi64(a, count).as_i64x2();
         transmute(simd_select_bitmask(k, shf, i64x2::ZERO))
@@ -22492,14 +22436,8 @@ pub const fn _mm_maskz_rorv_epi64(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_sllv_epi32(a: __m512i, count: __m512i) -> __m512i {
-    unsafe {
-        let count = count.as_u32x16();
-        let no_overflow: u32x16 = simd_lt(count, u32x16::splat(u32::BITS));
-        let count = simd_select(no_overflow, count, u32x16::ZERO);
-        simd_select(no_overflow, simd_shl(a.as_u32x16(), count), u32x16::ZERO).as_m512i()
-    }
+pub fn _mm512_sllv_epi32(a: __m512i, count: __m512i) -> __m512i {
+    unsafe { transmute(vpsllvd(a.as_i32x16(), count.as_i32x16())) }
 }
 
 /// Shift packed 32-bit integers in a left by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22509,13 +22447,7 @@ pub const fn _mm512_sllv_epi32(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_sllv_epi32(
-    src: __m512i,
-    k: __mmask16,
-    a: __m512i,
-    count: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_sllv_epi32(src: __m512i, k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_sllv_epi32(a, count).as_i32x16();
         transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
@@ -22529,8 +22461,7 @@ pub const fn _mm512_mask_sllv_epi32(
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_sllv_epi32(k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
+pub fn _mm512_maskz_sllv_epi32(k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_sllv_epi32(a, count).as_i32x16();
         transmute(simd_select_bitmask(k, shf, i32x16::ZERO))
@@ -22544,13 +22475,7 @@ pub const fn _mm512_maskz_sllv_epi32(k: __mmask16, a: __m512i, count: __m512i) -
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_sllv_epi32(
-    src: __m256i,
-    k: __mmask8,
-    a: __m256i,
-    count: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_sllv_epi32(src: __m256i, k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_sllv_epi32(a, count).as_i32x8();
         transmute(simd_select_bitmask(k, shf, src.as_i32x8()))
@@ -22564,8 +22489,7 @@ pub const fn _mm256_mask_sllv_epi32(
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_sllv_epi32(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
+pub fn _mm256_maskz_sllv_epi32(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_sllv_epi32(a, count).as_i32x8();
         transmute(simd_select_bitmask(k, shf, i32x8::ZERO))
@@ -22579,8 +22503,7 @@ pub const fn _mm256_maskz_sllv_epi32(k: __mmask8, a: __m256i, count: __m256i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_sllv_epi32(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_mask_sllv_epi32(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_sllv_epi32(a, count).as_i32x4();
         transmute(simd_select_bitmask(k, shf, src.as_i32x4()))
@@ -22594,8 +22517,7 @@ pub const fn _mm_mask_sllv_epi32(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_sllv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_maskz_sllv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_sllv_epi32(a, count).as_i32x4();
         transmute(simd_select_bitmask(k, shf, i32x4::ZERO))
@@ -22609,14 +22531,8 @@ pub const fn _mm_maskz_sllv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_srlv_epi32(a: __m512i, count: __m512i) -> __m512i {
-    unsafe {
-        let count = count.as_u32x16();
-        let no_overflow: u32x16 = simd_lt(count, u32x16::splat(u32::BITS));
-        let count = simd_select(no_overflow, count, u32x16::ZERO);
-        simd_select(no_overflow, simd_shr(a.as_u32x16(), count), u32x16::ZERO).as_m512i()
-    }
+pub fn _mm512_srlv_epi32(a: __m512i, count: __m512i) -> __m512i {
+    unsafe { transmute(vpsrlvd(a.as_i32x16(), count.as_i32x16())) }
 }
 
 /// Shift packed 32-bit integers in a right by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22626,13 +22542,7 @@ pub const fn _mm512_srlv_epi32(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_srlv_epi32(
-    src: __m512i,
-    k: __mmask16,
-    a: __m512i,
-    count: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_srlv_epi32(src: __m512i, k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srlv_epi32(a, count).as_i32x16();
         transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
@@ -22646,8 +22556,7 @@ pub const fn _mm512_mask_srlv_epi32(
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_srlv_epi32(k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
+pub fn _mm512_maskz_srlv_epi32(k: __mmask16, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srlv_epi32(a, count).as_i32x16();
         transmute(simd_select_bitmask(k, shf, i32x16::ZERO))
@@ -22661,13 +22570,7 @@ pub const fn _mm512_maskz_srlv_epi32(k: __mmask16, a: __m512i, count: __m512i) -
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_srlv_epi32(
-    src: __m256i,
-    k: __mmask8,
-    a: __m256i,
-    count: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_srlv_epi32(src: __m256i, k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srlv_epi32(a, count).as_i32x8();
         transmute(simd_select_bitmask(k, shf, src.as_i32x8()))
@@ -22681,8 +22584,7 @@ pub const fn _mm256_mask_srlv_epi32(
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_srlv_epi32(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
+pub fn _mm256_maskz_srlv_epi32(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srlv_epi32(a, count).as_i32x8();
         transmute(simd_select_bitmask(k, shf, i32x8::ZERO))
@@ -22696,8 +22598,7 @@ pub const fn _mm256_maskz_srlv_epi32(k: __mmask8, a: __m256i, count: __m256i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_srlv_epi32(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_mask_srlv_epi32(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srlv_epi32(a, count).as_i32x4();
         transmute(simd_select_bitmask(k, shf, src.as_i32x4()))
@@ -22711,8 +22612,7 @@ pub const fn _mm_mask_srlv_epi32(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_srlv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_maskz_srlv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srlv_epi32(a, count).as_i32x4();
         transmute(simd_select_bitmask(k, shf, i32x4::ZERO))
@@ -22726,14 +22626,8 @@ pub const fn _mm_maskz_srlv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_sllv_epi64(a: __m512i, count: __m512i) -> __m512i {
-    unsafe {
-        let count = count.as_u64x8();
-        let no_overflow: u64x8 = simd_lt(count, u64x8::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, count, u64x8::ZERO);
-        simd_select(no_overflow, simd_shl(a.as_u64x8(), count), u64x8::ZERO).as_m512i()
-    }
+pub fn _mm512_sllv_epi64(a: __m512i, count: __m512i) -> __m512i {
+    unsafe { transmute(vpsllvq(a.as_i64x8(), count.as_i64x8())) }
 }
 
 /// Shift packed 64-bit integers in a left by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22743,13 +22637,7 @@ pub const fn _mm512_sllv_epi64(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_sllv_epi64(
-    src: __m512i,
-    k: __mmask8,
-    a: __m512i,
-    count: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_sllv_epi64(src: __m512i, k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_sllv_epi64(a, count).as_i64x8();
         transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
@@ -22763,8 +22651,7 @@ pub const fn _mm512_mask_sllv_epi64(
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_sllv_epi64(k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
+pub fn _mm512_maskz_sllv_epi64(k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_sllv_epi64(a, count).as_i64x8();
         transmute(simd_select_bitmask(k, shf, i64x8::ZERO))
@@ -22778,13 +22665,7 @@ pub const fn _mm512_maskz_sllv_epi64(k: __mmask8, a: __m512i, count: __m512i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_sllv_epi64(
-    src: __m256i,
-    k: __mmask8,
-    a: __m256i,
-    count: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_sllv_epi64(src: __m256i, k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_sllv_epi64(a, count).as_i64x4();
         transmute(simd_select_bitmask(k, shf, src.as_i64x4()))
@@ -22798,8 +22679,7 @@ pub const fn _mm256_mask_sllv_epi64(
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_sllv_epi64(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
+pub fn _mm256_maskz_sllv_epi64(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_sllv_epi64(a, count).as_i64x4();
         transmute(simd_select_bitmask(k, shf, i64x4::ZERO))
@@ -22813,8 +22693,7 @@ pub const fn _mm256_maskz_sllv_epi64(k: __mmask8, a: __m256i, count: __m256i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_sllv_epi64(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_mask_sllv_epi64(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_sllv_epi64(a, count).as_i64x2();
         transmute(simd_select_bitmask(k, shf, src.as_i64x2()))
@@ -22828,8 +22707,7 @@ pub const fn _mm_mask_sllv_epi64(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_sllv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_maskz_sllv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_sllv_epi64(a, count).as_i64x2();
         transmute(simd_select_bitmask(k, shf, i64x2::ZERO))
@@ -22843,14 +22721,8 @@ pub const fn _mm_maskz_sllv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_srlv_epi64(a: __m512i, count: __m512i) -> __m512i {
-    unsafe {
-        let count = count.as_u64x8();
-        let no_overflow: u64x8 = simd_lt(count, u64x8::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, count, u64x8::ZERO);
-        simd_select(no_overflow, simd_shr(a.as_u64x8(), count), u64x8::ZERO).as_m512i()
-    }
+pub fn _mm512_srlv_epi64(a: __m512i, count: __m512i) -> __m512i {
+    unsafe { transmute(vpsrlvq(a.as_i64x8(), count.as_i64x8())) }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22860,13 +22732,7 @@ pub const fn _mm512_srlv_epi64(a: __m512i, count: __m512i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_mask_srlv_epi64(
-    src: __m512i,
-    k: __mmask8,
-    a: __m512i,
-    count: __m512i,
-) -> __m512i {
+pub fn _mm512_mask_srlv_epi64(src: __m512i, k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srlv_epi64(a, count).as_i64x8();
         transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
@@ -22880,8 +22746,7 @@ pub const fn _mm512_mask_srlv_epi64(
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm512_maskz_srlv_epi64(k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
+pub fn _mm512_maskz_srlv_epi64(k: __mmask8, a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let shf = _mm512_srlv_epi64(a, count).as_i64x8();
         transmute(simd_select_bitmask(k, shf, i64x8::ZERO))
@@ -22895,13 +22760,7 @@ pub const fn _mm512_maskz_srlv_epi64(k: __mmask8, a: __m512i, count: __m512i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mask_srlv_epi64(
-    src: __m256i,
-    k: __mmask8,
-    a: __m256i,
-    count: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_srlv_epi64(src: __m256i, k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srlv_epi64(a, count).as_i64x4();
         transmute(simd_select_bitmask(k, shf, src.as_i64x4()))
@@ -22915,8 +22774,7 @@ pub const fn _mm256_mask_srlv_epi64(
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_maskz_srlv_epi64(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
+pub fn _mm256_maskz_srlv_epi64(k: __mmask8, a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let shf = _mm256_srlv_epi64(a, count).as_i64x4();
         transmute(simd_select_bitmask(k, shf, i64x4::ZERO))
@@ -22930,8 +22788,7 @@ pub const fn _mm256_maskz_srlv_epi64(k: __mmask8, a: __m256i, count: __m256i) ->
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_mask_srlv_epi64(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_mask_srlv_epi64(src: __m128i, k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srlv_epi64(a, count).as_i64x2();
         transmute(simd_select_bitmask(k, shf, src.as_i64x2()))
@@ -22945,8 +22802,7 @@ pub const fn _mm_mask_srlv_epi64(src: __m128i, k: __mmask8, a: __m128i, count: _
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_maskz_srlv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
+pub fn _mm_maskz_srlv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let shf = _mm_srlv_epi64(a, count).as_i64x2();
         transmute(simd_select_bitmask(k, shf, i64x2::ZERO))
@@ -44884,6 +44740,15 @@ unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.avx512.mask.cmp.pd.128"]
     fn vcmppd128(a: f64x2, b: f64x2, op: i32, m: i8) -> i8;
 
+    #[link_name = "llvm.x86.avx512.psllv.d.512"]
+    fn vpsllvd(a: i32x16, b: i32x16) -> i32x16;
+    #[link_name = "llvm.x86.avx512.psrlv.d.512"]
+    fn vpsrlvd(a: i32x16, b: i32x16) -> i32x16;
+    #[link_name = "llvm.x86.avx512.psllv.q.512"]
+    fn vpsllvq(a: i64x8, b: i64x8) -> i64x8;
+    #[link_name = "llvm.x86.avx512.psrlv.q.512"]
+    fn vpsrlvq(a: i64x8, b: i64x8) -> i64x8;
+
     #[link_name = "llvm.x86.avx512.psll.d.512"]
     fn vpslld(a: i32x16, count: i32x4) -> i32x16;
     #[link_name = "llvm.x86.avx512.psrl.d.512"]
@@ -44902,6 +44767,16 @@ unsafe extern "llvm-intrinsic" {
     fn vpsraq256(a: i64x4, count: i64x2) -> i64x4;
     #[link_name = "llvm.x86.avx512.psra.q.128"]
     fn vpsraq128(a: i64x2, count: i64x2) -> i64x2;
+
+    #[link_name = "llvm.x86.avx512.psrav.d.512"]
+    fn vpsravd(a: i32x16, count: i32x16) -> i32x16;
+
+    #[link_name = "llvm.x86.avx512.psrav.q.512"]
+    fn vpsravq(a: i64x8, count: i64x8) -> i64x8;
+    #[link_name = "llvm.x86.avx512.psrav.q.256"]
+    fn vpsravq256(a: i64x4, count: i64x4) -> i64x4;
+    #[link_name = "llvm.x86.avx512.psrav.q.128"]
+    fn vpsravq128(a: i64x2, count: i64x2) -> i64x2;
 
     #[link_name = "llvm.x86.avx512.vpermilvar.ps.512"]
     fn vpermilps(a: f32x16, b: i32x16) -> f32x16;
@@ -54668,7 +54543,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_sllv_epi32() {
+    fn test_mm512_sllv_epi32() {
         let a = _mm512_set_epi32(1 << 31, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
         let count = _mm512_set1_epi32(1);
         let r = _mm512_sllv_epi32(a, count);
@@ -54677,7 +54552,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_mask_sllv_epi32() {
+    fn test_mm512_mask_sllv_epi32() {
         let a = _mm512_set_epi32(1 << 31, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
         let count = _mm512_set1_epi32(1);
         let r = _mm512_mask_sllv_epi32(a, 0, a, count);
@@ -54688,7 +54563,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_maskz_sllv_epi32() {
+    fn test_mm512_maskz_sllv_epi32() {
         let a = _mm512_set_epi32(1 << 31, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 << 31);
         let count = _mm512_set_epi32(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
         let r = _mm512_maskz_sllv_epi32(0, a, count);
@@ -54699,7 +54574,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm256_mask_sllv_epi32() {
+    fn test_mm256_mask_sllv_epi32() {
         let a = _mm256_set_epi32(1 << 31, 1, 1, 1, 1, 1, 1, 1);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_mask_sllv_epi32(a, 0, a, count);
@@ -54710,7 +54585,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm256_maskz_sllv_epi32() {
+    fn test_mm256_maskz_sllv_epi32() {
         let a = _mm256_set_epi32(1 << 31, 1, 1, 1, 1, 1, 1, 1);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_maskz_sllv_epi32(0, a, count);
@@ -54721,7 +54596,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm_mask_sllv_epi32() {
+    fn test_mm_mask_sllv_epi32() {
         let a = _mm_set_epi32(1 << 31, 1, 1, 1);
         let count = _mm_set1_epi32(1);
         let r = _mm_mask_sllv_epi32(a, 0, a, count);
@@ -54732,7 +54607,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm_maskz_sllv_epi32() {
+    fn test_mm_maskz_sllv_epi32() {
         let a = _mm_set_epi32(1 << 31, 1, 1, 1);
         let count = _mm_set1_epi32(1);
         let r = _mm_maskz_sllv_epi32(0, a, count);
@@ -54743,7 +54618,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_srlv_epi32() {
+    fn test_mm512_srlv_epi32() {
         let a = _mm512_set_epi32(0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2);
         let count = _mm512_set1_epi32(1);
         let r = _mm512_srlv_epi32(a, count);
@@ -54752,7 +54627,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_mask_srlv_epi32() {
+    fn test_mm512_mask_srlv_epi32() {
         let a = _mm512_set_epi32(0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2);
         let count = _mm512_set1_epi32(1);
         let r = _mm512_mask_srlv_epi32(a, 0, a, count);
@@ -54763,7 +54638,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_maskz_srlv_epi32() {
+    fn test_mm512_maskz_srlv_epi32() {
         let a = _mm512_set_epi32(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0);
         let count = _mm512_set_epi32(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
         let r = _mm512_maskz_srlv_epi32(0, a, count);
@@ -54774,7 +54649,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm256_mask_srlv_epi32() {
+    fn test_mm256_mask_srlv_epi32() {
         let a = _mm256_set_epi32(1 << 5, 0, 0, 0, 0, 0, 0, 0);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_mask_srlv_epi32(a, 0, a, count);
@@ -54785,7 +54660,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm256_maskz_srlv_epi32() {
+    fn test_mm256_maskz_srlv_epi32() {
         let a = _mm256_set_epi32(1 << 5, 0, 0, 0, 0, 0, 0, 0);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_maskz_srlv_epi32(0, a, count);
@@ -54796,7 +54671,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm_mask_srlv_epi32() {
+    fn test_mm_mask_srlv_epi32() {
         let a = _mm_set_epi32(1 << 5, 0, 0, 0);
         let count = _mm_set1_epi32(1);
         let r = _mm_mask_srlv_epi32(a, 0, a, count);
@@ -54807,7 +54682,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm_maskz_srlv_epi32() {
+    fn test_mm_maskz_srlv_epi32() {
         let a = _mm_set_epi32(1 << 5, 0, 0, 0);
         let count = _mm_set1_epi32(1);
         let r = _mm_maskz_srlv_epi32(0, a, count);
@@ -55091,7 +54966,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_srav_epi32() {
+    fn test_mm512_srav_epi32() {
         let a = _mm512_set_epi32(8, -8, 16, -15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
         let count = _mm512_set_epi32(2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         let r = _mm512_srav_epi32(a, count);
@@ -55100,7 +54975,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_mask_srav_epi32() {
+    fn test_mm512_mask_srav_epi32() {
         let a = _mm512_set_epi32(8, -8, 16, -15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16);
         let count = _mm512_set_epi32(2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
         let r = _mm512_mask_srav_epi32(a, 0, a, count);
@@ -55111,7 +54986,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    const fn test_mm512_maskz_srav_epi32() {
+    fn test_mm512_maskz_srav_epi32() {
         let a = _mm512_set_epi32(8, -8, 16, -15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -15, -14);
         let count = _mm512_set_epi32(2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2);
         let r = _mm512_maskz_srav_epi32(0, a, count);
@@ -55122,7 +54997,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm256_mask_srav_epi32() {
+    fn test_mm256_mask_srav_epi32() {
         let a = _mm256_set_epi32(1 << 5, 0, 0, 0, 0, 0, 0, 0);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_mask_srav_epi32(a, 0, a, count);
@@ -55133,7 +55008,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm256_maskz_srav_epi32() {
+    fn test_mm256_maskz_srav_epi32() {
         let a = _mm256_set_epi32(1 << 5, 0, 0, 0, 0, 0, 0, 0);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_maskz_srav_epi32(0, a, count);
@@ -55144,7 +55019,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm_mask_srav_epi32() {
+    fn test_mm_mask_srav_epi32() {
         let a = _mm_set_epi32(1 << 5, 0, 0, 0);
         let count = _mm_set1_epi32(1);
         let r = _mm_mask_srav_epi32(a, 0, a, count);
@@ -55155,7 +55030,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
-    const fn test_mm_maskz_srav_epi32() {
+    fn test_mm_maskz_srav_epi32() {
         let a = _mm_set_epi32(1 << 5, 0, 0, 0);
         let count = _mm_set1_epi32(1);
         let r = _mm_maskz_srav_epi32(0, a, count);
