@@ -3292,6 +3292,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidCVariadicArguments {
             {
                 continue;
             }
+            // TODO Remove this before merging. This is for crater only.
+            #[allow(rustc::symbol_intern_string_literal)]
+            if cx.tcx.sess.config.contains(&(Symbol::intern("crater_hack"), None)) {
+                cx.tcx.dcx().span_err(
+                    arg.span,
+                    format!("CRATER ERROR: C-variadic argument with type `{}`.", arg_ty),
+                );
+            }
             cx.emit_span_lint(
                 INVALID_C_VARIADIC_ARGUMENTS,
                 arg.span,
