@@ -85,7 +85,7 @@ impl<T: NumBufferTrait> NumBuffer<T> {
     }
 }
 
-#[unstable(feature = "num_buffer_default", issue = "none")]
+#[stable(feature = "num_buffer_default", since = "CURRENT_RUSTC_VERSION")]
 impl<T: NumBufferTrait> Default for NumBuffer<T> {
     fn default() -> Self {
         Self::new()
