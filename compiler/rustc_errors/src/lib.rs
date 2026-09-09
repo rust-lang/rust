@@ -269,6 +269,9 @@ pub struct DelayedBugPanic;
 /// A `DiagCtxt` deals with errors and other compiler output.
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
+///
+/// Note: methods should be implemented not on this type but on `DiagCtxtHandle` or
+/// `DiagCtxtInner`, whenever possible.
 pub struct DiagCtxt {
     inner: Lock<DiagCtxtInner>,
 }
@@ -281,17 +284,12 @@ pub struct DiagCtxtHandle<'a> {
     tainted_with_errors: Option<&'a Cell<Option<ErrorGuaranteed>>>,
 }
 
-impl<'a> std::ops::Deref for DiagCtxtHandle<'a> {
-    type Target = &'a DiagCtxt;
-
-    fn deref(&self) -> &Self::Target {
-        &self.dcx
-    }
-}
-
 /// This inner struct exists to keep it all behind a single lock;
 /// this is done to prevent possible deadlocks in a multi-threaded compiler,
 /// as well as inconsistent state observation.
+///
+/// Note: methods should be implemented not on this type but on `DiagCtxtHandle` whenever possible.
+/// Methods on this type should only be used e.g. when the lock is already held.
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
 
@@ -497,20 +495,25 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
+    pub fn handle<'a>(&'a self) -> DiagCtxtHandle<'a> {
+        DiagCtxtHandle { dcx: self, tainted_with_errors: None }
+    }
+}
+
+impl<'a> DiagCtxtHandle<'a> {
     pub fn make_silent(&self) {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.dcx.inner.borrow_mut();
         inner.emitter = Box::new(emitter::SilentEmitter {});
     }
 
     pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
-        self.inner.borrow_mut().emitter = emitter;
+        self.dcx.inner.borrow_mut().emitter = emitter;
     }
 
-    // This is here to not allow mutation of flags;
-    // as of this writing it's used in Session::consider_optimizing and
-    // in tests in rustc_interface.
+    // This is here to not allow mutation of flags; as of this writing it's used in
+    // `emit_lint_base` and in tests in `rustc_interface`.
     pub fn can_emit_warnings(&self) -> bool {
-        self.inner.borrow_mut().flags.can_emit_warnings
+        self.dcx.inner.borrow().flags.can_emit_warnings
     }
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.
@@ -521,7 +524,7 @@ impl DiagCtxt {
     pub fn reset_err_count(&self) {
         // Use destructuring so that if a field gets added to `DiagCtxtInner`, it's impossible to
         // fail to update this method as well.
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.dcx.inner.borrow_mut();
         let DiagCtxtInner {
             flags: _,
             err_guars,
@@ -563,22 +566,16 @@ impl DiagCtxt {
         *fulfilled_expectations = Default::default();
     }
 
-    pub fn handle<'a>(&'a self) -> DiagCtxtHandle<'a> {
-        DiagCtxtHandle { dcx: self, tainted_with_errors: None }
-    }
-
     /// Link this to a taintable context so that emitting errors will automatically set
     /// the `Option<ErrorGuaranteed>` instead of having to do that manually at every error
     /// emission site.
-    pub fn taintable_handle<'a>(
-        &'a self,
+    pub fn into_taintable(
+        self,
         tainted_with_errors: &'a Cell<Option<ErrorGuaranteed>>,
     ) -> DiagCtxtHandle<'a> {
-        DiagCtxtHandle { dcx: self, tainted_with_errors: Some(tainted_with_errors) }
+        DiagCtxtHandle { dcx: self.dcx, tainted_with_errors: Some(tainted_with_errors) }
     }
-}
 
-impl<'a> DiagCtxtHandle<'a> {
     /// Stashes a diagnostic for possible later improvement in a different,
     /// later stage of the compiler. Possible actions depend on the diagnostic
     /// level:
@@ -618,7 +615,7 @@ impl<'a> DiagCtxtHandle<'a> {
             // diagnostic context is dropped and thus delayed bugs are emitted.
             Error => Some(self.span_delayed_bug(span, format!("stashing {key:?}"))),
             DelayedBug => {
-                return self.inner.borrow_mut().emit_diagnostic(diag, self.tainted_with_errors);
+                return self.dcx.inner.borrow_mut().emit_diagnostic(diag, self.tainted_with_errors);
             }
             ForceWarning | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
             | Expect => None,
@@ -627,7 +624,8 @@ impl<'a> DiagCtxtHandle<'a> {
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
         // if/when we have a more robust macro-friendly replacement for `(span, key)` as a key.
         // See the PR for a discussion.
-        self.inner
+        self.dcx
+            .inner
             .borrow_mut()
             .stashed_diagnostics
             .entry(key)
@@ -642,9 +640,10 @@ impl<'a> DiagCtxtHandle<'a> {
     /// error.
     pub fn steal_non_err(self, span: Span, key: StashKey) -> Option<Diag<'a, ()>> {
         // FIXME(#120456) - is `swap_remove` correct?
-        let (diag, guar, _) = self.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
-            |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
-        )?;
+        let (diag, guar, _) =
+            self.dcx.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
+                |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
+            )?;
         assert!(!diag.is_error());
         assert!(guar.is_none());
         Some(Diag::new_diagnostic(self, diag))
@@ -664,7 +663,7 @@ impl<'a> DiagCtxtHandle<'a> {
         F: FnMut(&mut Diag<'_>),
     {
         // FIXME(#120456) - is `swap_remove` correct?
-        let err = self.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
+        let err = self.dcx.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
             |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
         );
         err.map(|(err, guar, _)| {
@@ -688,7 +687,7 @@ impl<'a> DiagCtxtHandle<'a> {
         new_err: Diag<'_>,
     ) -> ErrorGuaranteed {
         // FIXME(#120456) - is `swap_remove` correct?
-        let old_err = self.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
+        let old_err = self.dcx.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
             |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
         );
         match old_err {
@@ -705,7 +704,7 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
-        let inner = self.inner.borrow();
+        let inner = self.dcx.inner.borrow();
         if let Some(stashed_diagnostics) = inner.stashed_diagnostics.get(&key)
             && !stashed_diagnostics.is_empty()
         {
@@ -717,13 +716,13 @@ impl<'a> DiagCtxtHandle<'a> {
 
     /// Emit all stashed diagnostics.
     pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow_mut().emit_stashed_diagnostics()
+        self.dcx.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
     /// This excludes delayed bugs.
     #[inline]
     pub fn err_count(&self) -> usize {
-        let inner = self.inner.borrow();
+        let inner = self.dcx.inner.borrow();
         inner.err_guars.len()
             + inner.lint_err_guars.len()
             + inner
@@ -738,7 +737,7 @@ impl<'a> DiagCtxtHandle<'a> {
     /// Like [`DiagCtxtHandle::err_count`], but only counts errors whose recorded
     /// emitting thread is the calling thread.
     pub fn err_count_on_current_thread(&self) -> usize {
-        let inner = self.inner.borrow();
+        let inner = self.dcx.inner.borrow();
         let current = std::thread::current().id();
         inner.err_guars.iter().filter(|(_, thread)| *thread == current).count()
             + inner.lint_err_guars.iter().filter(|(_, thread)| *thread == current).count()
@@ -756,22 +755,22 @@ impl<'a> DiagCtxtHandle<'a> {
     /// This excludes lint errors and delayed bugs. Unless absolutely
     /// necessary, prefer `has_errors` to this method.
     pub fn has_errors_excluding_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors_excluding_lint_errors()
+        self.dcx.inner.borrow().has_errors_excluding_lint_errors()
     }
 
     /// This excludes delayed bugs.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors()
+        self.dcx.inner.borrow().has_errors()
     }
 
     /// This excludes nothing. Unless absolutely necessary, prefer `has_errors`
     /// to this method.
     pub fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors_or_delayed_bugs()
+        self.dcx.inner.borrow().has_errors_or_delayed_bugs()
     }
 
     pub fn print_error_count(&self) {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.dcx.inner.borrow_mut();
 
         // Any stashed diagnostics should have been handled by
         // `emit_stashed_diagnostics` by now.
@@ -869,27 +868,27 @@ impl<'a> DiagCtxtHandle<'a> {
     /// Used to suppress emitting the same error multiple times with extended explanation when
     /// calling `-Zteach`.
     pub fn must_teach(&self, code: ErrCode) -> bool {
-        self.inner.borrow_mut().taught_diagnostics.insert(code)
+        self.dcx.inner.borrow_mut().taught_diagnostics.insert(code)
     }
 
     pub fn emit_diagnostic(&self, diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
-        self.inner.borrow_mut().emit_diagnostic(diagnostic, self.tainted_with_errors)
+        self.dcx.inner.borrow_mut().emit_diagnostic(diagnostic, self.tainted_with_errors)
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
-        self.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type);
+        self.dcx.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type);
     }
 
     pub fn emit_timing_section_start(&self, record: TimingRecord) {
-        self.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::Start);
+        self.dcx.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::Start);
     }
 
     pub fn emit_timing_section_end(&self, record: TimingRecord) {
-        self.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::End);
+        self.dcx.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::End);
     }
 
     pub fn emit_future_breakage_report(&self) {
-        let inner = &mut *self.inner.borrow_mut();
+        let inner = &mut *self.dcx.inner.borrow_mut();
         let diags = mem::take(&mut inner.future_breakage_diagnostics);
         if !diags.is_empty() {
             inner.emitter.emit_future_breakage_report(diags);
@@ -902,7 +901,7 @@ impl<'a> DiagCtxtHandle<'a> {
         loud: bool,
         unused_externs: &[&str],
     ) {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.dcx.inner.borrow_mut();
 
         // This "error" is an odd duck.
         // - It's only produce with JSON output.
@@ -930,7 +929,7 @@ impl<'a> DiagCtxtHandle<'a> {
     /// [`DiagCtxtInner`] and indicate that the linked expectation has been fulfilled.
     #[must_use]
     pub fn steal_fulfilled_expectation_ids(&self) -> FxIndexSet<LintExpectationId> {
-        mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
+        mem::take(&mut self.dcx.inner.borrow_mut().fulfilled_expectations)
     }
 
     /// Trigger an ICE if there are any delayed bugs and no hard errors.
@@ -938,7 +937,7 @@ impl<'a> DiagCtxtHandle<'a> {
     /// This will panic if there are any stashed diagnostics. You can call
     /// `emit_stashed_diagnostics` to emit those before calling `flush_delayed`.
     pub fn flush_delayed(&self) {
-        self.inner.borrow_mut().flush_delayed();
+        self.dcx.inner.borrow_mut().flush_delayed();
     }
 
     /// Used when trimmed_def_paths is called and we must produce a diagnostic
@@ -946,10 +945,10 @@ impl<'a> DiagCtxtHandle<'a> {
     #[track_caller]
     pub fn set_must_produce_diag(&self) {
         assert!(
-            self.inner.borrow().must_produce_diag.is_none(),
+            self.dcx.inner.borrow().must_produce_diag.is_none(),
             "should only need to collect a backtrace once"
         );
-        self.inner.borrow_mut().must_produce_diag = Some(Backtrace::capture());
+        self.dcx.inner.borrow_mut().must_produce_diag = Some(Backtrace::capture());
     }
 }
 
@@ -1186,10 +1185,6 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 }
 
-// Note: we prefer implementing operations on `DiagCtxt`, rather than
-// `DiagCtxtInner`, whenever possible. This minimizes functions where
-// `DiagCtxt::foo()` just borrows `inner` and forwards a call to
-// `DiagCtxtInner::foo`.
 impl DiagCtxtInner {
     fn new(emitter: Box<DynEmitter>) -> Self {
         Self {

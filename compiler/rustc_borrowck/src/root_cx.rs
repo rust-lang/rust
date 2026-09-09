@@ -76,7 +76,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
     }
 
     pub(super) fn dcx(&self) -> DiagCtxtHandle<'diag> {
-        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
+        self.tcx.dcx().into_taintable(&self.tainted_by_errors)
     }
 
     pub(super) fn used_mut_upvars(
