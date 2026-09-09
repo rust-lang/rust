@@ -1361,7 +1361,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 "param: span {:?}, ty_span {:?}, pat.span {:?}",
                 param.span, param.ty_span, param.pat.span
             );
-            if param.ty_span != param.pat.span {
+            // Async lowering such as closure parameters changes the pattern's expansion context,
+            // but preserves the original source span for its implicit type, issue #139150
+            if !param.ty_span.source_equal(param.pat.span) {
                 debug!("skipping param: has explicit type");
                 continue;
             }
@@ -1370,9 +1372,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
             if self.generic_arg_contains_target(param_ty.into()) {
                 self.update_infer_source(InferSource {
-                    span: param.pat.span,
+                    span: param.ty_span,
                     kind: InferSourceKind::ClosureArg {
-                        insert_span: param.pat.span.shrink_to_hi(),
+                        insert_span: param.ty_span.shrink_to_hi(),
                         ty: param_ty,
                         kind: param.pat.kind,
                     },

@@ -1,41 +1,46 @@
 error[E0282]: type annotations needed
-  --> $DIR/parameter-inference-span-issue-139150.rs:7:15
+  --> $DIR/parameter-inference-span-issue-139150.rs:7:12
    |
 LL |     async |_| {};
-   |               ^^ cannot infer type
+   |            ^  -- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     async |_: /* Type */| {};
+   |             ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/parameter-inference-span-issue-139150.rs:12:33
+  --> $DIR/parameter-inference-span-issue-139150.rs:12:20
    |
 LL |     let _ = async |value| { let _ = value; };
-   |                                 ^
+   |                    ^^^^^  ------------------ type must be known at this point
    |
-help: consider giving this pattern a type
+help: consider giving this closure parameter an explicit type
    |
-LL |     let _ = async |value| { let _: /* Type */ = value; };
-   |                                  ++++++++++++
+LL |     let _ = async |value: /* Type */| { let _ = value; };
+   |                         ++++++++++++
 
 error[E0282]: type annotations needed for `(_, _)`
-  --> $DIR/parameter-inference-span-issue-139150.rs:17:43
+  --> $DIR/parameter-inference-span-issue-139150.rs:17:20
    |
 LL |     let _ = async |(first, second)| { let _ = (first, second); };
-   |                                           ^   --------------- type must be known at this point
+   |                    ^^^^^^^^^^^^^^^            --------------- type must be known at this point
    |
-help: consider giving this pattern a type, where the placeholders `_` are specified
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
-LL |     let _ = async |(first, second)| { let _: (_, _) = (first, second); };
-   |                                            ++++++++
+LL |     let _ = async |(first, second): (_, _)| { let _ = (first, second); };
+   |                                   ++++++++
 
-error[E0282]: type annotations needed for `&_`
-  --> $DIR/parameter-inference-span-issue-139150.rs:22:37
+error[E0282]: type annotations needed
+  --> $DIR/parameter-inference-span-issue-139150.rs:22:20
    |
 LL |     let _ = async |ref value| { let _ = value; };
-   |                                     ^   ----- type must be known at this point
+   |                    ^^^^^^^^^            ----- type must be known at this point
    |
-help: consider giving this pattern a type, where the placeholder `_` is specified
+help: consider giving this closure parameter an explicit type
    |
-LL |     let _ = async |ref value| { let _: &_ = value; };
-   |                                      ++++
+LL |     let _ = async |ref value: /* Type */| { let _ = value; };
+   |                             ++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/parameter-inference-span-issue-139150.rs:27:34
