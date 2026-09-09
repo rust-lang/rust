@@ -1,5 +1,7 @@
 //@ needs-llvm-components: avr
 //@ needs-rust-lld
+//@ ignore-backends: gcc
+
 //! Regression test for #129301/llvm-project#106722 within `rustc`.
 //!
 //! Some LLVM-versions had wrong offsets in the local labels, causing the first

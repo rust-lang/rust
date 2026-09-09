@@ -4,6 +4,8 @@
 //!
 //@ only-nightly
 //@ needs-target-std
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{diff, rustc, similar};
 
