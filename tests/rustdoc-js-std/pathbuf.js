@@ -3,12 +3,14 @@
 // search indexes contain TypeData for it,
 // but only std defines EntryData.
 // This test case ensures we can merge them.
+//
+// https://github.com/rust-lang/rust/issues/162334
+
 
 const EXPECTED = [
     {
         query: 'PathBuf',
         others: [
-            // ensure hashset::insert comes first
             { 'path': 'std::path', 'name': 'PathBuf' },
         ],
     },
