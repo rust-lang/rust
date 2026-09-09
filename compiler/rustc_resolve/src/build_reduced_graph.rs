@@ -399,7 +399,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut define_extern = |ns| {
             let orig_ident_span = orig_ident.span;
             let decl = self.arenas.alloc_decl(DeclData {
-                kind: DeclKind::Def(res),
+                kind: if reexport_chain.is_empty() {
+                    DeclKind::Def(res)
+                } else {
+                    DeclKind::Extern {
+                        res,
+                        reexport_chain: self.arenas.dropless.alloc_slice(reexport_chain),
+                    }
+                },
                 ambiguity: CmCell::new(ambig),
                 initial_vis: vis,
                 ambiguity_vis_max: CmCell::new(None),
@@ -412,7 +419,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 non_glob_decl: Some(decl),
                 orig_ident_span,
                 single_imports: Default::default(),
-                extern_reexport_chain: reexport_chain.clone(),
                 ..
             });
 

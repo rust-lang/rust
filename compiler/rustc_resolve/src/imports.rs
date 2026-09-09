@@ -22,7 +22,6 @@ use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
-use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -278,7 +277,6 @@ pub(crate) struct NameResolution<'ra> {
     /// The glob declaration for this name, if it is known to exist.
     pub glob_decl: Option<Decl<'ra>> = None,
     pub orig_ident_span: Span,
-    pub extern_reexport_chain: SmallVec<[Reexport; 2]>,
 }
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
@@ -287,12 +285,7 @@ pub(crate) type NameResolutionRef<'ra> = Interned<'ra, CmRefCell<NameResolution<
 
 impl<'ra> NameResolution<'ra> {
     pub(crate) fn new(orig_ident_span: Span) -> Self {
-        NameResolution {
-            single_imports: FxIndexSet::default(),
-            orig_ident_span,
-            extern_reexport_chain: Default::default(),
-            ..
-        }
+        NameResolution { single_imports: FxIndexSet::default(), orig_ident_span, .. }
     }
 
     /// Returns the best declaration if it is not going to change, and `None` if the best
@@ -1080,7 +1073,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && !binding.vis().is_public()
                     {
                         let binding_id = match binding.kind {
-                            DeclKind::Def(res) => {
+                            DeclKind::Def(res) | DeclKind::Extern { res, .. } => {
                                 Some(self.def_id_to_node_id(res.def_id().expect_local()))
                             }
                             DeclKind::Import { import, .. } => import.id(),
@@ -1520,7 +1513,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             match source_decl.kind {
                                                 // Never suggest names that previously could not
                                                 // be resolved.
-                                                DeclKind::Def(Res::Err) => None,
+                                                DeclKind::Def(Res::Err)
+                                                | DeclKind::Extern { res: Res::Err, .. } => None,
                                                 _ => Some(i.name),
                                             }
                                         }
@@ -1704,9 +1698,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match decl.kind {
                 // exclude decl_macro
-                DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
-                    if let SyntaxExtensionKind::MacroRules(mr) =
-                        &self.get_macro_by_def_id(def_id).kind
+                DeclKind::Def(res) | DeclKind::Extern { res, .. }
+                    if let Res::Def(DefKind::Macro(_), def_id) = res
+                        && let SyntaxExtensionKind::MacroRules(mr) =
+                            &self.get_macro_by_def_id(def_id).kind
                         && mr.is_macro_rules() =>
                 {
                     err.subdiagnostic(ConsiderAddingMacroExport { span: decl.span });
@@ -1897,41 +1892,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut children = Vec::new();
         let mut ambig_children = Vec::new();
 
-        for (key, name_resolution) in self.resolutions(module.to_module()).iter() {
-            let name_resolution = name_resolution.borrow_checked(self);
-            if let Some(decl) = name_resolution.best_decl() {
-                let res = decl.res().expect_non_local();
-                if res != def::Res::Err {
-                    let ident = key.ident;
-                    let orig_ident_span = name_resolution.orig_ident_span;
-                    let vis = if self.rust_embed_hack(module, decl) {
-                        Visibility::Public
-                    } else {
-                        decl.vis()
+        module.to_module().for_each_child(self, |this, ident, orig_ident_span, _, decl| {
+            let res = decl.res().expect_non_local();
+            if res != def::Res::Err {
+                let vis = if this.rust_embed_hack(module, decl) {
+                    Visibility::Public
+                } else {
+                    decl.vis()
+                };
+                let ident = ident.orig(orig_ident_span);
+                let child = |reexport_chain| ModChild { ident, res, vis, reexport_chain };
+                if let Some((ambig_binding1, ambig_binding2)) = decl.descent_to_ambiguity() {
+                    let main = child(ambig_binding1.reexport_chain());
+                    let second = ModChild {
+                        ident,
+                        res: ambig_binding2.res().expect_non_local(),
+                        vis: ambig_binding2.vis(),
+                        reexport_chain: ambig_binding2.reexport_chain(),
                     };
-                    let ident = ident.orig(orig_ident_span);
-                    let child = |reexport_chain| ModChild { ident, res, vis, reexport_chain };
-                    if let Some((ambig_binding1, ambig_binding2)) = decl.descent_to_ambiguity() {
-                        let mut reexport_chain = ambig_binding1.reexport_chain();
-                        reexport_chain
-                            .extend(name_resolution.extern_reexport_chain.iter().copied());
-                        let main = child(reexport_chain);
-                        let second = ModChild {
-                            ident,
-                            res: ambig_binding2.res().expect_non_local(),
-                            vis: ambig_binding2.vis(),
-                            reexport_chain: ambig_binding2.reexport_chain(),
-                        };
-                        ambig_children.push(AmbigModChild { main, second })
-                    } else {
-                        let mut reexport_chain = decl.reexport_chain();
-                        reexport_chain
-                            .extend(name_resolution.extern_reexport_chain.iter().copied());
-                        children.push(child(reexport_chain));
-                    }
+                    ambig_children.push(AmbigModChild { main, second })
+                } else {
+                    children.push(child(decl.reexport_chain()));
                 }
             }
-        }
+        });
 
         if !children.is_empty() {
             module_children.insert(def_id.expect_local(), children);
