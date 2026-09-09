@@ -35,7 +35,7 @@ use tracing::debug;
 
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
-use crate::intravisit::{FnKind, VisitorExt};
+use crate::intravisit::FnKind;
 use crate::lints::DelayedLints;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash)]

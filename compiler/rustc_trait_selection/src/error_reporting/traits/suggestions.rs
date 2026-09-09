@@ -15,7 +15,7 @@ use rustc_errors::{
 use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, VisitorExt};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
     self as hir, AmbigArg, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
     expr_needs_parens,

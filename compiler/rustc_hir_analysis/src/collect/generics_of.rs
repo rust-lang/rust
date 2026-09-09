@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
 use rustc_lint_defs::builtin::INVALID_TYPE_PARAM_DEFAULT;
 use rustc_middle::span_bug;
