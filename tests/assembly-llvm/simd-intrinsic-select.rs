@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 //@ add-minicore
 //@ revisions: x86-avx2 x86-avx-512-llvm23 x86-avx-512 aarch64
 //@ [x86-avx2] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
