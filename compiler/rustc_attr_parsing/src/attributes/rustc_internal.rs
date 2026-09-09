@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::range::RangeInclusive;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
@@ -354,18 +355,17 @@ impl SingleAttributeParser for RustcEditionRedirectParser {
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let value = cx.expect_name_value(args, cx.attr_span, Some(sym::rustc_edition_redirect))?;
         let value = cx.expect_string_literal(value)?;
-        let Some((start, end)) = value.as_str().split_once("..=").and_then(|(start, end)| {
+        let Some((start, last)) = value.as_str().split_once("..=").and_then(|(start, end)| {
             let start = if start.is_empty() { Edition::Edition2015 } else { start.parse().ok()? };
-            let end = end.parse().ok()?;
-            (start <= end).then_some((start, end))
+            let last = end.parse().ok()?;
+            (start <= last).then_some((start, last))
         }) else {
             cx.emit_err(diagnostics::InvalidEditionRedirect { span: cx.attr_span });
             return None;
         };
 
         Some(AttributeKind::RustcEditionRedirect(EditionRedirect {
-            start,
-            end,
+            range: RangeInclusive { start, last },
             span: cx.attr_span,
         }))
     }

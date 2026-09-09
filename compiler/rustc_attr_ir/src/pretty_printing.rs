@@ -1,6 +1,7 @@
 use std::num::NonZero;
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::range::RangeInclusive;
 
 use rustc_abi::Align;
 use rustc_ast::ast::{Path, join_path_idents};
@@ -211,4 +212,5 @@ print_debug!(
     CrateType,
     NativeLibKind,
     CollapseMacroDebuginfo,
+    RangeInclusive<Edition>,
 );

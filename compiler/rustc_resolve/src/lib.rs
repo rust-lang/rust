@@ -24,6 +24,7 @@
 use std::cell::RefMut;
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
+use std::range::RangeInclusive;
 use std::sync::{Arc, OnceLock};
 use std::{fmt, mem};
 
@@ -1058,8 +1059,7 @@ struct DeclData<'ra> {
 
 #[derive(Clone, Copy, Debug)]
 struct EditionRedirectDecl<'ra> {
-    start: Edition,
-    end: Edition,
+    range: RangeInclusive<Edition>,
     target: Decl<'ra>,
 }
 
@@ -1068,8 +1068,7 @@ struct EditionRedirectDecl<'ra> {
 struct LocalEditionRedirect<'ra> {
     module: LocalModule<'ra>,
     key: BindingKey,
-    start: Edition,
-    end: Edition,
+    range: RangeInclusive<Edition>,
     import_decl: Decl<'ra>,
     default_decl: Option<Decl<'ra>>,
     span: Span,

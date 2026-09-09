@@ -1,6 +1,8 @@
 //! This module contains types that carry name resolution results from `rustc_resolve` to a
 //! consumer in another crate (e.g. AST lowering, metadata, or a query).
 
+use std::range::RangeInclusive;
+
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId};
 use rustc_attr_ir::StrippedCfgItem;
@@ -136,8 +138,7 @@ impl Reexport {
 /// A different item that a module child resolves to within an inclusive edition range.
 #[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct EditionRedirect {
-    pub start: Edition,
-    pub end: Edition,
+    pub range: RangeInclusive<Edition>,
     pub target: Res<!>,
 }
 

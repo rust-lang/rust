@@ -7,6 +7,7 @@ use std::hash::{BuildHasher, Hash};
 use std::marker::{PhantomData, PointeeSized};
 use std::num::{NonZero, ZeroablePrimitive};
 use std::path;
+use std::range::RangeInclusive;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -422,6 +423,19 @@ impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1,
             1 => Err(T2::decode(d)),
             _ => panic!("Encountered invalid discriminant while decoding `Result`."),
         }
+    }
+}
+
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for RangeInclusive<T> {
+    fn encode(&self, s: &mut S) {
+        self.start.encode(s);
+        self.last.encode(s);
+    }
+}
+
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for RangeInclusive<T> {
+    fn decode(d: &mut D) -> Self {
+        RangeInclusive { start: T::decode(d), last: T::decode(d) }
     }
 }
 

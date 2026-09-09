@@ -325,7 +325,7 @@ mod name_resolution {
                 match self
                     .edition_redirects
                     .iter()
-                    .find(|redirect| redirect.start <= edition && edition <= redirect.end)
+                    .find(|redirect| redirect.range.contains(&edition))
                 {
                     Some(redirect) => redirect.target,
                     None => decl,
@@ -936,8 +936,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     this.local_edition_redirects.push(LocalEditionRedirect {
                                         module: import.parent_scope.module.expect_local(),
                                         key: BindingKey::new(ident, ns),
-                                        start: redirect.start,
-                                        end: redirect.end,
+                                        range: redirect.range,
                                         import_decl,
                                         default_decl: None,
                                         span: redirect.span,
@@ -2009,16 +2008,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             // Check that the edition ranges in the group do not overlap.
-            indices.sort_by_key(|&index| self.local_edition_redirects[index].start);
+            indices.sort_by_key(|&index| self.local_edition_redirects[index].range.start);
             for &[previous, redirect] in indices.array_windows() {
                 let previous = &self.local_edition_redirects[previous];
                 let redirect = &self.local_edition_redirects[redirect];
-                if previous.end >= redirect.start && diagnosed_overlap.insert(redirect.span) {
+                if previous.range.last >= redirect.range.start
+                    && diagnosed_overlap.insert(redirect.span)
+                {
                     self.dcx().span_err(
                         redirect.span,
                         format!(
                             "edition redirect range {}..={} overlaps with another range for `{}`",
-                            redirect.start, redirect.end, redirect.key.ident.name
+                            redirect.range.start, redirect.range.last, redirect.key.ident.name
                         ),
                     );
                 }
@@ -2053,12 +2054,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .filter(|redirect| redirect.default_decl == Some(decl))
             .collect::<SmallVec<[_; 1]>>();
-        redirects.sort_by_key(|redirect| (redirect.start, redirect.end));
+        redirects.sort_by_key(|redirect| redirect.range.start);
         redirects
             .into_iter()
             .map(|redirect| MetadataEditionRedirect {
-                start: redirect.start,
-                end: redirect.end,
+                range: redirect.range,
                 target: redirect.import_decl.res().expect_non_local(),
             })
             .collect()
