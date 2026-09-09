@@ -358,6 +358,10 @@ impl Slice {
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
     }
+
+    pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+        &mut self.inner
+    }
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
