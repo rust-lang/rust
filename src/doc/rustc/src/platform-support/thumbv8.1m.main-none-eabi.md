@@ -39,31 +39,31 @@ to use these flags.
 
 ### Table of supported CPUs for `thumbv8.1m.main-none-eabi`
 
-| CPU         | FPU | DSP | MVE       | Target CPU    | Target Features       |
-| ----------- | --- | --- | --------- | ------------- | --------------------- |
-| Unspecified | No  | No  | No        | None          | None                  |
-| Cortex-M55  | No  | Yes | No        | `cortex-m55`  | `-fpregs,-mve`        |
-| Cortex-M55  | DP  | Yes | No        | `cortex-m55`  | `-mve`                |
-| Cortex-M55  | No  | Yes | Int       | `cortex-m55`  | `-fpregs,-mve.fp,+mve`|
-| Cortex-M55  | DP  | Yes | Int       | `cortex-m55`  | `-mve.fp`             |
-| Cortex-M55  | DP  | Yes | Int+Float | `cortex-m55`  | None                  |
-| Cortex-M85  | No  | Yes | No        | `cortex-m85`  | `-fpregs,-mve`        |
-| Cortex-M85  | DP  | Yes | No        | `cortex-m85`  | `-mve`                |
-| Cortex-M85  | No  | Yes | Int       | `cortex-m85`  | `-fpregs,-mve.fp,+mve`|
-| Cortex-M85  | DP  | Yes | Int       | `cortex-m85`  | `-mve.fp`             |
-| Cortex-M85  | DP  | Yes | Int+Float | `cortex-m85`  | None                  |
+| CPU         | FPU | MVE       | Target CPU    | Target Features       |
+| ----------- | --- | --------- | ------------- | --------------------- |
+| Unspecified | No  | No        | None          | None                  |
+| Cortex-M55  | No  | No        | `cortex-m55`  | `-fpregs,-mve`        |
+| Cortex-M55  | DP  | No        | `cortex-m55`  | `-mve`                |
+| Cortex-M55  | No  | Int       | `cortex-m55`  | `-fpregs,-mve.fp,+mve`|
+| Cortex-M55  | DP  | Int       | `cortex-m55`  | `-mve.fp`             |
+| Cortex-M55  | DP  | Int+Float | `cortex-m55`  | None                  |
+| Cortex-M85  | No  | No        | `cortex-m85`  | `-fpregs,-mve`        |
+| Cortex-M85  | DP  | No        | `cortex-m85`  | `-mve`                |
+| Cortex-M85  | No  | Int       | `cortex-m85`  | `-fpregs,-mve.fp,+mve`|
+| Cortex-M85  | DP  | Int       | `cortex-m85`  | `-mve.fp`             |
+| Cortex-M85  | DP  | Int+Float | `cortex-m85`  | None                  |
 
 ### Table of supported CPUs for `thumbv8.1m.main-none-eabihf`
 
-| CPU         | FPU | DSP | MVE       | Target CPU    | Target Features       |
-| ----------- | --- | --- | --------- | ------------- | --------------------- |
-| Unspecified | DP  | No  | No        | None          | None                  |
-| Cortex-M55  | DP  | Yes | No        | `cortex-m55`  | `-mve`                |
-| Cortex-M55  | DP  | Yes | Int       | `cortex-m55`  | `-mve.fp`             |
-| Cortex-M55  | DP  | Yes | Int+Float | `cortex-m55`  | None                  |
-| Cortex-M85  | DP  | Yes | No        | `cortex-m85`  | `-mve`                |
-| Cortex-M85  | DP  | Yes | Int       | `cortex-m85`  | `-mve.fp`             |
-| Cortex-M85  | DP  | Yes | Int+Float | `cortex-m85`  | None                  |
+| CPU         | FPU | MVE       | Target CPU    | Target Features       |
+| ----------- | --- | --------- | ------------- | --------------------- |
+| Unspecified | DP  | No        | None          | None                  |
+| Cortex-M55  | DP  | No        | `cortex-m55`  | `-mve`                |
+| Cortex-M55  | DP  | Int       | `cortex-m55`  | `-mve.fp`             |
+| Cortex-M55  | DP  | Int+Float | `cortex-m55`  | None                  |
+| Cortex-M85  | DP  | No        | `cortex-m85`  | `-mve`                |
+| Cortex-M85  | DP  | Int       | `cortex-m85`  | `-mve.fp`             |
+| Cortex-M85  | DP  | Int+Float | `cortex-m85`  | None                  |
 
 *Technically* you can use this hard-float ABI on a CPU which has no FPU but does
 have Integer MVE, because MVE provides the same set of registers as the FPU
