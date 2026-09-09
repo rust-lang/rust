@@ -270,6 +270,9 @@ pub enum Subcommand {
         #[arg(long)]
         /// Pass `--timings` to Cargo to get crate build timings
         timings: bool,
+        #[arg(long)]
+        /// Build the standard library under the `dist` profile
+        dist_std: bool,
     },
     #[command(visible_aliases = ["c"], long_about = "\n
     Arguments:
@@ -449,6 +452,9 @@ pub enum Subcommand {
         #[arg(long)]
         /// Ignore `//@ ignore-backends` directives.
         bypass_ignore_backends: bool,
+        #[arg(long)]
+        /// Build the standard library under the `dist` profile
+        dist_std: bool,
 
         /// Deprecated. Use `--all-targets` or `--tests` instead.
         #[arg(long)]
@@ -492,6 +498,9 @@ pub enum Subcommand {
     Bench {
         #[arg(long, allow_hyphen_values(true))]
         test_args: Vec<String>,
+        #[arg(long)]
+        /// Build the standard library under the `dist` profile
+        dist_std: bool,
     },
     /// Clean out build directories
     Clean {
@@ -503,9 +512,17 @@ pub enum Subcommand {
         stage: Option<u32>,
     },
     /// Build distribution artifacts
-    Dist,
+    Dist {
+        #[arg(long)]
+        /// Build the standard library under the `dist` profile
+        dist_std: bool,
+    },
     /// Install distribution artifacts
-    Install,
+    Install {
+        #[arg(long)]
+        /// Build the standard library under the `dist` profile
+        dist_std: bool,
+    },
     #[command(visible_aliases = ["r"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to tools to build and run. For
@@ -554,7 +571,7 @@ Arguments:
 
 impl Default for Subcommand {
     fn default() -> Self {
-        Subcommand::Build { timings: false }
+        Subcommand::Build { timings: false, dist_std: false }
     }
 }
 
