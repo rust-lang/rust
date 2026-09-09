@@ -1543,6 +1543,7 @@ pub(crate) fn apply_pgo(
             // Apparently necessary to avoid overflowing the counters during
             // a Cargo build profile
             cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+            cargo.rustflag("-Zinline-mir=no");
             true
         } else {
             false
