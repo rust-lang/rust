@@ -246,23 +246,6 @@ impl AttributeExt for Attribute {
         self.has_name(sym::doc)
             && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
     }
-
-    fn is_doc_keyword_or_attribute(&self) -> bool {
-        if self.has_name(sym::doc)
-            && let Some(items) = self.meta_item_list()
-        {
-            for item in items {
-                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    fn is_rustc_doc_primitive(&self) -> bool {
-        self.has_name(sym::rustc_doc_primitive)
-    }
 }
 
 impl Attribute {
@@ -998,12 +981,6 @@ pub trait AttributeExt: Debug {
 
     /// Returns `true` if this attribute contains `doc(hidden)`.
     fn is_doc_hidden(&self) -> bool;
-
-    /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
-    fn is_doc_keyword_or_attribute(&self) -> bool;
-
-    /// Returns `true` if this is a `#[rustc_doc_primitive]` attribute.
-    fn is_rustc_doc_primitive(&self) -> bool;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
