@@ -6,6 +6,8 @@
 //@ revisions: DISC NO_DISC
 //@ [DISC] needs-llvm-components: aarch64
 //@ [DISC] compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -Zpointer-authentication=+function-pointer-type-discrimination -C opt-level=0
+//@ [NO_DISC] needs-llvm-components: aarch64
+//@ [NO_DISC] compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -Zpointer-authentication=-function-pointer-type-discrimination -C opt-level=0
 
 // Tests function-pointer type discriminator generation for pointer authentication across nested
 // static allocations, wrapper references, and padded structs.
