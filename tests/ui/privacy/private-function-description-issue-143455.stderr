@@ -1,0 +1,41 @@
+error: type `fn() {invoke}` is private
+  --> $DIR/private-function-description-issue-143455.rs:9:9
+   |
+LL |         invoke()
+   |         ^^^^^^ private type
+...
+LL |     chamber::invoke!();
+   |     ------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `chamber::invoke` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `fn(i32) -> Option<i32> {generic::<i32>}` is private
+  --> $DIR/private-function-description-issue-143455.rs:15:9
+   |
+LL |         generic::<i32>
+   |         ^^^^^^^^^^^^^^ private type
+...
+LL |     let _ = chamber::generic_value!();
+   |             ------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `chamber::generic_value` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `fn() {Public::hidden}` is private
+  --> $DIR/private-function-description-issue-143455.rs:27:9
+   |
+LL |         Public::hidden()
+   |         ^^^^^^^^^^^^^^ private type
+...
+LL |     chamber::associated!();
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `chamber::associated` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: type `Private` is private
+  --> $DIR/private-function-description-issue-143455.rs:41:13
+   |
+LL |     let _ = chamber::public_function();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: aborting due to 4 previous errors
+
