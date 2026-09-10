@@ -1,3 +1,10 @@
+//@ revisions: msvc
+
+// On MSVC, this test requires LLDB to be able to read `S_DEFRANGE_REGISTER_REL_INDIR` PDB nodes,
+// which is only possible on lldb 23.1+
+//@ [msvc] only-msvc
+//@ [msvc] min-llvm-lldb-version: 23.1.0
+
 //@ compile-flags:-g
 //@ ignore-backends: gcc
 
@@ -30,17 +37,21 @@
 
 // === LLDB TESTS =================================================================================
 
+// Note: when printing full frames on msvc, LLDB does not ommit variables that are out of scope, so
+// we add a wildcard at the end to make sure the e.g. "(int) x = <variable not available>" is
+// accounted for
+
 //@ lldb-command:run
 //@ lldb-command:frame variable
-//@ lldb-check:(int) a = 123
+//@ lldb-check:(int) a = 123[...]
 
 //@ lldb-command:continue
 //@ lldb-command:frame variable
-//@ lldb-check:(int) a = 123 (int) x = 42
+//@ lldb-check:(int) a = 123 (int) x = 42[...]
 
 //@ lldb-command:continue
 //@ lldb-command:frame variable
-//@ lldb-check:(int) a = 123 (int) x = 42 (int) b = 456 (bool) y = true
+//@ lldb-check:(int) a = 123 (int) x = 42 (int) b = 456 (bool) y = true[...]
 
 //@ lldb-command:continue
 //@ lldb-command:frame variable
