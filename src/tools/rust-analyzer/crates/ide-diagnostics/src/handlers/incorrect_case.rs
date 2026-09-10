@@ -351,6 +351,16 @@ enum SomeEnum { SOME_VARIANT(u8) }
     }
 
     #[test]
+    fn incorrect_raw_enum_variant_name() {
+        check_diagnostics(
+            r#"
+enum SomeEnum { r#pub }
+             // ^^^^^ 💡 warn: Variant `r#pub` should have UpperCamelCase name, e.g. `Pub`
+"#,
+        );
+    }
+
+    #[test]
     fn incorrect_const_name() {
         check_diagnostics(
             r#"

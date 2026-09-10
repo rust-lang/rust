@@ -507,17 +507,14 @@ impl<'a> DeclValidator<'a> {
             self.validate_enum_variant_fields(*variant_id);
         }
 
-        let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
             .keys()
             .filter_map(|name| {
-                to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
-                    Replacement {
-                        current_name: name.clone(),
-                        suggested_text: new_name,
-                        expected_case: CaseType::UpperCamelCase,
-                    }
+                to_camel_case(name.as_str()).map(|new_name| Replacement {
+                    current_name: name.clone(),
+                    suggested_text: new_name,
+                    expected_case: CaseType::UpperCamelCase,
                 })
             })
             .peekable();
