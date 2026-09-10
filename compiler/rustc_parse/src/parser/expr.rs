@@ -37,6 +37,8 @@ use super::{
 use crate::diagnostics::ExprParenthesesNeeded;
 use crate::{diagnostics, exp, maybe_recover_from_interpolated_ty_qpath};
 
+mod errors;
+
 #[derive(Debug)]
 pub(super) enum DestructuredFloat {
     /// 1e2
@@ -165,74 +167,22 @@ impl<'a> Parser<'a> {
             } {
                 break;
             }
-            // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op.node == AssocOp::Range(RangeLimits::Closed) {
-                self.err_dotdotdot_syntax(self.token.span);
-            }
 
-            if self.token == token::LArrow {
-                self.err_larrow_operator(self.token.span);
-            }
+            self.reject_dotdotdot_expr_op();
+            self.reject_larrow_expr_op();
 
             parsed_something = true;
             self.bump();
-            if op.node.is_comparison() {
-                if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
-                    return Ok((expr, parsed_something));
-                }
+
+            if op.node.is_comparison()
+                && let Some(expr) = self.check_no_chained_comparison(&lhs, &op)?
+            {
+                return Ok((expr, parsed_something));
             }
 
-            // Look for JS' `===` and `!==` and recover
-            if let AssocOp::Binary(bop @ BinOpKind::Eq | bop @ BinOpKind::Ne) = op.node
-                && self.token == token::Eq
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                let sugg = bop.as_str().into();
-                let invalid = format!("{sugg}=");
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: invalid.clone(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Correctable {
-                        span: sp,
-                        invalid,
-                        correct: sugg,
-                    },
-                });
-                self.bump();
-            }
-
-            // Look for PHP's `<>` and recover
-            if op.node == AssocOp::Binary(BinOpKind::Lt)
-                && self.token == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: "<>".into(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Correctable {
-                        span: sp,
-                        invalid: "<>".into(),
-                        correct: "!=".into(),
-                    },
-                });
-                self.bump();
-            }
-
-            // Look for C++'s `<=>` and recover
-            if op.node == AssocOp::Binary(BinOpKind::Le)
-                && self.token == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: "<=>".into(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Spaceship(sp),
-                });
-                self.bump();
-            }
+            self.recover_from_strict_eq_op(op);
+            self.recover_from_diamond_ne_op(op);
+            self.recover_from_spaceship_cmp_op(op);
 
             if self.prev_token == token::Plus
                 && self.token == token::Plus
@@ -445,10 +395,7 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(err);
         }
 
-        // Check for deprecated `...` syntax.
-        if self.token == token::DotDotDot {
-            self.err_dotdotdot_syntax(self.token.span);
-        }
+        self.reject_dotdotdot_expr_op();
 
         debug_assert!(
             self.token.is_range_separator(),
@@ -4131,14 +4078,6 @@ impl<'a> Parser<'a> {
             span: self.token.span,
             eq: field_name.span.shrink_to_hi().to(self.token.span),
         });
-    }
-
-    fn err_dotdotdot_syntax(&self, span: Span) {
-        self.dcx().emit_err(diagnostics::DotDotDot { span });
-    }
-
-    fn err_larrow_operator(&self, span: Span) {
-        self.dcx().emit_err(diagnostics::LeftArrowOperator { span });
     }
 
     fn mk_assign_op(&self, assign_op: AssignOp, lhs: Box<Expr>, rhs: Box<Expr>) -> ExprKind {
