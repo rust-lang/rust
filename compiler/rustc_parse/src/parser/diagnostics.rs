@@ -1651,10 +1651,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_prefix_increment(
         &mut self,
-        operand_expr: Box<Expr>,
+        operand_expr: &Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, ()> {
         let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
@@ -1662,10 +1662,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_postfix_increment(
         &mut self,
-        operand_expr: Box<Expr>,
+        operand_expr: &Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, ()> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Inc,
@@ -1676,10 +1676,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_postfix_decrement(
         &mut self,
-        operand_expr: Box<Expr>,
+        operand_expr: &Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, ()> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Dec,
@@ -1690,21 +1690,15 @@ impl<'a> Parser<'a> {
 
     fn recover_from_inc_dec(
         &mut self,
-        base: Box<Expr>,
+        base: &Expr,
         kind: IncDecRecovery,
         op_span: Span,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, ()> {
         let mut err = self.dcx().struct_span_err(
             op_span,
             format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
         );
         err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
-
-        let help_base_case = |mut err: Diag<'_, ErrorGuaranteed>, base| {
-            err.help(format!("use `{}= 1` instead", kind.op.chr()));
-            err.emit();
-            Ok(base)
-        };
 
         // (pre, post)
         let spans = match kind.fixity {
@@ -1718,7 +1712,9 @@ impl<'a> Parser<'a> {
             }
             IsStandalone::Subexpr => {
                 let Ok(base_src) = self.span_to_snippet(base.span) else {
-                    return help_base_case(err, base);
+                    err.help(format!("use `{}= 1` instead", kind.op.chr()));
+                    err.emit();
+                    return Ok(());
                 };
                 match kind.fixity {
                     UnaryFixity::Pre => {
