@@ -3,6 +3,7 @@
 #![allow(nonstandard_style)]
 
 use crate::ffi::{OsStr, OsString};
+use crate::marker::PhantomData;
 use crate::os::windows::ffi::EncodeWide;
 use crate::os::windows::prelude::*;
 use crate::path::{self, PathBuf};
@@ -53,6 +54,19 @@ impl<'a> Iterator for SplitPaths<'a> {
         }
 
         if !must_yield && in_progress.is_empty() { None } else { Some(os2path(&in_progress)) }
+    }
+}
+
+pub struct SplitPathsRef<'a>(!, PhantomData<&'a ()>);
+
+pub fn split_paths_ref(_unparsed: &OsStr) -> Option<SplitPathsRef<'_>> {
+    None
+}
+
+impl<'a> Iterator for SplitPathsRef<'a> {
+    type Item = &'a path::Path;
+    fn next(&mut self) -> Option<&'a path::Path> {
+        self.0
     }
 }
 

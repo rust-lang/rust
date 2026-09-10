@@ -4,7 +4,7 @@ use crate::fs::TryLockError;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
-pub use crate::sys::fs::common::Dir;
+pub use crate::sys::fs::common::{Dir, ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
