@@ -1,4 +1,3 @@
-//@ check-pass
 //@ proc-macro: proc-macro-helper.rs
 
 extern crate proc_macro_helper;
@@ -17,6 +16,7 @@ mod test2 {
     }
 
     #[diagnostic::on_unimplemented]
+    //~^ ERROR attribute macro `diagnostic::on_unimplemented` is ambiguous
     trait Foo {}
 }
 
