@@ -153,7 +153,6 @@ impl<'a> Parser<'a> {
         self.expected_token_types.insert(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
             let lhs_span = self.interpolated_or_expr_span(&lhs);
-            let cur_op_span = self.token.span;
             let restrictions = if op.node.is_assign_like() {
                 self.restrictions & Restrictions::NO_STRUCT_LITERAL
             } else {
@@ -186,42 +185,41 @@ impl<'a> Parser<'a> {
             self.recover_from_postfix_inc_op(&lhs, starts_stmt)?;
             self.recover_from_postfix_dec_op(&lhs, starts_stmt)?;
 
-            let op_span = op.span;
-            let op = op.node;
-            // Special cases:
-            if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
-                continue;
-            } else if let AssocOp::Range(limits) = op {
-                // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
-                // generalise it to the Fixity::None code.
-                lhs = self.parse_expr_range(prec, lhs, limits, cur_op_span)?;
-                break;
-            }
-
-            let min_prec = match op.fixity() {
+            let min_prec = match op.node.fixity() {
                 Fixity::Right => Bound::Included(prec),
                 Fixity::Left | Fixity::None => Bound::Excluded(prec),
             };
-            let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc(min_prec)
-            })?;
 
-            let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
-            lhs = match op {
-                AssocOp::Binary(ast_op) => {
-                    let binary = self.mk_binary(respan(cur_op_span, ast_op), lhs, rhs);
-                    self.mk_expr(span, binary)
-                }
-                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
-                AssocOp::AssignOp(aop) => {
-                    let aopexpr = self.mk_assign_op(respan(cur_op_span, aop), lhs, rhs);
-                    self.mk_expr(span, aopexpr)
-                }
-                AssocOp::Cast | AssocOp::Range(_) => {
-                    self.dcx().span_bug(span, "AssocOp should have been handled by special case")
-                }
+            let finish_parsing_bin_op = |this: &mut Self| {
+                let rhs = this.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
+                    this.parse_expr_assoc(min_prec)
+                })?;
+                let span = this.mk_expr_sp(&lhs, lhs_span, op.span, rhs.span);
+                Ok((rhs, span))
             };
+
+            lhs = match op.node {
+                AssocOp::Binary(ast_op) => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, self.mk_binary(respan(op.span, ast_op), lhs, rhs))
+                }
+                AssocOp::AssignOp(aop) => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, self.mk_assign_op(respan(op.span, aop), lhs, rhs))
+                }
+                AssocOp::Assign => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, ExprKind::Assign(lhs, rhs, op.span))
+                }
+                AssocOp::Cast => {
+                    self.parse_assoc_op_cast(lhs, lhs_span, op.span, ExprKind::Cast)?
+                }
+                AssocOp::Range(limits) => self.parse_expr_range(min_prec, lhs, limits, op.span)?,
+            };
+
+            if let AssocOp::Range(_) = op.node {
+                break;
+            }
         }
 
         Ok((lhs, parsed_something))
@@ -335,7 +333,7 @@ impl<'a> Parser<'a> {
     /// The other two variants are handled in `parse_prefix_range_expr` below.
     fn parse_expr_range(
         &mut self,
-        prec: ExprPrecedence,
+        min_prec: Bound<ExprPrecedence>,
         lhs: Box<Expr>,
         limits: RangeLimits,
         cur_op_span: Span,
@@ -343,7 +341,7 @@ impl<'a> Parser<'a> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
             let maybe_lt = self.token;
             Some(
-                self.parse_expr_assoc(Bound::Excluded(prec))
+                self.parse_expr_assoc(min_prec)
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
             )
         } else {
