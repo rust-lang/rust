@@ -1,6 +1,5 @@
 // ignore-tidy-file-linelength
 //@ add-minicore
-//@ only-pauthtest
 // Run it at O0, so that the compiler doesn't optimise the calls away.
 //@ revisions: DISC NO_DISC
 //@ [DISC] needs-llvm-components: aarch64
@@ -8,15 +7,16 @@
 //@ [NO_DISC] needs-llvm-components: aarch64
 //@ [NO_DISC] compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -Zpointer-authentication=-function-pointer-type-discrimination -C opt-level=0
 
-// Emulate a NULL-able function argument with Option<FnPtr>, and contrast it with a data pointer via
-// Option<*mut c_void>.
+// Emulate a NULL-able function argument with Option<FnPtr>, and contrast it with a NULL-able data
+// pointer via Option<*mut c_void>.
 //
 // Option<FnPtr> is ABI-compatible with the bare fn pointer (fn pointers have the null-pointer
 // niche), so it must be discriminated identically to it - encoded as 'P'.
 //
 // Option<*mut c_void> is NOT ABI-compatible with a bare *mut c_void: raw pointers have no spare
-// niche (null is itself a valid raw pointer value), so it must NOT collapse to 'P'.
-//
+// niche (null is itself a valid raw pointer value), so it must NOT collapse to 'P'. It currently
+// falls through to the generic enum-collapse path instead.
+
 // Discriminators:
 // 18786: "Fi6OptionE",
 // 12410: "FiPE".
@@ -70,11 +70,11 @@ pub fn main() {
 
     unsafe {
         // Function pointers
-        // DISC: call i32 ptrauth (ptr @f_opt, i32 0, i64 12410)(ptr ptrauth (ptr @callback_i32, i32 0, i64 2981)) {{.*}} [ "ptrauth"(i32 0, i64 12410) ]
-        // NO_DISC: call i32 ptrauth (ptr @f_opt, i32 0)(ptr ptrauth (ptr @callback_i32, i32 0)) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+        //DISC: call i32 ptrauth (ptr @f_opt, i32 0, i64 12410)(ptr ptrauth (ptr @callback_i32, i32 0, i64 2981)) {{.*}} [ "ptrauth"(i32 0, i64 12410) ]
+        //NO_DISC: call i32 ptrauth (ptr @f_opt, i32 0)(ptr ptrauth (ptr @callback_i32, i32 0)) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_OPT(Some(callback_i32));
-        // DISC: call i32 ptrauth (ptr @f_opt, i32 0, i64 12410)(ptr null) {{.*}} [ "ptrauth"(i32 0, i64 12410) ]
-        // NO_DISC: call i32 ptrauth (ptr @f_opt, i32 0)(ptr null) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+        //DISC: call i32 ptrauth (ptr @f_opt, i32 0, i64 12410)(ptr null) {{.*}} [ "ptrauth"(i32 0, i64 12410) ]
+        //NO_DISC: call i32 ptrauth (ptr @f_opt, i32 0)(ptr null) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_OPT(None);
         // DISC: call i32 ptrauth (ptr @f_raw, i32 0, i64 12410)(ptr ptrauth (ptr @callback_i32, i32 0, i64 2981)) {{.*}} [ "ptrauth"(i32 0, i64 12410) ]
         // NO_DISC: call i32 ptrauth (ptr @f_raw, i32 0)(ptr ptrauth (ptr @callback_i32, i32 0)) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
