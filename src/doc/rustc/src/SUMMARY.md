@@ -143,6 +143,7 @@
     - [\*-pc-windows-msvc](platform-support/windows-msvc.md)
     - [\*-uwp-windows-msvc](platform-support/uwp-windows-msvc.md)
     - [\*-wrs-vxworks](platform-support/vxworks.md)
+    - [wasm32-none-component](platform-support/wasm32-none-component.md)
     - [wasm32-wasip1](platform-support/wasm32-wasip1.md)
     - [wasm32-wasip1-threads](platform-support/wasm32-wasip1-threads.md)
     - [wasm32-wasip2](platform-support/wasm32-wasip2.md)
