@@ -257,6 +257,9 @@ pub struct Expr<'tcx> {
 
     /// The id of the HIR expression whose [temporary scope] should be used for this expression.
     ///
+    /// Also used by coverage instrumentation to recover the HIR node that corresponds to a THIR
+    /// expression node.
+    ///
     /// [temporary scope]: https://doc.rust-lang.org/reference/destructors.html#temporary-scopes
     pub temp_scope_id: hir::ItemLocalId,
 

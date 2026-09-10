@@ -182,6 +182,15 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             new_content[new_n] = format!("{line} {}", next_line.trim_start());
             new_content.remove(new_n + 1);
             skip_next = true;
+        } else {
+            const SEP: &str = ", ";
+            let Some((before_comma, after_comma)) = next_line.split_once(SEP) else { continue };
+            if line.len() + before_comma.len() < limit - SEP.len() {
+                new_content[new_n] = format!("{line} {before_comma}{}", SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] = after_comma.to_owned();
+                skip_next = true;
+            }
         }
     }
     new_content.join("\n") + "\n"
@@ -326,7 +335,20 @@ fn should_pass() {
 
 #[test]
 #[ignore]
-fn split_on_comma() {
+fn split_on_comma_of_current_line() {
+    let original = "
+Each derived value has a dependency on other values, which could themselves be either base or
+derived.
+";
+    let expected = "
+Each derived value has a dependency on other values,
+which could themselves be either base or derived.
+";
+    assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+fn split_on_comma_of_next_line() {
     let original = "
 Because of canonicalization of regions and
 inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
@@ -336,4 +358,12 @@ Because of canonicalization of regions and inference variables,
 encountering a cycle doesn't mean that we would get an infinite proof tree.
 ";
     assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+#[ignore]
+fn should_split() {
+    let original = "the queries that we do, as well as the **query DAG**. The";
+    let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
+    assert_eq!(expected, comply(original));
 }

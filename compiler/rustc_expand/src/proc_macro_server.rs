@@ -414,6 +414,18 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
+impl ToInternal<rustc_errors::Sublevel> for Level {
+    fn to_internal(self) -> rustc_errors::Sublevel {
+        match self {
+            Level::Error => rustc_errors::Sublevel::Error,
+            Level::Warning => rustc_errors::Sublevel::Warning,
+            Level::Note => rustc_errors::Sublevel::Note,
+            Level::Help => rustc_errors::Sublevel::Help,
+            _ => unreachable!("unknown proc_macro::Level variant: {:?}", self),
+        }
+    }
+}
+
 fn cancel_diags_into_string(diags: Vec<Diag<'_>>) -> String {
     let mut messages = diags.into_iter().flat_map(Diag::cancel_into_message);
     let msg = messages.next().expect("no diagnostic has a message");

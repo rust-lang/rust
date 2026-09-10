@@ -1266,9 +1266,9 @@ declare_lint! {
     /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
     /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
-    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
-    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
+    /// [rfc-401]: https://rust-lang.github.io/rfcs/0401-coercions.html
+    /// [rfc-803]: https://rust-lang.github.io/rfcs/0803-type-ascription.html
+    /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_CASTS,
     Allow,
     "detects trivial casts which could be removed"
@@ -1301,9 +1301,9 @@ declare_lint! {
     /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
     /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
-    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
-    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
+    /// [rfc-401]: https://rust-lang.github.io/rfcs/0401-coercions.html
+    /// [rfc-803]: https://rust-lang.github.io/rfcs/0803-type-ascription.html
+    /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_NUMERIC_CASTS,
     Allow,
     "detects trivial casts of numeric types which could be removed"
@@ -1348,7 +1348,7 @@ declare_lint! {
     /// Note that support for this is only available on the nightly channel.
     /// See [RFC 1977] for more details, as well as the [Cargo documentation].
     ///
-    /// [RFC 1977]: https://github.com/rust-lang/rfcs/blob/master/text/1977-public-private-dependencies.md
+    /// [RFC 1977]: https://rust-lang.github.io/rfcs/1977-public-private-dependencies.html
     /// [Cargo documentation]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#public-dependency
     pub EXPORTED_PRIVATE_DEPENDENCIES,
     Warn,
@@ -1791,7 +1791,7 @@ declare_lint! {
     /// that it produces. See [RFC 2115] for historical context, and [issue
     /// #44752] for more details.
     ///
-    /// [RFC 2115]: https://github.com/rust-lang/rfcs/blob/master/text/2115-argument-lifetimes.md
+    /// [RFC 2115]: https://rust-lang.github.io/rfcs/2115-argument-lifetimes.html
     /// [issue #44752]: https://github.com/rust-lang/rust/issues/44752
     pub SINGLE_USE_LIFETIMES,
     Allow,
@@ -2092,7 +2092,7 @@ declare_lint! {
     /// [`while let`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-pattern-loops
     /// [`let`]: https://doc.rust-lang.org/reference/statements.html#let-statements
     /// [`loop`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#infinite-loops
-    /// [RFC 2086]: https://github.com/rust-lang/rfcs/blob/master/text/2086-allow-if-let-irrefutables.md
+    /// [RFC 2086]: https://rust-lang.github.io/rfcs/2086-allow-if-let-irrefutables.html
     pub IRREFUTABLE_LET_PATTERNS,
     Warn,
     "detects irrefutable patterns in `if let` and `while let` statements"
@@ -2362,7 +2362,7 @@ declare_lint! {
     /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'static>) {}
     /// > ```
     ///
-    /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
+    /// [RFC 2093]: https://rust-lang.github.io/rfcs/2093-infer-outlives.html
     /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
@@ -2432,7 +2432,7 @@ declare_lint! {
     ///
     /// [issue #57644]: https://github.com/rust-lang/rust/issues/57644
     /// [type aliases]: https://doc.rust-lang.org/reference/items/type-aliases.html#type-aliases
-    /// [RFC 2338]: https://github.com/rust-lang/rfcs/blob/master/text/2338-type-alias-enum-variants.md
+    /// [RFC 2338]: https://rust-lang.github.io/rfcs/2338-type-alias-enum-variants.html
     /// [qualified path]: https://doc.rust-lang.org/reference/paths.html#qualified-paths
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
@@ -2641,7 +2641,7 @@ declare_lint! {
     /// [`unsafe fn`]: https://doc.rust-lang.org/reference/unsafe-functions.html
     /// [`unsafe` block]: https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks
     /// [unsafe]: https://doc.rust-lang.org/reference/unsafety.html
-    /// [RFC #2585]: https://github.com/rust-lang/rfcs/blob/master/text/2585-unsafe-block-in-unsafe-fn.md
+    /// [RFC #2585]: https://rust-lang.github.io/rfcs/2585-unsafe-block-in-unsafe-fn.html
     /// [issue #71668]: https://github.com/rust-lang/rust/issues/71668
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,

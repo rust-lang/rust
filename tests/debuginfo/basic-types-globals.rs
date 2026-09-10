@@ -1,6 +1,6 @@
 //@ revisions: lto no-lto
 
-//@ compile-flags:-g
+//@ compile-flags:-g --crate-name=basic_types_globals
 //@ disable-gdb-pretty-printers
 
 //@ [lto] compile-flags:-C lto
@@ -8,36 +8,36 @@
 //@ ignore-backends: gcc
 
 //@ lldb-command:run
-//@ lldb-command:v B
-//@ lldb-check: ::B = false
-//@ lldb-command:v I
-//@ lldb-check: ::I = -1
-//@ lldb-command:v --format=d C
-//@ lldb-check: ::C = 97 U+0x00000061 U'a'
-//@ lldb-command:v --format=d I8
-//@ lldb-check: ::I8 = 68
-//@ lldb-command:v I16
-//@ lldb-check: ::I16 = -16
-//@ lldb-command:v I32
-//@ lldb-check: ::I32 = -32
-//@ lldb-command:v I64
-//@ lldb-check: ::I64 = -64
-//@ lldb-command:v U
-//@ lldb-check: ::U = 1
-//@ lldb-command:v --format=d U8
-//@ lldb-check: ::U8 = 100
-//@ lldb-command:v U16
-//@ lldb-check: ::U16 = 16
-//@ lldb-command:v U32
-//@ lldb-check: ::U32 = 32
-//@ lldb-command:v U64
-//@ lldb-check: ::U64 = 64
-//@ lldb-command:v F16
-//@ lldb-check: ::F16 = 1.5
-//@ lldb-command:v F32
-//@ lldb-check: ::F32 = 2.5
-//@ lldb-command:v F64
-//@ lldb-check: ::F64 = 3.5
+//@ lldb-command:v basic_types_globals::B
+//@ lldb-check:[...]basic_types_globals::B = false
+//@ lldb-command:v basic_types_globals::I
+//@ lldb-check:[...]basic_types_globals::I = -1
+//@ lldb-command:v basic_types_globals::C
+//@ lldb-check:[...]basic_types_globals::C = U+0x00000061 U'a'
+//@ lldb-command:v basic_types_globals::I8
+//@ lldb-check:[...]basic_types_globals::I8 = 68
+//@ lldb-command:v basic_types_globals::I16
+//@ lldb-check:[...]basic_types_globals::I16 = -16
+//@ lldb-command:v basic_types_globals::I32
+//@ lldb-check:[...]basic_types_globals::I32 = -32
+//@ lldb-command:v basic_types_globals::I64
+//@ lldb-check:[...]basic_types_globals::I64 = -64
+//@ lldb-command:v basic_types_globals::U
+//@ lldb-check:[...]basic_types_globals::U = 1
+//@ lldb-command:v basic_types_globals::U8
+//@ lldb-check:[...]basic_types_globals::U8 = 100
+//@ lldb-command:v basic_types_globals::U16
+//@ lldb-check:[...]basic_types_globals::U16 = 16
+//@ lldb-command:v basic_types_globals::U32
+//@ lldb-check:[...]basic_types_globals::U32 = 32
+//@ lldb-command:v basic_types_globals::U64
+//@ lldb-check:[...]basic_types_globals::U64 = 64
+//@ lldb-command:v basic_types_globals::F16
+//@ lldb-check:[...]basic_types_globals::F16 = 1.5
+//@ lldb-command:v basic_types_globals::F32
+//@ lldb-check:[...]basic_types_globals::F32 = 2.5
+//@ lldb-command:v basic_types_globals::F64
+//@ lldb-check:[...]basic_types_globals::F64 = 3.5
 
 //@ gdb-command:run
 //@ gdb-command:print B

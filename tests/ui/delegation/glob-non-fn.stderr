@@ -34,14 +34,6 @@ error[E0423]: expected function, found associated constant `Trait::CONST`
 LL |     reuse Trait::* { &self.0 }
    |           ^^^^^ not a function
 
-error[E0423]: cannot find function `Type` in trait `Trait`
-  --> $DIR/glob-non-fn.rs:29:18
-   |
-LL |     reuse Trait::* { &self.0 }
-   |                  ^ not found in `Trait`
-   |
-   = note: an associated type named `Trait::Type` exists in another namespace
-
 error[E0046]: not all trait items implemented, missing: `CONST`, `Type`, `method`
   --> $DIR/glob-non-fn.rs:28:1
    |
@@ -56,7 +48,44 @@ LL |     type method;
 LL | impl Trait for Bad {
    | ^^^^^^^^^^^^^^^^^^ missing `CONST`, `Type`, `method` in implementation
 
-error: aborting due to 6 previous errors
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/glob-non-fn.rs:29:11
+   |
+LL |     reuse Trait::* { &self.0 }
+   |           ^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     reuse <dyn Trait>::* { &self.0 }
+   |           ++++      +
 
-Some errors have detailed explanations: E0046, E0201, E0324, E0423.
-For more information about an error, try `rustc --explain E0046`.
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/glob-non-fn.rs:29:11
+   |
+LL |     reuse Trait::* { &self.0 }
+   |           ^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/glob-non-fn.rs:5:11
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     fn method(&self);
+LL |     const CONST: u8;
+   |           ^^^^^ ...because it contains associated const `CONST`
+   = help: consider moving `CONST` to another trait
+   = help: the following types implement `Trait`:
+             u8
+             Good
+             Bad
+           consider defining an enum where each variant holds one of these types,
+           implementing `Trait` for this new enum and using it instead
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0038, E0046, E0201, E0324, E0423.
+For more information about an error, try `rustc --explain E0038`.

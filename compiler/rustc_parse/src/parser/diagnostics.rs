@@ -26,10 +26,9 @@ use super::{
     SeqSep, TokenType,
 };
 use crate::diagnostics::{
-    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
-    AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
-    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
-    DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AwaitSuggestion,
+    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
+    ComparisonOperatorsCannotBeChainedSugg, DocCommentDoesNotDocumentAnything, DoubleColonInBound,
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
@@ -2213,22 +2212,6 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 sugg_span: in_span.until(self.prev_token.span),
             });
-        }
-    }
-
-    pub(super) fn eat_incorrect_doc_comment_for_param_type(&mut self) {
-        if let token::DocComment(..) = self.token.kind {
-            self.dcx().emit_err(DocCommentOnParamType { span: self.token.span });
-            self.bump();
-        } else if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
-            let lo = self.token.span;
-            // Skip every token until next possible arg.
-            while self.token != token::CloseBracket {
-                self.bump();
-            }
-            let sp = lo.to(self.token.span);
-            self.bump();
-            self.dcx().emit_err(AttributeOnParamType { span: sp });
         }
     }
 

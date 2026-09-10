@@ -1,0 +1,46 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/133685.
+//! Prefer removing an extra shared borrow over reborrowing an existing shared reference.
+
+//@ run-rustfix
+
+#![allow(unused_parens)]
+
+fn consume<'a>(_: impl IntoIterator<Item = &'a i32>) {}
+
+trait Value {}
+struct Source;
+impl Value for &Source {}
+fn consume_value(_: impl Value) {}
+
+fn main() {
+    let a: Vec<i32> = Vec::new();
+    let ref_a = &a;
+    let mut b: Vec<i32> = Vec::new();
+    b.extend(ref_a);
+    //~^ ERROR is not an iterator
+
+    consume(ref_a);
+    //~^ ERROR is not an iterator
+    consume((ref_a));
+    //~^ ERROR is not an iterator
+
+    let slice = &a[..];
+    consume(slice);
+    //~^ ERROR is not an iterator
+
+    // These still need a dereference: neither operand has the required shared-reference type.
+    let boxed = Box::new(a.clone());
+    consume(&*boxed);
+    //~^ ERROR is not an iterator
+
+    let mut values = a.clone();
+    let mut_ref = &mut values;
+    consume(&*mut_ref);
+    //~^ ERROR is not an iterator
+
+    // Also cover a direct trait bound without the Iterator-to-IntoIterator blanket impl.
+    let source = Source;
+    let shared = &source;
+    consume_value(shared);
+    //~^ ERROR the trait bound
+}

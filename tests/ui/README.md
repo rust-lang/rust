@@ -88,7 +88,7 @@ These tests exercise associated constants in traits and impls, on aspects such a
 
 These tests cover associated types defined directly within inherent impls (not in traits).
 
-See [RFC 0195 Associated items - Inherent associated items](https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md#inherent-associated-items).
+See [RFC 0195 Associated items - Inherent associated items](https://rust-lang.github.io/rfcs/0195-associated-items.html#inherent-associated-items).
 
 ## `tests/ui/associated-item`: Associated Items
 
@@ -429,7 +429,7 @@ Tests for built-in derive macros (`Debug`, `Clone`, etc.) when used in conjuncti
 
 ## `tests/ui/destructuring-assignment/`
 
-Exercises destructuring assignments. See [RFC 2909 Destructuring assignment](https://github.com/rust-lang/rfcs/blob/master/text/2909-destructuring-assignment.md).
+Exercises destructuring assignments. See [RFC 2909 Destructuring assignment](https://rust-lang.github.io/rfcs/2909-destructuring-assignment.html).
 
 ## `tests/ui/diagnostic-flags/`
 
@@ -443,7 +443,7 @@ Everything to do with `--diagnostic-width`.
 
 ## `tests/ui/diagnostic_namespace/`
 
-Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
+Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://rust-lang.github.io/rfcs/3368-diagnostic-attribute-namespace.html).
 
 ## `tests/ui/did_you_mean/`
 
@@ -653,7 +653,7 @@ See:
 
 Functional Struct Update is the name for the idiom by which one can write `..<expr>` at the end of a struct literal expression to fill in all remaining fields of the struct literal by using `<expr>` as the source for them.
 
-See [RFC 0736 Privacy-respecting Functional Struct Update](https://github.com/rust-lang/rfcs/blob/master/text/0736-privacy-respecting-fru.md).
+See [RFC 0736 Privacy-respecting Functional Struct Update](https://rust-lang.github.io/rfcs/0736-privacy-respecting-fru.html).
 
 ## `tests/ui/functions-closures/`
 
@@ -959,7 +959,7 @@ See [Tracking issue for promoting `!` to a type (RFC 1216) #35121](https://githu
 
 ## `tests/ui/new-range/`
 
-See [RFC 3550 New Range](https://github.com/rust-lang/rfcs/blob/master/text/3550-new-range.md).
+See [RFC 3550 New Range](https://rust-lang.github.io/rfcs/3550-new-range.html).
 
 ## `tests/ui/nll/`: Non-lexical lifetimes
 
@@ -1038,7 +1038,7 @@ See [panic handler | Nomicon](https://doc.rust-lang.org/nomicon/panic-handler.ht
 
 Exercises `#![panic_runtime]`, `-C panic`, panic runtimes and panic unwind strategy.
 
-See [RFC 1513 Less unwinding](https://github.com/rust-lang/rfcs/blob/master/text/1513-less-unwinding.md).
+See [RFC 1513 Less unwinding](https://rust-lang.github.io/rfcs/1513-less-unwinding.html).
 
 ## `tests/ui/panics/`
 
@@ -1134,7 +1134,7 @@ Broad category of tests ranges, both in their `..` or `..=` form, as well as the
 
 ## `tests/ui/raw-ref-op/`: Using operators on `&raw` values
 
-Exercises `&raw mut <place>` and `&raw const <place>`. See [RFC 2582 Raw reference MIR operator](https://github.com/rust-lang/rfcs/blob/master/text/2582-raw-reference-mir-operator.md).
+Exercises `&raw mut <place>` and `&raw const <place>`. See [RFC 2582 Raw reference MIR operator](https://rust-lang.github.io/rfcs/2582-raw-reference-mir-operator.html).
 
 ## `tests/ui/reachable`
 
@@ -1444,7 +1444,7 @@ Tests for the `#[doc(hidden)]` items.
 
 ## `tests/ui/trivial-bounds/`
 
-`#![feature(trivial_bounds)]`. See [RFC 2056 Allow trivial where clause constraints](https://github.com/rust-lang/rfcs/blob/master/text/2056-allow-trivial-where-clause-constraints.md).
+`#![feature(trivial_bounds)]`. See [RFC 2056 Allow trivial where clause constraints](https://rust-lang.github.io/rfcs/2056-allow-trivial-where-clause-constraints.html).
 
 ## `tests/ui/try-block/`
 
@@ -1452,7 +1452,7 @@ Tests for the `#[doc(hidden)]` items.
 
 ## `tests/ui/try-trait/`
 
-`#![feature(try_trait_v2)]`. See [RFC 3058 Try Trait v2](https://github.com/rust-lang/rfcs/blob/master/text/3058-try-trait-v2.md).
+`#![feature(try_trait_v2)]`. See [RFC 3058 Try Trait v2](https://rust-lang.github.io/rfcs/3058-try-trait-v2.html).
 
 ## `tests/ui/tuple/`
 
@@ -1486,7 +1486,7 @@ General collection of type checking related tests.
 
 ## `tests/ui/ufcs/`
 
-See [RFC 0132 Unified Function Call Syntax](https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md).
+See [RFC 0132 Unified Function Call Syntax](https://rust-lang.github.io/rfcs/0132-ufcs.html).
 
 ## `tests/ui/unboxed-closures/`
 
@@ -1550,7 +1550,7 @@ See [Tracking issue for RFC 3458: Unsafe fields #132922](https://github.com/rust
 
 See:
 
-- [RFC 1909 Unsized rvalues](https://github.com/rust-lang/rfcs/blob/master/text/1909-unsized-rvalues.md)
+- [RFC 1909 Unsized rvalues](https://rust-lang.github.io/rfcs/1909-unsized-rvalues.html)
 - [de-RFC 3829: Remove unsized_locals](https://github.com/rust-lang/rfcs/pull/3829)
 - [Tracking issue for RFC #1909: Unsized Rvalues (`unsized_locals`, `unsized_fn_params`)](https://github.com/rust-lang/rust/issues/48055)
 

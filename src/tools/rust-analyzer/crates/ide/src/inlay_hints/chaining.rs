@@ -34,7 +34,9 @@ pub(super) fn hints(
         .filter_map(NodeOrToken::into_token)
         .filter(|t| match t.kind() {
             SyntaxKind::WHITESPACE if !t.text().contains('\n') => false,
-            SyntaxKind::COMMENT => false,
+            SyntaxKind::COMMENT | SyntaxKind::OUTER_DOC_COMMENT | SyntaxKind::INNER_DOC_COMMENT => {
+                false
+            }
             _ => true,
         });
 

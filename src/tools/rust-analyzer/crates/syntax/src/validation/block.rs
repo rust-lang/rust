@@ -9,7 +9,8 @@ use crate::{
 pub(crate) fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<SyntaxError>) {
     if let Some(parent) = block.syntax().parent() {
         match parent.kind() {
-            FN | EXPR_STMT | STMT_LIST | MACRO_STMTS | LOOP_EXPR | WHILE_EXPR | FOR_EXPR => {
+            FN | EXPR_STMT | STMT_LIST | MACRO_STMTS | LOOP_EXPR | WHILE_EXPR | FOR_EXPR
+            | TUPLE_EXPR | ARRAY_EXPR | ARG_LIST => {
                 return;
             }
             _ => {}

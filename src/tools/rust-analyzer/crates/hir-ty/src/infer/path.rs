@@ -24,7 +24,7 @@ use crate::{
     },
 };
 
-use super::{InferenceContext, InferenceTyDiagnosticSource};
+use super::InferenceContext;
 
 impl<'db> InferenceContext<'db> {
     pub(super) fn infer_path(
@@ -122,7 +122,7 @@ impl<'db> InferenceContext<'db> {
             // to the type alias and they may have different generics.
             self.types.empty.generic_args
         } else {
-            self.with_body_ty_lowering(|ctx| {
+            self.with_ty_lowering(|ctx| {
                 let mut path_ctx = ctx.at_path(path, id);
                 let last_segment = path.segments().len().checked_sub(1);
                 if let Some(last_segment) = last_segment {
@@ -159,13 +159,12 @@ impl<'db> InferenceContext<'db> {
             &self.resolver,
             self.store,
             &self.diagnostics,
-            InferenceTyDiagnosticSource::Body,
             self.store_owner,
             self.generic_def,
             &self.generics,
             LifetimeElisionKind::Infer,
             self.allow_using_generic_params,
-            Some(&mut vars_ctx),
+            &mut vars_ctx,
             &self.defined_anon_consts,
             LifetimeLoweringMode::LateParam,
         );

@@ -10,8 +10,7 @@
    LL|      1|    let mut countdown = 1;
    LL|      1|    if is_true {
    LL|      1|        countdown = 0;
-   LL|      1|    }
-                  ^0
+   LL|      0|    }
    LL|       |
    LL|       |    for
    LL|       |        _
@@ -23,20 +22,20 @@
    LL|       |        match
    LL|      2|            countdown
    LL|       |        {
-   LL|      1|            x
+   LL|       |            x
    LL|       |            if
    LL|      2|                x
    LL|      2|                    <
    LL|      2|                1
    LL|       |            =>
-   LL|      1|            {
+   LL|       |            {
    LL|      1|                z = countdown
-   LL|      1|                ;
+   LL|       |                ;
    LL|      1|                let y = countdown
-   LL|      1|                ;
+   LL|       |                ;
    LL|      1|                countdown = 10
-   LL|      1|                ;
-   LL|      1|            }
+   LL|       |                ;
+   LL|       |            }
    LL|       |            _
    LL|       |            =>
    LL|      1|            {}

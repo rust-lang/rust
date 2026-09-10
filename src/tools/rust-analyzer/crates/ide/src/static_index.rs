@@ -12,7 +12,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     ra_fixture::RaFixtureConfig,
 };
-use syntax::{AstNode, AstToken, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, ast};
+use syntax::{AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken, TextRange};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
@@ -349,15 +349,20 @@ fn definition_range_excluding_trivia(
 }
 
 fn is_leading_trivia_excluding_docs(token: &SyntaxToken) -> bool {
-    match token.kind() {
-        SyntaxKind::WHITESPACE => true,
-        SyntaxKind::COMMENT => ast::Comment::cast(token.clone()).is_none_or(|it| !it.is_outer()),
-        _ => false,
-    }
+    matches!(
+        token.kind(),
+        SyntaxKind::WHITESPACE | SyntaxKind::COMMENT | SyntaxKind::INNER_DOC_COMMENT
+    )
 }
 
 fn is_trailing_trivia(token: &SyntaxToken) -> bool {
-    matches!(token.kind(), SyntaxKind::WHITESPACE | SyntaxKind::COMMENT)
+    matches!(
+        token.kind(),
+        SyntaxKind::WHITESPACE
+            | SyntaxKind::COMMENT
+            | SyntaxKind::INNER_DOC_COMMENT
+            | SyntaxKind::OUTER_DOC_COMMENT
+    )
 }
 
 #[cfg(test)]

@@ -5,6 +5,9 @@
 // Note that this test does not check linking or binary execution.
 // See https://github.com/rust-lang/rust/pull/21233
 
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use run_make_support::{llvm_components_contain, rustc};
 
 fn main() {

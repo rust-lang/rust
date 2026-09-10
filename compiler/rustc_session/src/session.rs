@@ -422,6 +422,9 @@ pub struct Session {
 
     /// Config specifying targets' pointer authentication preference.
     pub pointer_auth_config: Option<PointerAuthConfig>,
+
+    /// Cached sanitizer set.
+    sanitizers: SanitizerSet,
 }
 
 #[derive(Clone, Copy)]
@@ -1175,10 +1178,7 @@ impl Session {
     }
 
     pub fn sanitizers(&self) -> SanitizerSet {
-        self.opts
-            .unstable_opts
-            .sanitizer
-            .combine_with_defaults(self.target.options.default_sanitizers)
+        self.sanitizers
     }
 
     pub fn pointer_authentication(&self) -> bool {
@@ -1385,6 +1385,9 @@ pub fn build_session(
     let pointer_auth_config: Option<PointerAuthConfig> =
         PointerAuthConfig::from_raw(&sopts.unstable_opts.pointer_authentication, &target);
 
+    let sanitizers =
+        sopts.unstable_opts.sanitizer.combine_with_defaults(target.options.default_sanitizers);
+
     let sess = Session {
         target,
         host,
@@ -1420,6 +1423,7 @@ pub fn build_session(
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
+        sanitizers,
     };
 
     validate_commandline_args_with_session_available(&sess);

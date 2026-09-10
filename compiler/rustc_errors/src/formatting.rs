@@ -24,11 +24,8 @@ fn to_fluent_args<'iter>(iter: impl Iterator<Item = DiagArg<'iter>>) -> FluentAr
 }
 
 /// Convert `DiagMessage`s to a string
-pub fn format_diag_messages(
-    messages: &[(DiagMessage, Style)],
-    args: &DiagArgMap,
-) -> Cow<'static, str> {
-    Cow::Owned(messages.iter().map(|(m, _)| format_diag_message(m, args)).collect::<String>())
+pub fn format_diag_messages(messages: &[(DiagMessage, Style)], args: &DiagArgMap) -> String {
+    messages.iter().map(|(m, _)| format_diag_message(m, args)).collect::<String>()
 }
 
 /// Convert a `DiagMessage` to a string

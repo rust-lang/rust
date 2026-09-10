@@ -1,5 +1,5 @@
-SOURCE_FILE@0..611
-  FN@0..610
+SOURCE_FILE@0..1186
+  FN@0..1185
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..8
@@ -8,8 +8,8 @@ SOURCE_FILE@0..611
       L_PAREN@8..9 "("
       R_PAREN@9..10 ")"
     WHITESPACE@10..11 " "
-    BLOCK_EXPR@11..610
-      STMT_LIST@11..610
+    BLOCK_EXPR@11..1185
+      STMT_LIST@11..1185
         L_CURLY@11..12 "{"
         WHITESPACE@12..17 "\n    "
         LET_STMT@17..129
@@ -40,7 +40,8 @@ SOURCE_FILE@0..611
                     R_PAREN@81..82 ")"
                 R_BRACK@82..83 "]"
               WHITESPACE@83..92 "\n        "
-              COMMENT@92..122 "//! Nor are ModuleDoc ..."
+              DOC_COMMENT@92..122
+                INNER_DOC_COMMENT@92..122 "//! Nor are ModuleDoc ..."
               WHITESPACE@122..127 "\n    "
               R_CURLY@127..128 "}"
           SEMICOLON@128..129 ";"
@@ -86,7 +87,8 @@ SOURCE_FILE@0..611
                       R_PAREN@210..211 ")"
                   R_BRACK@211..212 "]"
                 WHITESPACE@212..221 "\n        "
-                COMMENT@221..251 "//! Nor are ModuleDoc ..."
+                DOC_COMMENT@221..251
+                  INNER_DOC_COMMENT@221..251 "//! Nor are ModuleDoc ..."
                 WHITESPACE@251..256 "\n    "
                 R_CURLY@256..257 "}"
         WHITESPACE@257..262 "\n    "
@@ -116,7 +118,8 @@ SOURCE_FILE@0..611
                       R_PAREN@300..301 ")"
                   R_BRACK@301..302 "]"
                 WHITESPACE@302..311 "\n        "
-                COMMENT@311..341 "//! Nor are ModuleDoc ..."
+                DOC_COMMENT@311..341
+                  INNER_DOC_COMMENT@311..341 "//! Nor are ModuleDoc ..."
                 WHITESPACE@341..346 "\n    "
                 R_CURLY@346..347 "}"
         WHITESPACE@347..353 "\n     "
@@ -143,50 +146,206 @@ SOURCE_FILE@0..611
                       R_PAREN@428..429 ")"
                   R_BRACK@429..430 "]"
                 WHITESPACE@430..439 "\n        "
-                COMMENT@439..468 "//! So are ModuleDoc  ..."
+                DOC_COMMENT@439..468
+                  INNER_DOC_COMMENT@439..468 "//! So are ModuleDoc  ..."
                 WHITESPACE@468..473 "\n    "
                 R_CURLY@473..474 "}"
         WHITESPACE@474..479 "\n    "
-        FOR_EXPR@479..608
-          FOR_KW@479..482 "for"
-          WHITESPACE@482..483 " "
-          WILDCARD_PAT@483..484
-            UNDERSCORE@483..484 "_"
-          WHITESPACE@484..485 " "
-          IN_KW@485..487 "in"
-          WHITESPACE@487..488 " "
-          RANGE_EXPR@488..492
-            LITERAL@488..489
-              INT_NUMBER@488..489 "0"
-            DOT2@489..491 ".."
-            LITERAL@491..492
-              INT_NUMBER@491..492 "1"
-          WHITESPACE@492..493 " "
-          BLOCK_EXPR@493..608
-            STMT_LIST@493..608
-              L_CURLY@493..494 "{"
-              WHITESPACE@494..503 "\n        "
-              ATTR@503..564
-                POUND@503..504 "#"
-                BANG@504..505 "!"
-                L_BRACK@505..506 "["
-                TOKEN_TREE_META@506..563
-                  PATH@506..509
-                    PATH_SEGMENT@506..509
-                      NAME_REF@506..509
-                        IDENT@506..509 "doc"
-                  TOKEN_TREE@509..563
-                    L_PAREN@509..510 "("
-                    STRING@510..562 "\"This is fine, `for`  ..."
-                    R_PAREN@562..563 ")"
-                R_BRACK@563..564 "]"
-              WHITESPACE@564..573 "\n        "
-              COMMENT@573..602 "//! So are ModuleDoc  ..."
-              WHITESPACE@602..607 "\n    "
-              R_CURLY@607..608 "}"
-        WHITESPACE@608..609 "\n"
-        R_CURLY@609..610 "}"
-  WHITESPACE@610..611 "\n"
+        EXPR_STMT@479..608
+          FOR_EXPR@479..608
+            FOR_KW@479..482 "for"
+            WHITESPACE@482..483 " "
+            WILDCARD_PAT@483..484
+              UNDERSCORE@483..484 "_"
+            WHITESPACE@484..485 " "
+            IN_KW@485..487 "in"
+            WHITESPACE@487..488 " "
+            RANGE_EXPR@488..492
+              LITERAL@488..489
+                INT_NUMBER@488..489 "0"
+              DOT2@489..491 ".."
+              LITERAL@491..492
+                INT_NUMBER@491..492 "1"
+            WHITESPACE@492..493 " "
+            BLOCK_EXPR@493..608
+              STMT_LIST@493..608
+                L_CURLY@493..494 "{"
+                WHITESPACE@494..503 "\n        "
+                ATTR@503..564
+                  POUND@503..504 "#"
+                  BANG@504..505 "!"
+                  L_BRACK@505..506 "["
+                  TOKEN_TREE_META@506..563
+                    PATH@506..509
+                      PATH_SEGMENT@506..509
+                        NAME_REF@506..509
+                          IDENT@506..509 "doc"
+                    TOKEN_TREE@509..563
+                      L_PAREN@509..510 "("
+                      STRING@510..562 "\"This is fine, `for`  ..."
+                      R_PAREN@562..563 ")"
+                  R_BRACK@563..564 "]"
+                WHITESPACE@564..573 "\n        "
+                DOC_COMMENT@573..602
+                  INNER_DOC_COMMENT@573..602 "//! So are ModuleDoc  ..."
+                WHITESPACE@602..607 "\n    "
+                R_CURLY@607..608 "}"
+        WHITESPACE@608..613 "\n    "
+        LET_STMT@613..768
+          LET_KW@613..616 "let"
+          WHITESPACE@616..617 " "
+          IDENT_PAT@617..618
+            NAME@617..618
+              IDENT@617..618 "t"
+          WHITESPACE@618..619 " "
+          EQ@619..620 "="
+          WHITESPACE@620..621 " "
+          TUPLE_EXPR@621..767
+            L_PAREN@621..622 "("
+            WHITESPACE@622..631 "\n        "
+            BLOCK_EXPR@631..760
+              STMT_LIST@631..760
+                L_CURLY@631..632 "{"
+                WHITESPACE@632..645 "\n            "
+                ATTR@645..708
+                  POUND@645..646 "#"
+                  BANG@646..647 "!"
+                  L_BRACK@647..648 "["
+                  TOKEN_TREE_META@648..707
+                    PATH@648..651
+                      PATH_SEGMENT@648..651
+                        NAME_REF@648..651
+                          IDENT@648..651 "doc"
+                    TOKEN_TREE@651..707
+                      L_PAREN@651..652 "("
+                      STRING@652..706 "\"This is fine, tuple  ..."
+                      R_PAREN@706..707 ")"
+                  R_BRACK@707..708 "]"
+                WHITESPACE@708..721 "\n            "
+                DOC_COMMENT@721..750
+                  INNER_DOC_COMMENT@721..750 "//! So are ModuleDoc  ..."
+                WHITESPACE@750..759 "\n        "
+                R_CURLY@759..760 "}"
+            COMMA@760..761 ","
+            WHITESPACE@761..766 "\n    "
+            R_PAREN@766..767 ")"
+          SEMICOLON@767..768 ";"
+        WHITESPACE@768..773 "\n    "
+        LET_STMT@773..928
+          LET_KW@773..776 "let"
+          WHITESPACE@776..777 " "
+          IDENT_PAT@777..778
+            NAME@777..778
+              IDENT@777..778 "a"
+          WHITESPACE@778..779 " "
+          EQ@779..780 "="
+          WHITESPACE@780..781 " "
+          ARRAY_EXPR@781..927
+            L_BRACK@781..782 "["
+            WHITESPACE@782..791 "\n        "
+            BLOCK_EXPR@791..920
+              STMT_LIST@791..920
+                L_CURLY@791..792 "{"
+                WHITESPACE@792..805 "\n            "
+                ATTR@805..868
+                  POUND@805..806 "#"
+                  BANG@806..807 "!"
+                  L_BRACK@807..808 "["
+                  TOKEN_TREE_META@808..867
+                    PATH@808..811
+                      PATH_SEGMENT@808..811
+                        NAME_REF@808..811
+                          IDENT@808..811 "doc"
+                    TOKEN_TREE@811..867
+                      L_PAREN@811..812 "("
+                      STRING@812..866 "\"This is fine, array  ..."
+                      R_PAREN@866..867 ")"
+                  R_BRACK@867..868 "]"
+                WHITESPACE@868..881 "\n            "
+                DOC_COMMENT@881..910
+                  INNER_DOC_COMMENT@881..910 "//! So are ModuleDoc  ..."
+                WHITESPACE@910..919 "\n        "
+                R_CURLY@919..920 "}"
+            COMMA@920..921 ","
+            WHITESPACE@921..926 "\n    "
+            R_BRACK@926..927 "]"
+          SEMICOLON@927..928 ";"
+        WHITESPACE@928..933 "\n    "
+        EXPR_STMT@933..1054
+          CALL_EXPR@933..1053
+            PATH_EXPR@933..934
+              PATH@933..934
+                PATH_SEGMENT@933..934
+                  NAME_REF@933..934
+                    IDENT@933..934 "g"
+            ARG_LIST@934..1053
+              L_PAREN@934..935 "("
+              BLOCK_EXPR@935..1052
+                STMT_LIST@935..1052
+                  L_CURLY@935..936 "{"
+                  WHITESPACE@936..945 "\n        "
+                  ATTR@945..1008
+                    POUND@945..946 "#"
+                    BANG@946..947 "!"
+                    L_BRACK@947..948 "["
+                    TOKEN_TREE_META@948..1007
+                      PATH@948..951
+                        PATH_SEGMENT@948..951
+                          NAME_REF@948..951
+                            IDENT@948..951 "doc"
+                      TOKEN_TREE@951..1007
+                        L_PAREN@951..952 "("
+                        STRING@952..1006 "\"This is fine, call a ..."
+                        R_PAREN@1006..1007 ")"
+                    R_BRACK@1007..1008 "]"
+                  WHITESPACE@1008..1017 "\n        "
+                  DOC_COMMENT@1017..1046
+                    INNER_DOC_COMMENT@1017..1046 "//! So are ModuleDoc  ..."
+                  WHITESPACE@1046..1051 "\n    "
+                  R_CURLY@1051..1052 "}"
+              R_PAREN@1052..1053 ")"
+          SEMICOLON@1053..1054 ";"
+        WHITESPACE@1054..1059 "\n    "
+        EXPR_STMT@1059..1183
+          METHOD_CALL_EXPR@1059..1182
+            PATH_EXPR@1059..1060
+              PATH@1059..1060
+                PATH_SEGMENT@1059..1060
+                  NAME_REF@1059..1060
+                    IDENT@1059..1060 "s"
+            DOT@1060..1061 "."
+            NAME_REF@1061..1062
+              IDENT@1061..1062 "m"
+            ARG_LIST@1062..1182
+              L_PAREN@1062..1063 "("
+              BLOCK_EXPR@1063..1181
+                STMT_LIST@1063..1181
+                  L_CURLY@1063..1064 "{"
+                  WHITESPACE@1064..1073 "\n        "
+                  ATTR@1073..1137
+                    POUND@1073..1074 "#"
+                    BANG@1074..1075 "!"
+                    L_BRACK@1075..1076 "["
+                    TOKEN_TREE_META@1076..1136
+                      PATH@1076..1079
+                        PATH_SEGMENT@1076..1079
+                          NAME_REF@1076..1079
+                            IDENT@1076..1079 "doc"
+                      TOKEN_TREE@1079..1136
+                        L_PAREN@1079..1080 "("
+                        STRING@1080..1135 "\"This is fine, method ..."
+                        R_PAREN@1135..1136 ")"
+                    R_BRACK@1136..1137 "]"
+                  WHITESPACE@1137..1146 "\n        "
+                  DOC_COMMENT@1146..1175
+                    INNER_DOC_COMMENT@1146..1175 "//! So are ModuleDoc  ..."
+                  WHITESPACE@1175..1180 "\n    "
+                  R_CURLY@1180..1181 "}"
+              R_PAREN@1181..1182 ")"
+          SEMICOLON@1182..1183 ";"
+        WHITESPACE@1183..1184 "\n"
+        R_CURLY@1184..1185 "}"
+  WHITESPACE@1185..1186 "\n"
 error 39..83: A block in this position cannot accept inner attributes
 error 152..171: A block in this position cannot accept inner attributes
 error 180..212: A block in this position cannot accept inner attributes

@@ -1,7 +1,7 @@
 // `raw-dylib` is a Windows-specific attribute which emits idata sections for the items in the
 // attached extern block,
 // so they may be linked against without linking against an import library.
-// To learn more, read https://github.com/rust-lang/rfcs/blob/master/text/2627-raw-dylib-kind.md
+// To learn more, read https://rust-lang.github.io/rfcs/2627-raw-dylib-kind.html
 // `#[link_ordinal(n)]` allows Rust to link against DLLs that export symbols by ordinal rather
 // than by name. As long as the ordinal matches, the name of the function in Rust is not
 // required to match the name of the corresponding function in the exporting DLL.

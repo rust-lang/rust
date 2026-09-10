@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(fn_delegation)]
 
 mod test_1 {
@@ -9,13 +11,11 @@ mod test_1 {
     struct S2;
     impl S2 {
         reuse S1::foo;
-        //~^ ERROR: cannot find function `foo` in `S1`
     }
 
     struct S3;
     impl S3 {
         reuse S2::foo;
-        //~^ ERROR: cannot find function `foo` in `S2`
     }
 }
 
@@ -34,11 +34,9 @@ mod test_2 {
     struct S2(S1<()>);
     impl S2 {
         reuse S1::<()>::foo { self.0 }
-        //~^ ERROR: cannot find function `foo` in `S1`
     }
 
     reuse S2::foo;
-    //~^ ERROR: cannot find function `foo` in `S2`
 
     struct S3;
     impl S3 {
@@ -47,8 +45,6 @@ mod test_2 {
 
     impl Trait1 for S3 {
         reuse S2::foo { &S2(S1(())) }
-        //~^ ERROR: method `foo` has a `&self` declaration in the trait, but not in the impl
-        //~| ERROR: cannot find function `foo` in `S2`
     }
 
     trait Trait2 {
@@ -63,7 +59,6 @@ mod test_2 {
     }
 
     reuse S4::trait_foo as trait_foo_reused;
-    //~^ ERROR: cannot find function `trait_foo` in `S4`
 }
 
 fn main() {}

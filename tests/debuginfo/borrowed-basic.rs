@@ -60,9 +60,11 @@
 //@ lldb-command:v *int_ref
 //@ lldb-check:[...] -1
 
+//@ lldb-command:v *char_ref
+//@ lldb-check: [...] U+0x00000061 U'a'
 
 //@ lldb-command:v *i8_ref
-//@ lldb-check:[...] 'D'
+//@ lldb-check:[...] 68
 
 //@ lldb-command:v *i16_ref
 //@ lldb-check:[...] -16
@@ -77,7 +79,7 @@
 //@ lldb-check:[...] 1
 
 //@ lldb-command:v *u8_ref
-//@ lldb-check:[...] 'd'
+//@ lldb-check:[...] 100
 
 //@ lldb-command:v *u16_ref
 //@ lldb-check:[...] 16

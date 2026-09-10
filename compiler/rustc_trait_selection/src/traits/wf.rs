@@ -10,8 +10,8 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, DelayedSet, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, DelayedSet, GenericArgsRef, PredicateProxy, Term, TermKind, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -1003,7 +1003,10 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         let kind = obligation.predicate.kind().skip_binder();
                         let keep = match kind {
                             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
-                                if matches!(ct.kind(), ty::ConstKind::Param(..)) =>
+                                if matches!(
+                                    ct.kind(),
+                                    ty::ConstKind::Param(..) | ty::ConstKind::Placeholder(..)
+                                ) =>
                             {
                                 // ConstArgHasType clauses are not higher kinded. Assert as
                                 // such so we can fix this up if that ever changes.
@@ -1240,7 +1243,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
         c.super_visit_with(self)
     }
 
-    fn visit_predicate(&mut self, _p: ty::Predicate<'tcx>) -> Self::Result {
+    fn visit_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, _p: P) -> Self::Result {
         bug!("predicate should not be checked for well-formedness");
     }
 }

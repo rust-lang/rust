@@ -778,12 +778,10 @@ impl<'a> Parser<'a> {
                     };
                 }
 
-                this.eat_incorrect_doc_comment_for_param_type();
                 (pat, this.parse_ty_for_param()?)
             } else {
                 debug!("parse_param_general ident_to_pat");
                 let parser_snapshot_before_ty = this.create_snapshot_for_diagnostic();
-                this.eat_incorrect_doc_comment_for_param_type();
                 let mut ty = this.parse_ty_for_param();
 
                 if let Ok(t) = &ty {

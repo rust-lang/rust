@@ -78,7 +78,7 @@ fn inclusive_start_end<T: Idx>(
 #[derive(Eq, PartialEq, Hash)]
 pub struct DenseBitSet<T> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: Box<[Word]>,
     marker: PhantomData<T>,
 }
 
@@ -94,17 +94,42 @@ impl<T: Idx> DenseBitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-        DenseBitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        DenseBitSet {
+            domain_size,
+            words: vec![0; num_words].into_boxed_slice(),
+            marker: PhantomData,
+        }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result =
-            DenseBitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
+        let mut result = DenseBitSet {
+            domain_size,
+            words: vec![!0; num_words].into_boxed_slice(),
+            marker: PhantomData,
+        };
         result.clear_excess_bits();
         result
+    }
+
+    /// Replaces this bitset with one having the same elements, but a larger domain size.
+    #[inline]
+    pub fn enlarge(self, new_domain_size: usize) -> DenseBitSet<T> {
+        // We could also support shrinking, but it's hard to imagine a real use-case for it.
+        assert!(self.domain_size <= new_domain_size);
+        let new_num_words = num_words(new_domain_size);
+
+        let DenseBitSet { domain_size: _, mut words, marker } = self;
+
+        if new_num_words != words.len() {
+            let mut words_vec = words.into_vec();
+            words_vec.resize(new_num_words, 0);
+            words = words_vec.into_boxed_slice()
+        }
+
+        DenseBitSet { domain_size: new_domain_size, words, marker }
     }
 
     /// Clear all elements.
@@ -123,11 +148,27 @@ impl<T: Idx> DenseBitSet<T> {
         count_ones(&self.words)
     }
 
-    /// Returns `true` if `self` contains `elem`.
+    /// Returns `true` if this bitset contains `value`.
+    ///
+    /// Unlike [`DenseBitSet::contains`], this method does not panic if the value
+    /// is outside this bitset's domain, and simply returns `false` instead.
     #[inline]
-    pub fn contains(&self, elem: T) -> bool {
-        assert!(elem.index() < self.domain_size);
-        let (word_index, mask) = word_index_and_mask(elem);
+    pub fn contains_loose(&self, value: T) -> bool {
+        (value.index() < self.domain_size) && self.contains(value)
+    }
+
+    /// Returns `true` if this bitset contains `value`.
+    ///
+    /// # Panics
+    /// If `value` is outside this bitset's domain.
+    ///
+    /// # See also
+    /// To allow out-of-domain values without panicking, use [`DenseBitSet::contains_loose`]
+    /// instead.
+    #[inline]
+    pub fn contains(&self, value: T) -> bool {
+        assert!(value.index() < self.domain_size);
+        let (word_index, mask) = word_index_and_mask(value);
         (self.words[word_index] & mask) != 0
     }
 
@@ -146,19 +187,14 @@ impl<T: Idx> DenseBitSet<T> {
 
     /// Insert `elem`. Returns whether the set has changed.
     #[inline]
-    pub fn insert(&mut self, elem: T) -> bool {
+    pub fn insert(&mut self, value: T) -> bool {
         assert!(
-            elem.index() < self.domain_size,
+            value.index() < self.domain_size,
             "inserting element at index {} but domain size is {}",
-            elem.index(),
+            value.index(),
             self.domain_size,
         );
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word | mask;
-        *word_ref = new_word;
-        new_word != word
+        insert(&mut self.words, value)
     }
 
     #[inline]
@@ -314,12 +350,6 @@ impl<T: Idx> DenseBitSet<T> {
     pub fn intersect(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a & b)
-    }
-}
-
-impl<T: Idx> From<GrowableBitSet<T>> for DenseBitSet<T> {
-    fn from(bit_set: GrowableBitSet<T>) -> Self {
-        bit_set.bit_set
     }
 }
 
@@ -1199,22 +1229,25 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
-///
-/// All operations that involve an element will panic if the element is equal
-/// to or greater than the domain size.
 #[derive(Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
-    bit_set: DenseBitSet<T>,
+    domain_size: usize,
+    words: Vec<Word>,
+    marker: PhantomData<T>,
 }
 
-// Manually implemented to forward `clone_from`, and to avoid the `T: Clone` bound.
+// Manually implemented to provide `clone_from`.
 impl<T: Idx> Clone for GrowableBitSet<T> {
     fn clone(&self) -> Self {
-        Self { bit_set: self.bit_set.clone() }
+        let &GrowableBitSet { domain_size, ref words, marker } = self;
+        GrowableBitSet { domain_size, words: words.clone(), marker }
     }
 
     fn clone_from(&mut self, source: &Self) {
-        self.bit_set.clone_from(&source.bit_set);
+        let GrowableBitSet { domain_size, words, marker } = source;
+        self.domain_size.clone_from(domain_size);
+        self.words.clone_from(words);
+        self.marker.clone_from(marker);
     }
 }
 
@@ -1227,87 +1260,54 @@ impl<T: Idx> Default for GrowableBitSet<T> {
 impl<T: Idx> GrowableBitSet<T> {
     /// Ensure that the set can hold at least `min_domain_size` elements.
     pub fn ensure(&mut self, min_domain_size: usize) {
-        if self.bit_set.domain_size < min_domain_size {
-            self.bit_set.domain_size = min_domain_size;
+        if self.domain_size < min_domain_size {
+            self.domain_size = min_domain_size;
         }
 
         let min_num_words = num_words(min_domain_size);
-        if self.bit_set.words.len() < min_num_words {
-            self.bit_set.words.resize(min_num_words, 0)
+        if self.words.len() < min_num_words {
+            self.words.resize(min_num_words, 0)
         }
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: DenseBitSet::new_empty(0) }
+        GrowableBitSet { domain_size: 0, words: vec![], marker: PhantomData }
     }
 
     pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: DenseBitSet::new_empty(capacity) }
+        GrowableBitSet {
+            domain_size: capacity,
+            words: vec![0; num_words(capacity)],
+            marker: PhantomData,
+        }
     }
 
     /// Returns `true` if the set has changed.
     #[inline]
-    pub fn insert(&mut self, elem: T) -> bool {
-        self.ensure(elem.index() + 1);
-        self.bit_set.insert(elem)
-    }
-
-    #[inline]
-    pub fn insert_range(&mut self, elems: Range<T>) {
-        self.ensure(elems.end.index());
-        self.bit_set.insert_range(elems);
-    }
-
-    /// Returns `true` if the set has changed.
-    #[inline]
-    pub fn remove(&mut self, elem: T) -> bool {
-        self.ensure(elem.index() + 1);
-        self.bit_set.remove(elem)
-    }
-
-    #[inline]
-    pub fn clear(&mut self) {
-        self.bit_set.clear();
+    pub fn insert(&mut self, value: T) -> bool {
+        self.ensure(value.index() + 1);
+        insert(&mut self.words, value)
     }
 
     #[inline]
     pub fn count(&self) -> usize {
-        self.bit_set.count()
+        count_ones(&self.words)
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.bit_set.is_empty()
+        self.words.iter().all(|&w| w == 0)
     }
 
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
-    }
-
-    #[inline]
-    pub fn contains_any(&self, elems: Range<T>) -> bool {
-        elems.start.index() < self.bit_set.domain_size
-            && self
-                .bit_set
-                .contains_any(elems.start..T::new(elems.end.index().min(self.bit_set.domain_size)))
+        self.words.get(word_index).is_some_and(|word| (word & mask) != 0)
     }
 
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
-        self.bit_set.iter()
-    }
-
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.bit_set.count()
-    }
-}
-
-impl<T: Idx> From<DenseBitSet<T>> for GrowableBitSet<T> {
-    fn from(bit_set: DenseBitSet<T>) -> Self {
-        Self { bit_set }
+        BitIter::new(&self.words)
     }
 }
 
@@ -1643,4 +1643,14 @@ fn max_bit(word: Word) -> usize {
 #[inline]
 fn count_ones(words: &[Word]) -> usize {
     words.iter().map(|word| word.count_ones() as usize).sum()
+}
+
+#[inline]
+fn insert<T: Idx>(words: &mut [Word], value: T) -> bool {
+    let (word_index, mask) = word_index_and_mask(value);
+    let word_ref = &mut words[word_index];
+    let word = *word_ref;
+    let new_word = word | mask;
+    *word_ref = new_word;
+    new_word != word
 }

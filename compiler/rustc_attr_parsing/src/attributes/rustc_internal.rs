@@ -425,7 +425,6 @@ pub(crate) struct RustcNoWritableParser;
 
 impl NoArgsAttributeParser for RustcNoWritableParser {
     const PATH: &[Symbol] = &[sym::rustc_no_writable];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Closure),

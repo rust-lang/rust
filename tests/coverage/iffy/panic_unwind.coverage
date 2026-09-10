@@ -5,9 +5,9 @@
    LL|      4|    if should_panic {
    LL|      1|        println!("panicking...");
    LL|      1|        panic!("panics");
-   LL|      3|    } else {
+   LL|       |    } else {
    LL|      3|        println!("Don't Panic");
-   LL|      3|    }
+   LL|       |    }
    LL|      3|}
    LL|       |
    LL|      1|fn main() -> Result<(), u8> {

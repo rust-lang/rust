@@ -10,7 +10,9 @@
 //!    names refer to.
 //! 4. Desugared. There's no `if let`.
 //!
-//! See also a neighboring `body` module.
+//! See also a neighboring [`body`] module.
+//!
+//! [`body`]: crate::expr_store::body
 
 pub mod format_args;
 pub mod generics;
@@ -269,6 +271,12 @@ pub enum RecordSpread {
     Expr(ExprId),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Unsafe {
+    Yes,
+    No,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if the syntax tree does not have a required expression piece.
@@ -288,14 +296,9 @@ pub enum Expr {
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
         label: Option<LabelId>,
+        unsafe_: Unsafe,
     },
     Const(ExprId),
-    // FIXME: Fold this into Block with an unsafe flag?
-    Unsafe {
-        id: Option<BlockId>,
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
-    },
     Loop {
         body: ExprId,
         label: Option<LabelId>,
@@ -404,7 +407,6 @@ impl Expr {
             Expr::Array(_)
             | Expr::InlineAsm(_)
             | Expr::Block { .. }
-            | Expr::Unsafe { .. }
             | Expr::Const(_)
             | Expr::If { .. }
             | Expr::Literal(_)

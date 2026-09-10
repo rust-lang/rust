@@ -572,7 +572,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed(
         "unsupported_naked_functions",
         "converted into hard error, see RFC 2972 \
-         <https://github.com/rust-lang/rfcs/blob/master/text/2972-constrained-naked.md> for more information",
+         <https://rust-lang.github.io/rfcs/2972-constrained-naked.html> for more information",
     );
     store.register_removed(
         "mutable_borrow_reservation_conflict",

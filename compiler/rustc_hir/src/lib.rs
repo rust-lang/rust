@@ -11,6 +11,7 @@
 #![feature(default_field_values)]
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
+#![feature(final_associated_functions)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

@@ -91,6 +91,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_, '
                         it.kind(),
                         syntax::SyntaxKind::WHITESPACE
                             | syntax::SyntaxKind::COMMENT
+                            | syntax::SyntaxKind::DOC_COMMENT
                             | syntax::SyntaxKind::ATTR
                     )
                 })

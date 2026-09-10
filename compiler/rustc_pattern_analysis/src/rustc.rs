@@ -380,7 +380,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         let variant_def_id = def.variant(idx).def_id;
                         // Visibly uninhabited variants.
                         let is_inhabited = v
-                            .inhabited_predicate(cx.tcx, *def)
+                            .inhabited_predicate(cx.tcx)
                             .instantiate(cx.tcx, args)
                             .apply_revealing_opaque(cx.tcx, cx.typing_env, cx.module, &|key| {
                                 cx.reveal_opaque_key(key)
@@ -930,6 +930,10 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
 
     fn bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
         span_bug!(self.scrut_span, "{}", fmt)
+    }
+
+    fn delayed_bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
+        self.tcx.dcx().span_delayed_bug(self.scrut_span, format!("{fmt}"))
     }
 
     fn lint_overlapping_range_endpoints(

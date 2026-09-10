@@ -19,7 +19,6 @@ impl NoArgsAttributeParser for MayDangleParser {
 pub(crate) struct ComptimeParser;
 impl NoArgsAttributeParser for ComptimeParser {
     const PATH: &[Symbol] = &[sym::rustc_comptime];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Fn),

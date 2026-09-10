@@ -1,10 +1,11 @@
-use rustc_hir as hir;
-use rustc_hir::intravisit::{Visitor, walk_expr};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::Span;
+use rustc_middle::ty::{self, TyCtxt, TypeckResults};
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{ExpnKind, MacroKind, Span};
 
 /// Function information extracted from HIR by the coverage instrumentor.
 #[derive(Debug)]
@@ -19,6 +20,9 @@ pub(crate) struct ExtractedHirInfo {
     /// should not be included in coverage spans for this function
     /// (e.g. closures and nested items).
     pub(crate) hole_spans: Vec<Span>,
+    /// HIR nodes that should be ignored when extracting spans from marker
+    /// statements in MIR.
+    pub(crate) nodes_to_ignore: FxHashSet<HirId>,
 }
 
 pub(crate) fn extract_hir_info<'tcx>(
@@ -74,8 +78,16 @@ pub(crate) fn extract_hir_info<'tcx>(
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
     let hole_spans = extract_hole_spans_from_hir(tcx, hir_body);
+    let nodes_to_ignore = find_nodes_to_ignore(tcx, def_id, hir_body);
 
-    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span, body_span, hole_spans }
+    ExtractedHirInfo {
+        function_source_hash,
+        is_async_fn,
+        fn_sig_span,
+        body_span,
+        hole_spans,
+        nodes_to_ignore,
+    }
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx hir::Body<'tcx>) -> u64 {
@@ -123,7 +135,7 @@ fn extract_hole_spans_from_hir<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &hir::Body<'tc
                 }
 
                 // For other expressions, recursively visit as normal.
-                _ => walk_expr(self, expr),
+                _ => hir::intravisit::walk_expr(self, expr),
             }
         }
     }
@@ -137,4 +149,71 @@ fn extract_hole_spans_from_hir<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &hir::Body<'tc
 
     visitor.visit_body(hir_body);
     visitor.hole_spans
+}
+
+/// Use heuristics to detect HIR expression nodes that should be ignored during
+/// spans-from-MIR extraction.
+fn find_nodes_to_ignore<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    hir_body: &hir::Body<'tcx>,
+) -> FxHashSet<HirId> {
+    /// Top-level visitor used by [`find_nodes_to_ignore`].
+    struct FindNodesToIgnoreVisitor<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        typeck_results: &'tcx TypeckResults<'tcx>,
+        nodes_to_ignore: FxHashSet<HirId>,
+    }
+    /// Marks all expressions in a HIR subtree as ignored.
+    struct IgnoreAllSubexprsVisitor<'a, 'tcx> {
+        inner: &'a mut FindNodesToIgnoreVisitor<'tcx>,
+    }
+
+    impl<'tcx> Visitor<'tcx> for FindNodesToIgnoreVisitor<'tcx> {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+            // Look for call expressions with a return type of `!` produced by a bang-macro.
+            // If we find one, ignore all subexpressions in the call's _arguments_.
+            // This avoids big regressions in coverage-report quality for code with assertions.
+            //
+            // FIXME(Zalathar): We might be able to remove this by extending `#[coverage(off)]`
+            // to support expressions, and using it the standard-library assert macros.
+            if let hir::ExprKind::Call(callee, args) = expr.kind
+                && let callee_ty = self.typeck_results.node_type(callee.hir_id)
+                && callee_ty.is_fn()
+                && let Some(output) = callee_ty.fn_sig(self.tcx).output().no_bound_vars()
+                && output.is_never()
+                && let ExpnKind::Macro(MacroKind::Bang, _) = expr.span.ctxt().outer_expn_data().kind
+            {
+                for arg in args {
+                    (IgnoreAllSubexprsVisitor { inner: self }).visit_expr(arg)
+                }
+            }
+
+            // Find and ignore block-expressions that are non-empty, as their subexpressions
+            // will produce more precise coverage spans.
+            if let hir::ExprKind::Block(block, _) = expr.kind
+                && let is_empty = (block.stmts.is_empty() && block.expr.is_none())
+                && !is_empty
+            {
+                // Ignore the block itself, but not its subexpressions.
+                self.nodes_to_ignore.insert(expr.hir_id);
+            }
+
+            hir::intravisit::walk_expr(self, expr);
+        }
+    }
+    impl<'tcx> Visitor<'tcx> for IgnoreAllSubexprsVisitor<'_, 'tcx> {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+            self.inner.nodes_to_ignore.insert(expr.hir_id);
+            hir::intravisit::walk_expr(self, expr);
+        }
+    }
+
+    let mut visitor = FindNodesToIgnoreVisitor {
+        tcx,
+        typeck_results: tcx.typeck(def_id),
+        nodes_to_ignore: FxHashSet::default(),
+    };
+    visitor.visit_body(hir_body);
+    visitor.nodes_to_ignore
 }

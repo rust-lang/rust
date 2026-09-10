@@ -10,12 +10,12 @@
    LL|      1|    let mut countdown = 0;
    LL|       |    if
    LL|      1|        is_true
-   LL|      1|    {
+   LL|       |    {
    LL|      1|        countdown
    LL|      1|        =
    LL|      1|            10
-   LL|      1|        ;
-   LL|      1|    }
+   LL|       |        ;
+   LL|       |    }
    LL|       |    else // Note coverage region difference without semicolon
    LL|       |    {
    LL|      0|        countdown
@@ -25,18 +25,18 @@
    LL|       |
    LL|       |    if
    LL|      1|        is_true
-   LL|      1|    {
+   LL|       |    {
    LL|      1|        countdown
    LL|      1|        =
    LL|      1|            10
-   LL|      1|        ;
-   LL|      1|    }
+   LL|       |        ;
+   LL|       |    }
    LL|       |    else
-   LL|      0|    {
+   LL|       |    {
    LL|      0|        countdown
    LL|      0|        =
    LL|      0|            100
-   LL|      0|        ;
-   LL|      0|    }
+   LL|       |        ;
+   LL|       |    }
    LL|      1|}
 

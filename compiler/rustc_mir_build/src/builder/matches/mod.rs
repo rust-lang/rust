@@ -50,7 +50,7 @@ pub(crate) struct LowerIfCondArgs {
     pub(crate) variable_source_info: SourceInfo,
     /// Determines how bindings should be handled when lowering `let` expressions.
     ///
-    /// Forwarded to [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
+    /// Forwarded to [`Builder::lower_fallible_let`] when lowering [`ExprKind::Let`].
     pub(crate) declare_let_bindings: DeclareLetBindings,
 }
 
@@ -62,9 +62,9 @@ impl LowerIfCondArgs {
     }
 }
 
-/// Should lowering a `let` expression also declare its bindings?
+/// Should lowering a `let` also declare its bindings?
 ///
-/// Used by [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
+/// Used by [`Builder::lower_fallible_let`].
 #[derive(Clone, Copy)]
 pub(crate) enum DeclareLetBindings {
     /// Yes, declare `let` bindings as normal for `if` conditions.
@@ -155,11 +155,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let local_scope = this.local_scope();
                 let (true_block, false_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
-                        // Help out coverage instrumentation by injecting a dummy statement with
-                        // the original condition's span (including `!`). This fixes #115468.
-                        if this.tcx.sess.instrument_coverage() {
-                            this.cfg.push_coverage_span_marker(block, this.source_info(expr_span));
-                        }
                         this.lower_if_condition(block, arg, args.let_not_permitted())
                     });
                 // Break if the condition was true; proceed if the condition was false.
@@ -167,16 +162,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 false_block.unit()
             }
             ExprKind::Scope { region_scope, hir_id, value } => {
-                let region_scope = (region_scope, this.source_info(expr_span));
-                this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                let source_info = this.source_info(expr_span);
+                this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
                     this.lower_if_condition(block, value, args)
                 })
             }
             ExprKind::ValueExpr { source } => this.lower_if_condition(block, source, args),
-            ExprKind::Let { expr, ref pat } => this.lower_let_expr(
+            ExprKind::Let { ref pat, expr } => this.lower_fallible_let(
                 block,
-                expr,
                 pat,
+                expr,
                 Some(args.variable_source_info.scope),
                 args.variable_source_info.span,
                 args.declare_let_bindings,
@@ -343,10 +339,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_id: ExprId,
         arms: &[ArmId],
         span: Span,
-        scrutinee_span: Span,
     ) -> BlockAnd<()> {
-        let scrutinee_place =
-            unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
+        let scrutinee_span = self.thir[scrutinee_id].span;
+        let scrutinee_place = unpack!(block = self.lower_scrutinee(block, scrutinee_id));
 
         let match_start_span = span.shrink_to_lo().to(scrutinee_span);
         let patterns = arms
@@ -382,11 +377,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scrutinee_id: ExprId,
-        scrutinee_span: Span,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee_id));
         if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
-            let source_info = self.source_info(scrutinee_span);
+            let source_info = self.source_info(self.thir[scrutinee_id].span);
             self.cfg.push_place_mention(block, source_info, scrutinee_place);
         }
 
@@ -616,9 +610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             _ => {
-                let initializer = &self.thir[initializer_id];
-                let place_builder =
-                    unpack!(block = self.lower_scrutinee(block, initializer_id, initializer.span));
+                let place_builder = unpack!(block = self.lower_scrutinee(block, initializer_id));
                 self.place_into_pattern(block, irrefutable_pat, place_builder, true)
             }
         }
@@ -2317,65 +2309,72 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 // Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Lowers a `let` expression that appears in a suitable context
-    /// (e.g. an `if` condition or match guard).
+    /// Lowers a fallible `let`, which is one of:
+    /// - A let-expression inside an `if` condition or match guard.
+    /// - A let-else statement.
     ///
-    /// Also used for lowering let-else statements, since they have similar
-    /// needs despite not actually using `let` expressions.
-    ///
-    /// Use [`DeclareLetBindings`] to control whether the `let` bindings are
-    /// declared or not.
+    /// (Strictly speaking, the underlying pattern might actually be infallible.
+    /// What matters here is that it is _allowed_ to be fallible.)
     ///
     /// Must be called within a [`Builder::in_if_then_scope`], to indicate where
     /// to break to if the `let` fails to match.
-    pub(crate) fn lower_let_expr(
+    pub(crate) fn lower_fallible_let(
         &mut self,
         mut block: BasicBlock,
-        expr_id: ExprId,
         pat: &Pat<'tcx>,
+        scrutinee_id: ExprId,
         source_scope: Option<SourceScope>,
         scope_span: Span,
+        // Controls whether bindings are declared or not, as requested by the caller.
         declare_let_bindings: DeclareLetBindings,
     ) -> BlockAnd<()> {
-        let expr_span = self.thir[expr_id].span;
-        let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
+        let scrutinee_span = self.thir[scrutinee_id].span;
+        let scrutinee_place_builder = unpack!(block = self.lower_scrutinee(block, scrutinee_id));
+
+        // Lower the scrutinee and pattern as though they were desugared to a `match`.
         let built_tree = self.lower_match_tree(
             block,
-            expr_span,
-            &scrutinee,
+            scrutinee_span,
+            &scrutinee_place_builder,
             pat.span,
             vec![(pat, HasMatchGuard::No)],
             Exhaustive::No,
         );
-        let [branch] = built_tree.branches.try_into().unwrap();
+        let [true_branch] = built_tree.branches.try_into().unwrap();
+        let false_block = built_tree.otherwise_block;
 
         // If pattern-matching failed, break out of the enclosing if-then scope.
-        self.break_from_if_then_scope(built_tree.otherwise_block, self.source_info(expr_span));
+        self.break_from_if_then_scope(false_block, self.source_info(scrutinee_span));
 
         match declare_let_bindings {
             DeclareLetBindings::Yes => {
-                let expr_place = scrutinee.try_to_place(self);
-                let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
+                let scrutinee_place;
+                let opt_match_place = try {
+                    scrutinee_place = scrutinee_place_builder.try_to_place(self)?;
+                    (Some(&scrutinee_place), scrutinee_span)
+                };
                 self.declare_bindings(
                     source_scope,
                     pat.span.to(scope_span),
                     pat,
                     None,
-                    opt_expr_place,
+                    opt_match_place,
                 );
             }
             DeclareLetBindings::No => {} // Caller is responsible for bindings.
-            DeclareLetBindings::LetNotPermitted => {
-                self.tcx.dcx().span_bug(expr_span, "let expression not expected in this context")
-            }
+            DeclareLetBindings::LetNotPermitted => self
+                .tcx
+                .dcx()
+                .span_bug(scrutinee_span, "let expression not expected in this context"),
         }
 
-        let success = self.bind_pattern(self.source_info(pat.span), branch, &[], expr_span, None);
+        let true_block =
+            self.bind_pattern(self.source_info(pat.span), true_branch, &[], scrutinee_span, None);
 
         // If branch coverage is enabled, record this branch.
-        self.visit_coverage_conditional_let(pat, success, built_tree.otherwise_block);
+        self.visit_coverage_conditional_let(pat, true_block, false_block);
 
-        success.unit()
+        true_block.unit()
     }
 
     /// Initializes each of the bindings from the candidate by

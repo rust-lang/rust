@@ -11,10 +11,10 @@ impl X {
 
 trait Trait {
     reuse X::foo;
-    //~^ ERROR: cannot find function `foo` in `X`
+    //~^ ERROR: arguments to this function are incorrect
+    //~| ERROR: mismatched types
 }
 
 reuse X::foo;
-//~^ ERROR: cannot find function `foo` in `X`
 
 fn main() {}
