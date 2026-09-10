@@ -692,6 +692,14 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         },
         &[],
     ),
+    // According to the RISC-V spec, the M ISA extension (integer multiplication/division) is supported only when the M bit
+    // of the misa register is 1, while Zmmul means integer multiplication is always supported, even on systems with a writable misa.
+    //
+    // The Rust/LLVM "m" target feature means something slightly different: with "m" enabled, it is expected that multiplication
+    // and division will be unconditionally available (M bit will always be 1 in misa); therefore, "m" implies "zmmul" in the context
+    // of target features.
+    //
+    // See discussion in the PR adding Zmmul: https://github.com/rust-lang/rust/pull/162552
     ("m", Stable, &["zmmul"]),
     ("relax", Unstable(sym::riscv_target_feature), &[]),
     (
