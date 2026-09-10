@@ -2,7 +2,7 @@
 // `-Zsanitizer-cfi-recover` or `-Zsanitizer-cfi-diag`.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer-cfi-minimal-runtime
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer-cfi-minimal-runtime
 
 #![feature(no_core)]
 #![no_core]
