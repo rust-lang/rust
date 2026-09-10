@@ -481,12 +481,6 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
     }
 }
 
-impl<I: Interner> Default for RegionConstraint<I> {
-    fn default() -> Self {
-        Self::new_true()
-    }
-}
-
 impl<I: Interner, S: Clone + std::fmt::Debug> LeafRegionConstraint<I, S> {
     pub fn is_ambig(&self) -> bool {
         matches!(self, Self::Ambiguity(_))
