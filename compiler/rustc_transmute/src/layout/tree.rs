@@ -7,6 +7,14 @@ mod tests;
 
 /// A tree-based representation of a type layout.
 ///
+/// A `Seq` concatenates layouts, while an `Alt` chooses among them. An empty
+/// `Seq` represents an inhabited, zero-sized layout; an empty `Alt` represents
+/// an uninhabited layout.
+///
+/// `Def` nodes are zero-width annotations used by [`Tree::prune`] to decide
+/// which branches to retain. Pruning removes these annotations and produces
+/// a `Tree<!, R, T>` for conversion with [`super::Dfa::from_tree`].
+///
 /// Invariants:
 /// 1. All paths through the layout have the same length (in bytes).
 ///
@@ -25,7 +33,7 @@ where
     Seq(Vec<Self>),
     /// A choice between alternative layouts.
     Alt(Vec<Self>),
-    /// A definition node.
+    /// A zero-width definition annotation used during pruning.
     Def(D),
     /// A reference node.
     Ref(Reference<R, T>),
@@ -70,7 +78,7 @@ where
         Self::Seq(Vec::new())
     }
 
-    /// A `Tree` containing a single, uninitialized byte.
+    /// A `Tree` containing one byte that may be initialized to any value or uninitialized.
     pub(crate) fn uninit() -> Self {
         Self::Byte(Byte::uninit())
     }
@@ -134,12 +142,18 @@ where
     }
 
     /// A `Tree` whose layout is entirely padding of the given width.
+    ///
+    /// Each padding byte may be initialized to any value or uninitialized.
     pub(crate) fn padding(width_in_bytes: usize) -> Self {
         Self::Seq(vec![Self::uninit(); width_in_bytes])
     }
 
-    /// Remove all `Def` nodes, and all branches of the layout for which `f`
-    /// produces `true`.
+    /// Removes all `Def` nodes and rejects branches whose definitions make `f` return `true`.
+    ///
+    /// A sequence becomes uninhabited if any of its elements becomes uninhabited;
+    /// alternatives retain their surviving branches. Retained definitions become
+    /// empty sequences, so the result contains no definition nodes, as expressed
+    /// by its `Tree<!, R, T>` type.
     pub(crate) fn prune<F>(self, f: &F) -> Tree<!, R, T>
     where
         F: Fn(D) -> bool,
@@ -473,7 +487,7 @@ pub(crate) mod rustc {
             };
 
             // When this function is invoked with enum variants,
-            // `ty_and_layout.size` does not encompass the entire size of the
+            // `layout.size` does not encompass the entire size of the
             // enum. We rely on `total_size` for this.
             assert!(layout.size <= total_size);
 
