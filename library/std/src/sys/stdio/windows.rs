@@ -1,5 +1,6 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
+use core::ffi::c_void;
 use core::str::utf8_char_width;
 
 use crate::mem::MaybeUninit;
@@ -199,7 +200,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         let result = c::MultiByteToWideChar(
             c::CP_UTF8,                          // CodePage
             c::MB_ERR_INVALID_CHARS,             // dwFlags
-            utf8.as_ptr(),                       // lpMultiByteStr
+            utf8.as_ptr().cast::<i8>(),          // lpMultiByteStr
             utf8.len() as i32,                   // cbMultiByte
             utf16.as_mut_ptr() as *mut c::WCHAR, // lpWideCharStr
             utf16.len() as i32,                  // cchWideChar
@@ -247,7 +248,13 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
     debug_assert!(data.len() < u32::MAX as usize);
     let mut written = 0;
     cvt(unsafe {
-        c::WriteConsoleW(handle, data.as_ptr(), data.len() as u32, &mut written, ptr::null_mut())
+        c::WriteConsoleW(
+            handle,
+            data.as_ptr().cast::<c_void>(),
+            data.len() as u32,
+            &mut written,
+            ptr::null_mut(),
+        )
     })?;
     Ok(written as usize)
 }

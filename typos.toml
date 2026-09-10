@@ -75,6 +75,7 @@ ERROR_REQ_NOT_ACCEP = "ERROR_REQ_NOT_ACCEP"
 EnzymeTypeTreeShiftIndiciesEq = "EnzymeTypeTreeShiftIndiciesEq"
 EnzymeTypeTreeShiftIndiciesEqFn = "EnzymeTypeTreeShiftIndiciesEqFn"
 Oppen = "Oppen" # Derek C. Oppen, author of "Pretty Printing" (1979)
+PUNICODE_STRING = "PUNICODE_STRING"
 # typos treats this as two different camelcase words (`SETTIN` and `Gs`)
 # Tracked in: https://github.com/crate-ci/typos/issues/745
 SETTINGs = "SETTINGs"
