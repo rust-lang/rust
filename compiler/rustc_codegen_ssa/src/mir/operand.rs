@@ -199,7 +199,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                             } else {
                                 None
                             };
-                        let ptrauth_schema = bx.sess().pointer_authentication_functions();
+                        let mut ptrauth_schema = bx.sess().pointer_authentication_functions();
+                        if let Some(schema) = ptrauth_schema.as_mut()
+                            && let Some(discr) =
+                                ptrauth_discriminators.as_ref().and_then(|m| m.get(&Size::ZERO))
+                        {
+                            schema.constant_discriminator = *discr as u16;
+                        }
                         bx.scalar_to_backend_with_pac(
                             x,
                             scalar,
@@ -247,13 +253,44 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let alloc_align = alloc.inner().align;
         assert!(alloc_align >= layout.align.abi, "{alloc_align:?} < {:?}", layout.align.abi);
 
-        let read_scalar = |start, size, s: abi::Scalar, ty| {
+        let ptrauth_discriminators =
+            if bx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                Some(ptrauth_collect_fn_ptr_discriminators(bx.tcx(), bx.typing_env(), layout.ty))
+            } else {
+                None
+            };
+
+        // `start` is the absolute position to read from within `alloc` (which may be a larger,
+        // shared allocation). `local_offset` is this field's offset within the value's own layout,
+        // used only to key into `ptrauth_discriminators`. The two are NOT interchangeable whenever
+        // `offset != 0` (e.g. the `b` field of a ScalarPair, or a value that isn't at the start of
+        // its allocation).
+        let read_scalar = |start: Size, local_offset: Size, size, s: abi::Scalar, ty| {
             match alloc.0.read_scalar(
                 bx,
                 alloc_range(start, size),
                 /*read_provenance*/ matches!(s.primitive(), abi::Primitive::Pointer(_)),
             ) {
-                Ok(val) => bx.scalar_to_backend(val, s, ty),
+                Ok(val) => {
+                    if let abi::Primitive::Pointer(_) = s.primitive() {
+                        let mut schema = bx.sess().pointer_authentication_functions();
+                        if let Some(schema) = schema.as_mut()
+                            && let Some(discr) =
+                                ptrauth_discriminators.as_ref().and_then(|m| m.get(&local_offset))
+                        {
+                            schema.constant_discriminator = *discr as u16;
+                        }
+                        bx.scalar_to_backend_with_pac(
+                            val,
+                            s,
+                            ty,
+                            schema,
+                            ptrauth_discriminators.as_ref(),
+                        )
+                    } else {
+                        bx.scalar_to_backend(val, s, ty)
+                    }
+                }
                 Err(_) => bx.const_poison(ty),
             }
         };
@@ -268,7 +305,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             BackendRepr::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
+                let val =
+                    read_scalar(offset, Size::ZERO, size, s, bx.immediate_backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout, move_annotation: None }
             }
             BackendRepr::ScalarPair {
@@ -281,12 +319,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 assert!(alloc_b_offset.bytes() > 0);
                 let a_val = read_scalar(
                     offset,
+                    Size::ZERO,
                     a_size,
                     a,
                     bx.scalar_pair_element_backend_type(layout, 0, true),
                 );
                 let b_val = read_scalar(
                     alloc_b_offset,
+                    local_b_offset,
                     b_size,
                     b,
                     bx.scalar_pair_element_backend_type(layout, 1, true),
@@ -295,26 +335,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             _ if layout.is_zst() => OperandRef::zero_sized(layout),
             _ => {
-                let ptrauth_discriminators =
-                    if bx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
-                        Some(ptrauth_collect_fn_ptr_discriminators(
-                            bx.tcx(),
-                            bx.typing_env(),
-                            layout.ty,
-                        ))
-                    } else {
-                        None
-                    };
-
-                // Neither a scalar nor scalar pair. Load from a place
+                // Neither a scalar nor scalar pair. Load from a place.
                 let base_addr = bx.static_addr_of(alloc, None, ptrauth_discriminators.as_ref());
-
                 let llval = bx.const_ptr_byte_offset(base_addr, offset);
                 bx.load_operand(PlaceRef::new_sized(llval, layout))
             }
         }
     }
-
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
     pub fn immediate(self) -> V {
