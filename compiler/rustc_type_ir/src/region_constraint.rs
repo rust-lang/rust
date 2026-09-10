@@ -240,7 +240,7 @@ impl<I: Interner> Or<I> {
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     pub fn new_true() -> Self {
-        Self(Box::new([And::new([])]))
+        Self(Box::new([And::new_true()]))
     }
 
     pub fn is_true(&self) -> bool {
@@ -323,6 +323,10 @@ impl<I: Interner> And<I> {
     }
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
+    pub fn new_true() -> Self {
+        Self(Box::new([]))
+    }
+
     pub fn new(i: impl IntoIterator<Item = LeafRegionConstraint<I, S>>) -> Self {
         let mut seen = IndexSet::new();
         And(i
@@ -406,7 +410,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         }));
 
         Self {
-            and_constraint: if or_constraint.is_false() { And::new([]) } else { and_constraint },
+            and_constraint: if or_constraint.is_false() { And::new_true() } else { and_constraint },
             or_constraint,
         }
     }
@@ -422,7 +426,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         let or_constraint = Or::build_and(a.or_constraint, b.or_constraint);
 
         Self {
-            and_constraint: if or_constraint.is_false() { And::new([]) } else { and_constraint },
+            and_constraint: if or_constraint.is_false() { And::new_true() } else { and_constraint },
             or_constraint,
         }
     }
@@ -432,7 +436,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
     }
 
     pub fn new_true() -> Self {
-        Self { and_constraint: And::new([]), or_constraint: Or::new_true() }
+        Self { and_constraint: And::new_true(), or_constraint: Or::new_true() }
     }
 
     pub fn is_true(&self) -> bool {
@@ -440,7 +444,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
     }
 
     pub fn new_false() -> Self {
-        Self { and_constraint: And::new([]), or_constraint: Or::new_false() }
+        Self { and_constraint: And::new_true(), or_constraint: Or::new_false() }
     }
 
     pub fn is_false(&self) -> bool {
@@ -474,12 +478,6 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
 
     pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
         RegionConstraint { and_constraint: And(Box::new([l])), or_constraint: Or::new_true() }
-    }
-}
-
-impl<I: Interner> Default for RegionConstraint<I> {
-    fn default() -> Self {
-        Self::new_true()
     }
 }
 
