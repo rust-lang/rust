@@ -11,21 +11,21 @@
 fn consume<T>(_: Result<T, T>) -> T { todo!() }
 
 fn main() {
-    consume((try {}));
+    consume(try {});
     //~^ WARN unnecessary parentheses
 
-    consume({ try {} });
+    consume(try {});
     //~^ WARN unnecessary braces
 
-    match (try {}) {
+    match try {} {
         //~^ WARN unnecessary parentheses
         Ok(()) | Err(()) => (),
     }
 
-    if let Err(()) = (try {}) {}
+    if let Err(()) = try {} {}
     //~^ WARN unnecessary parentheses
 
-    match (try {}) {
+    match try {} {
         //~^ WARN unnecessary parentheses
         Ok(()) | Err(()) => (),
     }
