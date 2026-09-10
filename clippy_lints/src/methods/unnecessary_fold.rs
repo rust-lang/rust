@@ -75,7 +75,7 @@ impl Replacement {
         }
     }
 
-    fn maybe_add_note(&self, diag: &mut Diag<'_, ()>) {
+    fn maybe_add_note(&self, diag: &mut Diag<'_>) {
         if self.is_short_circuiting {
             diag.note(format!(
                 "the `{}` method is short circuiting and may change the program semantics if the iterator has side effects",
