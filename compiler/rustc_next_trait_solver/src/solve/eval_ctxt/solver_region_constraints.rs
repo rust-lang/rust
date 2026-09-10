@@ -11,8 +11,8 @@ use rustc_type_ir::region_constraint::{
     propagate_ambiguity,
 };
 use rustc_type_ir::{
-    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, Region, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, UniverseIndex,
+    AliasTy, Binder, ClauseKind, Const, InferCtxtLike, Interner, Region, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UniverseIndex,
 };
 use tracing::{debug, instrument};
 
@@ -63,7 +63,7 @@ where
                 );
             }
 
-            fn visit_const(&mut self, c: I::Const) {
+            fn visit_const(&mut self, c: Const<I>) {
                 self.out.extend(
                     self.ecx
                         .well_formed_goals(self.param_env, c.into())

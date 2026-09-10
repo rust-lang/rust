@@ -7,7 +7,7 @@ use tracing::{instrument, trace};
 use crate::error::{ExpectedFound, TypeError};
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
-use crate::{self as ty, Interner, Region};
+use crate::{self as ty, Const, Interner, Region};
 
 pub mod combine;
 pub mod solver_relating;
@@ -90,7 +90,7 @@ pub trait TypeRelation<I: Interner>: Sized {
 
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>>;
 
-    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const>;
+    fn consts(&mut self, a: Const<I>, b: Const<I>) -> RelateResult<I, Const<I>>;
 
     fn binders<T>(
         &mut self,
@@ -560,9 +560,9 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 /// See the HACKs below.
 pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
     relation: &mut R,
-    mut a: I::Const,
-    mut b: I::Const,
-) -> RelateResult<I, I::Const> {
+    mut a: Const<I>,
+    mut b: Const<I>,
+) -> RelateResult<I, Const<I>> {
     trace!(
         "structurally_relate_consts::<{}>(a = {:?}, b = {:?})",
         std::any::type_name::<R>(),
