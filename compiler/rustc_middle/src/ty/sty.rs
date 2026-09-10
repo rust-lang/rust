@@ -27,6 +27,7 @@ use super::{AdtFlags, GenericParamDefKind};
 use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
+use crate::ty::consts::ConstExt;
 use crate::ty::{
     self, AdtDef, Const, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
     Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,

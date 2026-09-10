@@ -4,6 +4,7 @@ use rustc_errors::DiagMessage;
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, sym};

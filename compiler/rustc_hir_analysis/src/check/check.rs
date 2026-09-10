@@ -17,6 +17,7 @@ use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::util::Discr;

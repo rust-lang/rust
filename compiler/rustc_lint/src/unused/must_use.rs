@@ -7,6 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, find_attr};
 use rustc_infer::traits::util::elaborate;
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, Unnormalized};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;

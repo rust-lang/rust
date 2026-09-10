@@ -9,6 +9,7 @@ use tracing::instrument;
 
 use super::interpret::GlobalAlloc;
 use super::*;
+use crate::ty::consts::ConstExt;
 use crate::ty::{CoroutineArgsExt, Unnormalized};
 
 ///////////////////////////////////////////////////////////////////////////
