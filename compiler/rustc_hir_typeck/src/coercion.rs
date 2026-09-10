@@ -1186,6 +1186,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
+    /// Like [`Self::may_coerce`], but for suggestions whose replacement must complete with a
+    /// value of the target type. A coercion from `!` to another type does not provide such a
+    /// value, so it should not by itself justify these suggestions.
+    ///
+    /// This should only be used for suggestions.
+    pub(crate) fn may_coerce_except_never(&self, expr_ty: Ty<'tcx>, target_ty: Ty<'tcx>) -> bool {
+        if expr_ty.is_never() && !target_ty.is_never() {
+            return false;
+        }
+        self.may_coerce(expr_ty, target_ty)
+    }
+
     /// Given a type and a target type, this function will calculate and return
     /// how many dereference steps needed to coerce `expr_ty` to `target`. If
     /// it's not possible, return `None`.

@@ -27,7 +27,6 @@ where
     }
 }
 
-// FIXME: Nix this cfg, so we can write unit tests independently of rustc
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_middle::ty::layout::LayoutCx;
@@ -79,18 +78,17 @@ where
 {
     /// Answers whether a `Tree` is transmutable into another `Tree`.
     ///
-    /// This method begins by de-def'ing `src` and `dst`, and prunes private paths from `dst`,
-    /// then converts `src` and `dst` to `Dfa`s, and computes an answer using those DFAs.
+    /// Removes definition markers from both trees and, unless safety is assumed,
+    /// prunes destination paths that may carry safety invariants. It then converts
+    /// the remaining layouts to `Dfa`s and compares them.
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
         let Self { src, dst, assume, context } = self;
 
-        // Unconditionally remove all `Def` nodes from `src`, without pruning away the
-        // branches they appear in. This is valid to do for value-to-value
-        // transmutations, but not for `&mut T` to `&mut U`; we will need to be
-        // more sophisticated to handle transmutations between mutable
-        // references.
+        // Keep every source representation while removing its definition markers.
+        // Reference nodes remain intact; mutable destination references also generate
+        // a reverse transmutability obligation for their referents.
         let src = src.prune(&|_def| false);
 
         if src.is_inhabited() && !dst.is_inhabited() {
@@ -99,20 +97,17 @@ where
 
         trace!(?src, "pruned src");
 
-        // Remove all `Def` nodes from `dst`, additionally...
+        // Remove destination definition markers. Unless the caller assumes safety,
+        // prune paths whose definitions may carry safety invariants.
         let dst = if assume.safety {
-            // ...if safety is assumed, don't check if they carry safety
-            // invariants; retain all paths.
             dst.prune(&|_def| false)
         } else {
-            // ...otherwise, prune away all paths with safety invariants from
-            // the `Dst` layout.
             dst.prune(&|def| def.has_safety_invariants())
         };
 
         trace!(?dst, "pruned dst");
 
-        // Convert `src` from a tree-based representation to an DFA-based
+        // Convert `src` from a tree-based representation to a DFA-based
         // representation. If the conversion fails because `src` is uninhabited,
         // conclude that the transmutation is acceptable, because instances of
         // the `src` type do not exist.
@@ -121,12 +116,9 @@ where
             Err(layout::Uninhabited) => return Answer::Yes,
         };
 
-        // Convert `dst` from a tree-based representation to an DFA-based
-        // representation. If the conversion fails because `src` is uninhabited,
-        // conclude that the transmutation is unacceptable. Valid instances of
-        // the `dst` type do not exist, either because it's genuinely
-        // uninhabited, or because there are no branches of the tree that are
-        // free of safety invariants.
+        // An inhabited source and an originally uninhabited destination were
+        // rejected above. If the pruned destination is now uninhabited, no path
+        // remains whose definitions are known to be free of safety invariants.
         let dst = match Dfa::from_tree(dst) {
             Ok(dst) => dst,
             Err(layout::Uninhabited) => return Answer::No(Reason::DstMayHaveSafetyInvariants),
@@ -142,11 +134,17 @@ where
 {
     /// Answers whether a `Dfa` is transmutable into another `Dfa`.
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
+        debug!(src = ?self.src);
+        debug!(dst = ?self.dst);
+        debug!(
+            src_transitions_len = self.src.transitions.len(),
+            dst_transitions_len = self.dst.transitions.len()
+        );
         self.answer_memo(&mut Map::default(), self.src.start, self.dst.start)
     }
 
     #[inline(always)]
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, cache))]
     fn answer_memo(
         &self,
         cache: &mut Map<
@@ -177,28 +175,11 @@ where
         dst_state: dfa::State,
     ) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
         debug!(?src_state, ?dst_state);
-        debug!(src = ?self.src);
-        debug!(dst = ?self.dst);
-        debug!(
-            src_transitions_len = self.src.transitions.len(),
-            dst_transitions_len = self.dst.transitions.len()
-        );
         if dst_state == self.dst.accept {
-            // truncation: `size_of(Src) >= size_of(Dst)`
-            //
-            // Why is truncation OK to do? Because even though the Src is bigger, all we care about
-            // is whether we have enough data for the Dst to be valid in accordance with what its
-            // type dictates.
-            // For example, in a u8 to `()` transmutation, we have enough data available from the u8
-            // to transmute it to a `()` (though in this case does `()` really need any data to
-            // begin with? It doesn't). Same thing with u8 to fieldless struct.
-            // Now then, why is something like u8 to bool not allowed? That is not because the bool
-            // is smaller in size, but rather because those 2 bits that we are re-interpreting from
-            // the u8 could introduce invalid states for the bool type.
-            //
-            // So, if it's possible to transmute to a smaller Dst by truncating, and we can guarantee
-            // that none of the actually-used data can introduce an invalid state for Dst's type, we
-            // are able to safely transmute, even with truncation.
+            // The destination needs no more input. Union transmutation permits
+            // truncating the remaining source bytes: for example, `u8` to `()`.
+            // Compatibility of the consumed prefix is checked by the preceding
+            // transitions, including any conditions they generate for references.
             Answer::Yes
         } else if src_state == self.src.accept {
             // extension: `size_of(Src) <= size_of(Dst)`
@@ -209,14 +190,13 @@ where
             }
         } else {
             let src_quantifier = if self.assume.validity {
-                // if the compiler may assume that the programmer is doing additional validity checks,
-                // (e.g.: that `src != 3u8` when the destination type is `bool`)
-                // then there must exist at least one transition out of `src_state` such that the transmute is viable...
+                // The caller checks validity (for example, `src <= 1u8` for a
+                // `u8`-to-`bool` transmutation), so at least one source transition
+                // must admit a compatible continuation.
                 Quantifier::ThereExists
             } else {
-                // if the compiler cannot assume that the programmer is doing additional validity checks,
-                // then for all transitions out of `src_state`, such that the transmute is viable...
-                // then there must exist at least one transition out of `dst_state` such that the transmute is viable...
+                // Every source transition must admit a compatible continuation
+                // in the destination when the caller does not assume validity.
                 Quantifier::ForAll
             };
 
@@ -320,10 +300,12 @@ where
 }
 
 impl<R, T> Answer<R, T> {
+    /// Requires both answers, combining their conditions into a conjunction.
     fn and(self, rhs: Answer<R, T>) -> Answer<R, T> {
         let lhs = self;
         match (lhs, rhs) {
-            // If both are errors, then we should return the more specific one
+            // Prefer a specific reason over generic bit incompatibility;
+            // otherwise, retain the left-hand reason.
             (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
             | (Answer::No(reason), Answer::No(_))
             // If either is an error, return it
@@ -346,10 +328,15 @@ impl<R, T> Answer<R, T> {
         }
     }
 
+    /// Combines alternative answers and collects their conditions in an `IfAny`.
+    ///
+    /// Currently, combining `Yes` with `If` retains the condition. This differs
+    /// from Boolean disjunction, where unconditional success would suffice.
     fn or(self, rhs: Answer<R, T>) -> Answer<R, T> {
         let lhs = self;
         match (lhs, rhs) {
-            // If both are errors, then we should return the more specific one
+            // Prefer a specific reason over generic bit incompatibility;
+            // otherwise, retain the left-hand reason.
             (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
             | (Answer::No(reason), Answer::No(_)) => Answer::No(reason),
             // Otherwise, errors can be ignored for the rest of the pattern matching
@@ -379,6 +366,9 @@ enum Quantifier {
 }
 
 impl Quantifier {
+    /// Folds answers with `or` or `and`, stopping on `Yes` or `No`, respectively.
+    /// An empty iterator yields bit incompatibility for `ThereExists` and `Yes`
+    /// for `ForAll`.
     fn apply<R, T, I>(&self, iter: I) -> Answer<R, T>
     where
         R: layout::Region,

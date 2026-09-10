@@ -546,6 +546,9 @@ fn render_resolution_simple_<'db>(
         local_name.as_str().to_smolstr(),
         ctx.completion.edition,
     );
+    if let ScopeDef::ModuleDef(ModuleDef::Const(konst)) = resolution {
+        item.const_value(Some(konst), db, ctx.completion.display_target);
+    }
     item.set_relevance(ctx.completion_relevance())
         .set_documentation(scope_def_docs(db, resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
@@ -1941,7 +1944,9 @@ fn main() { A$0 }
                 [
                     CompletionItem {
                         label: "A",
-                        detail_left: None,
+                        detail_left: Some(
+                            " = 0",
+                        ),
                         detail_right: Some(
                             "i32",
                         ),

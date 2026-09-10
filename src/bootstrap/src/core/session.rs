@@ -586,7 +586,11 @@ impl Session {
                     );
                 }
                 Subcommand::Perf(args) => {
-                    return crate::core::build_steps::perf::perf(&Builder::new(self), args);
+                    return crate::core::build_steps::perf::perf(
+                        &Builder::new(self),
+                        args,
+                        &self.config.free_args,
+                    );
                 }
                 _cmd => {
                     debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
@@ -806,7 +810,7 @@ impl Session {
         self.out.join(target).join("json-doc")
     }
 
-    /// Output directory for combined compiler + tools docs.
+    /// Output directory for all documentation for a target
     pub(crate) fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("compiler-doc")
     }

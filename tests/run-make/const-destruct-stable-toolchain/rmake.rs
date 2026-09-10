@@ -1,5 +1,7 @@
 //@ needs-target-std
-//
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 // Test that the suggestion to constrain a type parameter that is dropped in a const
 // function with a `[const] Destruct` bound is only offered on nightly, since the bound
 // requires an unstable feature.

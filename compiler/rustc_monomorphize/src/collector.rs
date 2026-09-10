@@ -345,6 +345,8 @@ impl<'tcx> Extend<Spanned<MonoItem<'tcx>>> for MonoItems<'tcx> {
     where
         I: IntoIterator<Item = Spanned<MonoItem<'tcx>>>,
     {
+        let iter = iter.into_iter();
+        self.items.reserve(iter.size_hint().0);
         for item in iter {
             self.push(item)
         }

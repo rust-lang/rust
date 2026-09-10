@@ -63,7 +63,7 @@ use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
     LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate, find_attr,
 };
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::middle::resolve::{
     AstOwner, LifetimeRes, PartialRes, PerOwnerResolverData, ResolverAstLowering,
@@ -102,6 +102,8 @@ pub mod stability;
 pub fn provide(providers: &mut Providers) {
     providers.index_ast = index_ast;
     providers.lower_to_hir = lower_to_hir;
+    providers.resolve_type_relative_delegations =
+        delegation::resolution::resolve_type_relative_delegations;
 }
 
 #[cfg(debug_assertions)]
@@ -320,10 +322,13 @@ struct LoweringContext<'a, 'hir> {
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
 
-    /// Stack of `move(...)` collection states. A plain closure body pushes
+    /// Stack of `move(...)` collection states. A closure-like body pushes
     /// `Some`, so `move(...)` expressions can record the generated locals they
     /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
     move_expr_bindings: Vec<Option<expr::MoveExprState<'hir>>>,
+
+    /// Whether an initializer for a recorded `move(...)` is currently being lowered.
+    lowering_move_expr_initializer: bool,
 
     attribute_parser: AttributeParser<'hir>,
 }
@@ -371,6 +376,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
             move_expr_bindings: Vec::new(),
+            lowering_move_expr_initializer: false,
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),
@@ -579,7 +585,7 @@ enum TryBlockScope {
 fn index_ast<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> IndexVec<LocalDefId, Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>> {
+) -> &'tcx IndexSlice<LocalDefId, Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>> {
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
     tcx.ensure_done().early_lint_checks(());
@@ -601,8 +607,9 @@ fn index_ast<'tcx>(
 
     let index = indexer.index;
     let resolver = Arc::new(resolver);
-    let index = index.into_iter().map(|owner| Steal::new((Arc::clone(&resolver), owner))).collect();
-    return index;
+    return tcx.arena.alloc_index_slice_from_iter::<LocalDefId, _, _>(
+        index.into_iter().map(|owner| Steal::new((Arc::clone(&resolver), owner))),
+    );
 
     struct Indexer<'s, 'hir> {
         owners: &'s NodeMap<PerOwnerResolverData<'hir>>,
@@ -738,6 +745,8 @@ fn index_ast<'tcx>(
 
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
+    tcx.ensure_done().resolve_type_relative_delegations(());
+
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 

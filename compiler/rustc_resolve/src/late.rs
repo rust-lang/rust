@@ -29,7 +29,9 @@ use rustc_hir::def::{CtorKind, DefKind, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_lint_defs::builtin::{ELIDED_LIFETIMES_IN_PATHS, UNUSED_LABELS};
-use rustc_middle::middle::resolve::{DelegationInfo, LifetimeRes, PartialRes};
+use rustc_middle::middle::resolve::{
+    DelegationInfo, DelegationInherentFnKind, DelegationResolution, LifetimeRes, PartialRes,
+};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{AssocTag, Visibility};
 use rustc_middle::{bug, span_bug};
@@ -501,11 +503,11 @@ impl PathSource<'_, '_, '_> {
             | PathSource::Pat
             | PathSource::Struct(_)
             | PathSource::TupleStruct(..)
+            | PathSource::Delegation
             | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
             | PathSource::TraitItem(..)
             | PathSource::DefineOpaques
-            | PathSource::Delegation
             | PathSource::ExternItemImpl
             | PathSource::PreciseCapturingArg(..)
             | PathSource::Macro
@@ -3603,7 +3605,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                 let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
                                                     with_owner(this, item.id, |this| {
-                                                        this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id, of_trait.is_some());
+                                                        this.resolve_impl_item(
+                                                            &**item,
+                                                            &mut seen_trait_items,
+                                                            trait_id,
+                                                            of_trait.is_some(),
+                                                            self_type.id,
+                                                        );
                                                     })
                                                 }
                                             });
@@ -3646,6 +3654,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
         is_in_trait_impl: bool,
+        self_type_id: NodeId,
     ) {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
@@ -3747,6 +3756,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     },
                 );
 
+                if !is_in_trait_impl {
+                    self.fill_delegation_inherent_fn_map(self_type_id, ident);
+                }
+
                 self.resolve_define_opaques(define_opaque);
             }
             AssocItemKind::Type(TyAlias { ident, generics, .. }) => {
@@ -3789,6 +3802,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeBinderKind::Function,
                     delegation.path.segments.last().unwrap().ident.span,
                     |this| {
+                        if !is_in_trait_impl {
+                            this.fill_delegation_inherent_fn_map(
+                                self_type_id,
+                                // If rename is specified then ident equals rename.
+                                &delegation.ident,
+                            );
+                        }
+
                         this.check_trait_item(
                             item.id,
                             delegation.ident,
@@ -3811,6 +3832,34 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         }
         self.diag_metadata.current_impl_item = prev;
+    }
+
+    /// A heuristic to resolve delegations to inherent impls during AST -> HIR lowering.
+    /// Ideally we would do it through `ProbeContext`, however now it is impossible due to
+    /// query cycles even in the code without errors.
+    /// Not all paths will be properly resolved this way (i.e., type aliases).
+    /// FIXME(fn_delegation): remove it when resolution through `ProbeContext` will be ready
+    fn fill_delegation_inherent_fn_map(&mut self, self_type_id: NodeId, ident: &Ident) {
+        let res = self.r.partial_res_map.get(&self_type_id);
+
+        let Some(self_type_def_id) = res.and_then(|res| {
+            res.full_res().and_then(|r| r.opt_def_id()).and_then(|id| id.as_local())
+        }) else {
+            return;
+        };
+
+        // FIXME(fn_delegation): use correct identifier hygiene
+        let map = self.r.delegation_inherent_fn_map.entry(self_type_def_id).or_default();
+
+        match map.get(ident) {
+            None => {
+                map.insert(*ident, DelegationInherentFnKind::Single(self.r.current_owner.def_id));
+            }
+            Some(DelegationInherentFnKind::Single(..)) => {
+                map.insert(*ident, DelegationInherentFnKind::Ambig);
+            }
+            _ => {}
+        };
     }
 
     fn check_trait_item<F>(
@@ -3985,22 +4034,39 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         });
 
         let resolution_node_id = if is_in_trait_impl { item_id } else { delegation.id };
-        let def_id = self
+        let resolution = self
             .r
             .partial_res_map
             .get(&resolution_node_id)
-            .and_then(|r| r.expect_full_res().opt_def_id());
+            .map(|r| match r.full_res().and_then(|r| r.opt_def_id()) {
+                None => {
+                    // If we are inside trait impl delegation is either resolved or not.
+                    assert!(!is_in_trait_impl);
+                    DelegationResolution::Partial
+                }
+                Some(def_id) => {
+                    // If we are inside trait impl do additional check if call path is resolved,
+                    // this will later be used to decide if we should apply type-relative resolution
+                    // routine during call path resolution in AST -> HIR lowering.
+                    if is_in_trait_impl {
+                        let path_res = self.r.partial_res_map[&delegation.id];
 
-        let resolution_id = def_id.ok_or_else(|| {
-            self.r.tcx.dcx().span_delayed_bug(
-                delegation.path.span,
-                format!(
-                    "LateResolutionVisitor: couldn't resolve node {resolution_node_id:?} in delegation item",
-                ),
-            )
-        });
+                        if path_res.full_res().and_then(|r| r.opt_def_id()).is_none() {
+                            return DelegationResolution::PartialCall(def_id);
+                        }
+                    }
 
-        let info = DelegationInfo { resolution_id };
+                    DelegationResolution::Full(def_id)
+                }
+            })
+            .unwrap_or_else(|| {
+                DelegationResolution::Error(self.r.tcx.dcx().span_delayed_bug(
+                    delegation.path.span,
+                    format!("bad resolution for delegation {item_id:?}"),
+                ))
+            });
+
+        let info = DelegationInfo { resolution };
         self.r.delegation_infos.insert(self.r.current_owner.def_id, info);
 
         let Some(body) = &delegation.body else { return };

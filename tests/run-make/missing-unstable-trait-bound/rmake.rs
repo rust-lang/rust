@@ -2,6 +2,8 @@
 //@ ignore-wasm32
 //@ ignore-wasm64
 // ignore-tidy-linelength
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 // Ensure that on stable we don't suggest restricting with an unsafe trait and we continue
 // mentioning the rest of the obligation chain.

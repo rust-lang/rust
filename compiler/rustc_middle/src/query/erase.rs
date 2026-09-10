@@ -13,6 +13,7 @@ use std::mem::MaybeUninit;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_index::{Idx, IndexSlice};
 use rustc_span::def_id::ModId;
 use rustc_span::{ErrorGuaranteed, Spanned};
 
@@ -118,6 +119,10 @@ impl<T> Erasable for &'_ [T] {
     type Storage = [u8; size_of::<&'_ [()]>()];
 }
 
+impl<I: Idx, T> Erasable for &'_ IndexSlice<I, T> {
+    type Storage = [u8; size_of::<&'_ [()]>()];
+}
+
 // Note: this impl does not overlap with the impl for `&'_ T` above because `RawList` is unsized
 // and does not satisfy the implicit `T: Sized` bound.
 //
@@ -170,6 +175,7 @@ macro_rules! impl_erasable_for_types_with_no_type_params {
 // `[u8; size_of::<Foo>()]`. ('_ lifetimes are allowed.)
 impl_erasable_for_types_with_no_type_params! {
     // tidy-alphabetical-start
+    &'_ str,
     (&'_ ty::CrateInherentImpls, Result<(), ErrorGuaranteed>),
     (),
     (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>, ty::RequiredDepth),

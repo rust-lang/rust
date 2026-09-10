@@ -1571,8 +1571,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Static { .. } = def_kind {
                 if !self.tcx.is_foreign_item(def_id) {
-                    let data = self.tcx.eval_static_initializer(def_id).unwrap();
-                    record!(self.tables.eval_static_initializer[def_id] <- data);
+                    match self.tcx.eval_static_initializer(def_id) {
+                        Ok(data) => record!(self.tables.eval_static_initializer[def_id] <- data),
+                        Err(err) => match err {
+                            interpret::ErrorHandled::Reported(_, _) => {
+                                self.tcx.dcx().delayed_bug(format!(
+                                    "eval_static_initializer returned an error in metadata emission"
+                                ));
+                            }
+                            interpret::ErrorHandled::TooGeneric(span) => {
+                                span_bug!(span, "generic static???");
+                            }
+                        },
+                    };
                 }
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
@@ -2091,7 +2102,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.crate_dep_kind(cnum),
-                    extra_filename: self.tcx.extra_filename(cnum).clone(),
+                    extra_filename: self.tcx.extra_filename(cnum).to_owned(),
                     is_private: self.tcx.is_private_dep(cnum),
                 };
                 (cnum, dep)

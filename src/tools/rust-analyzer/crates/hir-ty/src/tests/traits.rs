@@ -5372,7 +5372,7 @@ impl<'a, 'b> Trait<'a, 'b> for Foo {}
 fn run_dyn<'b>(val: &dyn for<'a> Trait<'a, 'b>) {}
 "#,
         expect![[r#"
-            91..94 'val': &'? (dyn Trait<'_, '_> + 'static)
+            91..94 'val': &'? (dyn Trait<'?0.0, '_> + 'static)
             124..126 '{}': ()
         "#]],
     );

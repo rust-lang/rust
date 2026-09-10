@@ -1,1 +1,1 @@
-COMMENT "/** /*! /* comment */ */\n" error: Missing trailing `*/` symbols to terminate the block comment
+OUTER_DOC_COMMENT "/** /*! /* comment */ */\n" error: Missing trailing `*/` symbols to terminate the block comment

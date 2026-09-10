@@ -1,3 +1,7 @@
+//@ revisions: msvc non-msvc
+
+//@ [msvc] only-msvc
+//@ [non-msvc] ignore-msvc
 //@ ignore-android: FIXME(#10381)
 //@ ignore-windows-gnu: #128981
 //@ compile-flags:-g
@@ -20,10 +24,12 @@
 //@ lldb-command:run
 
 //@ lldb-command:v slice
-//@ lldb-check:(&[i32]) slice = size=3 { [0] = 0 [1] = 1 [2] = 2 }
+//@ [non-msvc] lldb-check:(&[i32]) slice = size=3 { [0] = 0 [1] = 1 [2] = 2 }
+//@ [msvc] lldb-check:(&[i32]) slice = [0, 1, 2] { [0] = 0 [1] = 1 [2] = 2 }
 
 //@ lldb-command:v mut_slice
-//@ lldb-check:(&mut [i32]) mut_slice = size=4 { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
+//@ [non-msvc] lldb-check:(&mut [i32]) mut_slice = size=4 { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
+//@ [msvc] lldb-check:(&mut [i32]) mut_slice = [2, 3, 5, 7] { [0] = 2 [1] = 3 [2] = 5 [3] = 7 }
 
 //@ lldb-command:v str_slice
 //@ lldb-check:(&str) str_slice = "string slice" { [0] = 's' [1] = 't' [2] = 'r' [3] = 'i' [4] = 'n' [5] = 'g' [6] = ' ' [7] = 's' [8] = 'l' [9] = 'i' [10] = 'c' [11] = 'e' }

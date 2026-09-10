@@ -1,21 +1,8 @@
 error: expected trait, found struct `X`
-  --> $DIR/inherent-impls-glob-list.rs:19:11
+  --> $DIR/inherent-impls-glob-list.rs:17:11
    |
 LL |     reuse X::*;
    |           ^ not a trait
 
-error[E0425]: cannot find function `foo` in `X`
-  --> $DIR/inherent-impls-glob-list.rs:13:15
-   |
-LL |     reuse X::{foo, foo2} { X }
-   |               ^^^ not found in `X`
+error: aborting due to 1 previous error
 
-error[E0425]: cannot find function `foo2` in `X`
-  --> $DIR/inherent-impls-glob-list.rs:13:20
-   |
-LL |     reuse X::{foo, foo2} { X }
-   |                    ^^^^ not found in `X`
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0425`.

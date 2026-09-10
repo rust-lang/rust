@@ -631,8 +631,7 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                 self.consume_expr(rhs)?;
             }
 
-            Expr::Block { ref statements, tail, .. }
-            | Expr::Unsafe { ref statements, tail, .. } => {
+            Expr::Block { ref statements, tail, .. } => {
                 for stmt in statements {
                     self.walk_stmt(stmt)?;
                 }

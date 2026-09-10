@@ -9,13 +9,11 @@
    LL|      1|fn for_loop(items: &[&str]) {
    LL|      1|    say("hello");
    LL|       |
-   LL|      3|    for item in items {
-                              ^1
+   LL|      1|    for item in items {
    LL|      3|        say(item);
-   LL|      3|    }
+   LL|       |    }
    LL|       |
-   LL|      3|    for item in items {
-                              ^1
+   LL|      1|    for item in items {
    LL|      3|        say(item)
    LL|       |    }
    LL|       |

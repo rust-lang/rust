@@ -3,6 +3,7 @@ use rustc_middle::ty::{
     self, Const, DelayedMap, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
+use rustc_type_ir::PredicateProxy;
 
 use super::{FixupError, FixupResult, InferCtxt};
 use crate::infer::TyOrConstInferVar;
@@ -57,7 +58,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if !p.has_non_region_infer() { p } else { p.super_fold_with(self) }
     }
 

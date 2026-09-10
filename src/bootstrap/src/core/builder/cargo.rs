@@ -723,12 +723,6 @@ impl Builder<'_> {
         }
 
         if cmd_kind == Kind::Doc {
-            // Will be stabilized soon -> let's dogfood it.
-            // No effect on doc output but massive doc-generation time improvements.
-            cargo.arg("-Zrustdoc-mergeable-info");
-
-            // FIXME: remove this directory clearing here, and do it explicitly in individua doc
-            // steps, to reduce dependency on implicit doc output paths.
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget => {
@@ -1024,9 +1018,9 @@ impl Builder<'_> {
         // Avoid doing this during dry run as that usually means the relevant
         // compiler is not yet linked/copied properly.
         //
-        // Only clear out the directory if we're compiling std; otherwise, we
+        // Only clear out the directory if we're running Cargo on std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
-        if !self.config.dry_run() && mode == Mode::Std && cmd_kind == Kind::Build {
+        if !self.config.dry_run() && mode == Mode::Std {
             build_stamp::clear_if_dirty(self, &out_dir, &self.rustc(compiler));
         }
 

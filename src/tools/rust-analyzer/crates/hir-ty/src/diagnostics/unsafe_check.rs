@@ -8,7 +8,10 @@ use hir_def::{
     AdtId, CallableDefId, DefWithBodyId, ExpressionStoreOwnerId, FieldId, FunctionId, GenericDefId,
     VariantId,
     expr_store::{Body, ExpressionStore, path::Path},
-    hir::{AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp},
+    hir::{
+        AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp,
+        Unsafe,
+    },
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     signatures::{FunctionSignature, StaticFlags, StaticSignature},
     type_ref::Rawness,
@@ -391,7 +394,7 @@ impl<'db> UnsafeVisitor<'db> {
                     self.on_unsafe_op(current.into(), UnsafetyReason::UnionField);
                 }
             }
-            Expr::Unsafe { statements, .. } => {
+            Expr::Block { unsafe_: Unsafe::Yes, statements, .. } => {
                 self.with_inside_unsafe_block(InsideUnsafeBlock::Yes, |this| {
                     this.walk_pats_top(
                         statements.iter().filter_map(|statement| match statement {
@@ -404,7 +407,7 @@ impl<'db> UnsafeVisitor<'db> {
                 });
                 return;
             }
-            Expr::Block { statements, .. } => {
+            Expr::Block { unsafe_: Unsafe::No, statements, .. } => {
                 self.walk_pats_top(
                     statements.iter().filter_map(|statement| match statement {
                         &Statement::Let { pat, .. } => Some(pat),

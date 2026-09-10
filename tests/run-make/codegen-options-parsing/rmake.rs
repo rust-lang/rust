@@ -2,6 +2,8 @@
 // contain specific helpful indications.
 
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::regex::Regex;
 use run_make_support::rustc;

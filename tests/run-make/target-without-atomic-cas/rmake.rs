@@ -5,6 +5,8 @@
 
 // ignore-tidy-linelength
 //@ needs-llvm-components: arm
+//@ ignore-backends: gcc
+
 // Note: without the needs-llvm-components it will fail on LLVM built without all of the components
 // listed above. If any new targets are added, please double-check their respective llvm components
 // are specified above.

@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             provided_ty
         };
 
-        if !self.may_coerce(expected_ty, dummy_ty) {
+        if !self.may_coerce_except_never(expected_ty, dummy_ty) {
             return;
         }
         let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
@@ -2003,7 +2003,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if item_ty.has_param() {
             return false;
         }
-        if self.may_coerce(item_ty, expected_ty) {
+        // An unused associated const of type `!` may not have been evaluated yet. Do not
+        // suggest referring to it just because `!` can coerce to the expected type.
+        if self.may_coerce_except_never(item_ty, expected_ty) {
             err.span_suggestion_verbose(
                 segment.ident.span,
                 format!("try referring to the associated const `{capitalized_name}` instead",),
@@ -2367,7 +2369,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             return false;
         };
-        if is_ctor || !self.may_coerce(args.type_at(0), expected) {
+        let inner_ty = args.type_at(0);
+
+        // For `Option<!>` where `Option<u32>` is expected, extracting `!` cannot produce
+        // an `Option<u32>`. Never-to-any coercion alone must not justify `.expect()` or `?`.
+        if is_ctor || !self.may_coerce_except_never(inner_ty, expected) {
             return false;
         }
 
@@ -2972,8 +2978,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();
-
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
+            // Handle call arguments that need another shared or mutable reference, such as
+            // `&T` to `&&T` or `&T` to `&mut &T`.
+            // Keep ordinary `T` to `&T` cases on later path so its more
+            // specific suggestions, such as `Option::as_ref()`, are preserved.
+            (_, &ty::Ref(_, exp, mutability), _)
+                if exp.is_ref()
+                    && matches!(
+                        self.tcx.parent_hir_node(expr.hir_id),
+                        hir::Node::Expr(hir::Expr {
+                            kind:
+                                hir::ExprKind::Call(_, args)
+                                | hir::ExprKind::MethodCall(_, _, args, _),
+                            ..
+                        }) if args.iter().any(|arg| arg.hir_id == expr.hir_id)
+                    )
+                    && self.can_eq(self.param_env, exp, checked_ty) =>
+            {
+                let borrow = mutability.ref_prefix_str();
+                let sugg = if expr_needs_parens(expr) {
+                    vec![
+                        (sp.shrink_to_lo(), format!("{borrow}(")),
+                        (sp.shrink_to_hi(), ")".to_string()),
+                    ]
+                } else {
+                    vec![(sp.shrink_to_lo(), borrow.to_string())]
+                };
+                return Some((
+                    sugg,
+                    format!("consider {}borrowing here", mutability.mutably_str()),
+                    Applicability::MachineApplicable,
+                    false,
+                ));
+            }
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind

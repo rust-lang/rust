@@ -11,7 +11,7 @@
    LL|       |
    LL|      1|    for item in items {
    LL|      1|        say(item);
-   LL|      1|    }
+   LL|       |    }
    LL|       |
    LL|      1|    for item in items {
    LL|      1|        say(item)

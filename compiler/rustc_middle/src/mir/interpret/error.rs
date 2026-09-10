@@ -418,7 +418,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidNichedEnumVariantWritten { enum_ty: Ty<'tcx> },
     /// ABI-incompatible argument types.
     AbiMismatchArgument {
-        /// The index of the argument whose type is wrong.
+        /// The index of the argument whose type is wrong (starting at index 0).
         arg_idx: usize,
         caller_ty: Ty<'tcx>,
         callee_ty: Ty<'tcx>,

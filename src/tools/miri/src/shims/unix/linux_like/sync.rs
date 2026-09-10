@@ -16,7 +16,7 @@ pub fn futex<'tcx>(
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let ([addr, op, val], varargs) =
-        ecx.check_varargs(shim_varargs![*_, i32, u32], varargs, "syscall(SYS_futex, ...)")?;
+        ecx.check_varargs(shim_varargs![*u32, i32, u32], varargs, "syscall(SYS_futex, ...)")?;
 
     // See <https://man7.org/linux/man-pages/man2/futex.2.html> for docs.
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
@@ -52,7 +52,7 @@ pub fn futex<'tcx>(
 
             let (timeout, bitset) = if wait_bitset {
                 let ([timeout, uaddr2, bitset], _) = ecx.check_varargs(
-                    shim_varargs![*_, *_, u32],
+                    shim_varargs![*libc::timespec, *u32, u32],
                     varargs,
                     "syscall(SYS_futex, ...)",
                 )?;
@@ -62,8 +62,11 @@ pub fn futex<'tcx>(
                 }
                 (timeout, ecx.read_scalar(bitset)?.to_u32()?)
             } else {
-                let ([timeout], _) =
-                    ecx.check_varargs(shim_varargs![*_], varargs, "syscall(SYS_futex, ...)")?;
+                let ([timeout], _) = ecx.check_varargs(
+                    shim_varargs![*libc::timespec],
+                    varargs,
+                    "syscall(SYS_futex, ...)",
+                )?;
                 (timeout, u32::MAX)
             };
 
@@ -199,7 +202,7 @@ pub fn futex<'tcx>(
 
             let bitset = if op == futex_wake_bitset {
                 let ([timeout, uaddr2, bitset], _) = ecx.check_varargs(
-                    shim_varargs![*_, *_, u32],
+                    shim_varargs![*libc::timespec, *u32, u32],
                     varargs,
                     "syscall(SYS_futex, ...)",
                 )?;

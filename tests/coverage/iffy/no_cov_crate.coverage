@@ -69,9 +69,9 @@
    LL|      1|        fn inner(is_true: bool) {
    LL|      1|            if is_true {
    LL|      1|                println!("called and covered");
-   LL|      1|            } else {
+   LL|       |            } else {
    LL|      0|                println!("absolutely not covered");
-   LL|      0|            }
+   LL|       |            }
    LL|      1|        }
    LL|      1|    }
    LL|       |}

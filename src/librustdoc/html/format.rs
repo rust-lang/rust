@@ -543,6 +543,7 @@ pub(crate) fn href_with_root_path(
     original_did: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
+    preferred_name: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(original_did);
@@ -553,7 +554,9 @@ pub(crate) fn href_with_root_path(
         }
         // If this a constructor, we get the parent (either a struct or a variant) and then
         // generate the link for this item.
-        DefKind::Ctor(..) => return href_with_root_path(tcx.parent(original_did), cx, root_path),
+        DefKind::Ctor(..) => {
+            return href_with_root_path(tcx.parent(original_did), cx, root_path, preferred_name);
+        }
         DefKind::ExternCrate => {
             // Link to the crate itself, not the `extern crate` item.
             if let Some(local_did) = original_did.as_local() {
@@ -564,7 +567,7 @@ pub(crate) fn href_with_root_path(
         }
         _ => original_did,
     };
-    if is_unnamable(cx.tcx(), did) {
+    if is_unnamable(tcx, did) {
         return Err(HrefError::UnnamableItem);
     }
     let cache = cx.cache();
@@ -586,12 +589,12 @@ pub(crate) fn href_with_root_path(
     }
 
     let (fqp, shortty, url_parts, is_absolute) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (
-            fqp,
-            shortty,
+        Some(info) => (
+            info.get_preferred_path(preferred_name),
+            info.ty,
             {
-                let module_fqp = to_module_fqp(shortty, fqp.as_slice());
-                debug!(?fqp, ?shortty, ?module_fqp);
+                let module_fqp = to_module_fqp(info.ty, info.parts.as_slice());
+                debug!(?info.parts, ?info.ty, ?module_fqp);
                 href_relative_parts(module_fqp, relative_to)
             },
             false,
@@ -604,7 +607,7 @@ pub(crate) fn href_with_root_path(
             if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&def_id_to_get) {
                 let module_fqp = to_module_fqp(shortty, fqp);
                 let (parts, is_absolute) = url_parts(cache, did, module_fqp, relative_to)?;
-                (fqp, shortty, parts, is_absolute)
+                (fqp.as_slice(), shortty, parts, is_absolute)
             } else if matches!(def_kind, DefKind::Macro(_)) {
                 return generate_macro_def_id_path(did, cx, root_path);
             } else if did.is_local() {
@@ -617,12 +620,20 @@ pub(crate) fn href_with_root_path(
     Ok(HrefInfo {
         url: make_href(root_path, shortty, url_parts, fqp, is_absolute),
         kind: shortty,
-        rust_path: fqp.clone(),
+        rust_path: fqp.to_vec(),
     })
 }
 
 pub(crate) fn href(did: DefId, cx: &Context<'_>) -> Result<HrefInfo, HrefError> {
-    href_with_root_path(did, cx, None)
+    href_with_root_path(did, cx, None, None)
+}
+
+pub(crate) fn href_with_path_check(
+    did: DefId,
+    cx: &Context<'_>,
+    text: &str,
+) -> Result<HrefInfo, HrefError> {
+    href_with_root_path(did, cx, None, Some(text))
 }
 
 /// Both paths should only be modules.
@@ -660,14 +671,21 @@ pub(crate) fn link_tooltip(
     did: DefId,
     fragment: &Option<UrlFragment>,
     cx: &Context<'_>,
+    preferred_name: Option<&str>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         let cache = cx.cache();
-        let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
+        let Some((fqp, shortty)) = cache
+            .paths
+            .get(&did)
+            .map(|info| (info.get_preferred_path(preferred_name), info.ty))
+            .or_else(|| {
+                cache.external_paths.get(&did).map(|(fqp, shortty)| (fqp.as_slice(), *shortty))
+            })
         else {
             return Ok(());
         };
-        let fqp = if *shortty == ItemType::Primitive {
+        let fqp = if shortty == ItemType::Primitive {
             // primitives are documented in a crate, but not actually part of it
             slice::from_ref(fqp.last().unwrap())
         } else {
@@ -679,7 +697,7 @@ pub(crate) fn link_tooltip(
             for component in fqp {
                 write!(f, "{component}::")?;
             }
-            if *shortty == ItemType::Enum && tcx.def_kind(id) == DefKind::Field {
+            if shortty == ItemType::Enum && tcx.def_kind(id) == DefKind::Field {
                 write!(f, "{}::", tcx.item_name(tcx.parent(id)))?;
             }
             write!(f, "{}", tcx.item_name(id))?;

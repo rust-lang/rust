@@ -7,6 +7,7 @@
 use moto_rt::libc;
 
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::alloc::Allocator;
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
 use crate::marker::PhantomData;
@@ -474,7 +475,7 @@ impl<T: AsFd + ?Sized> AsFd for crate::rc::UniqueRc<T> {
 }
 
 #[stable(feature = "asfd_ptrs", since = "1.64.0")]
-impl<T: AsFd + ?Sized> AsFd for Box<T> {
+impl<T: AsFd + ?Sized, A: Allocator> AsFd for Box<T, A> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()

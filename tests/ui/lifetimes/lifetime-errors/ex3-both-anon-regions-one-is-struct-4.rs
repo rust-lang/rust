@@ -1,8 +1,13 @@
-struct Ref<'a, 'b> { a: &'a u32, b: &'b u32 }
+// Regression test for #91831
 
-fn foo(mut y: Ref, x: &u32) {
-    y.b = x;
-    //~^ ERROR lifetime may not live long enough
+struct Foo<'a>(&'a i32);
+
+impl<'a> Foo<'a> {
+    fn modify(&'a mut self) {}
 }
 
-fn main() { }
+fn bar(foo: &mut Foo) {
+    foo.modify(); //~ ERROR lifetime may not live long enough
+}
+
+fn main() {}

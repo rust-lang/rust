@@ -1031,11 +1031,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )
             }
             ModuleOrUniformRoot::OpenModule(sym) => {
-                let open_ns_name = format!("{}::{}", sym.as_str(), ident.name);
-                let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(&open_ns_name));
-                match self.extern_prelude_get_flag(ns_ident, ident.span, finalize.is_some()) {
-                    Some(decl) => Ok(decl),
-                    None => Err(Determinacy::Determined),
+                if ns != TypeNS {
+                    Err(Determined)
+                } else {
+                    if ident.name == kw::SelfLower {
+                        let res = Res::OpenMod(sym);
+                        return Ok(self.arenas.new_pub_def_decl(
+                            res,
+                            ident.span,
+                            LocalExpnId::ROOT,
+                        ));
+                    }
+
+                    let open_ns_name = format!("{}::{}", sym.as_str(), ident.name);
+                    let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(&open_ns_name));
+                    match self.extern_prelude_get_flag(ns_ident, ident.span, finalize.is_some()) {
+                        Some(decl) => Ok(decl),
+                        None => Err(Determined),
+                    }
                 }
             }
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(

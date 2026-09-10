@@ -42,16 +42,16 @@ use std::{
 use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, AttrDefId, ConstId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, LocalFieldId, Lookup, StaticId, TraitId,
-    TupleFieldId, TupleId, VariantId,
+    AdtId, AssocItemId, AttrDefId, DefWithBodyId, ExpressionStoreOwnerId, FieldId, FunctionId,
+    GenericDefId, GenericParamId, HasModule, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId,
+    VariantId,
     attrs::AttrFlags,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
     hir::{BindingId, ExprId, ExprOrPatId, ExprOrPatIdPacked, LabelId, PatId, UnaryOp},
     lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
-    signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
+    signatures::EnumSignature,
     type_ref::{LifetimeRefId, TypeRefId},
     unstable_features::UnstableFeatures,
 };
@@ -74,7 +74,7 @@ use thin_vec::ThinVec;
 
 use crate::{
     ImplTraitId, IncorrectGenericsLenKind, InferBodyId, PathLoweringDiagnostic, Span,
-    TargetFeatures,
+    TargetFeatures, ValueTyDefId,
     closure_analysis::PlaceBase,
     consteval::{create_anon_const, path_to_const},
     db::{AnonConstId, GeneralConstId, HirDatabase, InternedOpaqueTyId},
@@ -95,8 +95,8 @@ use crate::{
         unify::resolve_completely::WriteBackCtxt,
     },
     lower::{
-        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, LifetimeLoweringMode,
-        LoweringMode, diagnostics::TyLoweringDiagnostic,
+        ImplTraitIdx, LifetimeElisionKind, LifetimeLoweringMode, LoweringMode,
+        diagnostics::TyLoweringDiagnostic,
     },
     method_resolution::CandidateId,
     next_solver::{
@@ -152,8 +152,8 @@ pub fn infer_query_with_inspect<'db>(
         DefWithBodyId::FunctionId(f) => {
             ctx.collect_fn(f, body.self_param.map(|param| param.formal), &body.params)
         }
-        DefWithBodyId::ConstId(c) => ctx.collect_const(c, ConstSignature::of(db, c)),
-        DefWithBodyId::StaticId(s) => ctx.collect_static(s, StaticSignature::of(db, s)),
+        DefWithBodyId::ConstId(c) => ctx.collect_const_or_static(c.into()),
+        DefWithBodyId::StaticId(s) => ctx.collect_const_or_static(s.into()),
         DefWithBodyId::VariantId(v) => {
             ctx.return_ty = match EnumSignature::variant_body_type(db, v.lookup(db).parent) {
                 hir_def::layout::IntegerType::Pointer(signed) => match signed {
@@ -285,14 +285,6 @@ pub enum ByRef {
 /// `.1` is the mutability of the binding.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct BindingMode(pub ByRef, pub Mutability);
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum InferenceTyDiagnosticSource {
-    /// Diagnostics that come from types in the body.
-    Body,
-    /// Diagnostics that come from types in fn parameters/return type, or static & const types.
-    Signature,
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, TypeVisitable, TypeFoldable)]
 pub enum InferenceDiagnostic {
@@ -475,8 +467,6 @@ pub enum InferenceDiagnostic {
         cast_ty: StoredTy,
     },
     TyDiagnostic {
-        #[type_visitable(ignore)]
-        source: InferenceTyDiagnosticSource,
         #[type_visitable(ignore)]
         diag: TyLoweringDiagnostic,
     },
@@ -1530,6 +1520,7 @@ impl<'db> InferenceContext<'db> {
             );
         }
         self.defined_anon_consts.borrow_mut().extend(other.defined_anon_consts.iter().copied());
+        self.diagnostics.extend(&other.diagnostics);
 
         fn merge_hash_set<T: Hash + Eq + Clone>(dest: &mut FxHashSet<T>, source: &FxHashSet<T>) {
             dest.extend(source.iter().cloned());
@@ -1764,28 +1755,9 @@ impl<'db> InferenceContext<'db> {
         result
     }
 
-    fn collect_const(&mut self, id: ConstId, data: &'db ConstSignature) {
-        let return_ty = self.make_ty(
-            data.type_ref,
-            &data.store,
-            InferenceTyDiagnosticSource::Signature,
-            ExpressionStoreOwnerId::Signature(id.into()),
-            LifetimeElisionKind::for_const(self.interner(), id.loc(self.db).container),
-        );
-
-        self.return_ty = return_ty;
-    }
-
-    fn collect_static(&mut self, id: StaticId, data: &'db StaticSignature) {
-        let return_ty = self.make_ty(
-            data.type_ref,
-            &data.store,
-            InferenceTyDiagnosticSource::Signature,
-            ExpressionStoreOwnerId::Signature(id.into()),
-            LifetimeElisionKind::Elided(self.types.regions.statik),
-        );
-
-        self.return_ty = return_ty;
+    fn collect_const_or_static(&mut self, id: ValueTyDefId) {
+        let return_ty = self.db.value_ty(id).unwrap().instantiate_identity().skip_norm_wip();
+        self.return_ty = self.process_remote_user_written_ty(return_ty);
     }
 
     fn collect_fn(
@@ -1794,63 +1766,40 @@ impl<'db> InferenceContext<'db> {
         self_param: Option<BindingId>,
         params: &[Param<PatId>],
     ) {
-        let data = FunctionSignature::of(self.db, func);
-        let mut param_tys = self.with_ty_lowering(
-            &data.store,
-            InferenceTyDiagnosticSource::Signature,
-            ExpressionStoreOwnerId::Signature(func.into()),
-            LifetimeElisionKind::for_fn_params(data),
-            |ctx| data.params.iter().map(|&type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>(),
+        let sig = self.interner().liberate_late_bound_regions(
+            func.into(),
+            self.db.callable_item_signature(func.into()).instantiate_identity().skip_norm_wip(),
         );
 
-        // Check if function contains a va_list, if it does then we append it to the parameter types
-        // that are collected from the function data
-        if data.is_varargs() {
-            let va_list_ty = match self.resolve_va_list() {
-                Some(va_list) => Ty::new_adt(
-                    self.interner(),
-                    va_list,
-                    GenericArgs::for_item_with_defaults(
-                        self.interner(),
-                        va_list.into(),
-                        |_, id, _| self.table.var_for_def(id, Span::Dummy),
-                    ),
-                ),
-                None => self.err_ty(),
-            };
+        // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
+        // (as it's created inside the body itself, not passed in from outside).
+        let maybe_va_list =
+            if sig.fn_sig_kind.c_variadic() { self.resolve_va_list() } else { None };
+        let maybe_va_list = maybe_va_list.map(|va_list| {
+            let region = self.table.next_region_var(
+                params.last().expect("variadic function must have parameters").user_written.into(),
+            );
+            Ty::new_adt(self.interner(), va_list, GenericArgs::new_from_slice(&[region.into()]))
+        });
 
-            param_tys.push(va_list_ty);
-        }
-        let mut param_tys = param_tys.into_iter();
+        let mut param_tys = sig.inputs().iter().copied();
+
         if let Some(self_param) = self_param
             && let Some(ty) = param_tys.next()
         {
-            let ty = self.process_user_written_ty(ty);
+            let ty = self.process_remote_user_written_ty(ty);
             self.write_binding_ty(self_param, ty);
         }
+
+        let mut param_tys = param_tys.chain(maybe_va_list);
         for pat in params {
             let ty = param_tys.next().unwrap_or_else(|| self.table.next_ty_var(Span::Dummy));
-            let ty = self.process_user_written_ty(ty);
+            let ty = self.process_remote_user_written_ty(ty);
 
             self.infer_top_pat(pat.formal, ty, PatOrigin::Param);
         }
-        self.return_ty = match data.ret_type {
-            Some(return_ty) => {
-                let return_ty = self.with_ty_lowering(
-                    &data.store,
-                    InferenceTyDiagnosticSource::Signature,
-                    ExpressionStoreOwnerId::Signature(func.into()),
-                    LifetimeElisionKind::for_fn_ret(self.interner()),
-                    |ctx| {
-                        ctx.impl_trait_mode(ImplTraitLoweringMode::Opaque);
-                        ctx.lower_ty(return_ty)
-                    },
-                );
-                self.process_user_written_ty(return_ty)
-            }
-            None => self.types.types.unit,
-        };
 
+        self.return_ty = self.process_remote_user_written_ty(sig.output());
         self.return_coercion = Some(CoerceMany::new(self.return_ty));
     }
 
@@ -1983,74 +1932,31 @@ impl<'db> InferenceContext<'db> {
         self.deferred_call_resolutions.remove(&closure_def_id).unwrap_or_default()
     }
 
-    fn with_ty_lowering<R>(
-        &mut self,
-        store: &'db ExpressionStore,
-        types_source: InferenceTyDiagnosticSource,
-        store_owner: ExpressionStoreOwnerId,
-        lifetime_elision: LifetimeElisionKind<'db>,
-        f: impl FnOnce(&mut TyLoweringContext<'db, '_>) -> R,
-    ) -> R {
-        let infer_vars = match types_source {
-            InferenceTyDiagnosticSource::Body => Some(&mut InferenceTyLoweringVarsCtx {
-                table: &mut self.table,
-                type_of_type_placeholder: &mut self.result.type_of_type_placeholder,
-            } as _),
-            InferenceTyDiagnosticSource::Signature => None,
+    fn with_ty_lowering<R>(&mut self, f: impl FnOnce(&mut TyLoweringContext<'db, '_>) -> R) -> R {
+        let mut infer_vars = InferenceTyLoweringVarsCtx {
+            table: &mut self.table,
+            type_of_type_placeholder: &mut self.result.type_of_type_placeholder,
         };
         let mut ctx = TyLoweringContext::new(
             self.db,
             &self.resolver,
-            store,
+            self.store,
             &self.diagnostics,
-            types_source,
-            store_owner,
+            self.store_owner,
             self.generic_def,
             &self.generics,
-            lifetime_elision,
+            LifetimeElisionKind::Infer,
             self.allow_using_generic_params,
-            infer_vars,
+            &mut infer_vars,
             &self.defined_anon_consts,
             LifetimeLoweringMode::LateParam,
         );
         f(&mut ctx)
     }
 
-    fn with_body_ty_lowering<R>(
-        &mut self,
-        f: impl FnOnce(&mut TyLoweringContext<'db, '_>) -> R,
-    ) -> R {
-        self.with_ty_lowering(
-            self.store,
-            InferenceTyDiagnosticSource::Body,
-            self.store_owner,
-            LifetimeElisionKind::Infer,
-            f,
-        )
-    }
-
-    fn make_ty(
-        &mut self,
-        type_ref: TypeRefId,
-        store: &'db ExpressionStore,
-        type_source: InferenceTyDiagnosticSource,
-        store_owner: ExpressionStoreOwnerId,
-        lifetime_elision: LifetimeElisionKind<'db>,
-    ) -> Ty<'db> {
-        let ty = self.with_ty_lowering(store, type_source, store_owner, lifetime_elision, |ctx| {
-            ctx.lower_ty(type_ref)
-        });
+    pub(crate) fn make_ty(&mut self, type_ref: TypeRefId) -> Ty<'db> {
+        let ty = self.with_ty_lowering(|ctx| ctx.lower_ty(type_ref));
         self.process_user_written_ty(ty)
-    }
-
-    pub(crate) fn make_body_ty(&mut self, type_ref: TypeRefId) -> Ty<'db> {
-        self.make_ty(
-            type_ref,
-            self.store,
-            InferenceTyDiagnosticSource::Body,
-            self.store_owner,
-            LifetimeElisionKind::Infer,
-        )
     }
 
     fn generics(&self) -> &Generics<'db> {
@@ -2063,7 +1969,7 @@ impl<'db> InferenceContext<'db> {
         })
     }
 
-    pub(crate) fn create_body_anon_const(
+    pub(crate) fn create_anon_const(
         &mut self,
         expr: ExprId,
         expected_ty: Ty<'db>,
@@ -2096,7 +2002,7 @@ impl<'db> InferenceContext<'db> {
         konst.unwrap_or_else(|_| self.table.next_const_var(Span::Dummy))
     }
 
-    pub(crate) fn make_path_as_body_const(&mut self, path: &Path) -> Const<'db> {
+    pub(crate) fn make_path_as_const(&mut self, path: &Path) -> Const<'db> {
         let forbid_params_after = if self.allow_using_generic_params { None } else { Some(0) };
         // FIXME: Report errors.
         path_to_const(self.db, &self.resolver, &|| self.generics(), forbid_params_after, path)
@@ -2107,14 +2013,8 @@ impl<'db> InferenceContext<'db> {
         self.types.types.error
     }
 
-    pub(crate) fn make_body_lifetime(&mut self, lifetime_ref: LifetimeRefId) -> Region<'db> {
-        let lt = self.with_ty_lowering(
-            self.store,
-            InferenceTyDiagnosticSource::Body,
-            self.store_owner,
-            LifetimeElisionKind::Infer,
-            |ctx| ctx.lower_lifetime(lifetime_ref),
-        );
+    pub(crate) fn make_lifetime(&mut self, lifetime_ref: LifetimeRefId) -> Region<'db> {
+        let lt = self.with_ty_lowering(|ctx| ctx.lower_lifetime(lifetime_ref));
         self.insert_type_vars(lt)
     }
 
@@ -2343,13 +2243,12 @@ impl<'db> InferenceContext<'db> {
             &self.resolver,
             self.store,
             &self.diagnostics,
-            InferenceTyDiagnosticSource::Body,
             self.store_owner,
             self.generic_def,
             &self.generics,
             LifetimeElisionKind::Infer,
             self.allow_using_generic_params,
-            Some(&mut vars_ctx),
+            &mut vars_ctx,
             &self.defined_anon_consts,
             LifetimeLoweringMode::LateParam,
         );
