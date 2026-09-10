@@ -466,7 +466,13 @@ impl<'a> Parser<'a> {
                 this.bump();
 
                 let operand = this.parse_expr_dot_or_call(attrs)?;
-                return Err(this.recover_from_prefix_increment(&operand, pre_span, starts_stmt));
+                return Err(this.report_inc_dec_op(
+                    &operand,
+                    starts_stmt,
+                    errors::IncOrDec::Inc,
+                    errors::UnaryFixity::Pre,
+                    pre_span,
+                ));
             }
             token::Ident(..)
                 if this.token.is_keyword(kw::Move)
