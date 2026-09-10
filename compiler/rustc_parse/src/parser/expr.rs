@@ -183,27 +183,8 @@ impl<'a> Parser<'a> {
             self.recover_from_strict_eq_op(op);
             self.recover_from_diamond_ne_op(op);
             self.recover_from_spaceship_cmp_op(op);
-
-            if self.prev_token == token::Plus
-                && self.token == token::Plus
-                && self.prev_token.span.between(self.token.span).is_empty()
-            {
-                let op_span = self.prev_token.span.to(self.token.span);
-                // Eat the second `+`
-                self.bump();
-                return Err(self.recover_from_postfix_increment(&lhs, op_span, starts_stmt));
-            }
-
-            if self.prev_token == token::Minus
-                && self.token == token::Minus
-                && self.prev_token.span.between(self.token.span).is_empty()
-                && !self.look_ahead(1, |tok| tok.can_begin_expr())
-            {
-                let op_span = self.prev_token.span.to(self.token.span);
-                // Eat the second `-`
-                self.bump();
-                return Err(self.recover_from_postfix_decrement(&lhs, op_span, starts_stmt));
-            }
+            self.recover_from_postfix_inc_op(&lhs, starts_stmt)?;
+            self.recover_from_postfix_dec_op(&lhs, starts_stmt)?;
 
             let op_span = op.span;
             let op = op.node;
