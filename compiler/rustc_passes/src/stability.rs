@@ -22,7 +22,6 @@ use rustc_lint_defs::builtin::{
     INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
 };
 use rustc_middle::hir::nested_filter;
-use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, Deprecated, DeprecationEntry, EvalResult};
@@ -673,12 +672,10 @@ impl<'tcx> Checker<'tcx> {
             .module_children_local(self.mod_id.to_local_def_id())
             .iter()
             .filter(|child| {
-                child.reexport_chain.iter().any(|reexport| {
-                    matches!(
-                        *reexport,
-                        Reexport::Glob(def_id) if def_id == glob_def_id
-                    )
-                })
+                child
+                    .reexport_chain
+                    .iter()
+                    .any(|reexport| reexport.id() == Some(glob_def_id))
             })
             .map(|child| child.res);
 
