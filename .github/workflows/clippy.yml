@@ -1,0 +1,45 @@
+name: clippy
+on:
+  merge_group:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check_clippy_configs:
+    runs-on: ubuntu-latest
+    name: check clippy configs
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: install rustup
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+          sh rustup-init.sh -y --default-toolchain none
+          rustup target add x86_64-unknown-linux-gnu
+      - name: Check clippy configs all match
+        run: cargo run --manifest-path ci/Cargo.toml -- clippy-config-check
+
+
+  run_clippy:
+    runs-on: ubuntu-latest
+    name: clippy ${{ matrix.package }}
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - . # rustfmt
+          - check_diff
+          - ci
+          - config_proc_macro
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: install rustup
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+          sh rustup-init.sh -y --default-toolchain none
+      - name: clippy
+        run: cargo clippy --manifest-path ${{ matrix.package }}/Cargo.toml
+
