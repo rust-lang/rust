@@ -6,6 +6,8 @@
 //@ revisions: DISC NO_DISC
 //@ [DISC] needs-llvm-components: aarch64
 //@ [DISC] compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -Zpointer-authentication=+function-pointer-type-discrimination -C opt-level=0
+//@ [NO_DISC] needs-llvm-components: aarch64
+//@ [NO_DISC] compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -Zpointer-authentication=-function-pointer-type-discrimination -C opt-level=0
 
 // Make sure that rust only uses the final part of struct's name (`Foo` or `Bar`), so that the
 // discriminators are `F3FooE` and `F3BarE`, not using def path for the base of encoding.
