@@ -191,7 +191,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
                 self.bump();
-                lhs = self.recover_from_postfix_increment(lhs, op_span, starts_stmt)?;
+                self.recover_from_postfix_increment(&lhs, op_span, starts_stmt)?;
                 continue;
             }
 
@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `-`
                 self.bump();
-                lhs = self.recover_from_postfix_decrement(lhs, op_span, starts_stmt)?;
+                self.recover_from_postfix_decrement(&lhs, op_span, starts_stmt)?;
                 continue;
             }
 
@@ -487,7 +487,8 @@ impl<'a> Parser<'a> {
                 this.bump();
 
                 let operand_expr = this.parse_expr_dot_or_call(attrs)?;
-                this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
+                this.recover_from_prefix_increment(&operand_expr, pre_span, starts_stmt)?;
+                Ok(operand_expr)
             }
             token::Ident(..)
                 if this.token.is_keyword(kw::Move)
