@@ -1587,14 +1587,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    // LLVM CFI Recover requires CFI.
+    // LLVM CFI recovery requires CFI.
     if sess.is_sanitizer_cfi_recover_enabled() {
         if !sess.is_sanitizer_cfi_enabled() {
             sess.dcx().emit_err(diagnostics::SanitizerCfiRecoverRequiresCfi);
         }
     }
 
-    // LLVM CFI Diag requires CFI.
+    // LLVM CFI diagnostics requires CFI.
     if sess.is_sanitizer_cfi_diag_enabled() {
         if !sess.is_sanitizer_cfi_enabled() {
             sess.dcx().emit_err(diagnostics::SanitizerCfiDiagRequiresCfi);
