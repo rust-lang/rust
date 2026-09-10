@@ -7,6 +7,7 @@ use rustc_type_ir::elaborate;
 use crate::mir::interpret::{
     AllocId, AllocInit, Allocation, CTFE_ALLOC_SALT, Pointer, Scalar, alloc_range,
 };
+use crate::ptrauth::discriminator::FnPtrDiscriminatorSource;
 use crate::ty::{self, Instance, TraitRef, Ty, TyCtxt};
 
 #[derive(Clone, Copy, PartialEq, StableHash)]
@@ -86,18 +87,12 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     key: (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>),
 ) -> AllocId {
     let ptrauth_assert_not_c_abi_fn_ptr = |instance: ty::Instance<'tcx>| {
-        if tcx.sess.pointer_authentication_fn_ptr_type_discrimination() {
-            let sig = tcx
-                .instantiate_and_normalize_erasing_regions(
-                    instance.args,
-                    ty::TypingEnv::fully_monomorphized(),
-                    tcx.fn_sig(instance.def_id()),
-                )
-                .skip_binder();
-
+        if tcx.sess.pointer_authentication_fn_ptr_type_discrimination()
+            && let Some(input) = instance.discriminator_input(tcx)
+        {
             assert!(
                 !matches!(
-                    sig.abi(),
+                    input.abi(),
                     rustc_abi::ExternAbi::C { .. } | rustc_abi::ExternAbi::System { .. }
                 ),
                 "vtable entry unexpectedly has a C ABI function pointer type: {:?}",

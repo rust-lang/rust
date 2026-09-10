@@ -63,7 +63,8 @@
 //!   - `ptrauth_collect_fn_ptr_discriminators`
 //!
 //! - Low-level API
-//!   - `FnPtrTypeDiscriminatorInput`
+//!   - `FnPtrTypeDiscriminatorInput` - canonical function signature input for
+//!       discriminator computation; exposes the function ABI through `abi()`.
 //!   - `compute_fn_ptr_type_discriminator`
 //!
 //! - Layout traversal
@@ -149,15 +150,22 @@ impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Ty<'tcx> {
 /// normalized before constructing the canonical discriminator input.
 impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Instance<'tcx> {
     fn discriminator_input(self, tcx: TyCtxt<'tcx>) -> Option<FnPtrTypeDiscriminatorInput<'tcx>> {
-        let sig = tcx
-            .instantiate_and_normalize_erasing_regions(
-                self.args,
-                ty::TypingEnv::fully_monomorphized(),
-                tcx.fn_sig(self.def_id()),
-            )
-            .skip_binder();
+        let typing_env = ty::TypingEnv::fully_monomorphized();
 
-        Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
+        match self.ty(tcx, typing_env).kind() {
+            ty::FnDef(def_id, args) => {
+                let sig = tcx
+                    .instantiate_and_normalize_erasing_regions(
+                        args.skip_binder(),
+                        typing_env,
+                        tcx.fn_sig(*def_id),
+                    )
+                    .skip_binder();
+                Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
+            }
+            // Closures, coroutines, etc. are never called via an `extern "C"` function pointer.
+            _ => None,
+        }
     }
 }
 /// Enables discriminator computation directly from instantiated function
@@ -231,6 +239,10 @@ pub struct FnPtrTypeDiscriminatorInput<'tcx> {
 }
 
 impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
+    pub fn abi(&self) -> ExternAbi {
+        self.abi
+    }
+
     fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
         FnPtrTypeDiscriminatorInput {
             inputs: sig.inputs(),
