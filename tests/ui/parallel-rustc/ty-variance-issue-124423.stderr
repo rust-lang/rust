@@ -244,28 +244,28 @@ LL | fn elided4(_: &impl Copy + 'a) ->  new  { x(x) }
    |                                    ^^^ not found in this scope
 
 error[E0224]: at least one trait is required for an object type
+  --> $DIR/ty-variance-issue-124423.rs:32:39
+   |
+LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |                                       ^^^^^^
+
+error[E0224]: at least one trait is required for an object type
   --> $DIR/ty-variance-issue-124423.rs:38:40
    |
 LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
    |                                        ^^^^^^
 
 error[E0224]: at least one trait is required for an object type
-  --> $DIR/ty-variance-issue-124423.rs:32:39
+  --> $DIR/ty-variance-issue-124423.rs:52:40
    |
-LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
-   |                                       ^^^^^^
+LL | impl<'a> LifetimeTrait<'a> for &'a Box<dyn 'a> {}
+   |                                        ^^^^^^
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/ty-variance-issue-124423.rs:5:34
    |
 LL | fn elided(_: &impl Copy + 'a) -> _ { x }
    |                                  ^ not allowed in type signatures
-
-error[E0224]: at least one trait is required for an object type
-  --> $DIR/ty-variance-issue-124423.rs:52:40
-   |
-LL | impl<'a> LifetimeTrait<'a> for &'a Box<dyn 'a> {}
-   |                                        ^^^^^^
 
 error[E0599]: no associated function or constant named `u32` found for struct `Box<_, _>` in the current scope
   --> $DIR/ty-variance-issue-124423.rs:38:55

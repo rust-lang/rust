@@ -15,12 +15,10 @@ fn tuple() -> impl Sized {
 }
 
 fn array() -> _ {
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
     [array()]
 }
 
 fn ptr() -> _ {
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
     &ptr() as *const impl Sized
     //~^ ERROR `impl Trait` is not allowed in cast expression types
 }
@@ -44,7 +42,6 @@ fn closure_ref_capture() -> impl Sized {
 }
 
 fn closure_sig() -> _ {
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
     || closure_sig()
 }
 
