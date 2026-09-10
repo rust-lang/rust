@@ -15,6 +15,7 @@ use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 use std::{debug_assert_matches, fmt, iter, mem};
 
+use bumpalo::Bump;
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
 use rustc_crate_store::{CrateStoreDyn, Untracked};
@@ -737,6 +738,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 pub struct GlobalCtxt<'tcx> {
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
     pub hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
+    pub borrowck_arena: WorkerLocal<Bump>,
 
     interners: CtxtInterners<'tcx>,
 
@@ -972,6 +974,7 @@ impl<'tcx> TyCtxt<'tcx> {
             stable_crate_id,
             arena,
             hir_arena,
+            borrowck_arena: Default::default(),
             interners,
             incr_comp_session,
             dep_graph,

@@ -5,6 +5,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(file_buffered)]
 #![feature(try_blocks)]
+#![feature(iter_collect_into)]
 // tidy-alphabetical-end
 
 use rustc_middle::ty;

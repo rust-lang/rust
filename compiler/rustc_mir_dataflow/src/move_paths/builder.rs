@@ -1,5 +1,6 @@
 use std::mem;
 
+use bumpalo::Bump;
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
@@ -22,12 +23,12 @@ struct MoveDataBuilder<'a, 'tcx, F> {
 
 impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>, filter: F) -> Self {
-        let mut move_paths = IndexVec::new();
-        let mut move_out_path_map = IndexVec::new();
-        let mut init_path_map = IndexVec::new();
+        let mut move_paths = IndexVec::new_in(&*tcx.borrowck_arena);
+        let mut move_out_path_map = IndexVec::new_in(&*tcx.borrowck_arena);
+        let mut init_path_map = IndexVec::new_in(&*tcx.borrowck_arena);
 
-        let locals = body
-            .local_decls
+        let mut locals = IndexVec::with_capacity_in(body.local_decls.len(), &*tcx.borrowck_arena);
+        body.local_decls
             .iter_enumerated()
             .map(|(i, l)| {
                 if l.is_deref_temp() {
@@ -45,14 +46,14 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     None
                 }
             })
-            .collect();
+            .collect_into(&mut locals);
 
         MoveDataBuilder {
             body,
             loc: Location::START,
             tcx,
             data: MoveData {
-                move_outs: IndexVec::new(),
+                move_outs: IndexVec::new_in(&*tcx.borrowck_arena),
                 move_out_loc_map: LocationMap::new(body),
                 rev_lookup: MovePathLookup {
                     locals,
@@ -61,7 +62,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 },
                 move_paths,
                 move_out_path_map,
-                inits: IndexVec::new(),
+                inits: IndexVec::new_in(&*tcx.borrowck_arena),
                 init_loc_map: LocationMap::new(body),
                 init_path_map,
             },
@@ -71,9 +72,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
 }
 
 fn new_move_path<'tcx>(
-    move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
-    move_out_path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
-    init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
+    move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>, &'tcx Bump>,
+    move_out_path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>, &'tcx Bump>,
+    init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>, &'tcx Bump>,
     parent: Option<MovePathIndex>,
     place: Place<'tcx>,
 ) -> MovePathIndex {

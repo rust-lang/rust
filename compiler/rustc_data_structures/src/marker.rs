@@ -1,12 +1,16 @@
 use std::alloc::Allocator;
 use std::marker::PointeeSized;
 
+use bumpalo::Bump;
+
 #[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`")]
 // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
 // is true. These types can be wrapped in a `FromDyn` to get a `Send` type. Wrapping a
 // `Send` type in `IntoDynSyncSend` will create a `DynSend` type.
 pub unsafe auto trait DynSend {}
+
+unsafe impl DynSend for Bump {}
 
 #[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSync`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Sync`")]

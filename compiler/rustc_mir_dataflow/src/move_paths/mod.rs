@@ -3,6 +3,7 @@
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
+use bumpalo::Bump;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
@@ -175,28 +176,28 @@ where
 #[derive(Debug)]
 pub struct MoveData<'tcx> {
     /// All the gathered `MovePath`s.
-    pub move_paths: IndexVec<MovePathIndex, MovePath<'tcx>>,
+    pub move_paths: IndexVec<MovePathIndex, MovePath<'tcx>, &'tcx Bump>,
 
     /// All the `MoveOut`s.
-    pub move_outs: IndexVec<MoveOutIndex, MoveOut>,
+    pub move_outs: IndexVec<MoveOutIndex, MoveOut, &'tcx Bump>,
     /// Map from locations to `MoveOut`s. `SmallVec` because each location might cause more than
     /// one `MoveOut`. Used during analysis and diagnostics.
     pub move_out_loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
     /// Map from `MovePath`s (places) to `MoveOuts`. `SmallVec` because each `MovePath` may be
     /// moved-out of more than once. Used mostly for diagnostics.
-    pub move_out_path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+    pub move_out_path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>, &'tcx Bump>,
 
     /// Map from places/locals to `MovePath`s.
     pub rev_lookup: MovePathLookup<'tcx>,
 
     /// All the `Init`s.
-    pub inits: IndexVec<InitIndex, Init>,
+    pub inits: IndexVec<InitIndex, Init, &'tcx Bump>,
     /// Map from locations to `Init`s. `SmallVec` because each location might cause more than one
     /// `Init`, though more than one is very rare (e.g. inline asm).
     pub init_loc_map: LocationMap<SmallVec<[InitIndex; 1]>>,
     /// Map from `MovePath`s (places) to `Init`s. `SmallVec` because each `MovePath` (place) might
     /// be inited more than once.
-    pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
+    pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>, &'tcx Bump>,
 }
 
 pub trait HasMoveData<'tcx> {
@@ -324,7 +325,7 @@ impl Init {
 /// Tables mapping from a place to its `MovePathIndex`.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
-    locals: IndexVec<Local, Option<MovePathIndex>>,
+    locals: IndexVec<Local, Option<MovePathIndex>, &'tcx Bump>,
 
     /// projections are made from a base-place and a projection
     /// elem. The base-place will have a unique MovePathIndex; we use
