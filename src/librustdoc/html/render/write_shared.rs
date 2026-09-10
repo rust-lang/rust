@@ -375,15 +375,20 @@ impl CrateInfo {
             .fold(Ok(Vec::new()), |acc, parts_path| {
                 let mut acc = acc?;
                 let dir = &parts_path.0;
-                acc.append(&mut try_err!(std::fs::read_dir(dir), dir.as_path())
+                let mut files: Vec<Result<PathBuf, std::io::Error>> = try_err!(std::fs::read_dir(dir), dir.as_path())
+                    .map(|file| Ok(file?.path()))
+                    .collect();
+                files.sort_by_key(|p| p.as_ref().map_or(PathBuf::new(), |p| p.clone()));
+                acc.append(&mut files
+                    .into_iter()
                     .filter_map(|file| {
-                        let to_crate_info = |file: Result<std::fs::DirEntry, std::io::Error>| -> Result<Option<CrateInfo>, Error> {
+                        let to_crate_info = |file: Result<PathBuf, std::io::Error>| -> Result<Option<CrateInfo>, Error> {
                             let file = try_err!(file, dir.as_path());
-                            if file.path().extension() != Some(OsStr::new("json")) {
+                            if file.extension() != Some(OsStr::new("json")) {
                                 return Ok(None);
                             }
-                            let parts = try_err!(fs::read(file.path()), file.path());
-                            let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), file.path());
+                            let parts = try_err!(fs::read(&file), &file);
+                            let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), &file);
                             Ok(Some(parts))
                         };
                         to_crate_info(file).transpose()
