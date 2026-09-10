@@ -825,19 +825,28 @@ impl CompressedTraitRefs {
     }
 
     #[inline]
+    pub fn trait_clause_from_def_id<I: Interner>(
+        cx: I,
+        self_ty: I::Ty,
+        def_id: I::TraitId,
+    ) -> Binder<I, TraitClause<I>> {
+        Binder::dummy(TraitClause {
+            trait_ref: TraitRef::new(cx, def_id, [self_ty]),
+            polarity: ClausePolarity::Positive,
+        })
+    }
+
+    #[inline]
     pub fn trait_clause_from_single_bit<I: Interner>(
         self,
         cx: I,
         self_ty: I::Ty,
     ) -> Binder<I, TraitClause<I>> {
-        Binder::dummy(TraitClause {
-            trait_ref: TraitRef::new(
-                cx,
-                cx.require_trait_lang_item(self.lang_item_from_single_bit()),
-                [self_ty],
-            ),
-            polarity: ClausePolarity::Positive,
-        })
+        Self::trait_clause_from_def_id(
+            cx,
+            self_ty,
+            cx.require_trait_lang_item(self.lang_item_from_single_bit()),
+        )
     }
 }
 

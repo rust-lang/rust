@@ -133,15 +133,18 @@ mod iterator {
             output: _,
         } = filter;
         // All compressed clauses are positive clauses, so filter negatives out.
-        let allow = polarity_filter.allow_polarity(ClausePolarity::Positive)
+        if polarity_filter.allow_polarity(ClausePolarity::Positive)
             // Match the self ty, of course.
             && self_type_filter.allow_self_ty(self_ty)
-            && trait_filter.allow_compressed_trait_ref_single_bit(trait_ref_single_bit);
-
-        // Only if all filtering allows this compressed clause do we reconstruct the trait clause,
-        // but we don't intern it yet, since that depends on the output transformation. If we can
-        // avoid re-interning, that's worth a *lot*.
-        allow.then(|| trait_ref_single_bit.trait_clause_from_single_bit(cx, self_ty))
+            && let Some(def_id) = trait_filter.allow_compressed_trait_ref_single_bit(cx, trait_ref_single_bit)
+        {
+            // Only if all filtering allows this compressed clause do we reconstruct the trait clause,
+            // but we don't intern it yet, since that depends on the output transformation. If we can
+            // avoid re-interning, that's worth a *lot*.
+            Some(CompressedTraitRefs::trait_clause_from_def_id(cx, self_ty, def_id))
+        } else {
+            None
+        }
     }
 
     impl<I, Iter, P, S, T, O> CallerBoundsIterator<I, Iter>
@@ -160,6 +163,7 @@ mod iterator {
         fn iter(self) -> impl Iterator<Item = Self::Item> {
             let Self { clauses, clause_filter: filter, cx: _ } = self;
             let cx = filter.cx;
+
             clauses.flat_map(move |clause| {
                 let kind = clause.kind();
                 match kind.skip_binder() {
@@ -339,6 +343,7 @@ mod polarity_filter {
         {
             self.validate_self_ty(move |actual_self_ty| actual_self_ty == desired_self_ty)
         }
+
         #[inline]
         fn for_target_trait(
             self,
@@ -373,7 +378,14 @@ mod polarity_filter {
             self,
             def_id: I::TraitId,
         ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
-            self.for_target_trait(TargetTrait::DefId(def_id))
+            let cx = self.clause_filter.cx;
+
+            self.for_target_trait(TargetTrait {
+                def_id,
+                lang_item_compressed: cx
+                    .as_trait_lang_item(def_id)
+                    .and_then(|lang_item| CompressedTraitRefs::from_lang_item(lang_item)),
+            })
         }
         #[inline]
         pub fn for_trait_lang_item(
@@ -381,17 +393,10 @@ mod polarity_filter {
             lang_item: SolverTraitLangItem,
         ) -> CallerBoundsAccessor<I, Iter, TraitClauses<I, P, S, TargetTrait<I>, O>> {
             let cx = self.clause_filter.cx;
-            // We try to turn the requested lang item directly into a TargetTrait,
-            // without calling `cx.require_trait_lang_item`, avoiding a query.
-            // We only call it if the desired lang item cannot be part of a compressed trait clause.
-            match CompressedTraitRefs::from_lang_item(lang_item) {
-                Some(compressed) => {
-                    self.for_target_trait(TargetTrait::CompressedSingleBit(compressed))
-                }
-                None => {
-                    self.for_target_trait(TargetTrait::DefId(cx.require_trait_lang_item(lang_item)))
-                }
-            }
+            self.for_target_trait(TargetTrait {
+                def_id: cx.require_trait_lang_item(lang_item),
+                lang_item_compressed: CompressedTraitRefs::from_lang_item(lang_item),
+            })
         }
 
         #[inline]
@@ -464,7 +469,11 @@ mod trait_filter {
         I: Interner,
     {
         fn allow_clause(&self, clause: TraitClause<I>) -> bool;
-        fn allow_compressed_trait_ref_single_bit(&self, trait_ref: CompressedTraitRefs) -> bool;
+        fn allow_compressed_trait_ref_single_bit(
+            &self,
+            cx: I,
+            trait_ref: CompressedTraitRefs,
+        ) -> Option<I::TraitId>;
     }
 
     impl<I> TraitFilter<I> for ()
@@ -477,21 +486,25 @@ mod trait_filter {
         }
 
         #[inline]
-        fn allow_compressed_trait_ref_single_bit(&self, _trait_ref: CompressedTraitRefs) -> bool {
-            true
+        fn allow_compressed_trait_ref_single_bit(
+            &self,
+            cx: I,
+            trait_ref: CompressedTraitRefs,
+        ) -> Option<I::TraitId> {
+            Some(cx.require_trait_lang_item(trait_ref.lang_item_from_single_bit()))
         }
     }
 
     // TODO: use bit operations to test an entire compressed clause against a single filter.
-    pub enum TargetTrait<I>
+    pub struct TargetTrait<I>
     where
         I: Interner,
     {
-        DefId(I::TraitId),
+        pub def_id: I::TraitId,
         /// When scanning specifically for trait refs that can be compressed,
         /// this value has a single bit set, representing the compressed form
         /// of the trait we're looking for.
-        CompressedSingleBit(CompressedTraitRefs),
+        pub lang_item_compressed: Option<CompressedTraitRefs>,
     }
     impl<I> TraitFilter<I> for TargetTrait<I>
     where
@@ -499,23 +512,27 @@ mod trait_filter {
     {
         #[inline]
         fn allow_clause(&self, clause: TraitClause<I>) -> bool {
-            match self {
-                &TargetTrait::DefId(target) => clause.def_id() == target,
-                // When looking for a compressed trait, any normal clause can never match so we
-                // return false unconditionally.
-                &TargetTrait::CompressedSingleBit(_target) => false,
+            // When looking for a compressed trait, any normal clause can never match so we
+            // return false unconditionally.
+            if self.lang_item_compressed.is_some() {
+                return false;
             }
+
+            clause.def_id() == self.def_id
         }
 
         #[inline]
-        fn allow_compressed_trait_ref_single_bit(&self, trait_ref: CompressedTraitRefs) -> bool {
-            match self {
+        fn allow_compressed_trait_ref_single_bit(
+            &self,
+            _cx: I,
+            trait_ref: CompressedTraitRefs,
+        ) -> Option<I::TraitId> {
+            if let Some(target) = self.lang_item_compressed {
+                (trait_ref == target).then_some(self.def_id)
+            } else {
                 // When looking for a normal trait, any compressed clause can never match so we
                 // return false unconditionally.
-                &TargetTrait::DefId(_target) => false,
-                // Both the target and the trait ref we receive has a single bit set,
-                // so we can test for equality.
-                &TargetTrait::CompressedSingleBit(target) => trait_ref == target,
+                None
             }
         }
     }

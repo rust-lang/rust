@@ -1008,20 +1008,10 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     }
 }
 
-struct ClauseCompressionMetadata<'tcx> {
-    /// A clause may be considered compressable, but if we *never* merge something
-    /// with it, it might still be more efficient to keep the original uncompressed clause,
-    /// which as such doesn't need re-interning. So we better keep it around.
-    uncompressed: ty::Clause<'tcx>,
-    compressed: CompressedTraitClause<TyCtxt<'tcx>>,
-}
-
 /// Manages compression of clauses to form a `ParamEnv`.
 struct ClauseCompressor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    /// List of clauses in compressed form, together with some metadata
-    compressed_clauses: Vec<ClauseCompressionMetadata<'tcx>>,
-    /// clauses that we tried to compress but couldn't be
+    compressed_clauses: Vec<CompressedTraitClause<TyCtxt<'tcx>>>,
     uncompressed_clauses: Vec<Clause<'tcx>>,
 }
 
@@ -1048,28 +1038,29 @@ impl<'tcx> ClauseCompressor<'tcx> {
             .compressed_clauses
             .iter_mut()
             // finishes iteration upon first successful `try_merge`.
-            .any(|existing| existing.compressed.try_merge(new_compressed_trait_clause))
+            .any(|existing| existing.try_merge(new_compressed_trait_clause))
         {
-            self.compressed_clauses.push(ClauseCompressionMetadata {
-                compressed: new_compressed_trait_clause,
-                uncompressed: clause,
-            })
+            self.compressed_clauses.push(new_compressed_trait_clause)
         }
     }
 
     fn mk_clauses(self) -> Clauses<'tcx> {
-        let mut new_clauses = self.uncompressed_clauses;
-        new_clauses.extend(self.compressed_clauses.into_iter().map(|i| {
-            match i.compressed.compressed_trait_refs.bits().count_ones() {
-                0 => unreachable!(),
-                // See comment on CommonClauseData.
-                1 => i.uncompressed,
-                // TODO: keep original flags, or a union thereof
-                _ => ClauseKind::CompressedTrait(i.compressed).upcast(self.tcx),
-            }
-        }));
+        let mut res =
+            Vec::with_capacity(self.uncompressed_clauses.len() + self.compressed_clauses.len());
 
-        self.tcx.mk_clauses(&new_clauses)
+        res.extend(self.compressed_clauses.into_iter().map(|compressed| -> Clause<'tcx> {
+            assert_ne!(compressed.compressed_trait_refs.bits(), 0);
+            // NOTE: in theory, if there's only one bit set, we could opt not to compress,
+            // since then we also don't need to decompress. The flip side is, that that
+            // it's often cheaper to ask "does ty impl trait" for a compressed clause than for an
+            // arbitrary other clause. Especially if we know in advance that the trait for which
+            // this question is asked is only ever compressed, and we don't have to look through
+            // other clauses.
+            ClauseKind::CompressedTrait(compressed).upcast(self.tcx)
+        }));
+        res.extend(self.uncompressed_clauses);
+
+        self.tcx.mk_clauses(&res)
     }
 }
 
