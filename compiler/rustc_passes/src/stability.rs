@@ -672,10 +672,7 @@ impl<'tcx> Checker<'tcx> {
             .module_children_local(self.mod_id.to_local_def_id())
             .iter()
             .filter(|child| {
-                child
-                    .reexport_chain
-                    .iter()
-                    .any(|reexport| reexport.id() == Some(glob_def_id))
+                child.reexport_chain.iter().any(|reexport| reexport.id() == Some(glob_def_id))
             })
             .map(|child| child.res);
 
