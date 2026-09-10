@@ -21,7 +21,7 @@ pub enum Lock {
 }
 
 impl Lock {
-    pub fn new(p: &Path, wait: bool, create: bool, exclusive: bool) -> io::Result<Lock> {
+    pub fn try_lock(p: &Path, create: bool, exclusive: bool) -> io::Result<Lock> {
         let mut open_options = OpenOptions::new();
         open_options.read(true).write(true).create(create);
         #[cfg(unix)]
@@ -32,17 +32,15 @@ impl Lock {
 
         let file = open_options.open(p)?;
 
-        let res = match (wait, exclusive) {
-            (true, true) => file.lock(),
-            (true, false) => file.lock_shared(),
-            (false, true) => file.try_lock().map_err(io::Error::from),
-            (false, false) => file.try_lock_shared().map_err(io::Error::from),
+        let res = match exclusive {
+            true => file.try_lock().map_err(io::Error::from),
+            false => file.try_lock_shared().map_err(io::Error::from),
         };
 
         match res {
             Ok(()) => Ok(Lock::FdLocked { _file: file }),
             Err(err) if matches!(err.kind(), io::ErrorKind::Unsupported) => {
-                Ok(Lock::Fallback(fallback::Lock::new(p, wait, create, exclusive)?))
+                Ok(Lock::Fallback(fallback::Lock::try_lock(p, create, exclusive)?))
             }
             Err(err) => Err(err),
         }

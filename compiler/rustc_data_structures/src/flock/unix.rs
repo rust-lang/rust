@@ -9,7 +9,7 @@ pub struct Lock {
 }
 
 impl Lock {
-    pub fn new(p: &Path, wait: bool, create: bool, exclusive: bool) -> io::Result<Lock> {
+    pub fn try_lock(p: &Path, create: bool, exclusive: bool) -> io::Result<Lock> {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -33,7 +33,7 @@ impl Lock {
         flock.l_start = 0;
         flock.l_len = 0;
 
-        let cmd = if wait { libc::F_SETLKW } else { libc::F_SETLK };
+        let cmd = libc::F_SETLK;
         let ret = unsafe { libc::fcntl(file.as_raw_fd(), cmd, &flock) };
         if ret == -1 { Err(io::Error::last_os_error()) } else { Ok(Lock { file }) }
     }
