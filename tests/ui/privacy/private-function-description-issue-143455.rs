@@ -7,13 +7,13 @@
 mod chamber {
     pub(crate) macro invoke() {
         invoke()
-        //~^ ERROR type `fn() {invoke}` is private
+        //~^ ERROR function `invoke` is private
     }
     fn invoke() {}
 
     pub(crate) macro generic_value() {
         generic::<i32>
-        //~^ ERROR type `fn(i32) -> Option<i32> {generic::<i32>}` is private
+        //~^ ERROR function `generic` is private
     }
     fn generic<T>(value: T) -> Option<T> {
         Some(value)
@@ -25,7 +25,7 @@ mod chamber {
     }
     pub(crate) macro associated() {
         Public::hidden()
-        //~^ ERROR type `fn() {Public::hidden}` is private
+        //~^ ERROR associated function `Public::hidden` is private
     }
 
     struct Private;
