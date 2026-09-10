@@ -924,10 +924,7 @@ fn mono_item_is_instantiable<'tcx>(tcx: TyCtxt<'tcx>, key: (DefId, GenericArgsRe
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-    let result = errors.as_slice().iter().all(|error| {
-        !error.is_true_error()
-            && !matches!(&error.code, FulfillmentErrorCode::Ambiguity { overflow: Some(_) })
-    });
+    let result = errors.no_errors();
 
     debug!("mono_item_is_instantiable(key={:?}) = {:?}", key, result);
     result
