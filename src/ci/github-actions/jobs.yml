@@ -72,6 +72,9 @@ runners:
   - &job-linux-8c
     os: ubuntu-24.04-8core-32gb
     <<: *base-job
+  - &job-aarch64-linux-8c
+    os: ubuntu-24.04-arm64-8core-32gb
+    <<: *base-job
 
 envs:
   production:
@@ -189,7 +192,7 @@ try:
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist.sh
       DIST_TRY_BUILD: 1
-  - <<: [*job-dist-aarch64-linux, *job-linux-aarch64-16c-ec2]
+  - <<: [*job-dist-aarch64-linux, *job-aarch64-linux-8c]
     name: dist-aarch64-linux-quick
     env:
       IMAGE: dist-aarch64-linux
@@ -214,7 +217,7 @@ optional:
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist.sh
       DIST_TRY_BUILD: 1
-  - <<: [*job-dist-aarch64-linux, *job-linux-aarch64-16c-ec2]
+  - <<: [*job-dist-aarch64-linux, *job-aarch64-linux-8c]
     name: dist-aarch64-linux-quick
     env:
       IMAGE: dist-aarch64-linux
@@ -247,7 +250,7 @@ auto:
   - name: armhf-gnu
     <<: *job-linux-4c
 
-  - <<: [*job-dist-aarch64-linux, *job-linux-aarch64-16c-ec2]
+  - <<: [*job-dist-aarch64-linux, *job-aarch64-linux-8c]
 
   - name: dist-android
     <<: *job-linux-4c
