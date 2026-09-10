@@ -2237,10 +2237,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
-            &[
-                self.const_u32(schema.key as u32),
-                self.const_u64(discriminator as u64),
-            ],
+            &[self.const_u32(schema.key as u32), self.const_u64(discriminator as u64)],
         ))
     }
 
