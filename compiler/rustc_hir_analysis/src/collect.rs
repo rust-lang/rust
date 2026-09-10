@@ -286,7 +286,16 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         placeholder_type: Option<Span>,
         infer_replacements: Vec<(Span, String)>,
-    ) {
+    ) -> ErrorGuaranteed {
+        let dcx = self.dcx();
+
+        // Don't emit another diagnostic for synthetic placeholders.
+        if let Some(span) = placeholder_type
+            && dcx.has_stashed_diagnostic(span, StashKey::ItemNoType)
+        {
+            return dcx.span_delayed_bug(span, "stashed error for typeless item not emitted");
+        }
+
         let node = self.tcx.hir_node_by_def_id(self.item_def_id);
         let generics = node.generics();
         let kind_id = match node {
@@ -317,9 +326,9 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
         if let Some(span) = placeholder_type {
-            diag.stash(span, StashKey::BadPlaceholder);
+            diag.stash(span, StashKey::BadPlaceholder).unwrap()
         } else {
-            diag.emit();
+            diag.emit()
         }
     }
 
@@ -532,15 +541,11 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        if !self.tcx.dcx().has_stashed_diagnostic(span, StashKey::ItemNoType) {
-            self.report_placeholder_type_error(Some(span), vec![]);
-        }
-        Ty::new_error_with_message(self.tcx(), span, "bad placeholder type")
+        Ty::new_error(self.tcx(), self.report_placeholder_type_error(Some(span), vec![]))
     }
 
     fn ct_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
-        self.report_placeholder_type_error(Some(span), vec![]);
-        ty::Const::new_error_with_message(self.tcx(), span, "bad placeholder constant")
+        ty::Const::new_error(self.tcx(), self.report_placeholder_type_error(Some(span), vec![]))
     }
 
     fn register_trait_ascription_bounds(
