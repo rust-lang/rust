@@ -134,11 +134,17 @@ where
 {
     /// Answers whether a `Dfa` is transmutable into another `Dfa`.
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
+        debug!(src = ?self.src);
+        debug!(dst = ?self.dst);
+        debug!(
+            src_transitions_len = self.src.transitions.len(),
+            dst_transitions_len = self.dst.transitions.len()
+        );
         self.answer_memo(&mut Map::default(), self.src.start, self.dst.start)
     }
 
     #[inline(always)]
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, cache))]
     fn answer_memo(
         &self,
         cache: &mut Map<
@@ -169,12 +175,6 @@ where
         dst_state: dfa::State,
     ) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
         debug!(?src_state, ?dst_state);
-        debug!(src = ?self.src);
-        debug!(dst = ?self.dst);
-        debug!(
-            src_transitions_len = self.src.transitions.len(),
-            dst_transitions_len = self.dst.transitions.len()
-        );
         if dst_state == self.dst.accept {
             // The destination needs no more input. Union transmutation permits
             // truncating the remaining source bytes: for example, `u8` to `()`.
