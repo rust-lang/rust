@@ -19,7 +19,6 @@ use std::{assert_matches, debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
-use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::{
@@ -30,19 +29,16 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, SolverRegionConstraint};
-use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
+use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::REPR_C_ENUMS_LARGER_THAN_INT;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
-};
+use rustc_middle::ty::{self, AdtKind, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
-use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
+    FulfillmentError, hir_ty_lowering_dyn_compatibility_violations,
 };
 use tracing::{debug, instrument};
 use ty::region_constraint::LeafRegionConstraint;
@@ -135,7 +131,6 @@ pub(crate) struct ItemCtxt<'tcx> {
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
     lowering_delegation_segment: bool,
-    suppress_placeholder_errors: Cell<bool>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -161,20 +156,19 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
 fn placeholder_type_error_diag<'cx, 'tcx>(
     cx: &'cx dyn HirTyLowerer<'tcx>,
     generics: Option<&hir::Generics<'_>>,
-    placeholder_types: Vec<Span>,
+    placeholder_type: Option<Span>,
     additional_spans: Vec<Span>,
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
     kind: &'static str,
 ) -> Diag<'cx> {
-    if placeholder_types.is_empty() {
+    let Some(placeholder_type) = placeholder_type else {
         return bad_placeholder(cx, additional_spans, kind);
-    }
+    };
 
     let params = generics.map(|g| g.params).unwrap_or_default();
     let type_name = params.next_type_param_name(None);
-    let mut sugg: Vec<_> =
-        placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
+    let mut sugg = vec![(placeholder_type, type_name.clone())];
 
     if let Some(generics) = generics {
         if let Some(span) = params.iter().find_map(|arg| match arg.name {
@@ -183,7 +177,7 @@ fn placeholder_type_error_diag<'cx, 'tcx>(
         }) {
             // Account for `_` already present in cases like `struct S<_>(_);` and suggest
             // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-            sugg.push((span, (*type_name).to_string()));
+            sugg.push((span, type_name));
         } else if let Some(span) = generics.span_for_param_suggestion() {
             // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
             sugg.push((span, format!(", {type_name}")));
@@ -192,8 +186,11 @@ fn placeholder_type_error_diag<'cx, 'tcx>(
         }
     }
 
-    let mut err =
-        bad_placeholder(cx, placeholder_types.into_iter().chain(additional_spans).collect(), kind);
+    let mut err = bad_placeholder(
+        cx,
+        std::iter::once(placeholder_type).chain(additional_spans).collect(),
+        kind,
+    );
 
     // Suggest, but only if it is not a function in const or static
     if suggest {
@@ -259,7 +256,6 @@ impl<'tcx> ItemCtxt<'tcx> {
             item_def_id,
             tainted_by_errors: Cell::new(None),
             lowering_delegation_segment: delegation,
-            suppress_placeholder_errors: Cell::new(false),
         }
     }
 
@@ -288,12 +284,9 @@ impl<'tcx> ItemCtxt<'tcx> {
 
     fn report_placeholder_type_error(
         &self,
-        placeholder_types: Vec<Span>,
+        placeholder_type: Option<Span>,
         infer_replacements: Vec<(Span, String)>,
     ) {
-        if self.suppress_placeholder_errors.get() {
-            return;
-        }
         let node = self.tcx.hir_node_by_def_id(self.item_def_id);
         let generics = node.generics();
         let kind_id = match node {
@@ -306,7 +299,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         let mut diag = placeholder_type_error_diag(
             self,
             generics,
-            placeholder_types,
+            placeholder_type,
             infer_replacements.iter().map(|&(span, _)| span).collect(),
             false,
             None,
@@ -316,15 +309,18 @@ impl<'tcx> ItemCtxt<'tcx> {
             diag.multipart_suggestion(
                 format!(
                     "try replacing `_` with the type{} in the corresponding trait method \
-                        signature",
+                     signature",
                     rustc_errors::pluralize!(infer_replacements.len()),
                 ),
                 infer_replacements,
                 Applicability::MachineApplicable,
             );
         }
-
-        diag.emit();
+        if let Some(span) = placeholder_type {
+            diag.stash(span, StashKey::BadPlaceholder);
+        } else {
+            diag.emit();
+        }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -537,13 +533,13 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         if !self.tcx.dcx().has_stashed_diagnostic(span, StashKey::ItemNoType) {
-            self.report_placeholder_type_error(vec![span], vec![]);
+            self.report_placeholder_type_error(Some(span), vec![]);
         }
         Ty::new_error_with_message(self.tcx(), span, "bad placeholder type")
     }
 
     fn ct_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
-        self.report_placeholder_type_error(vec![span], vec![]);
+        self.report_placeholder_type_error(Some(span), vec![]);
         ty::Const::new_error_with_message(self.tcx(), span, "bad placeholder constant")
     }
 
@@ -732,34 +728,22 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             .inputs
             .iter()
             .enumerate()
-            .map(|(i, a)| {
-                if let hir::TyKind::Infer(()) = a.kind
+            .map(|(idx, ty)| {
+                if let hir::TyKind::Infer(()) = ty.kind
                     && let Some(suggested_ty) =
-                        self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
+                        self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(idx))
                 {
-                    infer_replacements.push((a.span, suggested_ty.to_string()));
-                    return Ty::new_error_with_message(tcx, a.span, suggested_ty.to_string());
+                    infer_replacements.push((ty.span, suggested_ty.to_string()));
+                    return Ty::new_error_with_message(tcx, ty.span, suggested_ty.to_string());
                 }
 
-                self.lowerer().lower_ty(a)
+                self.lowerer().lower_ty(ty)
             })
             .collect();
 
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => {
-                let old_suppress_placeholder_errors = self.suppress_placeholder_errors.get();
-                let _restore =
-                    defer(|| self.suppress_placeholder_errors.set(old_suppress_placeholder_errors));
-
-                let suppress_ret_ty_placeholder_errors = hir_id == self.hir_id()
-                    && suggest_ret_ty_in_typeck(tcx, &self.node(), hir_id).is_some();
-
-                if suppress_ret_ty_placeholder_errors {
-                    self.suppress_placeholder_errors.set(true);
-                }
-
-                if !suppress_ret_ty_placeholder_errors
-                    && let hir::TyKind::Infer(()) = output.kind
+                if let hir::TyKind::Infer(()) = output.kind
                     && let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
                 {
@@ -773,7 +757,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         };
 
         if !infer_replacements.is_empty() {
-            self.report_placeholder_type_error(vec![], infer_replacements);
+            self.report_placeholder_type_error(None, infer_replacements);
         }
         (input_tys, output_ty)
     }
@@ -1185,37 +1169,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     }
 }
 
-/// We'll emit an error about the suggestable infer ty in `typeck` query if this is `Some`.
-/// In that case we suppress errors about it in the `fn_sig` query.
-pub fn suggest_ret_ty_in_typeck<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    node: &Node<'tcx>,
-    hir_id: HirId,
-) -> Option<&'tcx hir::Ty<'tcx>> {
-    use rustc_hir::Node::*;
-    use rustc_hir::*;
-    let sig = match node {
-        TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)), ..
-        })
-        | Item(hir::Item { kind: ItemKind::Fn { sig, .. }, .. }) => Some(sig),
-
-        ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => {
-            // Do not try to infer the return type for a impl method coming from a trait
-            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.parent_hir_node(hir_id)
-                && i.of_trait.is_some()
-            {
-                None
-            } else {
-                Some(sig)
-            }
-        }
-
-        _ => None,
-    };
-    sig.and_then(|sig| sig.decl.output.is_suggestable_infer_ty())
-}
-
 #[instrument(level = "debug", skip(tcx), ret)]
 fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFnSig<'_>> {
     use rustc_hir::Node::*;
@@ -1281,138 +1234,6 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
         }
     };
     ty::EarlyBinder::bind(tcx, output)
-}
-
-pub fn suggest_impl_trait<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ret_ty: Ty<'tcx>,
-) -> Option<String> {
-    let format_as_assoc: fn(_, _, _, _, _) -> _ =
-        |tcx: TyCtxt<'tcx>,
-         _: ty::GenericArgsRef<'tcx>,
-         trait_def_id: DefId,
-         assoc_item_def_id: DefId,
-         item_ty: Ty<'tcx>| {
-            let trait_name = tcx.item_name(trait_def_id);
-            let assoc_name = tcx.item_name(assoc_item_def_id);
-            Some(format!("impl {trait_name}<{assoc_name} = {item_ty}>"))
-        };
-    let format_as_parenthesized: fn(_, _, _, _, _) -> _ =
-        |tcx: TyCtxt<'tcx>,
-         args: ty::GenericArgsRef<'tcx>,
-         trait_def_id: DefId,
-         _: DefId,
-         item_ty: Ty<'tcx>| {
-            let trait_name = tcx.item_name(trait_def_id);
-            let args_tuple = args.type_at(1);
-            let ty::Tuple(types) = *args_tuple.kind() else {
-                return None;
-            };
-            let types = types.make_suggestable(tcx, false, None)?;
-            let maybe_ret =
-                if item_ty.is_unit() { String::new() } else { format!(" -> {item_ty}") };
-            Some(format!(
-                "impl {trait_name}({}){maybe_ret}",
-                types.iter().map(|ty| ty.to_string()).collect::<Vec<_>>().join(", ")
-            ))
-        };
-
-    for (trait_def_id, assoc_item_def_id, formatter) in [
-        (
-            infcx.tcx.get_diagnostic_item(sym::Iterator),
-            infcx.tcx.get_diagnostic_item(sym::IteratorItem),
-            format_as_assoc,
-        ),
-        (
-            infcx.tcx.lang_items().future_trait(),
-            infcx.tcx.lang_items().future_output(),
-            format_as_assoc,
-        ),
-        (
-            infcx.tcx.lang_items().async_fn_trait(),
-            infcx.tcx.lang_items().async_fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().async_fn_mut_trait(),
-            infcx.tcx.lang_items().async_fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().async_fn_once_trait(),
-            infcx.tcx.lang_items().async_fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().fn_trait(),
-            infcx.tcx.lang_items().fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().fn_mut_trait(),
-            infcx.tcx.lang_items().fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().fn_once_trait(),
-            infcx.tcx.lang_items().fn_once_output(),
-            format_as_parenthesized,
-        ),
-    ] {
-        let Some(trait_def_id) = trait_def_id else {
-            continue;
-        };
-        let Some(assoc_item_def_id) = assoc_item_def_id else {
-            continue;
-        };
-        if infcx.tcx.def_kind(assoc_item_def_id) != DefKind::AssocTy {
-            continue;
-        }
-        let sugg = infcx.probe(|_| {
-            let args = ty::GenericArgs::for_item(infcx.tcx, trait_def_id, |param, _| {
-                if param.index == 0 { ret_ty.into() } else { infcx.var_for_def(DUMMY_SP, param) }
-            });
-            if !infcx
-                .type_implements_trait(trait_def_id, args, param_env)
-                .must_apply_modulo_regions()
-            {
-                return None;
-            }
-            let ocx = ObligationCtxt::new(&infcx);
-            let item_ty = ocx.normalize(
-                &ObligationCause::dummy(),
-                param_env,
-                Unnormalized::new(Ty::new_projection_from_args(
-                    infcx.tcx,
-                    ty::IsRigid::No,
-                    assoc_item_def_id,
-                    args,
-                )),
-            );
-            // FIXME(compiler-errors): We may benefit from resolving regions here.
-            if ocx.try_evaluate_obligations().no_errors()
-                && let item_ty = infcx.resolve_vars_if_possible(item_ty)
-                && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
-                && let Some(sugg) = formatter(
-                    infcx.tcx,
-                    infcx.resolve_vars_if_possible(args),
-                    trait_def_id,
-                    assoc_item_def_id,
-                    item_ty,
-                )
-            {
-                return Some(sugg);
-            }
-
-            None
-        });
-
-        if sugg.is_some() {
-            return sugg;
-        }
-    }
-    None
 }
 
 fn impl_is_fully_generic_for_reflection(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {

@@ -149,12 +149,6 @@ LL - type D = (u8, u8)::AssocTy;
 LL + type D = <(u8, u8) as Example>::AssocTy;
    |
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for type aliases
-  --> $DIR/bad-assoc-ty.rs:21:10
-   |
-LL | type E = _::AssocTy;
-   |          ^ not allowed in type signatures
-
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:25:19
    |
@@ -232,6 +226,24 @@ LL - type I = ty!()::AssocTy;
 LL + type I = <u8 as Example>::AssocTy;
    |
 
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/bad-assoc-ty.rs:79:5
+   |
+LL |     foo: F,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     foo: std::mem::ManuallyDrop<F>,
+   |          +++++++++++++++++++++++ +
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for type aliases
+  --> $DIR/bad-assoc-ty.rs:21:10
+   |
+LL | type E = _::AssocTy;
+   |          ^ not allowed in type signatures
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:56:13
    |
@@ -279,18 +291,6 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL | union O<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
-
-error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/bad-assoc-ty.rs:79:5
-   |
-LL |     foo: F,
-   |     ^^^^^^
-   |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
-help: wrap the field type in `ManuallyDrop<...>`
-   |
-LL |     foo: std::mem::ManuallyDrop<F>,
-   |          +++++++++++++++++++++++ +
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
   --> $DIR/bad-assoc-ty.rs:83:29

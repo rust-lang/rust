@@ -46,21 +46,25 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::diagnostics::PlaceholderNotAllowedItemSignatures;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_hir_analysis::suggest_ret_ty_in_typeck;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, TraitEngine, WellFormedLoc};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, FnSigKind, IsSuggestable, Ty, TyCtxt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::{
+    ObligationCause, ObligationCauseCode, ObligationCtxt, ObligationInspector, TraitEngine,
+    WellFormedLoc,
+};
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
@@ -294,28 +298,59 @@ fn check_placeholder_infer_ret_ty<'tcx>(
     def_id: LocalDefId,
     node: Node<'tcx>,
 ) {
-    let Some(infer_ret_ty) = suggest_ret_ty_in_typeck(tcx, &node, hir_id) else { return };
+    let sig = match node {
+        Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(_)),
+            ..
+        })
+        | Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig, .. }, .. }) => sig,
 
-    struct PlaceholderSpanCollector<'a>(&'a mut Vec<Span>);
+        Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(sig, _), .. }) => {
+            // Do not try to infer the return type for a impl method coming from a trait
+            if let Node::Item(hir::Item { kind: hir::ItemKind::Impl(i), .. }) =
+                tcx.parent_hir_node(hir_id)
+                && i.of_trait.is_some()
+            {
+                return;
+            } else {
+                sig
+            }
+        }
 
-    impl<'v> hir::intravisit::Visitor<'v> for PlaceholderSpanCollector<'_> {
+        _ => return,
+    };
+    let Some(infer_ret_ty) = sig.decl.output.is_suggestable_infer_ty() else { return };
+
+    struct PlaceholderSpanCollector {
+        spans: Vec<Span>,
+    }
+
+    impl<'v> hir::intravisit::Visitor<'v> for PlaceholderSpanCollector {
         fn visit_infer(
             &mut self,
             _inf_id: HirId,
             inf_span: Span,
             _kind: hir::intravisit::InferKind<'v>,
         ) -> Self::Result {
-            self.0.push(inf_span);
+            self.spans.push(inf_span);
         }
     }
 
     // Collect all `_` placeholder spans from the return type.
-    let mut spans = Vec::new();
-    let mut collector = PlaceholderSpanCollector(&mut spans);
+    let mut collector = PlaceholderSpanCollector { spans: Vec::new() };
     collector.visit_ty_unambig(infer_ret_ty);
 
+    // Suppress the errors that HIR ty lowering has emitted for each placeholder since we want to
+    // emit a single diagnostic for all of them with a good structured suggestion if possible.
+    for &span in &collector.spans {
+        tcx.dcx().try_steal_modify_and_emit_err(
+            span,
+            rustc_errors::StashKey::BadPlaceholder,
+            |diag| diag.downgrade_to_delayed_bug(),
+        );
+    }
     let mut diag = tcx.dcx().create_err(PlaceholderNotAllowedItemSignatures {
-        spans,
+        spans: collector.spans,
         kind: "return types".to_string(),
     });
 
@@ -331,7 +366,7 @@ fn check_placeholder_infer_ret_ty<'tcx>(
             suggestable_ret_ty,
             Applicability::MachineApplicable,
         );
-    } else if let Some(sugg) = rustc_hir_analysis::suggest_impl_trait(
+    } else if let Some(sugg) = suggest_impl_trait(
         &tcx.infer_ctxt().build(ty::TypingMode::non_body_analysis()),
         tcx.param_env(def_id),
         ret_ty,
@@ -350,11 +385,143 @@ fn check_placeholder_infer_ret_ty<'tcx>(
     if ret_ty.is_closure() {
         diag.note(
             "for more information on `Fn` traits and closure types, see \
-                     https://doc.rust-lang.org/book/ch13-01-closures.html",
+             https://doc.rust-lang.org/book/ch13-01-closures.html",
         );
     }
 
     diag.emit();
+}
+
+fn suggest_impl_trait<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ret_ty: Ty<'tcx>,
+) -> Option<String> {
+    let format_as_assoc: fn(_, _, _, _, _) -> _ =
+        |tcx: TyCtxt<'tcx>,
+         _: ty::GenericArgsRef<'tcx>,
+         trait_def_id: DefId,
+         assoc_item_def_id: DefId,
+         item_ty: Ty<'tcx>| {
+            let trait_name = tcx.item_name(trait_def_id);
+            let assoc_name = tcx.item_name(assoc_item_def_id);
+            Some(format!("impl {trait_name}<{assoc_name} = {item_ty}>"))
+        };
+    let format_as_parenthesized: fn(_, _, _, _, _) -> _ =
+        |tcx: TyCtxt<'tcx>,
+         args: ty::GenericArgsRef<'tcx>,
+         trait_def_id: DefId,
+         _: DefId,
+         item_ty: Ty<'tcx>| {
+            let trait_name = tcx.item_name(trait_def_id);
+            let args_tuple = args.type_at(1);
+            let ty::Tuple(types) = *args_tuple.kind() else {
+                return None;
+            };
+            let types = types.make_suggestable(tcx, false, None)?;
+            let maybe_ret =
+                if item_ty.is_unit() { String::new() } else { format!(" -> {item_ty}") };
+            Some(format!(
+                "impl {trait_name}({}){maybe_ret}",
+                types.iter().map(|ty| ty.to_string()).collect::<Vec<_>>().join(", ")
+            ))
+        };
+
+    for (trait_def_id, assoc_item_def_id, formatter) in [
+        (
+            infcx.tcx.get_diagnostic_item(sym::Iterator),
+            infcx.tcx.get_diagnostic_item(sym::IteratorItem),
+            format_as_assoc,
+        ),
+        (
+            infcx.tcx.lang_items().future_trait(),
+            infcx.tcx.lang_items().future_output(),
+            format_as_assoc,
+        ),
+        (
+            infcx.tcx.lang_items().async_fn_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().async_fn_mut_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().async_fn_once_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().fn_trait(),
+            infcx.tcx.lang_items().fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().fn_mut_trait(),
+            infcx.tcx.lang_items().fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().fn_once_trait(),
+            infcx.tcx.lang_items().fn_once_output(),
+            format_as_parenthesized,
+        ),
+    ] {
+        let Some(trait_def_id) = trait_def_id else {
+            continue;
+        };
+        let Some(assoc_item_def_id) = assoc_item_def_id else {
+            continue;
+        };
+        if infcx.tcx.def_kind(assoc_item_def_id) != DefKind::AssocTy {
+            continue;
+        }
+        let sugg = infcx.probe(|_| {
+            let args = ty::GenericArgs::for_item(infcx.tcx, trait_def_id, |param, _| {
+                if param.index == 0 { ret_ty.into() } else { infcx.var_for_def(DUMMY_SP, param) }
+            });
+            if !infcx
+                .type_implements_trait(trait_def_id, args, param_env)
+                .must_apply_modulo_regions()
+            {
+                return None;
+            }
+            let ocx = ObligationCtxt::new(&infcx);
+            let item_ty = ocx.normalize(
+                &ObligationCause::dummy(),
+                param_env,
+                Unnormalized::new(Ty::new_projection_from_args(
+                    infcx.tcx,
+                    ty::IsRigid::No,
+                    assoc_item_def_id,
+                    args,
+                )),
+            );
+            // FIXME(compiler-errors): We may benefit from resolving regions here.
+            if ocx.try_evaluate_obligations().no_errors()
+                && let item_ty = infcx.resolve_vars_if_possible(item_ty)
+                && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
+                && let Some(sugg) = formatter(
+                    infcx.tcx,
+                    infcx.resolve_vars_if_possible(args),
+                    trait_def_id,
+                    assoc_item_def_id,
+                    item_ty,
+                )
+            {
+                return Some(sugg);
+            }
+
+            None
+        });
+
+        if sugg.is_some() {
+            return sugg;
+        }
+    }
+    None
 }
 
 fn extend_err_with_const_context(

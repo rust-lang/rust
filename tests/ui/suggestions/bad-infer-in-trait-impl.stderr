@@ -1,9 +1,3 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
-  --> $DIR/bad-infer-in-trait-impl.rs:6:15
-   |
-LL |     fn bar(s: _) {}
-   |               ^ not allowed in type signatures
-
 error[E0050]: method `bar` has 1 parameter but the declaration in trait `Foo::bar` has 0
   --> $DIR/bad-infer-in-trait-impl.rs:6:15
    |
@@ -12,6 +6,12 @@ LL |     fn bar();
 ...
 LL |     fn bar(s: _) {}
    |               ^ expected 0 parameters, found 1
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
+  --> $DIR/bad-infer-in-trait-impl.rs:6:15
+   |
+LL |     fn bar(s: _) {}
+   |               ^ not allowed in type signatures
 
 error: aborting due to 2 previous errors
 

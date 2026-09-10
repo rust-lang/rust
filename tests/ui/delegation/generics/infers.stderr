@@ -446,12 +446,6 @@ error[E0224]: at least one trait is required for an object type
 LL |         reuse foo::('_, _, _, _) as bar;
    |                     ^^
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:54:25
-   |
-LL |         reuse foo::('_, _, _, _) as bar;
-   |                         ^ not allowed in type signatures
-
 error[E0107]: function takes 3 generic arguments but 5 generic arguments were supplied
   --> $DIR/infers.rs:86:11
    |
@@ -600,18 +594,6 @@ error: inferred lifetimes are not allowed in delegations as we need to inherit s
    |
 LL |     reuse foo::<Vec<_>, _, _, ()> as foo11;
    |           ^^^
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:117:21
-   |
-LL |     reuse foo::<Vec<_>, _, _, ()> as foo11;
-   |                     ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:128:25
-   |
-LL |     reuse foo::<'_, Vec<_>, Vec<Vec<_>>, _> as foo13;
-   |                         ^ not allowed in type signatures
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/infers.rs:128:29
@@ -804,18 +786,6 @@ error: inferred lifetimes are not allowed in delegations as we need to inherit s
 LL |         reuse Trait::foo::<Vec<_>, _, _, ()> as foo11;
    |                      ^^^
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:189:32
-   |
-LL |         reuse Trait::foo::<Vec<_>, _, _, ()> as foo11;
-   |                                ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:200:36
-   |
-LL |         reuse Trait::foo::<'_, Vec<_>, Vec<Vec<_>>, _> as foo13;
-   |                                    ^ not allowed in type signatures
-
 error[E0747]: type provided when a constant was expected
   --> $DIR/infers.rs:200:40
    |
@@ -899,24 +869,6 @@ help: add missing generic arguments
    |
 LL |         reuse Trait::<_, _>::foo, X, C, Y as foo5;
    |                                 +++++++++
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:231:15
-   |
-LL |         reuse Trait::<'_, '_>::foo as foo6;
-   |               ^^^^^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:234:35
-   |
-LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo as foo7;
-   |                                   ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:234:52
-   |
-LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo as foo7;
-   |                                                    ^ not allowed in type signatures
 
 error[E0107]: trait takes 3 generic arguments but 7 generic arguments were supplied
   --> $DIR/infers.rs:241:15
@@ -1030,12 +982,6 @@ note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:276:15
-   |
-LL |         reuse Trait::<'_, '_>::foo::<_, _, _, '_, '_, '_, _, _, _,> as foo6;
-   |               ^^^^^ not allowed in type signatures
-
 error[E0107]: method takes 1 lifetime argument but 3 lifetime arguments were supplied
   --> $DIR/infers.rs:276:32
    |
@@ -1063,18 +1009,6 @@ note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:283:35
-   |
-LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo::<_, '_, _, _> as foo7;
-   |                                   ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:283:52
-   |
-LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo::<_, '_, _, _> as foo7;
-   |                                                    ^ not allowed in type signatures
 
 error[E0107]: method takes 3 generic arguments but 0 generic arguments were supplied
   --> $DIR/infers.rs:294:51
@@ -1209,12 +1143,6 @@ error: inferred lifetimes are not allowed in delegations as we need to inherit s
 LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<Vec<_>, _, _, ()> as foo11;
    |                                                                 ^^^
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/infers.rs:306:75
-   |
-LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<Vec<_>, _, _, ()> as foo11;
-   |                                                                           ^ not allowed in type signatures
-
 error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
   --> $DIR/infers.rs:316:15
    |
@@ -1289,6 +1217,78 @@ note: function defined here
    |
 LL |         pub fn foo<X, const M: usize, Y>(_: ()) {}
    |                ^^^                       -----
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:54:25
+   |
+LL |         reuse foo::('_, _, _, _) as bar;
+   |                         ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:117:21
+   |
+LL |     reuse foo::<Vec<_>, _, _, ()> as foo11;
+   |                     ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:128:25
+   |
+LL |     reuse foo::<'_, Vec<_>, Vec<Vec<_>>, _> as foo13;
+   |                         ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:189:32
+   |
+LL |         reuse Trait::foo::<Vec<_>, _, _, ()> as foo11;
+   |                                ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:200:36
+   |
+LL |         reuse Trait::foo::<'_, Vec<_>, Vec<Vec<_>>, _> as foo13;
+   |                                    ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:231:15
+   |
+LL |         reuse Trait::<'_, '_>::foo as foo6;
+   |               ^^^^^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:234:35
+   |
+LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo as foo7;
+   |                                   ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:234:52
+   |
+LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo as foo7;
+   |                                                    ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:276:15
+   |
+LL |         reuse Trait::<'_, '_>::foo::<_, _, _, '_, '_, '_, _, _, _,> as foo6;
+   |               ^^^^^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:283:35
+   |
+LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo::<_, '_, _, _> as foo7;
+   |                                   ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:283:52
+   |
+LL |         reuse Trait::<'_, '_, Vec<_>, 123, Vec<Vec<_>>>::foo::<_, '_, _, _> as foo7;
+   |                                                    ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/infers.rs:306:75
+   |
+LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<Vec<_>, _, _, ()> as foo11;
+   |                                                                           ^ not allowed in type signatures
 
 error: aborting due to 138 previous errors
 

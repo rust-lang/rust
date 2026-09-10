@@ -16,7 +16,6 @@ use rustc_hir::{
     TyKind, WherePredicateKind, expr_needs_parens, is_range_literal,
 };
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
@@ -1006,7 +1005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         found: found.to_string(),
                     });
-                } else if let Some(sugg) = suggest_impl_trait(self, self.param_env, found) {
+                } else if let Some(sugg) = crate::suggest_impl_trait(self, self.param_env, found) {
                     err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::Add {
                         span,
                         found: sugg,

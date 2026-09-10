@@ -119,7 +119,25 @@ LL |     if generator_sig() < 0 { None } else { Sized((option(i - Sized), i)) }
    |
    = note: a trait named `Sized` exists in another namespace
 
-error: aborting due to 14 previous errors
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:17:15
+   |
+LL | fn array() -> _ {
+   |               ^ not allowed in type signatures
 
-Some errors have detailed explanations: E0404, E0423, E0425, E0557, E0562, E0658.
-For more information about an error, try `rustc --explain E0404`.
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:21:13
+   |
+LL | fn ptr() -> _ {
+   |             ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:44:21
+   |
+LL | fn closure_sig() -> _ {
+   |                     ^ not allowed in type signatures
+
+error: aborting due to 17 previous errors
+
+Some errors have detailed explanations: E0121, E0404, E0423, E0425, E0557, E0562, E0658.
+For more information about an error, try `rustc --explain E0121`.

@@ -74,54 +74,6 @@ LL - static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
 LL + static TY_STATIC_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
    |
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:51:23
-   |
-LL |     type Assoc = [u8; _];
-   |                       ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:55:27
-   |
-LL |     type Assoc = Bar<i32, _>;
-   |                           ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:59:22
-   |
-LL |     type Assoc = Bar<_, _>;
-   |                      ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:59:25
-   |
-LL |     type Assoc = Bar<_, _>;
-   |                         ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:34:21
-   |
-LL |     const ARR: [u8; _];
-   |                     ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:38:25
-   |
-LL |     const ARR: Bar<i32, _>;
-   |                         ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:42:20
-   |
-LL |     const ARR: Bar<_, _>;
-   |                    ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:42:23
-   |
-LL |     const ARR: Bar<_, _>;
-   |                       ^ not allowed in type signatures
-
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/in-signature.rs:6:21
    |
@@ -159,6 +111,54 @@ help: replace with the correct return type
 LL - fn ty_fn_mixed() -> Bar<_, _> {
 LL + fn ty_fn_mixed() -> Bar<i32, 3> {
    |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/in-signature.rs:42:23
+   |
+LL |     const ARR: Bar<_, _>;
+   |                       ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/in-signature.rs:42:20
+   |
+LL |     const ARR: Bar<_, _>;
+   |                    ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/in-signature.rs:38:25
+   |
+LL |     const ARR: Bar<i32, _>;
+   |                         ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/in-signature.rs:34:21
+   |
+LL |     const ARR: [u8; _];
+   |                     ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:51:23
+   |
+LL |     type Assoc = [u8; _];
+   |                       ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:55:27
+   |
+LL |     type Assoc = Bar<i32, _>;
+   |                           ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:59:22
+   |
+LL |     type Assoc = Bar<_, _>;
+   |                      ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:59:25
+   |
+LL |     type Assoc = Bar<_, _>;
+   |                         ^ not allowed in type signatures
 
 error: aborting due to 17 previous errors
 

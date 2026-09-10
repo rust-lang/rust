@@ -378,6 +378,8 @@ struct DiagCtxtInner {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StashKey {
     ItemNoType,
+    /// Placeholder type or const `_` in item signature.
+    BadPlaceholder,
     UnderscoreForArrayLengths,
     EarlySyntaxWarning,
     CallIntoMethod,
@@ -579,22 +581,22 @@ impl<'a> DiagCtxtHandle<'a> {
     /// Stashes a diagnostic for possible later improvement in a different,
     /// later stage of the compiler. Possible actions depend on the diagnostic
     /// level:
-    /// - Level::Bug, Level:Fatal: not allowed, will trigger a panic.
-    /// - Level::Error: immediately counted as an error that has occurred, because it
+    /// - `Level::Bug`, `Level:Fatal`: not allowed, will trigger a panic.
+    /// - `Level::Error`: immediately counted as an error that has occurred, because it
     ///   is guaranteed to be emitted eventually. Can be later accessed with the
     ///   provided `span` and `key` through
     ///   [`DiagCtxtHandle::try_steal_modify_and_emit_err`] or
     ///   [`DiagCtxtHandle::try_steal_replace_and_emit_err`]. These do not allow
     ///   cancellation or downgrading of the error. Returns
     ///   `Some(ErrorGuaranteed)`.
-    /// - Level::DelayedBug: this does happen occasionally with errors that are
+    /// - `Level::DelayedBug`: this does happen occasionally with errors that are
     ///   downgraded to delayed bugs. It is not stashed, but immediately
     ///   emitted as a delayed bug. This is because stashing it would cause it
     ///   to be counted by `err_count` which we don't want. It doesn't matter
     ///   that we cannot steal and improve it later, because it's not a
     ///   user-facing error. Returns `Some(ErrorGuaranteed)` as is normal for
     ///   delayed bugs.
-    /// - Level::Warning and lower (i.e. !is_error()): can be accessed with the
+    /// - `Level::Warning` and lower (i.e. !is_error()): can be accessed with the
     ///   provided `span` and `key` through [`DiagCtxtHandle::steal_non_err()`]. This
     ///   allows cancelling and downgrading of the diagnostic. Returns `None`.
     pub fn stash_diagnostic(
@@ -672,7 +674,7 @@ impl<'a> DiagCtxtHandle<'a> {
             assert!(guar.is_some());
             let mut err = Diag::<ErrorGuaranteed>::new_diagnostic(self, err);
             modify_err(&mut err);
-            assert_eq!(err.level, Error);
+            assert_matches!(err.level, Error | DelayedBug);
             err.emit()
         })
     }

@@ -169,7 +169,6 @@ impl BadTrait<_> for BadStruct<_> {}
 
 fn impl_trait() -> impl BadTrait<_> {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
-//~| ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
     unimplemented!()
 }
 
@@ -190,7 +189,6 @@ trait Trait<T> {}
 impl Trait<usize> for Struct {}
 type Y = impl Trait<_>;
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
-//~| ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
 #[define_opaque(Y)]
 fn foo() -> Y {
     Struct
@@ -207,7 +205,6 @@ trait Qux {
     // type E: _; // FIXME: make the parser propagate the existence of `B`
     type F: std::ops::Fn(_);
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
-    //~| ERROR the placeholder `_` is not allowed within types on item signatures for associated types
 }
 impl Qux for Struct {
     //~^ ERROR not all trait items implemented, missing: `F`
