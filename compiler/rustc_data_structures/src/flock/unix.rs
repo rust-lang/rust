@@ -8,7 +8,7 @@ pub struct Lock {
 }
 
 impl Lock {
-    pub fn new(file: File, wait: bool, exclusive: bool) -> io::Result<Lock> {
+    pub fn try_lock(file: File, exclusive: bool) -> io::Result<Lock> {
         let lock_type = if exclusive { libc::F_WRLCK } else { libc::F_RDLCK };
 
         let mut flock: libc::flock = unsafe { mem::zeroed() };
@@ -25,8 +25,7 @@ impl Lock {
         flock.l_start = 0;
         flock.l_len = 0;
 
-        let cmd = if wait { libc::F_SETLKW } else { libc::F_SETLK };
-        let ret = unsafe { libc::fcntl(file.as_raw_fd(), cmd, &flock) };
+        let ret = unsafe { libc::fcntl(file.as_raw_fd(), libc::F_SETLK, &flock) };
         if ret == -1 { Err(io::Error::last_os_error()) } else { Ok(Lock { file }) }
     }
 }
