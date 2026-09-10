@@ -1,5 +1,6 @@
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{BinOpKind, token};
+use rustc_ast::{BinOpKind, Expr, token};
+use rustc_errors::PResult;
 use rustc_span::Spanned;
 
 use crate::diagnostics;
@@ -75,6 +76,41 @@ impl<'a> Parser<'a> {
                 sub: diagnostics::InvalidComparisonOperatorSub::Spaceship(sp),
             });
             self.bump();
+        }
+    }
+
+    /// Recover from postfix increment operator `++` as found in many C-style languages.
+    pub(super) fn recover_from_postfix_inc_op(
+        &mut self,
+        lhs: &Expr,
+        starts_stmt: bool,
+    ) -> PResult<'a, ()> {
+        if let (token::Plus, token::Plus) = (self.prev_token.kind, self.token.kind)
+            && self.prev_token.span.hi() == self.token.span.lo()
+        {
+            let op_span = self.prev_token.span.to(self.token.span);
+            self.bump(); // eat the second `+`
+            Err(self.recover_from_postfix_increment(lhs, op_span, starts_stmt))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Recover from postfix decrement operator `--` as found in many C-style languages.
+    pub(super) fn recover_from_postfix_dec_op(
+        &mut self,
+        lhs: &Expr,
+        starts_stmt: bool,
+    ) -> PResult<'a, ()> {
+        if let (token::Minus, token::Minus) = (self.prev_token.kind, self.token.kind)
+            && self.prev_token.span.hi() == self.token.span.lo()
+            && !self.look_ahead(1, |tok| tok.can_begin_expr())
+        {
+            let op_span = self.prev_token.span.to(self.token.span);
+            self.bump(); // eat the second `-`
+            Err(self.recover_from_postfix_decrement(lhs, op_span, starts_stmt))
+        } else {
+            Ok(())
         }
     }
 }
