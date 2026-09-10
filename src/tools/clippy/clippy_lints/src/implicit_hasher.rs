@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         fn suggestion(
             cx: &LateContext<'_>,
-            diag: &mut Diag<'_, ()>,
+            diag: &mut Diag<'_>,
             generics_span: Span,
             generics_suggestion_span: Span,
             target: &ImplicitHasherType<'_>,

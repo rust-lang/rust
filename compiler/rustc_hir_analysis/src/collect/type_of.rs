@@ -541,7 +541,7 @@ fn infer_placeholder_type<'tcx>(
                 }
             }
 
-            diag.emit()
+            diag.emit_err()
         });
     Ty::new_error(tcx, guar)
 }

@@ -737,7 +737,7 @@ fn project<'cx, 'tcx>(
                     )
                 } else {
                     let violations = tcx.dyn_compatibility_violations(def_id);
-                    report_dyn_incompatibility(tcx, span, None, def_id, &violations).emit()
+                    report_dyn_incompatibility(tcx, span, None, def_id, &violations).emit_err()
                 };
                 return Ok(Projected::Progress(Progress::error_for_term(
                     tcx,

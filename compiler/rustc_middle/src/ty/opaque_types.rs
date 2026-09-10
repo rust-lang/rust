@@ -125,7 +125,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             Some(u) => panic!("region mapped to unexpected kind: {u:?}"),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
-                let e = self
+                let guar = self
                     .tcx
                     .dcx()
                     .struct_span_err(self.span, "non-defining opaque type use in defining scope")
@@ -136,9 +136,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                              parameter list of the `impl Trait` type alias",
                         ),
                     )
-                    .emit();
+                    .emit_err();
 
-                ty::Region::new_error(self.cx(), e)
+                ty::Region::new_error(self.cx(), guar)
             }
         }
     }
@@ -179,7 +179,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                           used in parameter list for the `impl Trait` type alias"
                                 ),
                             )
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 }

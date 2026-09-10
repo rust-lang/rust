@@ -1115,7 +1115,7 @@ impl<'a> Parser<'a> {
             Err(err)
                 if self.is_expected_raw_ref_mut() && self.token_cursor.depth() == call_depth =>
             {
-                let guar = err.emit();
+                let guar = err.emit_err();
                 // Preserve the call expression so later passes can still diagnose the callee,
                 // while treating the malformed `&raw <expr>` argument as an error expression.
                 let args = self.recover_raw_ref_call_args(guar);
@@ -1194,7 +1194,7 @@ impl<'a> Parser<'a> {
                                 },
                             })
                         } else {
-                            err.emit()
+                            err.emit_err()
                         };
                         Ok(self.mk_expr_err(span, guar))
                     }
@@ -1715,7 +1715,7 @@ impl<'a> Parser<'a> {
                         "'",
                         Applicability::MaybeIncorrect,
                     )
-                    .emit()
+                    .emit_err()
             });
         let name = ident.without_first_quote().name;
         mk_lit_char(name, ident.span)
@@ -3054,7 +3054,7 @@ impl<'a> Parser<'a> {
                 Ok(arm) => arms.push(arm),
                 Err(e) => {
                     // Recover by skipping to the end of the block.
-                    let guar = e.emit();
+                    let guar = e.emit_err();
                     self.recover_stmt();
                     let span = lo.to(self.token.span);
                     if self.token == token::CloseBrace {
@@ -3768,7 +3768,7 @@ impl<'a> Parser<'a> {
                         return Err(e);
                     }
 
-                    let guar = e.emit();
+                    let guar = e.emit_err();
                     if pth == kw::Async {
                         recovered_async = Some(guar);
                     }
@@ -3826,7 +3826,7 @@ impl<'a> Parser<'a> {
                     if !recover {
                         return Err(e);
                     }
-                    let guar = e.emit();
+                    let guar = e.emit_err();
                     if pth == kw::Async {
                         recovered_async = Some(guar);
                     } else if let Some(f) = field_ident(self, guar) {

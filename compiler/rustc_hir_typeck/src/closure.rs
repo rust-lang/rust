@@ -778,7 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true,
                 closure_arg_span,
             )
-            .emit();
+            .emit_err();
 
         let error_sig = self.error_sig_of_closure(decl, guar);
 

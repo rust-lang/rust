@@ -161,7 +161,7 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
                         r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
                     ));
                     err.note("you can also unset `RUST_MIN_STACK` to use the default stack size");
-                    err.emit()
+                    err.emit_fatal()
                 })
             })
             // otherwise pick a consistent default
@@ -338,7 +338,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                     diag.help(
                         "try lowering `-Z threads` or checking the operating system's resource limits",
                     );
-                    diag.emit()
+                    diag.emit_fatal()
                 })
         })
     })

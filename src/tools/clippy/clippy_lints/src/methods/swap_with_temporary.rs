@@ -76,7 +76,7 @@ impl<'tcx> ArgKind<'tcx> {
 // Emits a note either on the temporary expression if it can be found in the same context as the
 // base and returns `true`, or on the mutable reference to the temporary expression otherwise and
 // returns `false`.
-fn emit_note(diag: &mut Diag<'_, ()>, base: &Expr<'_>, expr: &Expr<'_>, expr_temp: &Expr<'_>) -> bool {
+fn emit_note(diag: &mut Diag<'_>, base: &Expr<'_>, expr: &Expr<'_>, expr_temp: &Expr<'_>) -> bool {
     if base.span.eq_ctxt(expr.span) {
         diag.span_note(expr_temp.span.source_callsite(), MSG_TEMPORARY);
         true

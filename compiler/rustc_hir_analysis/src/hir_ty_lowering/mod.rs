@@ -452,7 +452,7 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
                 diag.help("alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
             }
         }
-        diag.emit()
+        diag.emit_err()
     }
 }
 
@@ -1718,7 +1718,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         span,
                         "inherent associated types are unstable",
                     )
-                    .emit());
+                    .emit_err());
                 }
                 ty::AssocTag::Fn => unreachable!(),
             }
@@ -2767,7 +2767,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         format!("`{}` does not have this field", variant_def.name),
                     );
                 }
-                return ty::Const::new_error(tcx, err.emit());
+                return ty::Const::new_error(tcx, err.emit_err());
             }
         }
 
@@ -2977,7 +2977,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let guar = self
                     .dcx()
                     .struct_span_err(span, "function items cannot be used as const args")
-                    .emit();
+                    .emit_err();
                 Const::new_error(tcx, guar)
             }
             // Exhaustive match to be clear about what exactly we're considering to be
@@ -3168,7 +3168,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     "only consts with a `direct_const_arg!` right-hand side may be used in types",
                 );
             }
-            Err(err.emit())
+            Err(err.emit_err())
         }
     }
 
@@ -3501,7 +3501,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 field.span.shrink_to_lo(),
                                 "you might be missing a variant here: `Variant.`",
                             )
-                            .emit();
+                            .emit_err();
                         return Ty::new_error(tcx, err);
                     };
 

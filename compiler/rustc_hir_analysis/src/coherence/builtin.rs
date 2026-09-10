@@ -1003,7 +1003,7 @@ fn infringing_fields_error<'tcx>(
         None,
     );
 
-    err.emit()
+    err.emit_err()
 }
 
 fn visit_implementation_of_coerce_pointee_validity(

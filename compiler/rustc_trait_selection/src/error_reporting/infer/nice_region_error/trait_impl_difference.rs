@@ -165,7 +165,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 },
             ));
         }
-        diag.emit()
+        diag.emit_err()
     }
 }
 

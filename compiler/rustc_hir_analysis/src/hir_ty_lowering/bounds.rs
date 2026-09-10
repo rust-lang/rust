@@ -564,7 +564,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                     constraint.span,
                                     "use of trait associated const not defined as `#[rustc_always_gca]`",
                                 );
-                                return Err(err.emit());
+                                return Err(err.emit_err());
                             } else {
                                 let err = self.dcx().span_delayed_bug(
                                     constraint.span,

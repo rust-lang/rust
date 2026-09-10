@@ -733,7 +733,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.span_help(self.expr_span, "consider using a box or reference as appropriate");
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {

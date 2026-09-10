@@ -796,7 +796,7 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     self.mk_stmt_err(self.token.span, guar)
                 }
@@ -1073,7 +1073,7 @@ impl<'a> Parser<'a> {
                             } else {
                                 res.unwrap_or_else(|mut e| {
                                     self.recover_missing_dot(&mut e);
-                                    let guar = e.emit();
+                                    let guar = e.emit_err();
                                     self.recover_stmt();
                                     guar
                                 })

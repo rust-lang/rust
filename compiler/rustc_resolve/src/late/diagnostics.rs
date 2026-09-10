@@ -3930,7 +3930,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             );
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn suggest_introducing_lifetime(
@@ -4191,7 +4191,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             lifetime_refs,
             function_param_lifetimes,
         );
-        err.emit()
+        err.emit_err()
     }
 
     fn add_missing_lifetime_specifiers_label<'a>(
@@ -4732,7 +4732,7 @@ pub(super) fn signal_lifetime_shadowing(
     )
     .with_span_label(orig.span, "first declared here")
     .with_span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name))
-    .emit()
+    .emit_err()
 }
 
 struct LifetimeFinder<'ast> {
