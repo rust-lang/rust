@@ -38,12 +38,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, In
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, HirId, PredicateOrigin, find_attr};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::middle::resolve::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -126,7 +125,9 @@ pub(crate) fn clean_doc_module<'tcx>(
                     let hir::UsePath { segments, span, .. } = *path;
                     let path = hir::Path { segments, res: *res, span };
                     clean_use_statement_inner(
-                        import,
+                        import.span,
+                        import.owner_id.def_id,
+                        import.hir_id(),
                         Some(name),
                         &path,
                         kind,
@@ -3154,13 +3155,24 @@ fn clean_use_statement<'tcx>(
     let hir::UsePath { segments, ref res, span } = *path;
     for res in res.present_items() {
         let path = hir::Path { segments, res, span };
-        items.append(&mut clean_use_statement_inner(import, name, &path, kind, cx, inlined_names));
+        items.append(&mut clean_use_statement_inner(
+            import.span,
+            import.owner_id.def_id,
+            import.hir_id(),
+            name,
+            &path,
+            kind,
+            cx,
+            inlined_names,
+        ));
     }
     items
 }
 
 fn clean_use_statement_inner<'tcx>(
-    import: &hir::Item<'tcx>,
+    import_span: rustc_span::Span,
+    import_id: LocalDefId,
+    import_hir_id: HirId,
     name: Option<Symbol>,
     path: &hir::Path<'_>,
     kind: hir::UseKind,
@@ -3173,20 +3185,20 @@ fn clean_use_statement_inner<'tcx>(
     // We need this comparison because some imports (for std types for example)
     // are "inserted" as well but directly by the compiler and they should not be
     // taken into account.
-    if import.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports) {
+    if import_span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports) {
         return Vec::new();
     }
 
-    let visibility = cx.tcx.visibility(import.owner_id);
-    let attrs = cx.tcx.hir_attrs(import.hir_id());
+    let visibility = cx.tcx.visibility(import_id);
+    let attrs = cx.tcx.hir_attrs(import_hir_id);
     let inline_attr = find_attr!(
         attrs,
         Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
     )
     .and_then(|d| d.inline.first());
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);
-    let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
-    let import_def_id = import.owner_id.def_id;
+    let current_mod = cx.tcx.parent_module_from_def_id(import_id);
+    let import_def_id = import_id;
 
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top
@@ -3208,7 +3220,7 @@ fn clean_use_statement_inner<'tcx>(
             E0780,
             "anonymous imports cannot be inlined"
         )
-        .with_span_label(import.span, "anonymous import")
+        .with_span_label(import_span, "anonymous import")
         .emit();
     }
 
@@ -3237,7 +3249,8 @@ fn clean_use_statement_inner<'tcx>(
                 current_mod,
                 &mut visited,
                 inlined_names,
-                import,
+                import_id,
+                import_hir_id,
             ) {
                 return items;
             }
