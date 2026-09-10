@@ -355,6 +355,14 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
             }
+            PatKind::Guard { subpattern, condition } => {
+                self.visit_pat(subpattern);
+
+                let old_in_union_destructure =
+                    std::mem::replace(&mut self.in_union_destructure, false);
+                self.visit_expr(&self.thir()[*condition]);
+                self.in_union_destructure = old_in_union_destructure;
+            }
             _ => {
                 visit::walk_pat(self, pat);
             }

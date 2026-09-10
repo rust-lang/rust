@@ -11,7 +11,7 @@ union Foo {
 fn main() {
     let foo = Foo { field: 42 };
     match foo {
-        Foo { field: _ if true } => (),
+        Foo { field: _ if matches!(1, 1) } => (),
         _ => panic!(), //~ WARN unreachable
     }
 }

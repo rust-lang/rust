@@ -1,8 +1,8 @@
 warning: unreachable pattern
   --> $DIR/union.rs:15:9
    |
-LL |         Foo { field: _ if true } => (),
-   |         ------------------------ matches all the relevant values
+LL |         Foo { field: _ if matches!(1, 1) } => (),
+   |         ---------------------------------- matches all the relevant values
 LL |         _ => panic!(),
    |         ^ no value can reach this
    |
