@@ -249,15 +249,6 @@ impl LazyAttrTokenStreamInner {
                 break_last_token,
                 node_replacements,
             } => {
-                let mut snapshot = cursor_snapshot.clone();
-                let stack_size = snapshot.stack.len();
-                for i in 0..num_calls.saturating_sub(1) {
-                    snapshot.next_and_bump();
-                    if snapshot.stack.len() < stack_size {
-                        assert_eq!(snapshot.stack.len(), stack_size - 1);
-                        assert_eq!(i, num_calls - 2);
-                    }
-                }
                 // The token produced by the final call to `{,inlined_}next_and_bump` was not
                 // actually consumed by the callback. The combination of chaining the
                 // initial token and using `take` produces the desired result - we
@@ -982,6 +973,9 @@ impl TokenCursor {
         TokenCursor { curr: TokenTreeCursor::new(stream), stack: vec![] }
     }
 
+    /// Clone the cursor while keeping only its immediate parent (if present).
+    /// This can be used as a faster clone for situations where you only want to continue parsing
+    /// the currently delimited sequence or its children, but not return back to its parents.
     pub fn clone_without_stack(&self) -> Self {
         let stack = self.stack.last().cloned().into_iter().collect();
         Self { curr: self.curr.clone(), stack }
