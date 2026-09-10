@@ -636,8 +636,6 @@ mod sse;
 pub use self::sse::*;
 mod sse2;
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::sse2::*;
 mod sse3;
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -647,8 +645,6 @@ mod ssse3;
 pub use self::ssse3::*;
 mod sse41;
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::sse41::*;
 mod sse42;
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -658,8 +654,6 @@ mod avx;
 pub use self::avx::*;
 mod avx2;
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::avx2::*;
 mod fma;
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -670,8 +664,6 @@ mod abm;
 pub use self::abm::*;
 mod bmi1;
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::bmi1::*;
 
 mod bmi2;
@@ -680,14 +672,10 @@ pub use self::bmi2::*;
 
 mod sse4a;
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::sse4a::*;
 
 mod tbm;
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::tbm::*;
 
 mod pclmulqdq;
@@ -704,8 +692,6 @@ pub use self::rdrand::*;
 
 mod sha;
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::sha::*;
 
 mod adx;
@@ -789,8 +775,6 @@ pub use self::avx512bf16::*;
 
 mod avxneconvert;
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::avxneconvert::*;
 
 mod avx512fp16;

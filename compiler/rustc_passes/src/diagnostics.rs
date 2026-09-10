@@ -965,13 +965,8 @@ pub(crate) struct UnnecessaryPartialStableFeature {
 pub(crate) struct IneffectiveUnstableImpl;
 
 #[derive(Diagnostic)]
-#[diag("stability annotation on this re-export does not match the re-exported item")]
-#[note("re-export stability: {$reexport_stability}")]
-#[note("re-exported item stability: {$target_stability}")]
-pub(crate) struct IncompatibleReexportStability<'a> {
-    pub reexport_stability: &'a str,
-    pub target_stability: &'a str,
-}
+#[diag("`#[unstable]` does not make this re-exported path unstable")]
+pub(crate) struct IneffectiveUnstableReexport;
 
 // FIXME(jdonszelmann): move back to rustc_attr
 #[derive(Diagnostic)]

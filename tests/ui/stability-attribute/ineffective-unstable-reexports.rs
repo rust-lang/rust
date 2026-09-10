@@ -1,43 +1,45 @@
 //@ aux-build:lint-stability.rs
+//@ aux-build:non-staged-reexport-source.rs
 //@ normalize-stderr: "(\n)\n$" -> "$1"
 
 #![crate_type = "lib"]
 #![feature(staged_api)]
-#![deny(incompatible_reexport_stability)]
+#![deny(ineffective_unstable_reexports)]
 #![stable(feature = "reexport_test", since = "1.0.0")]
 
 extern crate core;
 extern crate lint_stability;
+extern crate non_staged_reexport_source;
 
-// An unstable annotation cannot make a stable item unstable through a re-export.
+// `#[unstable]` cannot make an otherwise stable re-exported path unstable.
 #[unstable(feature = "reexport_test_unstable", issue = "none")]
 pub use lint_stability::stable as supposedly_unstable;
-//~^ ERROR stability annotation on this re-export does not match the re-exported item
+//~^ ERROR `#[unstable]` does not make this re-exported path unstable
 
-// Repeating the target's stable metadata is fine.
+// Stable re-exports are outside the scope of this lint.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use lint_stability::stable as matching_stable;
 
-// A stable re-export must use the same stability feature.
 #[stable(feature = "different_stable_feature", since = "1.0.0")]
 pub use lint_stability::stable as different_stable_feature;
-//~^ ERROR stability annotation on this re-export does not match the re-exported item
 
-// Repeating the target's unstable feature and issue is fine.
+// `#[unstable]` remains meaningful when the target is itself unstable.
+// The feature and issue do not need to match for this lint.
 #[unstable(feature = "unstable_test_feature", issue = "none")]
 pub use lint_stability::unstable as matching_unstable;
 
-// An unstable re-export must use the same feature.
 #[unstable(feature = "different_unstable_feature", issue = "none")]
 pub use lint_stability::unstable as different_unstable_feature;
-//~^ ERROR stability annotation on this re-export does not match the re-exported item
 
-// An unstable re-export must use the same tracking issue.
 #[unstable(feature = "unstable_test_feature", issue = "12345")]
 pub use lint_stability::unstable as different_unstable_issue;
-//~^ ERROR stability annotation on this re-export does not match the re-exported item
 
-// Primitive re-exports have no DefId, but primitives themselves are stable.
+// Items from crates without staged API metadata are effectively stable.
+#[unstable(feature = "non_staged_reexport", issue = "none")]
+pub use non_staged_reexport_source::stable as supposedly_unstable_external;
+//~^ ERROR `#[unstable]` does not make this re-exported path unstable
+
+// Primitives have no DefId, but they are stable.
 #[unstable(feature = "primitive_reexport", issue = "none")]
 pub use core::primitive::bool as supposedly_unstable_bool;
-//~^ ERROR stability annotation on this re-export does not match the re-exported item
+//~^ ERROR `#[unstable]` does not make this re-exported path unstable

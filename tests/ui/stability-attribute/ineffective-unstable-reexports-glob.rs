@@ -4,17 +4,17 @@
 
 #![crate_type = "lib"]
 #![feature(staged_api)]
-#![deny(incompatible_reexport_stability)]
+#![deny(ineffective_unstable_reexports)]
 #![stable(feature = "reexport_test", since = "1.0.0")]
 
 extern crate stable_glob_source;
 extern crate unstable_glob_source;
 
-// An unstable annotation does not match these stable items.
+// The unstable annotation is ineffective because every target is stable.
 #[unstable(feature = "stable_glob_reexport", issue = "none")]
 pub use stable_glob_source::*;
-//~^ ERROR stability annotation on this re-export does not match the re-exported item
+//~^ ERROR `#[unstable]` does not make this re-exported path unstable
 
-// Same feature and issue; `reason` does not matter.
+// The annotation remains meaningful because these targets are unstable.
 #[unstable(feature = "unstable_glob_source", issue = "none")]
 pub use unstable_glob_source::*;

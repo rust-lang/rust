@@ -573,9 +573,6 @@ pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
 #[stable(feature = "new_range_api", since = "1.96.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)]
-// This re-export has its own stability.
 pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
@@ -697,9 +694,6 @@ pub mod task {
     pub use alloc::task::*;
     #[doc(inline)]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    #[allow(clippy::useless_attribute)]
-    #[allow(incompatible_reexport_stability)]
-    // This re-export has its own stability.
     pub use core::task::*;
 }
 
@@ -712,9 +706,6 @@ pub mod arch {
     // See https://github.com/rust-lang/rust/pull/57808#issuecomment-457390549 for
     // more information.
     #[doc(no_inline)] // Note (#82861): required for correct documentation
-    #[allow(clippy::useless_attribute)]
-    #[allow(incompatible_reexport_stability)]
-    // This re-export has its own stability.
     pub use core::arch::*;
 
     #[stable(feature = "simd_aarch64", since = "1.60.0")]
@@ -722,11 +713,11 @@ pub mod arch {
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
     #[allow(clippy::useless_attribute)]
-    #[allow(incompatible_reexport_stability)] // FIXME(#161153)
+    #[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
     #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
     pub use std_detect::is_loongarch_feature_detected;
     #[allow(clippy::useless_attribute)]
-    #[allow(incompatible_reexport_stability)] // FIXME(#161153)
+    #[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
@@ -764,7 +755,7 @@ pub use core::cfg_select;
 )]
 pub use core::concat_bytes;
 #[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // FIXME(#161153)
+#[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use core::derive;
 #[stable(feature = "matches_macro", since = "1.42.0")]
@@ -777,9 +768,6 @@ pub use core::primitive;
 pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)]
-// This re-export has its own stability.
 pub use core::{
     assert, cfg, column, compile_error, concat, const_format_args, env, file, format_args,
     format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
@@ -788,9 +776,6 @@ pub use core::{
 // Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
-#[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)]
-// This re-export has its own stability.
 pub use core::{
     assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
     unreachable, write, writeln,

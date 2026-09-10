@@ -1,7 +1,7 @@
 //@ check-pass
 //@ normalize-stderr: "(\n)\n$" -> "$1"
 // This lint is only available with `staged_api`.
-#![allow(incompatible_reexport_stability)]
-//~^ WARNING unknown lint: `incompatible_reexport_stability`
+#![allow(ineffective_unstable_reexports)]
+//~^ WARNING unknown lint: `ineffective_unstable_reexports`
 
 fn main() {}

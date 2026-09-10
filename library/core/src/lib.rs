@@ -228,7 +228,7 @@ pub mod offload;
 pub mod contracts;
 
 #[allow(clippy::useless_attribute)]
-#[allow(incompatible_reexport_stability)] // FIXME(#161153)
+#[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use crate::macros::builtin::derive;
 #[stable(feature = "cfg_select", since = "1.95.0")]

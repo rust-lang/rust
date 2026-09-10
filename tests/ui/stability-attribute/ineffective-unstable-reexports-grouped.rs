@@ -3,36 +3,34 @@
 
 #![crate_type = "lib"]
 #![feature(staged_api)]
-#![deny(incompatible_reexport_stability)]
+#![deny(ineffective_unstable_reexports)]
 #![stable(feature = "reexport_test", since = "1.0.0")]
 
 extern crate lint_stability;
 
-// An unstable annotation does not match these stable items.
+// The annotation is ineffective when every re-exported target is stable.
 #[unstable(feature = "grouped_stable", issue = "none")]
 pub use lint_stability::{
     stable as grouped_stable_a,
     stable_text as grouped_stable_b,
 };
-//~^^^ ERROR stability annotation on this re-export does not match the re-exported item
+//~^^^ ERROR `#[unstable]` does not make this re-exported path unstable
 
-// The annotation must match every item.
+// The annotation is not wholly ineffective if any target is unstable.
 #[unstable(feature = "grouped_mixed", issue = "none")]
 pub use lint_stability::{
     stable as grouped_mixed_stable,
     unstable as grouped_mixed_unstable,
 };
-//~^^^ ERROR stability annotation on this re-export does not match the re-exported item
 
-// Make sure we point at the later mismatch.
+// Order must not matter.
 #[unstable(feature = "unstable_test_feature", issue = "none")]
 pub use lint_stability::{
-    unstable as grouped_matching_first,
-    stable as grouped_mismatching_second,
-    //~^ ERROR stability annotation on this re-export does not match the re-exported item
+    unstable as grouped_unstable_first,
+    stable as grouped_stable_second,
 };
 
-// Same feature and issue; `reason` does not matter.
+// All unstable targets are fine.
 #[unstable(feature = "unstable_test_feature", issue = "none")]
 pub use lint_stability::{
     unstable as grouped_unstable_a,

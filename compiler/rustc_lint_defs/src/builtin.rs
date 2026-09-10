@@ -54,7 +54,7 @@ pub mod hardwired {
             FUNCTION_ITEM_REFERENCES,
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
-            INCOMPATIBLE_REEXPORT_STABILITY,
+            INEFFECTIVE_UNSTABLE_REEXPORTS,
             INCOMPLETE_INCLUDE,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
@@ -2793,9 +2793,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `incompatible_reexport_stability` lint detects stability
-    /// annotations on re-exports that are incompatible with the stability
-    /// metadata of the re-exported item.
+    /// The `ineffective_unstable_reexports` lint detects `#[unstable]`
+    /// attributes on re-exports where the attribute does not make the
+    /// re-exported path unstable.
     ///
     /// ### Example
     ///
@@ -2803,10 +2803,10 @@ declare_lint! {
     /// #![feature(staged_api)]
     /// #![stable(feature = "test", since = "1.0.0")]
     ///
-    /// #[stable(feature = "original", since = "1.0.0")]
+    /// #[stable(feature = "test", since = "1.0.0")]
     /// pub struct S;
     ///
-    /// #[stable(feature = "different", since = "1.0.0")]
+    /// #[unstable(feature = "reexport", issue = "none")]
     /// pub use self::S as T;
     ///
     /// fn main() {}
@@ -2816,14 +2816,11 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Stability annotations on re-exports should be compatible with the
-    /// stability metadata of the item being re-exported. Stable metadata is
-    /// compared by `feature` and `since`, while unstable metadata is compared by
-    /// `feature` and `issue`. Stable re-exports of unstable definitions remain
-    /// handled by the existing stability machinery.
-    pub INCOMPATIBLE_REEXPORT_STABILITY,
+    /// `#[unstable]` on a re-export does not currently make an otherwise
+    /// stable re-exported path unstable.
+    pub INEFFECTIVE_UNSTABLE_REEXPORTS,
     Deny,
-    "detects incompatible stability annotations on re-exports",
+    "detects ineffective `#[unstable]` attributes on re-exports",
     @feature_gate = staged_api;
 }
 
