@@ -1231,7 +1231,6 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
 /// just be `usize`.
 #[derive(Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
-    domain_size: usize,
     words: Vec<Word>,
     marker: PhantomData<T>,
 }
@@ -1239,13 +1238,12 @@ pub struct GrowableBitSet<T: Idx> {
 // Manually implemented to provide `clone_from`.
 impl<T: Idx> Clone for GrowableBitSet<T> {
     fn clone(&self) -> Self {
-        let &GrowableBitSet { domain_size, ref words, marker } = self;
-        GrowableBitSet { domain_size, words: words.clone(), marker }
+        let &GrowableBitSet { ref words, marker } = self;
+        GrowableBitSet { words: words.clone(), marker }
     }
 
     fn clone_from(&mut self, source: &Self) {
-        let GrowableBitSet { domain_size, words, marker } = source;
-        self.domain_size.clone_from(domain_size);
+        let GrowableBitSet { words, marker } = source;
         self.words.clone_from(words);
         self.marker.clone_from(marker);
     }
@@ -1258,28 +1256,20 @@ impl<T: Idx> Default for GrowableBitSet<T> {
 }
 
 impl<T: Idx> GrowableBitSet<T> {
-    /// Ensure that the set can hold at least `min_domain_size` elements.
-    pub fn ensure(&mut self, min_domain_size: usize) {
-        if self.domain_size < min_domain_size {
-            self.domain_size = min_domain_size;
-        }
-
-        let min_num_words = num_words(min_domain_size);
+    /// Ensure that the set has allocated and initialized at least `min_num_bits` bits.
+    fn ensure(&mut self, min_num_bits: usize) {
+        let min_num_words = num_words(min_num_bits);
         if self.words.len() < min_num_words {
             self.words.resize(min_num_words, 0)
         }
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
-        GrowableBitSet { domain_size: 0, words: vec![], marker: PhantomData }
+        GrowableBitSet { words: vec![], marker: PhantomData }
     }
 
     pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
-        GrowableBitSet {
-            domain_size: capacity,
-            words: vec![0; num_words(capacity)],
-            marker: PhantomData,
-        }
+        GrowableBitSet { words: Vec::with_capacity(num_words(capacity)), marker: PhantomData }
     }
 
     /// Returns `true` if the set has changed.
