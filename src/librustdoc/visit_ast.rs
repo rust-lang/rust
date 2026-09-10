@@ -425,21 +425,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 renamed = None;
             }
             let key = (item.owner_id.def_id, renamed);
-            if let Some(import_id) = import_id {
-                self.modules
-                    .last_mut()
-                    .unwrap()
-                    .items
-                    .entry(key)
-                    .and_modify(|v| v.import_ids.push(import_id))
-                    .or_insert_with(|| ItemEntry { item, renamed, import_ids: vec![import_id] });
-            } else {
-                self.modules
-                    .last_mut()
-                    .unwrap()
-                    .items
-                    .insert(key, ItemEntry { item, renamed, import_ids: Vec::new() });
-            }
+            self.modules
+                .last_mut()
+                .unwrap()
+                .items
+                .entry(key)
+                .or_insert_with(|| ItemEntry { item, renamed, import_ids: vec![] })
+                .import_ids
+                .extend(import_id);
         }
     }
 
