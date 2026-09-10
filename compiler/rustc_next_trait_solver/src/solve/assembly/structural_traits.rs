@@ -8,7 +8,7 @@ use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
-    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, Region, TypeFoldable,
+    self as ty, FallibleTypeFolder, Interner, Movability, Mutability, Region, TypeFoldable,
     TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
@@ -891,7 +891,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
 pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     ecx: &mut EvalCtxt<'_, D>,
     param_env: I::ParamEnv,
-    trait_ref: Binder<I, ty::TraitRef<I>>,
+    trait_ref: ty::TraitRef<I>,
     object_bounds: I::BoundExistentialPredicates,
 ) -> Result<Vec<Goal<I, I::Predicate>>, AmbiguousOrRerunNonErased>
 where
@@ -899,7 +899,6 @@ where
     I: Interner,
 {
     let cx = ecx.cx();
-    let trait_ref = ecx.instantiate_binder_with_infer(trait_ref);
     let mut requirements = vec![];
     // Elaborating all supertrait outlives obligations here is not soundness critical,
     // since if we just used the unelaborated set, then the transitive supertraits would
