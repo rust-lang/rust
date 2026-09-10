@@ -364,6 +364,13 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
                 &mut props.compare_output_by_lines,
             );
         }),
+        handler(USE_RUSTDOC_CCI_DOC_META_MERGE, |config, ln, props| {
+            config.set_name_directive(
+                ln,
+                USE_RUSTDOC_CCI_DOC_META_MERGE,
+                &mut props.use_rustdoc_cci_doc_meta_merge,
+            );
+        }),
     ];
 
     handlers
