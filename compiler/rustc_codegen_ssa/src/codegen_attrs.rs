@@ -416,33 +416,6 @@ fn check_result(
     interesting_spans: InterestingAttributeDiagnosticSpans,
     codegen_fn_attrs: &CodegenFnAttrs,
 ) {
-    // If a function uses `#[target_feature]` it can't be inlined into general
-    // purpose functions as they wouldn't have the right target features
-    // enabled. For that reason we also forbid `#[inline(always)]` as it can't be
-    // respected.
-    //
-    // `#[rustc_force_inline]` doesn't need to be prohibited here, only
-    // `#[inline(always)]`, as forced inlining is implemented entirely within
-    // rustc (and so the MIR inliner can do any necessary checks for compatible target
-    // features).
-    //
-    // This sidesteps the LLVM blockers in enabling `target_features` +
-    // `inline(always)` to be used together (see rust-lang/rust#116573 and
-    // llvm/llvm-project#70563).
-    if !codegen_fn_attrs.target_features.is_empty()
-        && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
-        && let Some(span) = interesting_spans.inline
-    {
-        let mut diag = tcx
-            .dcx()
-            .struct_span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
-        diag.note(
-            "See this issue for full discussion: \
-            https://github.com/rust-lang/rust/issues/145574",
-        );
-        diag.emit();
-    }
-
     // warn that inline has no effect when no_sanitize is present
     if codegen_fn_attrs.sanitizers != SanitizerFnAttrs::default()
         && codegen_fn_attrs.inline.always()
