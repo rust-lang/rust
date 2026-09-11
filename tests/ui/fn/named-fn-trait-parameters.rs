@@ -46,6 +46,8 @@ fn semantics<F>(
     //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat6: impl Fn(&true: ()),
     //~^ ERROR patterns aren't allowed in parenthesized argument lists
+
+    duplicate_names: impl Fn(x: usize, x: usize),
 ) { }
 
 // Patterns are also syntactically rejected, but restricted patterns are not
