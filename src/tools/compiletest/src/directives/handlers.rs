@@ -371,6 +371,9 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
                 &mut props.use_rustdoc_cci_doc_meta_merge,
             );
         }),
+        handler("should-fail", |config, ln, props| {
+            config.set_name_directive(ln, "should-fail", &mut props.should_fail);
+        }),
     ];
 
     handlers
