@@ -608,6 +608,14 @@ impl Session {
         self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
     }
 
+    pub fn is_sanitizer_cfi_recover_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_recover == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_diag_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_diag == Some(true)
+    }
+
     pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer_kcfi_arity == Some(true)
     }
@@ -1577,6 +1585,20 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
         if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
             sess.dcx().emit_err(diagnostics::SanitizerCfiGeneralizePointersRequiresCfi);
+        }
+    }
+
+    // LLVM CFI recovery requires CFI.
+    if sess.is_sanitizer_cfi_recover_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiRecoverRequiresCfi);
+        }
+    }
+
+    // LLVM CFI diagnostics requires CFI.
+    if sess.is_sanitizer_cfi_diag_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiDiagRequiresCfi);
         }
     }
 
