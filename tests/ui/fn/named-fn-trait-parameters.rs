@@ -15,15 +15,16 @@ fn allowed<F>(
 // Patterns are semantically rejected
 fn semantics<F>(
     pat1: impl Fn(1..3: bool),
-    //~^ ERROR expected type, found `1`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat2: impl Fn((x, y): (bool, bool)),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat3: impl Fn(Thing { a, b }: Thing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat4: impl Fn(NoThing { a, b }: NoThing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
+    //~| ERROR cannot find type `NoThing` in this scope
     pat5: impl Fn((((((x))))): bool),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
 
     self1: impl Fn(self),
     self2: impl Fn(self, self),
@@ -44,15 +45,15 @@ fn semantics<F>(
 #[cfg(false)]
 fn syntax<F>(
     pat1: impl Fn(1..3: bool),
-    //~^ ERROR expected type, found `1`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat2: impl Fn((x, y): (bool, bool)),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat3: impl Fn(Thing { a, b }: Thing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat4: impl Fn(NoThing { a, b }: NoThing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat5: impl Fn((((((x))))): bool),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
 
     self1: impl Fn(self),
     self2: impl Fn(self, self),

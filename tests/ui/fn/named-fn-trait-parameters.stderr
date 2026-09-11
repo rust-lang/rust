@@ -1,86 +1,165 @@
-error: expected type, found `1`
+error[E0642]: patterns aren't allowed in parenthesized argument list
   --> $DIR/named-fn-trait-parameters.rs:17:19
    |
 LL |     pat1: impl Fn(1..3: bool),
-   |                   ^ expected type
+   |                   ^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat1: impl Fn(1..3: bool),
+LL +     pat1: impl Fn(_: bool),
+   |
 
-error: unexpected token: `:`
-  --> $DIR/named-fn-trait-parameters.rs:19:25
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:19:19
    |
 LL |     pat2: impl Fn((x, y): (bool, bool)),
-   |                         ^ unexpected token after this
+   |                   ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat2: impl Fn((x, y): (bool, bool)),
+LL +     pat2: impl Fn(_: (bool, bool)),
+   |
 
-error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
-  --> $DIR/named-fn-trait-parameters.rs:21:25
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:21:19
    |
 LL |     pat3: impl Fn(Thing { a, b }: Thing),
-   |                         ^ expected one of `!`, `(`, `+`, `::`, or `<`
+   |                   ^^^^^^^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat3: impl Fn(Thing { a, b }: Thing),
+LL +     pat3: impl Fn(_: Thing),
+   |
 
-error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
-  --> $DIR/named-fn-trait-parameters.rs:23:27
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:23:19
    |
 LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
-   |                           ^ expected one of `!`, `(`, `+`, `::`, or `<`
+   |                   ^^^^^^^^^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat4: impl Fn(NoThing { a, b }: NoThing),
+LL +     pat4: impl Fn(_: NoThing),
+   |
 
-error: unexpected token: `:`
-  --> $DIR/named-fn-trait-parameters.rs:25:30
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:26:19
    |
 LL |     pat5: impl Fn((((((x))))): bool),
-   |                              ^ unexpected token after this
+   |                   ^^^^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat5: impl Fn((((((x))))): bool),
+LL +     pat5: impl Fn(_: bool),
+   |
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:29:26
+  --> $DIR/named-fn-trait-parameters.rs:30:26
    |
 LL |     self2: impl Fn(self, self),
    |                          ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:31:26
+  --> $DIR/named-fn-trait-parameters.rs:32:26
    |
 LL |     self3: impl Fn(bool, self),
    |                          ^^^^ must be the first parameter of an associated function
 
-error: expected type, found `1`
-  --> $DIR/named-fn-trait-parameters.rs:46:19
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:47:19
    |
 LL |     pat1: impl Fn(1..3: bool),
-   |                   ^ expected type
+   |                   ^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat1: impl Fn(1..3: bool),
+LL +     pat1: impl Fn(_: bool),
+   |
 
-error: unexpected token: `:`
-  --> $DIR/named-fn-trait-parameters.rs:48:25
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:49:19
    |
 LL |     pat2: impl Fn((x, y): (bool, bool)),
-   |                         ^ unexpected token after this
+   |                   ^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat2: impl Fn((x, y): (bool, bool)),
+LL +     pat2: impl Fn(_: (bool, bool)),
+   |
 
-error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
-  --> $DIR/named-fn-trait-parameters.rs:50:25
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:51:19
    |
 LL |     pat3: impl Fn(Thing { a, b }: Thing),
-   |                         ^ expected one of `!`, `(`, `+`, `::`, or `<`
+   |                   ^^^^^^^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat3: impl Fn(Thing { a, b }: Thing),
+LL +     pat3: impl Fn(_: Thing),
+   |
 
-error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
-  --> $DIR/named-fn-trait-parameters.rs:52:27
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:53:19
    |
 LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
-   |                           ^ expected one of `!`, `(`, `+`, `::`, or `<`
+   |                   ^^^^^^^^^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat4: impl Fn(NoThing { a, b }: NoThing),
+LL +     pat4: impl Fn(_: NoThing),
+   |
 
-error: unexpected token: `:`
-  --> $DIR/named-fn-trait-parameters.rs:54:30
+error[E0642]: patterns aren't allowed in parenthesized argument list
+  --> $DIR/named-fn-trait-parameters.rs:55:19
    |
 LL |     pat5: impl Fn((((((x))))): bool),
-   |                              ^ unexpected token after this
+   |                   ^^^^^^^^^^^
+   |
+help: give this argument a name or use an underscore to ignore it
+   |
+LL -     pat5: impl Fn((((((x))))): bool),
+LL +     pat5: impl Fn(_: bool),
+   |
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:58:26
+  --> $DIR/named-fn-trait-parameters.rs:59:26
    |
 LL |     self2: impl Fn(self, self),
    |                          ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:60:26
+  --> $DIR/named-fn-trait-parameters.rs:61:26
    |
 LL |     self3: impl Fn(bool, self),
    |                          ^^^^ must be the first parameter of an associated function
 
-error: aborting due to 14 previous errors
+error[E0425]: cannot find type `NoThing` in this scope
+  --> $DIR/named-fn-trait-parameters.rs:23:37
+   |
+LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
+   |                                     ^^^^^^^ not found in this scope
+   |
+note: similarly named struct `Thing` defined here
+  --> $DIR/named-fn-trait-parameters.rs:73:1
+   |
+LL | struct Thing { a: bool, b: bool }
+   | ^^^^^^^^^^^^
+help: a struct with a similar name exists
+   |
+LL -     pat4: impl Fn(NoThing { a, b }: NoThing),
+LL +     pat4: impl Fn(NoThing { a, b }: Thing),
+   |
 
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0425, E0642.
+For more information about an error, try `rustc --explain E0425`.

@@ -405,7 +405,7 @@ impl<'a> Parser<'a> {
                             req_name: |_, _| false,
                             req_body: false,
                         };
-                        let param = p.parse_param_general(&mode, first_param, false)?;
+                        let param = p.parse_param_general(&mode, first_param, true)?;
                         first_param = false;
                         if !matches!(param.pat.kind, PatKind::Missing) {
                             self.psess
