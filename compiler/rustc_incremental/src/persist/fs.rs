@@ -702,33 +702,6 @@ pub(crate) fn garbage_collect_session_directories(
         lock_file_to_session_dir.items().filter_map(|(lock_file_name, directory_name)| {
             debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
 
-            if directory_name.as_str() == current_session_directory_name
-                && !is_finalized(directory_name)
-            {
-                // Skipping our own active directory is important for correctness.
-                //
-                // To summarize #147821: we will try to lock directories before deciding they can be
-                // garbage collected, but the ability of `flock::Lock` to detect a lock held *by the
-                // same process* varies across file locking APIs. Then, if our own session directory
-                // has become old enough to be eligible for GC, we are beholden to platform-specific
-                // details about detecting the our own lock on the session directory.
-                //
-                // POSIX `fcntl(F_SETLK)`-style file locks are maintained across a process. On
-                // systems where this is the mechanism for `flock::Lock`, there is no way to
-                // discover if an `flock::Lock` has been created in the same process on the same
-                // file. Attempting to set a lock on the lockfile again will succeed, even if the
-                // lock was set by another thread, on another file descriptor. Then we would
-                // garbage collect our own live directory, unable to tell it was locked perhaps by
-                // this same thread.
-                //
-                // It's not clear that `flock::Lock` can be fixed for this in general, and our own
-                // incremental session directory is the only one which this process may own, so skip
-                // it here and avoid the problem. We know it's not garbage anyway: we're using it.
-                // Once finalized, its lock is released. Include it in collection so we keep
-                // the newest completed session.
-                return None;
-            }
-
             let Ok(timestamp) = extract_timestamp_from_session_dir(directory_name) else {
                 debug!(
                     "found session-dir with malformed timestamp: {}",
@@ -772,6 +745,31 @@ pub(crate) fn garbage_collect_session_directories(
                     }
                 }
             } else if is_old_enough_to_be_collected(timestamp) {
+                if directory_name.as_str() == current_session_directory_name {
+                    // Skipping our own active directory is important for correctness.
+                    //
+                    // To summarize #147821: we will try to lock directories before deciding they can be
+                    // garbage collected, but the ability of `flock::Lock` to detect a lock held *by the
+                    // same process* varies across file locking APIs. Then, if our own session directory
+                    // has become old enough to be eligible for GC, we are beholden to platform-specific
+                    // details about detecting the our own lock on the session directory.
+                    //
+                    // POSIX `fcntl(F_SETLK)`-style file locks are maintained across a process. On
+                    // systems where this is the mechanism for `flock::Lock`, there is no way to
+                    // discover if an `flock::Lock` has been created in the same process on the same
+                    // file. Attempting to set a lock on the lockfile again will succeed, even if the
+                    // lock was set by another thread, on another file descriptor. Then we would
+                    // garbage collect our own live directory, unable to tell it was locked perhaps by
+                    // this same thread.
+                    //
+                    // It's not clear that `flock::Lock` can be fixed for this in general, and our own
+                    // incremental session directory is the only one which this process may own, so skip
+                    // it here and avoid the problem. We know it's not garbage anyway: we're using it.
+                    // Once finalized, its lock is released. Include it in collection so we keep
+                    // the newest completed session.
+                    return None;
+                }
+
                 // When cleaning out "-working" session directories, i.e.
                 // session directories that might still be in use by another
                 // compiler instance, we only look a directories that are
