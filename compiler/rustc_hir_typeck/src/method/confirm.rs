@@ -347,7 +347,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 })
             }
 
-            probe::TraitPick(_) => {
+            probe::TraitPick { .. } => {
                 let trait_def_id = pick.item.container_id(self.tcx);
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
@@ -756,7 +756,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
     ) {
-        if pick.kind != probe::PickKind::TraitPick(true) {
+        if pick.kind != (probe::PickKind::TraitPick { is_ambiguously_imported: true }) {
             return;
         }
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
@@ -767,11 +767,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             segment.hir_id,
             rustc_errors::DiagDecorator(|diag| {
                 diag.primary_message(format!(
-                    "Use of ambiguously glob imported trait `{trait_name}`"
+                    "use of ambiguously glob imported trait `{trait_name}`"
                 ))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
-                .help(format!("Import `{trait_name}` explicitly"));
+                .help(format!("import `{trait_name}` explicitly"));
             }),
         );
     }

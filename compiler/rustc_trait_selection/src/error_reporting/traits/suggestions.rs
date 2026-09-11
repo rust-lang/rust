@@ -5158,6 +5158,38 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let ty::Ref(_, inner_ty, _) = trait_pred.skip_binder().self_ty().kind()
             && let ty::Uint(ty::UintTy::Usize) = inner_ty.kind()
         {
+            // If the index is written as `&i`, suggest removing the borrow instead of
+            // dereferencing it, i.e. `v[&i]` -> `v[i]` rather than `v[*&i]`.
+            let span = obligation.cause.span;
+            if !span.from_expansion()
+                && let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_def_id)
+                && let Some(expr) = {
+                    let mut finder = FindExprBySpan::new(span, self.tcx);
+                    finder.visit_expr(body.value);
+                    finder.result
+                }
+                && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, borrowed) =
+                    expr.kind
+                && let Some(amp_span) = borrowed
+                    .span
+                    .find_ancestor_inside_same_ctxt(expr.span)
+                    .map(|borrowed_span| expr.span.until(borrowed_span))
+                && self
+                    .tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(amp_span)
+                    .is_ok_and(|snippet| snippet.starts_with('&'))
+            {
+                err.span_suggestion_verbose(
+                    amp_span,
+                    "remove this reference",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+                return;
+            }
+
             err.span_suggestion_verbose(
                 obligation.cause.span.shrink_to_lo(),
                 "dereference this index",

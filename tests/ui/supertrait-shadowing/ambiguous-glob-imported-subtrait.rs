@@ -31,6 +31,6 @@ use second_policy::*;
 
 fn main() {
     assert!(0u8.allow_action());
-    //~^ ERROR Use of ambiguously glob imported trait `Role`
+    //~^ ERROR use of ambiguously glob imported trait `Role`
     //~| WARN this was previously accepted by the compiler but is being phased out
 }

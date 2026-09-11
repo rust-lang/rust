@@ -2,11 +2,15 @@
 
 **⚠️ This documentation page is a stub, you can help improving it by sending a PR. ⚠️**
 
-**Tier: 1/2 (with host tools)**
+**Tier: 1 (with host tools)**
 
-Target triples available:
-- `i686-pc-windows-gnu`: Tier 2
-- `x86_64-pc-windows-gnu`: Tier 1
+Target tuples available:
+- `x86_64-pc-windows-gnu`
+
+**Tier: 2 (without host tools)**
+
+Target tuples available:
+- `i686-pc-windows-gnu`
 
 ## Target maintainers
 

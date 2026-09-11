@@ -2,7 +2,7 @@ error[E0275]: overflow evaluating the requirement `fn() -> impl MyFnOnce {my_fn_
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`failed_to_resolve_instance_ice_105488`)
 note: required for `WrapFnOnce<fn() -> impl MyFnOnce {my_fn_1}>` to implement `MyFnOnce`
-  --> $DIR/failed-to-resolve-instance-ice-105488.rs:14:37
+  --> $DIR/failed-to-resolve-instance-ice-105488.rs:18:37
    |
 LL | impl<F: FnOnce() -> D, D: MyFnOnce> MyFnOnce for WrapFnOnce<F> {
    |                           --------  ^^^^^^^^     ^^^^^^^^^^^^^

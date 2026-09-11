@@ -1,6 +1,8 @@
-//! See also <https://github.com/rust-lang/rust/issues/153831>
 //@ check-fail
-//@compile-flags: -Znext-solver=globally --emit=obj
+//@ compile-flags: -Znext-solver=globally
+
+// Regression test for <https://github.com/rust-lang/rust/issues/153831>
+
 #![feature(min_generic_const_args)]
 #![expect(incomplete_features)]
 

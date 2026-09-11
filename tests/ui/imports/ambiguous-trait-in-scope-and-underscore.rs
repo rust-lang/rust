@@ -38,6 +38,6 @@ use export::*;
 
 fn main() {
     1i32.method();
-    //~^ WARNING Use of ambiguously glob imported trait `Foo` [ambiguous_glob_imported_traits]
+    //~^ WARNING use of ambiguously glob imported trait `Foo` [ambiguous_glob_imported_traits]
     //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
