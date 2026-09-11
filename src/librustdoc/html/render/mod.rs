@@ -1897,12 +1897,10 @@ fn render_impl(
             let item_type = item.type_();
             let name = item.name.as_ref().unwrap();
 
-            let mut is_deref = false;
             let render_method_item = rendering_params.show_non_assoc_items
                 && match render_mode {
                     RenderMode::Normal => true,
                     RenderMode::ForDeref { mut_: deref_mut_, is_deref_target_copy } => {
-                        is_deref = true;
                         should_render_item(item, deref_mut_, cx.tcx(), is_deref_target_copy)
                     }
                 };
@@ -2012,7 +2010,7 @@ fn render_impl(
                     }
                 }
                 clean::RequiredAssocConstItem(generics, ty) => {
-                    if !is_deref {
+                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
                         let source_id = format!("{item_type}.{name}");
                         let id = cx.derive_id(&source_id);
                         write!(
@@ -2041,7 +2039,7 @@ fn render_impl(
                     }
                 }
                 clean::ProvidedAssocConstItem(ci) | clean::ImplAssocConstItem(ci) => {
-                    if !is_deref {
+                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
                         let source_id = format!("{item_type}.{name}");
                         let id = cx.derive_id(&source_id);
                         write!(
@@ -2075,7 +2073,7 @@ fn render_impl(
                     }
                 }
                 clean::RequiredAssocTypeItem(generics, bounds) => {
-                    if !is_deref {
+                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
                         let source_id = format!("{item_type}.{name}");
                         let id = cx.derive_id(&source_id);
                         write!(
@@ -2104,7 +2102,7 @@ fn render_impl(
                     }
                 }
                 clean::AssocTypeItem(tydef, _bounds) => {
-                    if !is_deref {
+                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
                         let source_id = format!("{item_type}.{name}");
                         let id = cx.derive_id(&source_id);
                         write!(
@@ -3191,11 +3189,6 @@ pub(crate) fn compute_if_deref_target_implements_copy(tcx: TyCtxt<'_>, impl_def_
             let item = tcx.hir_impl_item(*item);
             if matches!(item.kind, hir::ImplItemKind::Type(_)) {
                 let item_def_id = item.owner_id.to_def_id();
-                // If it's a Ctor, we need to retrieve the actual type.
-                let item_def_id = match tcx.def_kind(item_def_id) {
-                    hir::def::DefKind::Ctor(_, _) => tcx.parent(item_def_id),
-                    _ => item_def_id,
-                };
                 let ty = tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip();
                 let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
                 return tcx.type_is_copy_modulo_regions(typing_env, ty);
