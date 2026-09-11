@@ -421,7 +421,7 @@ target | std | host | notes
 [`riscv64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | RISC-V OpenEmbedded/Yocto Linux (GNU)
 [`riscv64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 `riscv64gc-unknown-freebsd` | ? |  | RISC-V FreeBSD
-`riscv64gc-unknown-fuchsia` | ? |  | RISC-V Fuchsia
+[`riscv64gc-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ |  | RISC-V Fuchsia
 [`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |  | RISC-V Hermit
 [`riscv64gc-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | RISC-V Managarm
 [`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
