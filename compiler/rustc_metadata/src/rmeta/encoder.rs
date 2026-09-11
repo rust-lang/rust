@@ -1838,8 +1838,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         record_some_lazy!(self.tables.assoc_container[def_id] <- item.container);
 
-        if item.is_anon_const() {
-            self.tables.is_anon_assoc_const.set(def_id.index, true);
+        if let Some(item_name) = item.opt_name() {
+            record_some_lazy!(self.tables.opt_item_name[def_id] <- item_name);
         }
 
         if let AssocContainer::Trait = item.container

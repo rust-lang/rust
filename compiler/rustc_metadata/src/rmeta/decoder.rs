@@ -1411,11 +1411,11 @@ impl CrateMetadata {
 
     fn get_associated_item(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(id) {
-            DefKind::AssocConst { is_type_const } => {
-                let data = if self.root.tables.is_anon_assoc_const.get(self, id) {
-                    ty::AssocConstData::Anonymous
+            DefKind::AssocConst => {
+                let data = if let Some(item_name) = self.root.tables.opt_item_name.get(self, id) {
+                    ty::AssocConstData::Named(item_name.decode((self, tcx)))
                 } else {
-                    ty::AssocConstData::Named(self.item_name(id))
+                    ty::AssocConstData::Anonymous
                 };
                 ty::AssocKind::Const { data }
             }
