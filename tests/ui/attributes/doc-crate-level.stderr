@@ -1,98 +1,67 @@
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:3:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:4:1
    |
 LL | #[doc(rust_logo)]
    | ^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+   = note: `#[warn(invalid_doc_attributes)]` on by default
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:5:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:6:1
    |
 LL | #[doc(html_favicon_url = "example.org")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:7:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:8:1
    |
 LL | #[doc(html_logo_url = "example.org")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:9:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:10:1
    |
 LL | #[doc(html_playground_url = "example.org")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:11:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:12:1
    |
 LL | #[doc(issue_tracker_base_url = "example.org")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:13:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:14:1
    |
 LL | #[doc(html_root_url = "example.org")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:15:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:16:1
    |
 LL | #[doc(html_no_source)]
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:17:1
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:18:1
    |
 LL | #[doc(test(no_crate_inject))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-error: aborting due to 8 previous errors
+warning: 8 warnings emitted
 

@@ -157,7 +157,7 @@ impl DocParser {
 
                 cx.check_target(
                     sym::no_crate_inject.as_str(),
-                    &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
                 );
 
                 self.attribute.no_crate_inject = Some(path.span())
@@ -525,7 +525,7 @@ impl DocParser {
                 let span = path.span();
                 cx.check_target(
                     concat!("(", stringify!($ident), ")"),
-                    &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
                 );
                 self.attribute.$ident = Some(span);
             }};
@@ -542,7 +542,10 @@ impl DocParser {
                     return;
                 };
 
-                cx.check_target(s.as_str(), &AllowedTargets::AllowList(&[Allow(Target::Crate)]));
+                cx.check_target(
+                    s.as_str(),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                );
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.
