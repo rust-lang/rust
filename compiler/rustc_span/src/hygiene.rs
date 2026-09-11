@@ -24,7 +24,9 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
+use std::cell::RefCell;
 use std::hash::Hash;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
@@ -1294,74 +1296,97 @@ impl DesugaringKind {
 #[derive(Default)]
 pub struct HygieneEncodeContext {
     /// All `SyntaxContexts` for which we have written `SyntaxContextData` into crate metadata.
-    /// This is `None` after we finish encoding `SyntaxContexts`, to ensure
-    /// that we don't accidentally try to encode any more `SyntaxContexts`
-    serialized_ctxts: Lock<FxHashSet<SyntaxContext>>,
+    serialized_ctxts: FxHashSet<SyntaxContext>,
     /// The `SyntaxContexts` that we have serialized (e.g. as a result of encoding `Spans`)
     /// in the most recent 'round' of serializing. Serializing `SyntaxContextData`
     /// may cause us to serialize more `SyntaxContext`s, so serialize in a loop
     /// until we reach a fixed point.
-    latest_ctxts: Lock<FxHashSet<SyntaxContext>>,
+    latest_ctxts: FxHashSet<SyntaxContext>,
 
-    serialized_expns: Lock<FxHashSet<ExpnId>>,
-
-    latest_expns: Lock<FxHashSet<ExpnId>>,
+    serialized_expns: FxHashSet<ExpnId>,
+    latest_expns: FxHashSet<ExpnId>,
 }
 
 impl HygieneEncodeContext {
     /// Record the fact that we need to serialize the corresponding `ExpnData`.
-    pub fn schedule_expn_data_for_encoding(&self, expn: ExpnId) {
-        if !self.serialized_expns.lock().contains(&expn) {
-            self.latest_expns.lock().insert(expn);
-        }
+    #[inline]
+    pub fn schedule_expn_data_for_encoding(&mut self, expn: ExpnId) {
+        self.latest_expns.insert(expn);
     }
 
     pub fn encode<T>(
-        &self,
+        h_ctxt: &RefCell<HygieneEncodeContext>,
         encoder: &mut T,
         mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
-        mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
+        mut encode_expn: impl FnMut(&mut T, ExpnId, Option<&ExpnData>, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
         // a `SyntaxContext` that we haven't seen before
-        while !self.latest_ctxts.lock().is_empty() || !self.latest_expns.lock().is_empty() {
+
+        // Reuse the capacity between the loop iterations below.
+        let mut all_ctxt_data = vec![];
+        let mut all_expn_data = vec![];
+
+        while {
+            let h_ctxt = h_ctxt.borrow();
+            !h_ctxt.latest_ctxts.is_empty() || !h_ctxt.latest_expns.is_empty()
+        } {
             debug!(
                 "encode_hygiene: Serializing a round of {:?} SyntaxContextData: {:?}",
-                self.latest_ctxts.lock().len(),
-                self.latest_ctxts
+                h_ctxt.borrow().latest_ctxts.len(),
+                h_ctxt.borrow().latest_ctxts
             );
 
+            let mut mut_hctxt = h_ctxt.borrow_mut();
+
             // Consume the current round of syntax contexts.
-            // Drop the lock() temporary early.
-            // It's fine to iterate over a HashMap, because the serialization of the table
+            // It's fine to iterate over a HashSet, because the serialization of the table
             // that we insert data into doesn't depend on insertion order.
             #[allow(rustc::potential_query_instability)]
-            let latest_ctxts = { mem::take(&mut *self.latest_ctxts.lock()) }.into_iter();
-            let all_ctxt_data: Vec<_> = HygieneData::with(|data| {
-                latest_ctxts
-                    .map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].key()))
-                    .collect()
-            });
-            for (ctxt, ctxt_key) in all_ctxt_data {
-                if self.serialized_ctxts.lock().insert(ctxt) {
-                    encode_ctxt(encoder, ctxt.0, &ctxt_key);
+            let latest_ctxts = { mem::take(&mut mut_hctxt.latest_ctxts) }.into_iter();
+
+            HygieneData::with(|data| {
+                for ctxt in latest_ctxts {
+                    if !mut_hctxt.serialized_ctxts.insert(ctxt) {
+                        continue;
+                    }
+
+                    all_ctxt_data.push((ctxt.0, data.syntax_context_data[ctxt.0 as usize].key()));
                 }
+            });
+
+            drop(mut_hctxt);
+
+            for (idx, ctxt_key) in all_ctxt_data.drain(..) {
+                encode_ctxt(encoder, idx, &ctxt_key);
             }
+
+            let mut mut_hctxt = h_ctxt.borrow_mut();
 
             // Same as above, but for expansions instead of syntax contexts.
             #[allow(rustc::potential_query_instability)]
-            let latest_expns = { mem::take(&mut *self.latest_expns.lock()) }.into_iter();
-            let all_expn_data: Vec<_> = HygieneData::with(|data| {
-                latest_expns
-                    .map(|expn| (expn, data.expn_data(expn).clone(), data.expn_hash(expn)))
-                    .collect()
-            });
-            for (expn, expn_data, expn_hash) in all_expn_data {
-                if self.serialized_expns.lock().insert(expn) {
-                    encode_expn(encoder, expn, &expn_data, expn_hash);
+            let latest_expns = { mem::take(&mut mut_hctxt.latest_expns) }.into_iter();
+            HygieneData::with(|data| {
+                for expn in latest_expns {
+                    if !mut_hctxt.serialized_expns.insert(expn) {
+                        continue;
+                    }
+
+                    // We need `data` only for local expansions, so don't `data` for non-local
+                    // expansions.
+                    // FIXME: completely remove this clone
+                    let expn_data = expn.as_local().map(|id| data.local_expn_data(id).clone());
+                    all_expn_data.push((expn, expn_data, data.expn_hash(expn)));
                 }
+            });
+
+            drop(mut_hctxt);
+
+            for (expn, expn_data, expn_hash) in all_expn_data.drain(..) {
+                encode_expn(encoder, expn, expn_data.as_ref(), expn_hash);
             }
         }
+
         debug!("encode_hygiene: Done serializing SyntaxContextData");
     }
 }
@@ -1484,14 +1509,13 @@ impl<D: SpanDecoder> Decodable<D> for LocalExpnId {
     }
 }
 
+#[inline]
 pub fn raw_encode_syntax_context(
     ctxt: SyntaxContext,
-    context: &HygieneEncodeContext,
+    context: Rc<RefCell<HygieneEncodeContext>>,
     e: &mut impl Encoder,
 ) {
-    if !context.serialized_ctxts.lock().contains(&ctxt) {
-        context.latest_ctxts.lock().insert(ctxt);
-    }
+    context.borrow_mut().latest_ctxts.insert(ctxt);
     ctxt.0.encode(e);
 }
 
