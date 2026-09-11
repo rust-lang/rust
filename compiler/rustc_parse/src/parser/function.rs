@@ -358,7 +358,6 @@ impl<'a> Parser<'a> {
                     match tt {
                         ArenaTokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
                         ArenaTokenTree::DelimitedStart(..) => false,
-                        _ => unreachable!()
                     }
                 }) == Some(true) ||
                     // This branch is only for better diagnostics; `pub`, `unsafe`, etc. are not
@@ -371,14 +370,12 @@ impl<'a> Parser<'a> {
                                         t.is_keyword(exp.kw)
                                     }),
                                 ArenaTokenTree::DelimitedStart(..) => false,
-                                _ => unreachable!()
                             }
                         }) == Some(true)
                         && self.tree_look_ahead(3, |tt| {
                             match tt {
                                 ArenaTokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
                                 ArenaTokenTree::DelimitedStart(..) => false,
-                                _ => unreachable!()
                             }
                         }) == Some(true)
                     )
