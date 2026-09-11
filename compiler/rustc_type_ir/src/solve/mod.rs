@@ -456,6 +456,7 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
+    pub hidden_types_of_opaques_in_body: I::OpaqueHiddenTyBounds,
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
@@ -563,7 +564,7 @@ pub enum ParamEnvSource {
 pub enum AliasBoundKind {
     /// Alias bound from the self type of a projection
     SelfBounds,
-    // Alias bound having recursed on the self type of a projection
+    /// Alias bound having recursed on the self type of a projection
     NonSelfBounds,
 }
 
@@ -632,7 +633,8 @@ impl<I: Interner> ExternalRegionConstraints<I> {
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: ExternalRegionConstraints<I>,
-    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pub opaque_types: I::PredefinedOpaques,
+    pub opaque_hidden_ty_bounds: I::OpaqueHiddenTyBounds,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
@@ -647,7 +649,8 @@ impl<I: Interner> ExternalConstraintsData<I> {
 
         Self {
             region_constraints,
-            opaque_types: vec![],
+            opaque_types: cx.mk_predefined_opaques_in_body(&[]),
+            opaque_hidden_ty_bounds: cx.mk_opaque_hidden_ty_bounds_in_body(&[]),
             normalization_nested_goals: NestedNormalizationGoals::default(),
         }
     }
@@ -656,10 +659,12 @@ impl<I: Interner> ExternalConstraintsData<I> {
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
+            opaque_hidden_ty_bounds,
             normalization_nested_goals,
         } = self;
         region_constraints.is_empty()
             && opaque_types.is_empty()
+            && opaque_hidden_ty_bounds.is_empty()
             && normalization_nested_goals.is_empty()
     }
 }
@@ -1002,6 +1007,7 @@ pub enum GoalStalledOnOpaques<I: Interner> {
     No,
     Yes {
         num_opaques_in_storage: usize,
+        num_hidden_ty_bounds_in_storage: usize,
         previously_succeeded_in_erased: SucceededInErased<I>,
     },
 }

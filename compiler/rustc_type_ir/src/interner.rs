@@ -129,6 +129,17 @@ pub trait Interner:
         data: &[(ty::OpaqueTypeKey<Self>, Self::Ty)],
     ) -> Self::PredefinedOpaques;
 
+    type OpaqueHiddenTyBounds: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeFoldable<Self>
+        + SliceLike<Item = (Self::Ty, ty::OpaqueHiddenTyBound<Self>)>;
+    fn mk_opaque_hidden_ty_bounds_in_body(
+        self,
+        data: &[(Self::Ty, ty::OpaqueHiddenTyBound<Self>)],
+    ) -> Self::OpaqueHiddenTyBounds;
+
     type LocalDefIds: Copy
         + Debug
         + Hash
