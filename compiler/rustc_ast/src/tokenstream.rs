@@ -908,15 +908,16 @@ pub struct TokenCursor {
     /// Global index into the token arena.
     index: usize,
     delimited_sequence_end: usize,
-    /// The current delimited sequences that we are inside of.
-    stack: Vec<(DelimitedBounds, DelimitedData)>,
+    depth: usize,
+    /// The current delimited sequence that we are inside of, if any.
+    parent: Option<(DelimitedBounds, DelimitedData)>,
 }
 
 impl TokenCursor {
     #[inline]
     pub fn new(stream: ArenaTokenStream) -> Self {
         let end = stream.length() + 1;
-        TokenCursor { stream, index: 0, delimited_sequence_end: end, stack: vec![] }
+        TokenCursor { stream, index: 0, delimited_sequence_end: end, depth: 0, parent: None }
     }
 
     /// Gets the next token and advances the cursor by one.
@@ -960,7 +961,7 @@ impl TokenCursor {
     /// delimited sequence. Panics if we are not within a delimited sequence.
     #[inline]
     pub fn look_ahead_past_close_delim(&self) -> Option<&ArenaTokenTree> {
-        let (bounds, _) = self.stack.last().unwrap();
+        let (bounds, _) = self.parent.as_ref().unwrap();
         self.stream.get_innermost_elem_at(bounds.index_of_next_token_tree())
     }
 
@@ -968,14 +969,14 @@ impl TokenCursor {
     /// a delimited sequence.
     #[inline]
     pub fn clone_enclosing_delim(&self) -> ArenaTokenTree {
-        let &(bounds, data) = self.stack.last().unwrap();
+        let &(bounds, data) = self.parent.as_ref().unwrap();
         ArenaTokenTree::DelimitedStart(bounds, data)
     }
 
     /// For skipping to the end of the current sequence, in rare circumstances.
     #[inline]
     pub fn bump_to_end(&mut self) {
-        if let Some((bounds, _)) = self.stack.last() {
+        if let Some((bounds, _)) = self.parent.as_ref() {
             self.index = bounds.index_of_next_token_tree();
         } else {
             self.index = self.stream.length();
@@ -985,13 +986,13 @@ impl TokenCursor {
     /// Note: the outermost stream has depth of 0.
     #[inline]
     pub fn depth(&self) -> usize {
-        self.stack.len()
+        self.depth
     }
 
     /// Returns details about the parent delimited sequence, if there is one.
     #[inline]
     pub fn parent_delim_and_span(&self) -> Option<(Delimiter, DelimSpan)> {
-        if let Some((_, data)) = self.stack.last() {
+        if let Some((_, data)) = self.parent.as_ref() {
             Some((data.delimiter, data.span))
         } else {
             None
@@ -1003,12 +1004,16 @@ impl TokenCursor {
     pub fn inlined_next_and_bump(&mut self) -> (Token, Spacing) {
         loop {
             if self.index == self.delimited_sequence_end {
-                let (_, data) = self.stack.pop().unwrap();
+                let (bounds, data) = self.parent.take().unwrap();
+                self.depth -= 1;
+
+                // Find the previous parent
+                self.parent = self.stream.get_parent_of(bounds);
 
                 // How much is left for the now-current sequence?
                 self.delimited_sequence_end = self
-                    .stack
-                    .last()
+                    .parent
+                    .as_ref()
                     .map(|(bounds, _)| bounds.index_of_next_token_tree())
                     .unwrap_or(self.stream.length() + 1);
 
@@ -1032,9 +1037,10 @@ impl TokenCursor {
                         return (token, spacing);
                     }
                     &ArenaTokenTree::DelimitedStart(bounds, data) => {
-                        self.stack.push((bounds, data));
                         self.index += 1;
+                        self.depth += 1;
                         self.delimited_sequence_end = bounds.index_of_next_token_tree();
+                        self.parent = Some((bounds, data));
                         if !data.delimiter.skip() {
                             return (
                                 Token::new(data.delimiter.as_open_token_kind(), data.span.open),
@@ -1045,7 +1051,7 @@ impl TokenCursor {
                     }
                 }
             } else {
-                assert!(self.stack.is_empty());
+                assert!(self.parent.is_none());
 
                 // We have exhausted the outermost token stream. The use of
                 // `Spacing::Alone` is arbitrary and immaterial, because the
@@ -1103,7 +1109,7 @@ mod size_asserts {
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
-    static_assert_size!(LazyAttrTokenStreamInner, 96);
+    static_assert_size!(LazyAttrTokenStreamInner, 120);
     static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);

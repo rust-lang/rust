@@ -88,7 +88,7 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
     }
 
     // Compare against the original tree.
-    if reparsed_tree.to_token_tree(parser.arena()).eq_unspanned(matcher) {
+    if reparsed_tree.to_token_tree(parser.token_stream()).eq_unspanned(matcher) {
         Some(snippet)
     } else {
         None
