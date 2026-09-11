@@ -113,8 +113,9 @@ impl<'tcx> JsonRenderer<'tcx> {
             .cache
             .paths
             .iter()
-            .chain(&self.cache.external_paths)
-            .map(|(&k, &(ref path, kind))| {
+            .map(|(k, info)| (k, (&info.parts, info.ty)))
+            .chain(self.cache.external_paths.iter().map(|(k, (parts, ty))| (k, (parts, *ty))))
+            .map(|(&k, (path, kind))| {
                 (
                     self.id_from_item_default(k.into()),
                     types::ItemSummary {
@@ -195,8 +196,9 @@ impl<'tcx> JsonRenderer<'tcx> {
         self.cache
             .paths
             .get(&item_id)
-            .or_else(|| self.cache.external_paths.get(&item_id))
-            .map(|(path, _)| path.iter().map(|name| name.to_string()).collect())
+            .map(|info| &info.parts)
+            .or_else(|| self.cache.external_paths.get(&item_id).map(|(parts, _)| parts))
+            .map(|path| path.iter().map(|name| name.to_string()).collect())
     }
 }
 

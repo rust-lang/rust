@@ -833,12 +833,17 @@ impl TraitAliasPart {
             // FIXME: this is a vague explanation for why this can't be a `get`, in
             //        theory it should be...
             let (remote_path, remote_item_type) = match cache.exact_paths.get(&did) {
-                Some(p) => match cache.paths.get(&did).or_else(|| cache.external_paths.get(&did)) {
+                Some(p) => match cache
+                    .paths
+                    .get(&did)
+                    .map(|info| (&info.parts, info.ty))
+                    .or_else(|| cache.external_paths.get(&did).map(|(parts, ty)| (parts, *ty)))
+                {
                     Some((_, t)) => (p, t),
                     None => continue,
                 },
                 None => match cache.external_paths.get(&did) {
-                    Some((p, t)) => (p, t),
+                    Some((p, t)) => (p, *t),
                     None => continue,
                 },
             };
@@ -986,8 +991,10 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             return;
         }
         let Some(target_did) = t.type_.def_id(cache) else { return };
-        let get_extern = { || cache.external_paths.get(&target_did) };
-        let Some(&(ref target_fqp, target_type)) = cache.paths.get(&target_did).or_else(get_extern)
+        let get_extern =
+            { || cache.external_paths.get(&target_did).map(|(parts, ty)| (parts, *ty)) };
+        let Some((target_fqp, target_type)) =
+            cache.paths.get(&target_did).map(|info| (&info.parts, info.ty)).or_else(get_extern)
         else {
             return;
         };
@@ -1003,7 +1010,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
                 .collect();
             AliasedType { target_fqp: &target_fqp[..], target_type, impl_ }
         });
-        let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) };
+        let get_local = { || cache.paths.get(&self_did).map(|info| &info.parts) };
         let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local) else {
             return;
         };
