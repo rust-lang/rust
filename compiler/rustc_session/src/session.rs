@@ -1607,6 +1607,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // LLVM CFI minimal runtime requires CFI Recover or CFI Diag.
     if sess.is_sanitizer_cfi_minimal_runtime_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfi);
+        }
         if !(sess.is_sanitizer_cfi_recover_enabled() || sess.is_sanitizer_cfi_diag_enabled()) {
             sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfiRecoverOrDiag);
         }
