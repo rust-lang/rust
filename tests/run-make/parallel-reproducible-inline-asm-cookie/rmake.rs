@@ -2,6 +2,8 @@
 //@ ignore-cross-compile
 //@ ignore-windows-gnu
 // GNU Linker for Windows is non-deterministic. (from `reproducible-build-2` test in this suite)
+// FIXME: Remove once this is fixed in cg_gcc
+//@ ignore-backends: gcc
 
 use std::rc::Rc;
 

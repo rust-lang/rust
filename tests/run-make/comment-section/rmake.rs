@@ -6,6 +6,8 @@
 //@ only-linux
 // FIXME(jieyouxu): check cross-compile setup
 //@ ignore-cross-compile
+// FIXME: Remove once this is fixed in cg_gcc
+//@ ignore-backends: gcc
 
 use run_make_support::{cwd, env_var, llvm_readobj, rfs, rustc};
 
