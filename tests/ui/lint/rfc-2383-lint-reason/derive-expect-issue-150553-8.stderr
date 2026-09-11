@@ -1,0 +1,22 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/derive-expect-issue-150553-8.rs:16:10
+   |
+LL | #[expect(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/derive-expect-issue-150553-8.rs:20:10
+   |
+LL | #[expect(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/derive-expect-issue-150553-8.rs:24:10
+   |
+LL | #[expect(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^
+
+warning: 3 warnings emitted
+
