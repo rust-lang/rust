@@ -532,30 +532,9 @@ pub(crate) const ALL_TARGETS: &[Policy] = {
         Allow(Target::Crate),
         Allow(Target::Delegation { mac: false }),
         Allow(Target::Delegation { mac: true }),
-        Allow(Target::GenericParam {
-            kind: rustc_attr_ir::target::GenericParamKind::Const,
-            has_default: false,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_attr_ir::target::GenericParamKind::Const,
-            has_default: true,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_attr_ir::target::GenericParamKind::Lifetime,
-            has_default: false,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_attr_ir::target::GenericParamKind::Lifetime,
-            has_default: true,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_attr_ir::target::GenericParamKind::Type,
-            has_default: false,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_attr_ir::target::GenericParamKind::Type,
-            has_default: true,
-        }),
+        Allow(Target::GenericParam { kind: rustc_attr_ir::target::GenericParamKind::Const }),
+        Allow(Target::GenericParam { kind: rustc_attr_ir::target::GenericParamKind::Lifetime }),
+        Allow(Target::GenericParam { kind: rustc_attr_ir::target::GenericParamKind::Type }),
         Allow(Target::Loop),
         Allow(Target::ForLoop),
         Allow(Target::While),

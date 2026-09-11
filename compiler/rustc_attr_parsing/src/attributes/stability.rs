@@ -40,7 +40,7 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::TyAlias),
     Allow(Target::Variant),
     Allow(Target::Field),
-    Allow(Target::GenericParam { kind: GenericParamKind::Type, has_default: true }),
+    Allow(Target::GenericParam { kind: GenericParamKind::Type }),
     Allow(Target::Static),
     Allow(Target::ForeignFn),
     Allow(Target::ForeignStatic),

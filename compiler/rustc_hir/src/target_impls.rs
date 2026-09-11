@@ -18,17 +18,15 @@ impl From<&hir::ForeignItem<'_>> for Target {
 impl From<&hir::GenericParam<'_>> for Target {
     fn from(generic_param: &hir::GenericParam<'_>) -> Target {
         match generic_param.kind {
-            hir::GenericParamKind::Type { default, .. } => Target::GenericParam {
-                kind: GenericParamKind::Type,
-                has_default: default.is_some(),
-            },
-            hir::GenericParamKind::Lifetime { .. } => {
-                Target::GenericParam { kind: GenericParamKind::Lifetime, has_default: false }
+            hir::GenericParamKind::Type { .. } => {
+                Target::GenericParam { kind: GenericParamKind::Type }
             }
-            hir::GenericParamKind::Const { default, .. } => Target::GenericParam {
-                kind: GenericParamKind::Const,
-                has_default: default.is_some(),
-            },
+            hir::GenericParamKind::Lifetime { .. } => {
+                Target::GenericParam { kind: GenericParamKind::Lifetime }
+            }
+            hir::GenericParamKind::Const { .. } => {
+                Target::GenericParam { kind: GenericParamKind::Const }
+            }
         }
     }
 }

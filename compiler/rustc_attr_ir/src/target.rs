@@ -55,7 +55,7 @@ pub enum Target {
     ForeignFn,
     ForeignStatic,
     ForeignTy,
-    GenericParam { kind: GenericParamKind, has_default: bool },
+    GenericParam { kind: GenericParamKind },
     MacroDef,
     Param,
     PatField,
@@ -277,7 +277,7 @@ impl Target {
             Target::ForeignFn => "foreign functions",
             Target::ForeignStatic => "foreign statics",
             Target::ForeignTy => "foreign types",
-            Target::GenericParam { kind, has_default: _ } => match kind {
+            Target::GenericParam { kind } => match kind {
                 GenericParamKind::Type => "type parameters",
                 GenericParamKind::Lifetime => "lifetime parameters",
                 GenericParamKind::Const => "const parameters",
