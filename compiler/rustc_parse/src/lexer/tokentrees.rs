@@ -45,7 +45,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             } else {
                 // Get the next normal token.
                 let (this_tok, this_spacing) = self.bump();
-                arena.push(ArenaTokenTree::Token(this_tok, this_spacing));
+                arena.push_token(this_tok, this_spacing);
             }
         }
     }

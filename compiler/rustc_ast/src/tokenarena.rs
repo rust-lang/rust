@@ -69,8 +69,12 @@ pub struct TokenArena {
 }
 
 impl TokenArena {
-    pub fn push(&mut self, token: ArenaTokenTree) {
-        self.tokens.push(token);
+    pub fn push_token(&mut self, token: Token, spacing: Spacing) {
+        self.tokens.push(ArenaTokenTree::Token(token, spacing));
+    }
+
+    pub fn push_token_alone(&mut self, token: Token) {
+        self.tokens.push(ArenaTokenTree::Token(token, Spacing::Alone));
     }
 
     pub fn pop(&mut self) -> Option<ArenaTokenTree> {
