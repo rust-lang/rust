@@ -285,7 +285,10 @@ impl AssocItems {
     }
 
     /// Returns named associated items in definition order.
-    pub fn named_items(&self) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+    ///
+    /// New code should avoid relying on definition order. If you need a particular associated item
+    /// for a known trait, make that trait a lang item instead of indexing this array.
+    pub fn named_items_in_definition_order(&self) -> impl '_ + Iterator<Item = &ty::AssocItem> {
         self.items.iter().filter_map(|(name, v)| name.is_some().then(|| v))
     }
 

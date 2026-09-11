@@ -287,7 +287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let Some(iterator_item_id) = tcx
             .associated_items(iterator_trait_id)
-            .named_items()
+            .named_items_in_definition_order()
             .find(|item| item.name() == sym::Item)
             .map(|item| item.def_id)
         else {

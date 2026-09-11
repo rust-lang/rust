@@ -2669,7 +2669,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         {
             return true;
         }
-
         false
     }
 
@@ -2683,7 +2682,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
-                    .named_items()
+                    .named_items_in_definition_order()
                     .filter(|x| {
                         if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;
