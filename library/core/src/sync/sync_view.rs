@@ -26,49 +26,62 @@ use core::task::{Context, Poll};
 ///
 /// ## Examples
 ///
-/// Using a non-`Sync` future prevents the wrapping struct from being `Sync`:
+/// A non-`Sync` field prevents the wrapping struct from being `Sync`:
 ///
-/// ```compile_fail
-/// use core::cell::Cell;
+/// ```compile_fail,E0277
+/// use std::sync::mpsc::{self, Receiver};
 ///
-/// async fn other() {}
-/// fn assert_sync<T: Sync>(t: T) {}
-/// struct State<F> {
-///     future: F
+/// struct Inbox {
+///     name: &'static str,
+///     receiver: Receiver<u32>,
 /// }
 ///
-/// assert_sync(State {
-///     future: async {
-///         let cell = Cell::new(1);
-///         let cell_ref = &cell;
-///         other().await;
-///         let value = cell_ref.get();
-///     }
-/// });
+/// fn require_send<T: Send>() {}
+/// fn require_send_sync<T: Send + Sync>() {}
+///
+/// require_send::<Inbox>();      // compiled
+/// require_send_sync::<Inbox>(); // compile-failed
 /// ```
 ///
-/// `SyncView` ensures the struct is `Sync` without stripping the future of its
+/// `SyncView` makes the value `Sync` without stripping the struct of its
 /// functionality:
 ///
-/// ```
+/// ```ignore-wasm
 /// #![feature(exclusive_wrapper)]
-/// use core::cell::Cell;
-/// use core::sync::SyncView;
 ///
-/// async fn other() {}
-/// fn assert_sync<T: Sync>(t: T) {}
-/// struct State<F> {
-///     future: SyncView<F>
+/// use std::sync::SyncView;
+/// use std::sync::mpsc::{self, Receiver};
+/// use std::thread;
+///
+/// struct Inbox {
+///     name: &'static str,
+///     receiver: SyncView<Receiver<u32>>,
 /// }
 ///
-/// assert_sync(State {
-///     future: SyncView::new(async {
-///         let cell = Cell::new(1);
-///         let cell_ref = &cell;
-///         other().await;
-///         let value = cell_ref.get();
-///     })
+/// impl Inbox {
+///     fn name(&self) -> &'static str {
+///         self.name
+///     }
+///
+///     fn recv(&mut self) -> u32 {
+///         self.receiver.as_mut().recv().unwrap()
+///     }
+/// }
+///
+/// let (sender, receiver) = mpsc::channel();
+/// let mut inbox = Inbox { name: "jobs", receiver: SyncView::new(receiver) };
+/// sender.send(42).unwrap();
+/// drop(sender);
+///
+/// thread::scope(|scope| {
+///     let reader = scope.spawn(|| inbox.name());
+///     assert_eq!(inbox.name(), "jobs");
+///     assert_eq!(reader.join().unwrap(), "jobs");
 /// });
+///
+/// let message = thread::spawn(move || inbox.recv()).join().unwrap();
+/// assert_eq!(message, 42);
+/// println!("Shared Inbox across threads, then moved it to a worker and received 42");
 /// ```
 ///
 /// ## Parallels with a mutex
