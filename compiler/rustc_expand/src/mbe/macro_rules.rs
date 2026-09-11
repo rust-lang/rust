@@ -244,7 +244,7 @@ impl MacroRulesMacroExpander {
             trace_macros_note(&mut cx.expansions, sp, msg);
         }
 
-        match try_match_macro_derive(psess, name, body, rules, &mut NoopTracker) {
+        match try_match_macro_derive(psess, body, rules, &mut NoopTracker) {
             Ok((rule_index, rule, named_matches)) => {
                 let MacroRule::Derive { rhs, .. } = rule else {
                     panic!("try_match_macro_derive returned non-derive rule");
@@ -743,7 +743,6 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 #[instrument(level = "debug", skip(psess, body, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     body: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
