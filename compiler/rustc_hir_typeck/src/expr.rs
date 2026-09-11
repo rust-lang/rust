@@ -3504,20 +3504,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     // Try to give some advice about indexing tuples.
                     if let ty::Tuple(types) = base_t.kind() {
-                        err.help(
-                            "tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.",
-                        );
-                        // If index is an unsuffixed integer, show the fixed expression:
-                        if let ExprKind::Lit(lit) = idx.kind
-                            && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
-                            && i.get() < types.len().try_into().expect("tuple length fits in u128")
-                        {
-                            err.span_suggestion(
-                                brackets_span,
-                                format!("to access tuple element `{i}`, use"),
-                                format!(".{i}"),
-                                Applicability::MachineApplicable,
+                        if !types.is_empty() {
+                            err.help(
+                                "tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.",
                             );
+                            // If index is an unsuffixed integer, show the fixed expression:
+                            if let ExprKind::Lit(lit) = idx.kind
+                                && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
+                                && i.get()
+                                    < types.len().try_into().expect("tuple length fits in u128")
+                            {
+                                err.span_suggestion(
+                                    brackets_span,
+                                    format!("to access tuple element `{i}`, use"),
+                                    format!(".{i}"),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        } else {
+                            self.suggest_using_receiver_of_in_place_method(&mut err, base);
                         }
                     }
 
@@ -3538,6 +3543,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let reported = err.emit();
                     Ty::new_error(self.tcx, reported)
                 }
+            }
+        }
+    }
+
+    fn suggest_using_receiver_of_in_place_method(
+        &self,
+        err: &mut Diag<'_>,
+        base: &'tcx hir::Expr<'tcx>,
+    ) {
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = base.kind else {
+            return;
+        };
+        let hir::def::Res::Local(local_hir_id) = path.res else {
+            return;
+        };
+        let hir::Node::Pat(pat) = self.tcx.hir_node(local_hir_id) else {
+            return;
+        };
+        let init = match self.tcx.parent_hir_node(pat.hir_id) {
+            hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. }) => *init,
+            _ => return,
+        };
+        let init = init.peel_drop_temps();
+        if let hir::ExprKind::MethodCall(_segment, receiver, _, _) = init.kind {
+            let sm = self.tcx.sess.source_map();
+            if let Ok(rcvr_snip) = sm.span_to_snippet(receiver.span) {
+                err.span_label(
+                    init.span,
+                    format!("this method call modifies `{rcvr_snip}` in-place"),
+                );
+                err.span_suggestion_verbose(
+                    base.span,
+                    format!("you might have meant to use `{rcvr_snip}`"),
+                    rcvr_snip,
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }
