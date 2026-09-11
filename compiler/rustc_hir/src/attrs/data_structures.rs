@@ -1237,6 +1237,9 @@ pub enum AttributeKind {
     /// Represents `#[rad_protected_mir]`
     RadProtected(Span),
 
+    /// Represents `#[rad_protected_shadow]`
+    RadProtectedShadow(Span),
+
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
     RecursionLimit {
         attr_span: Span,

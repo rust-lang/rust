@@ -55,12 +55,21 @@ pub(crate) fn triplicate(
         return vec![Annotatable::Item(item)];
     };
 
-    let func_body = match &mut func.body {
-        Some(b) => b,
-        None => {
-            cx.dcx().span_err(span, "`#[rad_protected]` can only be applied to functions with a body");
-            return vec![Annotatable::Item(item)];
-        }
+    if func.body.is_none() {
+        cx.dcx().span_err(span, "`#[rad_protected]` can only be applied to functions with a body");
+        return vec![Annotatable::Item(item)];
+    }
+
+    // `shadow_only` drives just the speculative-shadow MIR pass: no process triplication and no
+    // checkpoints, so a MIR dump shows that transformation on its own.
+    if opts.shadow_only() {
+        item.attrs.push(cx.attr_word(sym::rad_protected_shadow, DUMMY_SP));
+        return vec![Annotatable::Item(item)];
+    }
+
+    let func_body = match &mut item.kind {
+        ast::ItemKind::Fn(func) => func.body.as_mut().unwrap(),
+        _ => unreachable!("checked above"),
     };
 
     func_body.stmts.insert(0, cx.stmt_let(

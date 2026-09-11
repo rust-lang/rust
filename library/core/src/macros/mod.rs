@@ -1791,6 +1791,14 @@ pub(crate) mod builtin {
 
 
     /// Attribute macro that implements radiation hardening through triplication
+    ///
+    /// Options:
+    ///
+    /// * `triplicate_unsafe`, on an `unsafe` block: run it in a critical section.
+    /// * `shadow_only`, on a function: run its body on a speculative shadow copy of the state a
+    ///   `&mut` argument points at, and copy the fields it may have written back at every return,
+    ///   without triplicating the process or injecting checkpoints. Internal, for developing and
+    ///   testing the shadow/rollback MIR pass on its own.
     #[stable(feature = "rad_protected", since = "1.95.0")]
     #[rustc_builtin_macro]
     pub macro rad_protected($item:item) {

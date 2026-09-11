@@ -910,6 +910,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No,
     ),
 
+    // Radshield speculative-shadow MIR pass attribute (ungated for easy testing)
+    // Applied by `#[rad_protected(shadow_only)]`; not intended for use by the user
+    ungated!(
+        rad_protected_shadow, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::No,
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

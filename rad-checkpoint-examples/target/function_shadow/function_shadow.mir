@@ -1,0 +1,1864 @@
+// WARNING: This output format is intended for human consumers only
+// and is subject to change without notice. Knock yourself out.
+// HINT: See also -Z dump-mir for MIR at specific points during compilation.
+fn <impl at function_shadow.rs:25:10: 25:15>::clone(_1: &Position) -> Position {
+    debug self => _1;
+    let mut _0: Position;
+    scope 1 {
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:25:23: 25:28>::fmt(_1: &Position, _2: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
+    debug self => _1;
+    debug f => _2;
+    let mut _0: core::result::Result<(), core::fmt::Error>;
+    let mut _3: &str;
+    let mut _4: &str;
+    let mut _5: &dyn core::fmt::Debug;
+    let _6: &u32;
+    let mut _7: &str;
+    let mut _8: &dyn core::fmt::Debug;
+    let _9: &&u32;
+    let _10: &u32;
+
+    bb0: {
+        _3 = const "Position";
+        _4 = const "x";
+        _6 = &((*_1).0: u32);
+        _5 = copy _6 as &dyn core::fmt::Debug (PointerCoercion(Unsize, Implicit));
+        _7 = const "y";
+        _10 = &((*_1).1: u32);
+        _9 = &_10;
+        _8 = copy _9 as &dyn core::fmt::Debug (PointerCoercion(Unsize, Implicit));
+        _0 = Formatter::<'_>::debug_struct_field2_finish(copy _2, move _3, move _4, move _5, move _7, move _8) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}
+
+alloc3 (size: 1, align: 1) {
+    79                                              │ y
+}
+
+alloc2 (size: 1, align: 1) {
+    78                                              │ x
+}
+
+alloc1 (size: 8, align: 1) {
+    50 6f 73 69 74 69 6f 6e                         │ Position
+}
+
+fn <impl at function_shadow.rs:25:30: 25:39>::eq(_1: &Position, _2: &Position) -> bool {
+    debug self => _1;
+    debug other => _2;
+    let mut _0: bool;
+    let mut _3: bool;
+    let mut _4: u32;
+    let mut _5: u32;
+    let mut _6: u32;
+    let mut _7: u32;
+
+    bb0: {
+        _4 = copy ((*_1).0: u32);
+        _5 = copy ((*_2).0: u32);
+        _3 = Eq(move _4, move _5);
+        switchInt(move _3) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _6 = copy ((*_1).1: u32);
+        _7 = copy ((*_2).1: u32);
+        _0 = Eq(move _6, move _7);
+        goto -> bb3;
+    }
+
+    bb2: {
+        _0 = const false;
+        goto -> bb3;
+    }
+
+    bb3: {
+        return;
+    }
+}
+
+const State::samples::{constant#0}: usize = const 4_usize;
+
+fn <impl at function_shadow.rs:31:10: 31:15>::clone(_1: &State) -> State {
+    debug self => _1;
+    let mut _0: State;
+    scope 1 {
+        scope 2 {
+            scope 3 {
+            }
+        }
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+const <impl at function_shadow.rs:31:10: 31:15>::clone::{constant#0}: usize = const 4_usize;
+
+fn <impl at function_shadow.rs:31:23: 31:28>::fmt(_1: &State, _2: &mut Formatter<'_>) -> Result<(), core::fmt::Error> {
+    debug self => _1;
+    debug f => _2;
+    let mut _0: core::result::Result<(), core::fmt::Error>;
+    let mut _3: &str;
+    let mut _4: &str;
+    let mut _5: &dyn core::fmt::Debug;
+    let _6: &Position;
+    let mut _7: &str;
+    let mut _8: &dyn core::fmt::Debug;
+    let _9: &u32;
+    let mut _10: &str;
+    let mut _11: &dyn core::fmt::Debug;
+    let _12: &&[u32; 4];
+    let _13: &[u32; 4];
+
+    bb0: {
+        _3 = const "State";
+        _4 = const "position";
+        _6 = &((*_1).0: Position);
+        _5 = copy _6 as &dyn core::fmt::Debug (PointerCoercion(Unsize, Implicit));
+        _7 = const "counter";
+        _9 = &((*_1).1: u32);
+        _8 = copy _9 as &dyn core::fmt::Debug (PointerCoercion(Unsize, Implicit));
+        _10 = const "samples";
+        _13 = &((*_1).2: [u32; 4]);
+        _12 = &_13;
+        _11 = copy _12 as &dyn core::fmt::Debug (PointerCoercion(Unsize, Implicit));
+        _0 = Formatter::<'_>::debug_struct_field3_finish(copy _2, move _3, move _4, move _5, move _7, move _8, move _10, move _11) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}
+
+alloc7 (size: 7, align: 1) {
+    73 61 6d 70 6c 65 73                            │ samples
+}
+
+alloc6 (size: 7, align: 1) {
+    63 6f 75 6e 74 65 72                            │ counter
+}
+
+alloc5 (size: 8, align: 1) {
+    70 6f 73 69 74 69 6f 6e                         │ position
+}
+
+alloc4 (size: 5, align: 1) {
+    53 74 61 74 65                                  │ State
+}
+
+fn <impl at function_shadow.rs:31:30: 31:39>::eq(_1: &State, _2: &State) -> bool {
+    debug self => _1;
+    debug other => _2;
+    let mut _0: bool;
+    let mut _3: bool;
+    let mut _4: u32;
+    let mut _5: u32;
+    let mut _6: bool;
+    let mut _7: &Position;
+    let mut _8: &Position;
+    let mut _9: &[u32; 4];
+    let mut _10: &[u32; 4];
+
+    bb0: {
+        _4 = copy ((*_1).1: u32);
+        _5 = copy ((*_2).1: u32);
+        _3 = Eq(move _4, move _5);
+        switchInt(move _3) -> [0: bb4, otherwise: bb1];
+    }
+
+    bb1: {
+        _7 = &((*_1).0: Position);
+        _8 = &((*_2).0: Position);
+        _6 = <Position as PartialEq>::eq(move _7, move _8) -> [return: bb2, unwind continue];
+    }
+
+    bb2: {
+        switchInt(move _6) -> [0: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        _9 = &((*_1).2: [u32; 4]);
+        _10 = &((*_2).2: [u32; 4]);
+        _0 = <[u32; 4] as PartialEq>::eq(move _9, move _10) -> [return: bb5, unwind continue];
+    }
+
+    bb4: {
+        _0 = const false;
+        goto -> bb5;
+    }
+
+    bb5: {
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:43:1: 43:20>::drop(_1: &mut Owned) -> () {
+    debug self => _1;
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:48:10: 48:15>::clone(_1: &WithPtr) -> WithPtr {
+    debug self => _1;
+    let mut _0: WithPtr;
+    scope 1 {
+        scope 2 {
+        }
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:56:10: 56:15>::clone(_1: &Nested) -> Nested {
+    debug self => _1;
+    let mut _0: Nested;
+    scope 1 {
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:62:10: 62:15>::clone(_1: &WithShared<'_>) -> WithShared<'_> {
+    debug self => _1;
+    let mut _0: WithShared<'_>;
+    scope 1 {
+        scope 2 {
+        }
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:69:10: 69:15>::clone(_1: &WithCell<'_>) -> WithCell<'_> {
+    debug self => _1;
+    let mut _0: WithCell<'_>;
+    scope 1 {
+        scope 2 {
+        }
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:76:10: 76:15>::clone(_1: &U) -> U {
+    debug self => _1;
+    let mut _0: U;
+    scope 1 {
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+fn <impl at function_shadow.rs:83:10: 83:15>::clone(_1: &View<'_>) -> View<'_> {
+    debug self => _1;
+    let mut _0: View<'_>;
+    scope 1 {
+    }
+
+    bb0: {
+        _0 = copy (*_1);
+        return;
+    }
+}
+
+fn helper(_1: &mut State) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+
+    bb0: {
+        _2 = AddWithOverflow(copy ((*_1).1: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).1: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).1: u32) = move (_2.0: u32);
+        return;
+    }
+}
+
+fn basic_field(_1: &mut State) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+    let mut _3: &mut State;
+    let mut _4: State;
+    let mut _5: &mut State;
+
+    bb0: {
+        _3 = move _1;
+        _4 = copy (*_3);
+        _5 = &mut _4;
+        _1 = move _5;
+        _2 = AddWithOverflow(copy (((*_1).0: Position).0: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy (((*_1).0: Position).0: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        (((*_1).0: Position).0: u32) = move (_2.0: u32);
+        (((*_3).0: Position).0: u32) = copy ((_4.0: Position).0: u32);
+        return;
+    }
+}
+
+fn conditional_write(_1: &mut State, _2: bool) -> () {
+    debug state => _1;
+    debug modify => _2;
+    let mut _0: ();
+    let mut _3: (u32, bool);
+    let mut _4: &mut State;
+    let mut _5: State;
+    let mut _6: &mut State;
+
+    bb0: {
+        _4 = move _1;
+        _5 = copy (*_4);
+        _6 = &mut _5;
+        _1 = move _6;
+        switchInt(copy _2) -> [0: bb3, otherwise: bb1];
+    }
+
+    bb1: {
+        _3 = AddWithOverflow(copy (((*_1).0: Position).0: u32), const 1_u32);
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", copy (((*_1).0: Position).0: u32), const 1_u32) -> [success: bb2, unwind continue];
+    }
+
+    bb2: {
+        (((*_1).0: Position).0: u32) = move (_3.0: u32);
+        goto -> bb3;
+    }
+
+    bb3: {
+        (((*_4).0: Position).0: u32) = copy ((_5.0: Position).0: u32);
+        return;
+    }
+}
+
+fn overlapping_writes(_1: &mut State, _2: Position) -> () {
+    debug state => _1;
+    debug new_position => _2;
+    let mut _0: ();
+    let mut _3: &mut State;
+    let mut _4: State;
+    let mut _5: &mut State;
+
+    bb0: {
+        _3 = move _1;
+        _4 = copy (*_3);
+        _5 = &mut _4;
+        _1 = move _5;
+        ((*_1).0: Position) = copy _2;
+        (((*_1).0: Position).0: u32) = const 7_u32;
+        ((*_3).0: Position) = copy (_4.0: Position);
+        return;
+    }
+}
+
+fn sibling_fields(_1: &mut State) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+    let mut _3: &mut State;
+    let mut _4: State;
+    let mut _5: &mut State;
+
+    bb0: {
+        _3 = move _1;
+        _4 = copy (*_3);
+        _5 = &mut _4;
+        _1 = move _5;
+        (((*_1).0: Position).1: u32) = const 5_u32;
+        _2 = AddWithOverflow(copy ((*_1).1: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).1: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).1: u32) = move (_2.0: u32);
+        (((*_3).0: Position).1: u32) = copy ((_4.0: Position).1: u32);
+        ((*_3).1: u32) = copy (_4.1: u32);
+        return;
+    }
+}
+
+fn whole_state(_1: &mut State, _2: State) -> () {
+    debug state => _1;
+    debug new_state => _2;
+    let mut _0: ();
+    let mut _3: &mut State;
+    let mut _4: State;
+    let mut _5: &mut State;
+
+    bb0: {
+        _3 = move _1;
+        _4 = copy (*_3);
+        _5 = &mut _4;
+        _1 = move _5;
+        (*_1) = copy _2;
+        (*_3) = copy _4;
+        return;
+    }
+}
+
+fn indexed_write(_1: &mut State, _2: usize) -> () {
+    debug state => _1;
+    debug i => _2;
+    let mut _0: ();
+    let mut _3: bool;
+    let mut _4: &mut State;
+    let mut _5: State;
+    let mut _6: &mut State;
+
+    bb0: {
+        _4 = move _1;
+        _5 = copy (*_4);
+        _6 = &mut _5;
+        _1 = move _6;
+        _3 = Lt(copy _2, const 4_usize);
+        assert(move _3, "index out of bounds: the length is {} but the index is {}", const 4_usize, copy _2) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).2: [u32; 4])[_2] = const 9_u32;
+        ((*_4).2: [u32; 4]) = copy (_5.2: [u32; 4]);
+        return;
+    }
+}
+
+fn with_return_value(_1: &mut State) -> u32 {
+    debug state => _1;
+    let mut _0: u32;
+    let mut _2: (u32, bool);
+    let mut _3: u32;
+    let mut _4: u32;
+    let mut _5: (u32, bool);
+    let mut _6: &mut State;
+    let mut _7: State;
+    let mut _8: &mut State;
+
+    bb0: {
+        _6 = move _1;
+        _7 = copy (*_6);
+        _8 = &mut _7;
+        _1 = move _8;
+        _2 = AddWithOverflow(copy ((*_1).1: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).1: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).1: u32) = move (_2.0: u32);
+        _3 = copy ((*_1).1: u32);
+        _4 = copy (((*_1).0: Position).0: u32);
+        _5 = AddWithOverflow(copy _3, copy _4);
+        assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", move _3, move _4) -> [success: bb2, unwind continue];
+    }
+
+    bb2: {
+        _0 = move (_5.0: u32);
+        ((*_6).1: u32) = copy (_7.1: u32);
+        return;
+    }
+}
+
+fn multiple_returns(_1: &mut State, _2: bool) -> u32 {
+    debug state => _1;
+    debug early => _2;
+    let mut _0: u32;
+    let mut _3: (u32, bool);
+    let mut _4: &mut State;
+    let mut _5: State;
+    let mut _6: &mut State;
+
+    bb0: {
+        _4 = move _1;
+        _5 = copy (*_4);
+        _6 = &mut _5;
+        _1 = move _6;
+        switchInt(copy _2) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _0 = copy ((*_1).1: u32);
+        goto -> bb4;
+    }
+
+    bb2: {
+        _3 = AddWithOverflow(copy ((*_1).1: u32), const 1_u32);
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).1: u32), const 1_u32) -> [success: bb3, unwind continue];
+    }
+
+    bb3: {
+        ((*_1).1: u32) = move (_3.0: u32);
+        _0 = copy ((*_1).1: u32);
+        goto -> bb4;
+    }
+
+    bb4: {
+        ((*_4).1: u32) = copy (_5.1: u32);
+        return;
+    }
+}
+
+fn panics_before_commit(_1: &mut State, _2: bool) -> () {
+    debug state => _1;
+    debug boom => _2;
+    let mut _0: ();
+    let mut _3: (u32, bool);
+    let _4: !;
+    let mut _5: core::fmt::Arguments<'_>;
+    let mut _6: &mut State;
+    let mut _7: State;
+    let mut _8: &mut State;
+
+    bb0: {
+        _6 = move _1;
+        _7 = copy (*_6);
+        _8 = &mut _7;
+        _1 = move _8;
+        _3 = AddWithOverflow(copy ((*_1).1: u32), const 1_u32);
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).1: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).1: u32) = move (_3.0: u32);
+        switchInt(copy _2) -> [0: bb4, otherwise: bb2];
+    }
+
+    bb2: {
+        _5 = Arguments::<'_>::from_str(const "shadow must not be committed") -> [return: bb3, unwind continue];
+    }
+
+    bb3: {
+        _4 = panic_fmt(move _5) -> unwind continue;
+    }
+
+    bb4: {
+        ((*_6).1: u32) = copy (_7.1: u32);
+        return;
+    }
+}
+
+alloc8 (size: 28, align: 1) {
+    0x00 │ 73 68 61 64 6f 77 20 6d 75 73 74 20 6e 6f 74 20 │ shadow must not 
+    0x10 │ 62 65 20 63 6f 6d 6d 69 74 74 65 64             │ be committed
+}
+
+fn shared_ref_state(_1: &mut WithShared<'_>) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+
+    bb0: {
+        _2 = AddWithOverflow(copy ((*_1).0: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).0: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).0: u32) = move (_2.0: u32);
+        return;
+    }
+}
+
+fn two_mut_args(_1: &mut State, _2: &mut State) -> () {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: ();
+    let mut _3: (u32, bool);
+    let mut _4: (u32, bool);
+
+    bb0: {
+        _3 = AddWithOverflow(copy ((*_1).1: u32), const 1_u32);
+        assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).1: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).1: u32) = move (_3.0: u32);
+        _4 = AddWithOverflow(copy ((*_2).1: u32), const 1_u32);
+        assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_2).1: u32), const 1_u32) -> [success: bb2, unwind continue];
+    }
+
+    bb2: {
+        ((*_2).1: u32) = move (_4.0: u32);
+        return;
+    }
+}
+
+fn non_copy_state(_1: &mut Owned) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+
+    bb0: {
+        _2 = AddWithOverflow(copy ((*_1).0: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).0: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).0: u32) = move (_2.0: u32);
+        return;
+    }
+}
+
+fn raw_ptr_state(_1: &mut WithPtr) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+
+    bb0: {
+        _2 = AddWithOverflow(copy ((*_1).0: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).0: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).0: u32) = move (_2.0: u32);
+        return;
+    }
+}
+
+fn returns_reference(_1: &mut State) -> &mut u32 {
+    debug state => _1;
+    let mut _0: &mut u32;
+
+    bb0: {
+        _0 = &mut ((*_1).1: u32);
+        return;
+    }
+}
+
+fn nested_raw_ptr_state(_1: &mut Nested) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+
+    bb0: {
+        _2 = AddWithOverflow(copy (((*_1).0: WithPtr).0: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy (((*_1).0: WithPtr).0: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        (((*_1).0: WithPtr).0: u32) = move (_2.0: u32);
+        return;
+    }
+}
+
+fn generic_state(_1: &mut (T, u32)) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+
+    bb0: {
+        _2 = AddWithOverflow(copy ((*_1).1: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).1: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).1: u32) = move (_2.0: u32);
+        return;
+    }
+}
+
+fn returns_nested_reference(_1: &mut State) -> View<'_> {
+    debug state => _1;
+    let mut _0: View<'_>;
+    let _2: &u32;
+
+    bb0: {
+        _2 = &((*_1).1: u32);
+        _0 = View::<'_> { counter: copy _2 };
+        return;
+    }
+}
+
+fn mutable_reborrow(_1: &mut State) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let _2: ();
+
+    bb0: {
+        _2 = helper(copy _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}
+
+fn read_only(_1: &mut State) -> u32 {
+    debug state => _1;
+    let mut _0: u32;
+    let mut _2: u32;
+    let mut _3: u32;
+    let mut _4: (u32, bool);
+
+    bb0: {
+        _2 = copy ((*_1).1: u32);
+        _3 = copy (((*_1).0: Position).0: u32);
+        _4 = AddWithOverflow(copy _2, copy _3);
+        assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, move _3) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = move (_4.0: u32);
+        return;
+    }
+}
+
+fn remember_counter(_1: &mut WithShared<'_>) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let _2: &u32;
+
+    bb0: {
+        _2 = &((*_1).0: u32);
+        ((*_1).1: &u32) = copy _2;
+        return;
+    }
+}
+
+fn cell_escape(_1: &mut WithCell<'_>) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: (u32, bool);
+    let _3: ();
+    let mut _4: &core::cell::Cell<u32>;
+
+    bb0: {
+        _2 = AddWithOverflow(copy ((*_1).0: u32), const 1_u32);
+        assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", copy ((*_1).0: u32), const 1_u32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        ((*_1).0: u32) = move (_2.0: u32);
+        _4 = copy ((*_1).1: &core::cell::Cell<u32>);
+        _3 = Cell::<u32>::set(copy _4, const 99_u32) -> [return: bb2, unwind continue];
+    }
+
+    bb2: {
+        return;
+    }
+}
+
+fn union_write(_1: &mut U, _2: bool) -> () {
+    debug u => _1;
+    debug change => _2;
+    let mut _0: ();
+
+    bb0: {
+        switchInt(copy _2) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        ((*_1).0: bool) = const true;
+        goto -> bb2;
+    }
+
+    bb2: {
+        return;
+    }
+}
+
+fn sample_state() -> State {
+    let mut _0: State;
+    let mut _1: Position;
+    let mut _2: [u32; 4];
+
+    bb0: {
+        _1 = Position { x: const 10_u32, y: const 20_u32 };
+        _2 = [const 0_u32, const 1_u32, const 2_u32, const 3_u32];
+        _0 = State { position: move _1, counter: const 30_u32, samples: move _2 };
+        return;
+    }
+}
+
+fn run_checks() -> Result<(), &str> {
+    let mut _0: core::result::Result<(), &str>;
+    let mut _1: State;
+    let _2: ();
+    let mut _3: &mut State;
+    let mut _4: bool;
+    let mut _5: u32;
+    let mut _6: &str;
+    let mut _7: bool;
+    let mut _8: u32;
+    let mut _9: &str;
+    let mut _10: bool;
+    let mut _11: u32;
+    let mut _12: &str;
+    let mut _13: bool;
+    let mut _14: &[u32; 4];
+    let mut _15: &[u32; 4];
+    let mut _16: &str;
+    let _18: ();
+    let mut _19: &mut State;
+    let mut _20: bool;
+    let mut _21: &State;
+    let mut _22: &State;
+    let _23: State;
+    let mut _24: &str;
+    let _25: ();
+    let mut _26: &mut State;
+    let mut _27: bool;
+    let mut _28: u32;
+    let mut _29: &str;
+    let _31: ();
+    let mut _32: &mut State;
+    let mut _33: Position;
+    let mut _34: bool;
+    let mut _35: &Position;
+    let mut _36: &Position;
+    let mut _37: &str;
+    let mut _38: bool;
+    let mut _39: u32;
+    let mut _40: &str;
+    let _42: ();
+    let mut _43: &mut State;
+    let mut _44: bool;
+    let mut _45: &Position;
+    let mut _46: &Position;
+    let mut _47: &str;
+    let mut _48: bool;
+    let mut _49: u32;
+    let mut _50: &str;
+    let mut _52: Position;
+    let mut _53: [u32; 4];
+    let _55: ();
+    let mut _56: &mut State;
+    let mut _57: bool;
+    let mut _58: &State;
+    let mut _59: &State;
+    let mut _60: &str;
+    let _62: ();
+    let mut _63: &mut State;
+    let mut _64: bool;
+    let mut _65: &[u32; 4];
+    let mut _66: &[u32; 4];
+    let mut _67: &str;
+    let mut _68: bool;
+    let mut _69: u32;
+    let mut _70: &str;
+    let mut _72: bool;
+    let mut _73: u32;
+    let mut _74: &mut State;
+    let mut _75: &str;
+    let mut _76: bool;
+    let mut _77: u32;
+    let mut _78: &str;
+    let mut _80: bool;
+    let mut _81: u32;
+    let mut _82: &mut State;
+    let mut _83: &str;
+    let mut _84: bool;
+    let mut _85: u32;
+    let mut _86: &str;
+    let mut _87: bool;
+    let mut _88: u32;
+    let mut _89: &mut State;
+    let mut _90: &str;
+    let mut _91: bool;
+    let mut _92: u32;
+    let mut _93: &str;
+    let _95: ();
+    let mut _96: &mut State;
+    let mut _97: bool;
+    let mut _98: u32;
+    let mut _99: &str;
+    let _102: &u32;
+    let _103: ();
+    let mut _104: &mut WithShared<'_>;
+    let mut _105: bool;
+    let mut _106: u32;
+    let mut _107: &str;
+    let mut _108: bool;
+    let mut _109: u32;
+    let mut _110: &str;
+    let mut _112: WithPtr;
+    let mut _113: *mut u32;
+    let _114: ();
+    let mut _115: &mut Nested;
+    let mut _116: bool;
+    let mut _117: u32;
+    let mut _118: &str;
+    let _120: ();
+    let mut _121: &mut (u8, u32);
+    let mut _122: bool;
+    let mut _123: &(u8, u32);
+    let mut _124: &(u8, u32);
+    let mut _125: &str;
+    let _128: ();
+    let mut _129: &mut State;
+    let mut _130: &mut State;
+    let mut _131: bool;
+    let mut _132: u32;
+    let mut _133: bool;
+    let mut _134: u32;
+    let mut _135: &str;
+    let _136: ();
+    let mut _137: &mut State;
+    let mut _138: bool;
+    let mut _139: u32;
+    let mut _140: &str;
+    let mut _141: bool;
+    let mut _142: u32;
+    let mut _143: &mut State;
+    let mut _144: &str;
+    let mut _145: &u32;
+    scope 1 {
+        debug state => _1;
+        let mut _17: State;
+        scope 2 {
+            debug state => _17;
+            let mut _30: State;
+            scope 3 {
+                debug state => _30;
+                let mut _41: State;
+                scope 4 {
+                    debug state => _41;
+                    let _51: State;
+                    scope 5 {
+                        debug replacement => _51;
+                        let mut _54: State;
+                        scope 6 {
+                            debug state => _54;
+                            let mut _61: State;
+                            scope 7 {
+                                debug state => _61;
+                                let mut _71: State;
+                                scope 8 {
+                                    debug state => _71;
+                                    let mut _79: State;
+                                    scope 9 {
+                                        debug state => _79;
+                                        let mut _94: State;
+                                        scope 10 {
+                                            debug state => _94;
+                                            let _100: u32;
+                                            scope 11 {
+                                                debug label => _100;
+                                                let mut _101: WithShared<'_>;
+                                                scope 12 {
+                                                    debug shared => _101;
+                                                    let mut _111: Nested;
+                                                    scope 13 {
+                                                        debug nested => _111;
+                                                        let mut _119: (u8, u32);
+                                                        scope 14 {
+                                                            debug generic => _119;
+                                                            let mut _126: State;
+                                                            scope 15 {
+                                                                debug state => _126;
+                                                                let mut _127: State;
+                                                                scope 16 {
+                                                                    debug other => _127;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _1 = sample_state() -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _3 = &mut _1;
+        _2 = basic_field(copy _3) -> [return: bb2, unwind continue];
+    }
+
+    bb2: {
+        _5 = copy ((_1.0: Position).0: u32);
+        _4 = Eq(move _5, const 11_u32);
+        switchInt(move _4) -> [0: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        _8 = copy ((_1.0: Position).1: u32);
+        _7 = Eq(move _8, const 20_u32);
+        switchInt(move _7) -> [0: bb6, otherwise: bb5];
+    }
+
+    bb4: {
+        _6 = const "basic_field: the committed field reaches the caller";
+        _0 = Result::<(), &str>::Err(move _6);
+        goto -> bb92;
+    }
+
+    bb5: {
+        _11 = copy (_1.1: u32);
+        _10 = Eq(move _11, const 30_u32);
+        switchInt(move _10) -> [0: bb8, otherwise: bb7];
+    }
+
+    bb6: {
+        _9 = const "basic_field: an uncommitted sibling field is untouched";
+        _0 = Result::<(), &str>::Err(move _9);
+        goto -> bb92;
+    }
+
+    bb7: {
+        _14 = &(_1.2: [u32; 4]);
+        _15 = const run_checks::promoted[4];
+        _13 = <[u32; 4] as PartialEq>::eq(move _14, move _15) -> [return: bb9, unwind continue];
+    }
+
+    bb8: {
+        _12 = const "basic_field: an uncommitted field is untouched";
+        _0 = Result::<(), &str>::Err(move _12);
+        goto -> bb92;
+    }
+
+    bb9: {
+        switchInt(move _13) -> [0: bb11, otherwise: bb10];
+    }
+
+    bb10: {
+        _17 = sample_state() -> [return: bb12, unwind continue];
+    }
+
+    bb11: {
+        _16 = const "basic_field: an uncommitted array is untouched";
+        _0 = Result::<(), &str>::Err(move _16);
+        goto -> bb92;
+    }
+
+    bb12: {
+        _19 = &mut _17;
+        _18 = conditional_write(copy _19, const false) -> [return: bb13, unwind continue];
+    }
+
+    bb13: {
+        _21 = &_17;
+        _23 = sample_state() -> [return: bb14, unwind continue];
+    }
+
+    bb14: {
+        _22 = &_23;
+        _20 = <State as PartialEq>::eq(move _21, move _22) -> [return: bb15, unwind continue];
+    }
+
+    bb15: {
+        switchInt(move _20) -> [0: bb17, otherwise: bb16];
+    }
+
+    bb16: {
+        _26 = &mut _17;
+        _25 = conditional_write(copy _26, const true) -> [return: bb18, unwind continue];
+    }
+
+    bb17: {
+        _24 = const "conditional_write: the untaken branch changes nothing";
+        _0 = Result::<(), &str>::Err(move _24);
+        goto -> bb92;
+    }
+
+    bb18: {
+        _28 = copy ((_17.0: Position).0: u32);
+        _27 = Eq(move _28, const 11_u32);
+        switchInt(move _27) -> [0: bb20, otherwise: bb19];
+    }
+
+    bb19: {
+        _30 = sample_state() -> [return: bb21, unwind continue];
+    }
+
+    bb20: {
+        _29 = const "conditional_write: the taken branch commits";
+        _0 = Result::<(), &str>::Err(move _29);
+        goto -> bb92;
+    }
+
+    bb21: {
+        _32 = &mut _30;
+        _33 = Position { x: const 1_u32, y: const 2_u32 };
+        _31 = overlapping_writes(copy _32, move _33) -> [return: bb22, unwind continue];
+    }
+
+    bb22: {
+        _35 = &(_30.0: Position);
+        _36 = const run_checks::promoted[3];
+        _34 = <Position as PartialEq>::eq(move _35, move _36) -> [return: bb23, unwind continue];
+    }
+
+    bb23: {
+        switchInt(move _34) -> [0: bb25, otherwise: bb24];
+    }
+
+    bb24: {
+        _39 = copy (_30.1: u32);
+        _38 = Eq(move _39, const 30_u32);
+        switchInt(move _38) -> [0: bb27, otherwise: bb26];
+    }
+
+    bb25: {
+        _37 = const "overlapping_writes: parent commit wins";
+        _0 = Result::<(), &str>::Err(move _37);
+        goto -> bb92;
+    }
+
+    bb26: {
+        _41 = sample_state() -> [return: bb28, unwind continue];
+    }
+
+    bb27: {
+        _40 = const "overlapping_writes: an unrelated field is untouched";
+        _0 = Result::<(), &str>::Err(move _40);
+        goto -> bb92;
+    }
+
+    bb28: {
+        _43 = &mut _41;
+        _42 = sibling_fields(copy _43) -> [return: bb29, unwind continue];
+    }
+
+    bb29: {
+        _45 = &(_41.0: Position);
+        _46 = const run_checks::promoted[2];
+        _44 = <Position as PartialEq>::eq(move _45, move _46) -> [return: bb30, unwind continue];
+    }
+
+    bb30: {
+        switchInt(move _44) -> [0: bb32, otherwise: bb31];
+    }
+
+    bb31: {
+        _49 = copy (_41.1: u32);
+        _48 = Eq(move _49, const 31_u32);
+        switchInt(move _48) -> [0: bb34, otherwise: bb33];
+    }
+
+    bb32: {
+        _47 = const "sibling_fields: only `y` is committed";
+        _0 = Result::<(), &str>::Err(move _47);
+        goto -> bb92;
+    }
+
+    bb33: {
+        _52 = Position { x: const 1_u32, y: const 2_u32 };
+        _53 = [const 4_u32, const 4_u32, const 4_u32, const 4_u32];
+        _51 = State { position: move _52, counter: const 3_u32, samples: move _53 };
+        _54 = sample_state() -> [return: bb35, unwind continue];
+    }
+
+    bb34: {
+        _50 = const "sibling_fields: the sibling entry is committed too";
+        _0 = Result::<(), &str>::Err(move _50);
+        goto -> bb92;
+    }
+
+    bb35: {
+        _56 = &mut _54;
+        _55 = whole_state(copy _56, copy _51) -> [return: bb36, unwind continue];
+    }
+
+    bb36: {
+        _58 = &_54;
+        _59 = &_51;
+        _57 = <State as PartialEq>::eq(move _58, move _59) -> [return: bb37, unwind continue];
+    }
+
+    bb37: {
+        switchInt(move _57) -> [0: bb39, otherwise: bb38];
+    }
+
+    bb38: {
+        _61 = sample_state() -> [return: bb40, unwind continue];
+    }
+
+    bb39: {
+        _60 = const "whole_state: the whole pointee is committed";
+        _0 = Result::<(), &str>::Err(move _60);
+        goto -> bb92;
+    }
+
+    bb40: {
+        _63 = &mut _61;
+        _62 = indexed_write(copy _63, const 2_usize) -> [return: bb41, unwind continue];
+    }
+
+    bb41: {
+        _65 = &(_61.2: [u32; 4]);
+        _66 = const run_checks::promoted[1];
+        _64 = <[u32; 4] as PartialEq>::eq(move _65, move _66) -> [return: bb42, unwind continue];
+    }
+
+    bb42: {
+        switchInt(move _64) -> [0: bb44, otherwise: bb43];
+    }
+
+    bb43: {
+        _69 = copy (_61.1: u32);
+        _68 = Eq(move _69, const 30_u32);
+        switchInt(move _68) -> [0: bb46, otherwise: bb45];
+    }
+
+    bb44: {
+        _67 = const "indexed_write: the widened array commit is exact";
+        _0 = Result::<(), &str>::Err(move _67);
+        goto -> bb92;
+    }
+
+    bb45: {
+        _71 = sample_state() -> [return: bb47, unwind continue];
+    }
+
+    bb46: {
+        _70 = const "indexed_write: an unrelated field is untouched";
+        _0 = Result::<(), &str>::Err(move _70);
+        goto -> bb92;
+    }
+
+    bb47: {
+        _74 = &mut _71;
+        _73 = with_return_value(copy _74) -> [return: bb48, unwind continue];
+    }
+
+    bb48: {
+        _72 = Eq(move _73, const 41_u32);
+        switchInt(move _72) -> [0: bb50, otherwise: bb49];
+    }
+
+    bb49: {
+        _77 = copy (_71.1: u32);
+        _76 = Eq(move _77, const 31_u32);
+        switchInt(move _76) -> [0: bb52, otherwise: bb51];
+    }
+
+    bb50: {
+        _75 = const "with_return_value: `_0` survives the commit";
+        _0 = Result::<(), &str>::Err(move _75);
+        goto -> bb92;
+    }
+
+    bb51: {
+        _79 = sample_state() -> [return: bb53, unwind continue];
+    }
+
+    bb52: {
+        _78 = const "with_return_value: the commit still happens";
+        _0 = Result::<(), &str>::Err(move _78);
+        goto -> bb92;
+    }
+
+    bb53: {
+        _82 = &mut _79;
+        _81 = multiple_returns(copy _82, const true) -> [return: bb54, unwind continue];
+    }
+
+    bb54: {
+        _80 = Eq(move _81, const 30_u32);
+        switchInt(move _80) -> [0: bb56, otherwise: bb55];
+    }
+
+    bb55: {
+        _85 = copy (_79.1: u32);
+        _84 = Eq(move _85, const 30_u32);
+        switchInt(move _84) -> [0: bb58, otherwise: bb57];
+    }
+
+    bb56: {
+        _83 = const "multiple_returns: early return value";
+        _0 = Result::<(), &str>::Err(move _83);
+        goto -> bb92;
+    }
+
+    bb57: {
+        _89 = &mut _79;
+        _88 = multiple_returns(copy _89, const false) -> [return: bb59, unwind continue];
+    }
+
+    bb58: {
+        _86 = const "multiple_returns: the early return commits the unchanged field";
+        _0 = Result::<(), &str>::Err(move _86);
+        goto -> bb92;
+    }
+
+    bb59: {
+        _87 = Eq(move _88, const 31_u32);
+        switchInt(move _87) -> [0: bb61, otherwise: bb60];
+    }
+
+    bb60: {
+        _92 = copy (_79.1: u32);
+        _91 = Eq(move _92, const 31_u32);
+        switchInt(move _91) -> [0: bb63, otherwise: bb62];
+    }
+
+    bb61: {
+        _90 = const "multiple_returns: late return value";
+        _0 = Result::<(), &str>::Err(move _90);
+        goto -> bb92;
+    }
+
+    bb62: {
+        _94 = sample_state() -> [return: bb64, unwind continue];
+    }
+
+    bb63: {
+        _93 = const "multiple_returns: the late return commits";
+        _0 = Result::<(), &str>::Err(move _93);
+        goto -> bb92;
+    }
+
+    bb64: {
+        _96 = &mut _94;
+        _95 = panics_before_commit(copy _96, const false) -> [return: bb65, unwind continue];
+    }
+
+    bb65: {
+        _98 = copy (_94.1: u32);
+        _97 = Eq(move _98, const 31_u32);
+        switchInt(move _97) -> [0: bb67, otherwise: bb66];
+    }
+
+    bb66: {
+        _100 = const 7_u32;
+        _102 = &_100;
+        _101 = WithShared::<'_> { counter: const 1_u32, label: copy _102 };
+        _104 = &mut _101;
+        _103 = shared_ref_state(copy _104) -> [return: bb68, unwind continue];
+    }
+
+    bb67: {
+        _99 = const "panics_before_commit: the non-panicking path commits";
+        _0 = Result::<(), &str>::Err(move _99);
+        goto -> bb92;
+    }
+
+    bb68: {
+        _106 = copy (_101.0: u32);
+        _105 = Eq(move _106, const 2_u32);
+        switchInt(move _105) -> [0: bb70, otherwise: bb69];
+    }
+
+    bb69: {
+        _145 = copy (_101.1: &u32);
+        _109 = copy (*_145);
+        _108 = Eq(move _109, const 7_u32);
+        switchInt(move _108) -> [0: bb72, otherwise: bb71];
+    }
+
+    bb70: {
+        _107 = const "shared_ref_state: a shared reference in the state is fine";
+        _0 = Result::<(), &str>::Err(move _107);
+        goto -> bb92;
+    }
+
+    bb71: {
+        _113 = null_mut::<u32>() -> [return: bb73, unwind continue];
+    }
+
+    bb72: {
+        _110 = const "shared_ref_state: the shared reference survives the round trip";
+        _0 = Result::<(), &str>::Err(move _110);
+        goto -> bb92;
+    }
+
+    bb73: {
+        _112 = WithPtr { counter: const 1_u32, elsewhere: move _113 };
+        _111 = Nested { inner: move _112 };
+        _115 = &mut _111;
+        _114 = nested_raw_ptr_state(copy _115) -> [return: bb74, unwind continue];
+    }
+
+    bb74: {
+        _117 = copy ((_111.0: WithPtr).0: u32);
+        _116 = Eq(move _117, const 2_u32);
+        switchInt(move _116) -> [0: bb76, otherwise: bb75];
+    }
+
+    bb75: {
+        _119 = (const 1_u8, const 2_u32);
+        _121 = &mut _119;
+        _120 = generic_state::<u8>(copy _121) -> [return: bb77, unwind continue];
+    }
+
+    bb76: {
+        _118 = const "nested_raw_ptr_state: unchanged behaviour";
+        _0 = Result::<(), &str>::Err(move _118);
+        goto -> bb92;
+    }
+
+    bb77: {
+        _123 = &_119;
+        _124 = const run_checks::promoted[0];
+        _122 = <(u8, u32) as PartialEq>::eq(move _123, move _124) -> [return: bb78, unwind continue];
+    }
+
+    bb78: {
+        switchInt(move _122) -> [0: bb80, otherwise: bb79];
+    }
+
+    bb79: {
+        _126 = sample_state() -> [return: bb81, unwind continue];
+    }
+
+    bb80: {
+        _125 = const "generic_state: unchanged behaviour";
+        _0 = Result::<(), &str>::Err(move _125);
+        goto -> bb92;
+    }
+
+    bb81: {
+        _127 = copy _126;
+        _129 = &mut _127;
+        _130 = &mut _126;
+        _128 = two_mut_args(copy _129, copy _130) -> [return: bb82, unwind continue];
+    }
+
+    bb82: {
+        _132 = copy (_126.1: u32);
+        _131 = Eq(move _132, const 31_u32);
+        switchInt(move _131) -> [0: bb85, otherwise: bb83];
+    }
+
+    bb83: {
+        _134 = copy (_127.1: u32);
+        _133 = Eq(move _134, const 31_u32);
+        switchInt(move _133) -> [0: bb85, otherwise: bb84];
+    }
+
+    bb84: {
+        _137 = &mut _126;
+        _136 = mutable_reborrow(copy _137) -> [return: bb86, unwind continue];
+    }
+
+    bb85: {
+        _135 = const "two_mut_args: unchanged behaviour";
+        _0 = Result::<(), &str>::Err(move _135);
+        goto -> bb92;
+    }
+
+    bb86: {
+        _139 = copy (_126.1: u32);
+        _138 = Eq(move _139, const 32_u32);
+        switchInt(move _138) -> [0: bb88, otherwise: bb87];
+    }
+
+    bb87: {
+        _143 = &mut _126;
+        _142 = read_only(copy _143) -> [return: bb89, unwind continue];
+    }
+
+    bb88: {
+        _140 = const "mutable_reborrow: unchanged behaviour";
+        _0 = Result::<(), &str>::Err(move _140);
+        goto -> bb92;
+    }
+
+    bb89: {
+        _141 = Eq(move _142, const 42_u32);
+        switchInt(move _141) -> [0: bb91, otherwise: bb90];
+    }
+
+    bb90: {
+        _0 = Result::<(), &str>::Ok(const ());
+        goto -> bb92;
+    }
+
+    bb91: {
+        _144 = const "read_only: unchanged behaviour";
+        _0 = Result::<(), &str>::Err(move _144);
+        goto -> bb92;
+    }
+
+    bb92: {
+        return;
+    }
+}
+
+alloc35 (size: 30, align: 1) {
+    0x00 │ 72 65 61 64 5f 6f 6e 6c 79 3a 20 75 6e 63 68 61 │ read_only: uncha
+    0x10 │ 6e 67 65 64 20 62 65 68 61 76 69 6f 75 72       │ nged behaviour
+}
+
+alloc34 (size: 37, align: 1) {
+    0x00 │ 6d 75 74 61 62 6c 65 5f 72 65 62 6f 72 72 6f 77 │ mutable_reborrow
+    0x10 │ 3a 20 75 6e 63 68 61 6e 67 65 64 20 62 65 68 61 │ : unchanged beha
+    0x20 │ 76 69 6f 75 72                                  │ viour
+}
+
+alloc33 (size: 33, align: 1) {
+    0x00 │ 74 77 6f 5f 6d 75 74 5f 61 72 67 73 3a 20 75 6e │ two_mut_args: un
+    0x10 │ 63 68 61 6e 67 65 64 20 62 65 68 61 76 69 6f 75 │ changed behaviou
+    0x20 │ 72                                              │ r
+}
+
+alloc32 (size: 34, align: 1) {
+    0x00 │ 67 65 6e 65 72 69 63 5f 73 74 61 74 65 3a 20 75 │ generic_state: u
+    0x10 │ 6e 63 68 61 6e 67 65 64 20 62 65 68 61 76 69 6f │ nchanged behavio
+    0x20 │ 75 72                                           │ ur
+}
+
+alloc31 (size: 41, align: 1) {
+    0x00 │ 6e 65 73 74 65 64 5f 72 61 77 5f 70 74 72 5f 73 │ nested_raw_ptr_s
+    0x10 │ 74 61 74 65 3a 20 75 6e 63 68 61 6e 67 65 64 20 │ tate: unchanged 
+    0x20 │ 62 65 68 61 76 69 6f 75 72                      │ behaviour
+}
+
+alloc30 (size: 62, align: 1) {
+    0x00 │ 73 68 61 72 65 64 5f 72 65 66 5f 73 74 61 74 65 │ shared_ref_state
+    0x10 │ 3a 20 74 68 65 20 73 68 61 72 65 64 20 72 65 66 │ : the shared ref
+    0x20 │ 65 72 65 6e 63 65 20 73 75 72 76 69 76 65 73 20 │ erence survives 
+    0x30 │ 74 68 65 20 72 6f 75 6e 64 20 74 72 69 70       │ the round trip
+}
+
+alloc29 (size: 57, align: 1) {
+    0x00 │ 73 68 61 72 65 64 5f 72 65 66 5f 73 74 61 74 65 │ shared_ref_state
+    0x10 │ 3a 20 61 20 73 68 61 72 65 64 20 72 65 66 65 72 │ : a shared refer
+    0x20 │ 65 6e 63 65 20 69 6e 20 74 68 65 20 73 74 61 74 │ ence in the stat
+    0x30 │ 65 20 69 73 20 66 69 6e 65                      │ e is fine
+}
+
+alloc28 (size: 52, align: 1) {
+    0x00 │ 70 61 6e 69 63 73 5f 62 65 66 6f 72 65 5f 63 6f │ panics_before_co
+    0x10 │ 6d 6d 69 74 3a 20 74 68 65 20 6e 6f 6e 2d 70 61 │ mmit: the non-pa
+    0x20 │ 6e 69 63 6b 69 6e 67 20 70 61 74 68 20 63 6f 6d │ nicking path com
+    0x30 │ 6d 69 74 73                                     │ mits
+}
+
+alloc27 (size: 41, align: 1) {
+    0x00 │ 6d 75 6c 74 69 70 6c 65 5f 72 65 74 75 72 6e 73 │ multiple_returns
+    0x10 │ 3a 20 74 68 65 20 6c 61 74 65 20 72 65 74 75 72 │ : the late retur
+    0x20 │ 6e 20 63 6f 6d 6d 69 74 73                      │ n commits
+}
+
+alloc26 (size: 35, align: 1) {
+    0x00 │ 6d 75 6c 74 69 70 6c 65 5f 72 65 74 75 72 6e 73 │ multiple_returns
+    0x10 │ 3a 20 6c 61 74 65 20 72 65 74 75 72 6e 20 76 61 │ : late return va
+    0x20 │ 6c 75 65                                        │ lue
+}
+
+alloc25 (size: 62, align: 1) {
+    0x00 │ 6d 75 6c 74 69 70 6c 65 5f 72 65 74 75 72 6e 73 │ multiple_returns
+    0x10 │ 3a 20 74 68 65 20 65 61 72 6c 79 20 72 65 74 75 │ : the early retu
+    0x20 │ 72 6e 20 63 6f 6d 6d 69 74 73 20 74 68 65 20 75 │ rn commits the u
+    0x30 │ 6e 63 68 61 6e 67 65 64 20 66 69 65 6c 64       │ nchanged field
+}
+
+alloc24 (size: 36, align: 1) {
+    0x00 │ 6d 75 6c 74 69 70 6c 65 5f 72 65 74 75 72 6e 73 │ multiple_returns
+    0x10 │ 3a 20 65 61 72 6c 79 20 72 65 74 75 72 6e 20 76 │ : early return v
+    0x20 │ 61 6c 75 65                                     │ alue
+}
+
+alloc23 (size: 43, align: 1) {
+    0x00 │ 77 69 74 68 5f 72 65 74 75 72 6e 5f 76 61 6c 75 │ with_return_valu
+    0x10 │ 65 3a 20 74 68 65 20 63 6f 6d 6d 69 74 20 73 74 │ e: the commit st
+    0x20 │ 69 6c 6c 20 68 61 70 70 65 6e 73                │ ill happens
+}
+
+alloc22 (size: 43, align: 1) {
+    0x00 │ 77 69 74 68 5f 72 65 74 75 72 6e 5f 76 61 6c 75 │ with_return_valu
+    0x10 │ 65 3a 20 60 5f 30 60 20 73 75 72 76 69 76 65 73 │ e: `_0` survives
+    0x20 │ 20 74 68 65 20 63 6f 6d 6d 69 74                │  the commit
+}
+
+alloc21 (size: 46, align: 1) {
+    0x00 │ 69 6e 64 65 78 65 64 5f 77 72 69 74 65 3a 20 61 │ indexed_write: a
+    0x10 │ 6e 20 75 6e 72 65 6c 61 74 65 64 20 66 69 65 6c │ n unrelated fiel
+    0x20 │ 64 20 69 73 20 75 6e 74 6f 75 63 68 65 64       │ d is untouched
+}
+
+alloc20 (size: 48, align: 1) {
+    0x00 │ 69 6e 64 65 78 65 64 5f 77 72 69 74 65 3a 20 74 │ indexed_write: t
+    0x10 │ 68 65 20 77 69 64 65 6e 65 64 20 61 72 72 61 79 │ he widened array
+    0x20 │ 20 63 6f 6d 6d 69 74 20 69 73 20 65 78 61 63 74 │  commit is exact
+}
+
+alloc19 (size: 43, align: 1) {
+    0x00 │ 77 68 6f 6c 65 5f 73 74 61 74 65 3a 20 74 68 65 │ whole_state: the
+    0x10 │ 20 77 68 6f 6c 65 20 70 6f 69 6e 74 65 65 20 69 │  whole pointee i
+    0x20 │ 73 20 63 6f 6d 6d 69 74 74 65 64                │ s committed
+}
+
+alloc18 (size: 50, align: 1) {
+    0x00 │ 73 69 62 6c 69 6e 67 5f 66 69 65 6c 64 73 3a 20 │ sibling_fields: 
+    0x10 │ 74 68 65 20 73 69 62 6c 69 6e 67 20 65 6e 74 72 │ the sibling entr
+    0x20 │ 79 20 69 73 20 63 6f 6d 6d 69 74 74 65 64 20 74 │ y is committed t
+    0x30 │ 6f 6f                                           │ oo
+}
+
+alloc17 (size: 37, align: 1) {
+    0x00 │ 73 69 62 6c 69 6e 67 5f 66 69 65 6c 64 73 3a 20 │ sibling_fields: 
+    0x10 │ 6f 6e 6c 79 20 60 79 60 20 69 73 20 63 6f 6d 6d │ only `y` is comm
+    0x20 │ 69 74 74 65 64                                  │ itted
+}
+
+alloc16 (size: 51, align: 1) {
+    0x00 │ 6f 76 65 72 6c 61 70 70 69 6e 67 5f 77 72 69 74 │ overlapping_writ
+    0x10 │ 65 73 3a 20 61 6e 20 75 6e 72 65 6c 61 74 65 64 │ es: an unrelated
+    0x20 │ 20 66 69 65 6c 64 20 69 73 20 75 6e 74 6f 75 63 │  field is untouc
+    0x30 │ 68 65 64                                        │ hed
+}
+
+alloc15 (size: 38, align: 1) {
+    0x00 │ 6f 76 65 72 6c 61 70 70 69 6e 67 5f 77 72 69 74 │ overlapping_writ
+    0x10 │ 65 73 3a 20 70 61 72 65 6e 74 20 63 6f 6d 6d 69 │ es: parent commi
+    0x20 │ 74 20 77 69 6e 73                               │ t wins
+}
+
+alloc14 (size: 43, align: 1) {
+    0x00 │ 63 6f 6e 64 69 74 69 6f 6e 61 6c 5f 77 72 69 74 │ conditional_writ
+    0x10 │ 65 3a 20 74 68 65 20 74 61 6b 65 6e 20 62 72 61 │ e: the taken bra
+    0x20 │ 6e 63 68 20 63 6f 6d 6d 69 74 73                │ nch commits
+}
+
+alloc13 (size: 53, align: 1) {
+    0x00 │ 63 6f 6e 64 69 74 69 6f 6e 61 6c 5f 77 72 69 74 │ conditional_writ
+    0x10 │ 65 3a 20 74 68 65 20 75 6e 74 61 6b 65 6e 20 62 │ e: the untaken b
+    0x20 │ 72 61 6e 63 68 20 63 68 61 6e 67 65 73 20 6e 6f │ ranch changes no
+    0x30 │ 74 68 69 6e 67                                  │ thing
+}
+
+alloc12 (size: 46, align: 1) {
+    0x00 │ 62 61 73 69 63 5f 66 69 65 6c 64 3a 20 61 6e 20 │ basic_field: an 
+    0x10 │ 75 6e 63 6f 6d 6d 69 74 74 65 64 20 61 72 72 61 │ uncommitted arra
+    0x20 │ 79 20 69 73 20 75 6e 74 6f 75 63 68 65 64       │ y is untouched
+}
+
+alloc11 (size: 46, align: 1) {
+    0x00 │ 62 61 73 69 63 5f 66 69 65 6c 64 3a 20 61 6e 20 │ basic_field: an 
+    0x10 │ 75 6e 63 6f 6d 6d 69 74 74 65 64 20 66 69 65 6c │ uncommitted fiel
+    0x20 │ 64 20 69 73 20 75 6e 74 6f 75 63 68 65 64       │ d is untouched
+}
+
+alloc10 (size: 54, align: 1) {
+    0x00 │ 62 61 73 69 63 5f 66 69 65 6c 64 3a 20 61 6e 20 │ basic_field: an 
+    0x10 │ 75 6e 63 6f 6d 6d 69 74 74 65 64 20 73 69 62 6c │ uncommitted sibl
+    0x20 │ 69 6e 67 20 66 69 65 6c 64 20 69 73 20 75 6e 74 │ ing field is unt
+    0x30 │ 6f 75 63 68 65 64                               │ ouched
+}
+
+alloc9 (size: 51, align: 1) {
+    0x00 │ 62 61 73 69 63 5f 66 69 65 6c 64 3a 20 74 68 65 │ basic_field: the
+    0x10 │ 20 63 6f 6d 6d 69 74 74 65 64 20 66 69 65 6c 64 │  committed field
+    0x20 │ 20 72 65 61 63 68 65 73 20 74 68 65 20 63 61 6c │  reaches the cal
+    0x30 │ 6c 65 72                                        │ ler
+}
+
+const run_checks::promoted[0]: &(u8, u32) = {
+    let mut _0: &(u8, u32);
+    let mut _1: (u8, u32);
+
+    bb0: {
+        _1 = (const 1_u8, const 3_u32);
+        _0 = &_1;
+        return;
+    }
+}
+
+const run_checks::promoted[1]: &[u32; 4] = {
+    let mut _0: &[u32; 4];
+    let mut _1: [u32; 4];
+
+    bb0: {
+        _1 = [const 0_u32, const 1_u32, const 9_u32, const 3_u32];
+        _0 = &_1;
+        return;
+    }
+}
+
+const run_checks::promoted[2]: &Position = {
+    let mut _0: &Position;
+    let mut _1: Position;
+
+    bb0: {
+        _1 = Position { x: const 10_u32, y: const 5_u32 };
+        _0 = &_1;
+        return;
+    }
+}
+
+const run_checks::promoted[3]: &Position = {
+    let mut _0: &Position;
+    let mut _1: Position;
+
+    bb0: {
+        _1 = Position { x: const 7_u32, y: const 2_u32 };
+        _0 = &_1;
+        return;
+    }
+}
+
+const run_checks::promoted[4]: &[u32; 4] = {
+    let mut _0: &[u32; 4];
+    let mut _1: [u32; 4];
+
+    bb0: {
+        _1 = [const 0_u32, const 1_u32, const 2_u32, const 3_u32];
+        _0 = &_1;
+        return;
+    }
+}
+
+fn panic(_1: &PanicInfo<'_>) -> ! {
+    let mut _0: !;
+
+    bb0: {
+        goto -> bb1;
+    }
+
+    bb1: {
+        goto -> bb1;
+    }
+}
+
+fn rust_eh_personality() -> () {
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}
+
+fn report(_1: &str) -> () {
+    debug msg => _1;
+    let mut _0: ();
+    let _2: isize;
+    let mut _3: *const u8;
+    let mut _4: usize;
+    let _5: isize;
+    let mut _6: *const u8;
+    let mut _7: &str;
+
+    bb0: {
+        _3 = str::<impl str>::as_ptr(copy _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _4 = str::<impl str>::len(copy _1) -> [return: bb2, unwind continue];
+    }
+
+    bb2: {
+        _2 = write(const 2_i32, move _3, move _4) -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        _7 = const "\n";
+        _6 = str::<impl str>::as_ptr(move _7) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        _5 = write(const 2_i32, move _6, const 1_usize) -> [return: bb5, unwind unreachable];
+    }
+
+    bb5: {
+        return;
+    }
+}
+
+alloc46 (size: 1, align: 1) {
+    0a                                              │ .
+}
+
+fn main(_1: i32, _2: *const *const u8) -> i32 {
+    debug _argc => _1;
+    debug _argv => _2;
+    let mut _0: i32;
+    let mut _3: core::result::Result<(), &str>;
+    let mut _4: isize;
+    let _5: ();
+    let mut _6: &str;
+    let _7: &str;
+    let _8: ();
+    let mut _9: &str;
+    let _10: ();
+    scope 1 {
+        debug name => _7;
+    }
+
+    bb0: {
+        _3 = run_checks() -> [return: bb1, unwind terminate(abi)];
+    }
+
+    bb1: {
+        _4 = discriminant(_3);
+        switchInt(move _4) -> [0: bb4, 1: bb3, otherwise: bb2];
+    }
+
+    bb2: {
+        unreachable;
+    }
+
+    bb3: {
+        _7 = copy ((_3 as Err).0: &str);
+        _9 = const "function_shadow: FAILED:";
+        _8 = report(move _9) -> [return: bb6, unwind terminate(abi)];
+    }
+
+    bb4: {
+        _6 = const "function_shadow: all runtime checks passed";
+        _5 = report(move _6) -> [return: bb5, unwind terminate(abi)];
+    }
+
+    bb5: {
+        _0 = const 0_i32;
+        goto -> bb8;
+    }
+
+    bb6: {
+        _10 = report(copy _7) -> [return: bb7, unwind terminate(abi)];
+    }
+
+    bb7: {
+        _0 = const 1_i32;
+        goto -> bb8;
+    }
+
+    bb8: {
+        return;
+    }
+}
+
+alloc48 (size: 24, align: 1) {
+    0x00 │ 66 75 6e 63 74 69 6f 6e 5f 73 68 61 64 6f 77 3a │ function_shadow:
+    0x10 │ 20 46 41 49 4c 45 44 3a                         │  FAILED:
+}
+
+alloc47 (size: 42, align: 1) {
+    0x00 │ 66 75 6e 63 74 69 6f 6e 5f 73 68 61 64 6f 77 3a │ function_shadow:
+    0x10 │ 20 61 6c 6c 20 72 75 6e 74 69 6d 65 20 63 68 65 │  all runtime che
+    0x20 │ 63 6b 73 20 70 61 73 73 65 64                   │ cks passed
+}

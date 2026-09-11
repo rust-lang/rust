@@ -174,6 +174,7 @@ declare_passes! {
     mod prettify : ReorderBasicBlocks, ReorderLocals;
     mod promote_consts : PromoteTemps;
     mod rad_protected_analysis : RadProtectedAnalysis;
+    mod rad_protected_function_shadow : RadProtectedFunctionShadow;
     mod ref_prop : ReferencePropagation;
     mod remove_noop_landing_pads : RemoveNoopLandingPads;
     mod remove_place_mention : RemovePlaceMention;
@@ -618,6 +619,9 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         &impossible_predicates::ImpossiblePredicates,
+        // Runs before the checkpoint/TMR injection so that, once the two are combined,
+        // checkpoints see the body already redirected onto the shadow.
+        &rad_protected_function_shadow::RadProtectedFunctionShadow,
         &rad_protected_analysis::RadProtectedAnalysis,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,

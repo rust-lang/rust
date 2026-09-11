@@ -289,6 +289,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PreludeImport
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RadProtected(..)
+                    | AttributeKind::RadProtectedShadow(..)
                     | AttributeKind::RecursionLimit { .. }
                     | AttributeKind::ReexportTestHarnessMain(..)
                     | AttributeKind::RegisterTool(..)
