@@ -67,12 +67,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover from inequality operator `<>` ("diamond") as found in e.g., PHP.
-    pub(super) fn recover_from_diamond_ne_op(&mut self, op: Spanned<AssocOp>) {
-        if op.node == AssocOp::Binary(BinOpKind::Lt)
-            && self.token == token::Gt
+    pub(super) fn recover_from_diamond_ne_op(&mut self) {
+        if let (token::Lt, token::Gt) = (self.prev_token.kind, self.token.kind)
             && self.prev_token.span.hi() == self.token.span.lo()
         {
-            let sp = op.span.to(self.token.span);
+            let sp = self.prev_token.span.to(self.token.span);
             self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
                 span: sp,
                 invalid: "<>".into(),
@@ -87,12 +86,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover from comparison operator `<=>` ("spaceship") as found in e.g., C++.
-    pub(super) fn recover_from_spaceship_cmp_op(&mut self, op: Spanned<AssocOp>) {
-        if op.node == AssocOp::Binary(BinOpKind::Le)
-            && self.token == token::Gt
+    pub(super) fn recover_from_spaceship_cmp_op(&mut self) {
+        if let (token::Le, token::Gt) = (self.prev_token.kind, self.token.kind)
             && self.prev_token.span.hi() == self.token.span.lo()
         {
-            let sp = op.span.to(self.token.span);
+            let sp = self.prev_token.span.to(self.token.span);
             self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
                 span: sp,
                 invalid: "<=>".into(),
