@@ -3,9 +3,16 @@
 `std::offload` is partly available in nightly builds for users.
 For now, everyone however still needs to build rustc from source to use all features of it.
 
+## Rustup installation.
+If you are on `x86_64` Linux, you can install the nightly toolchain with:
+```console
+rustup +nightly component add offload
+```
+
+
 ## Build instructions
 
-First you need to clone and configure the Rust repository:
+Otherwise you need to clone and configure the Rust repository:
 ```console
 git clone git@github.com:rust-lang/rust
 cd rust
