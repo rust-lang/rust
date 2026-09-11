@@ -198,6 +198,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             )
+                            // The shared E0282 label only says "cannot infer type", which gives no
+                            // hint that the ambiguity is in an opaque's hidden type rather than an
+                            // ordinary local inference failure.
+                            .with_note("cannot infer type of hidden type of opaque")
                             .emit()
                     }
                 }
