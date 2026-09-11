@@ -67,12 +67,6 @@ impl MetadataBlob {
     pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
         if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
     }
-
-    /// Since this has passed the validation of [`MetadataBlob::new`], this returns bytes which are
-    /// known to pass the [`MemDecoder`] validation.
-    pub(crate) fn bytes(&self) -> &OwnedSlice {
-        &self.0
-    }
 }
 
 /// A map from external crate numbers (as decoded from some crate file) to
@@ -168,7 +162,6 @@ struct ImportedSourceFile {
 /// Most notably, [`BlobDecodeContext]` doesn't implement [`SpanDecoder`]
 pub(super) struct BlobDecodeContext<'a> {
     opaque: MemDecoder<'a>,
-    blob: &'a MetadataBlob,
     lazy_state: LazyState,
 }
 
@@ -288,7 +281,6 @@ impl<'a> MetaDecoder for &'a MetadataBlob {
             // demands a significant refactoring due to our crate graph.
             opaque: MemDecoder::new(self, pos).unwrap(),
             lazy_state: LazyState::NoNode,
-            blob: self.blob(),
         }
     }
 }
@@ -372,11 +364,6 @@ impl<'a, 'tcx> MetadataDecodeContext<'a, 'tcx> {
 }
 
 impl<'a> BlobDecodeContext<'a> {
-    #[inline]
-    pub(crate) fn blob(&self) -> &'a MetadataBlob {
-        self.blob
-    }
-
     fn decode_symbol_or_byte_symbol<S>(
         &mut self,
         new_from_index: impl Fn(u32) -> S,
