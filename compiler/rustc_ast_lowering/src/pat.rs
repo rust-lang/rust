@@ -92,7 +92,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {
                         let hir_id = self.lower_node_id(f.id);
-                        self.lower_attrs(hir_id, &f.attrs, f.span, Target::PatField);
+                        self.lower_attrs(hir_id, &f.attrs, f.span, Target::PatField, None);
 
                         hir::PatField {
                             hir_id,
