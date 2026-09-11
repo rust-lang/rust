@@ -46,7 +46,7 @@ use core::task::{Context, Poll};
 /// `SyncView` makes the value `Sync` without stripping the struct of its
 /// functionality:
 ///
-/// ```
+/// ```ignore-wasm
 /// #![feature(exclusive_wrapper)]
 ///
 /// use std::sync::SyncView;
