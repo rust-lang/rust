@@ -282,7 +282,7 @@ impl LowerTypeRelativePathMode {
     fn def_kind_for_diagnostics(self) -> DefKind {
         match self {
             Self::Type(_) => DefKind::AssocTy,
-            Self::Const => DefKind::AssocConst { is_type_const: false },
+            Self::Const => DefKind::AssocConst,
         }
     }
 

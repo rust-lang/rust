@@ -119,9 +119,7 @@ pub enum DefKind {
 
     // Value namespace
     Fn,
-    Const {
-        is_type_const: bool,
-    },
+    Const,
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
     Static {
@@ -153,9 +151,7 @@ pub enum DefKind {
     /// or `trait Foo { fn associated() {} }`
     AssocFn,
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
-    AssocConst {
-        is_type_const: bool,
-    },
+    AssocConst,
 
     // Macro namespace
     Macro(MacroKinds),

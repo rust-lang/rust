@@ -1040,28 +1040,12 @@ impl<'tcx> TyCtxt<'tcx> {
             self.def_kind(def_id),
             DefKind::Const { .. } | DefKind::AssocConst { .. }
         );
-        self.is_type_const_syntax(def_id)
-            || self.is_always_gca(def_id)
-            || self.const_of_item(def_id).is_some()
+        self.is_always_gca(def_id) || self.const_of_item(def_id).is_some()
     }
 
     /// Whether this is a projection const marked with `#[always_gca]`
     pub fn is_always_gca(self, def_id: DefId) -> bool {
         find_attr!(self, def_id, AlwaysGca)
-    }
-
-    /// Check if the given `def_id` is declared with `type const` syntax (mgca)
-    ///
-    /// This is NOT the same as whether the `def_id` can be represented in/used by the type system.
-    /// For that, you probably want to ask `is_direct_const()` or `const_of_item().is_some()`.
-    pub fn is_type_const_syntax(self, def_id: impl IntoQueryKey<DefId>) -> bool {
-        let def_id = def_id.into_query_key();
-        match self.def_kind(def_id) {
-            DefKind::Const { is_type_const } | DefKind::AssocConst { is_type_const } => {
-                is_type_const
-            }
-            _ => false,
-        }
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics

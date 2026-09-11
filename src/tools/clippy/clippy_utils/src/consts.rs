@@ -874,10 +874,8 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             // TODO: revisit when feature `min_generic_const_args` is stabilized. In the meantime,
             // `TyCtxt::const_eval_resolve()` will trigger an ICE when evaluating the body of the
             // `type const` definition.
-            _ if let Res::Def(
-                DefKind::Const { is_type_const: false } | DefKind::AssocConst { is_type_const: false },
-                did,
-            ) = self.typeck.qpath_res(qpath, id) =>
+            _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id)
+                && !self.tcx.is_direct_const(did) =>
             {
                 self.source.set(ConstantSource::NonLocal);
                 did

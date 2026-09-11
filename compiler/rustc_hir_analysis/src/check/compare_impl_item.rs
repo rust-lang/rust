@@ -2145,36 +2145,11 @@ fn compare_impl_const<'tcx>(
     trait_const_item: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    compare_type_const(tcx, impl_const_item, trait_const_item)?;
     compare_const_directness(tcx, impl_const_item, trait_const_item)?;
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
     compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
     compare_const_clause_entailment(tcx, impl_const_item, trait_const_item, impl_trait_ref)
-}
-
-fn compare_type_const<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_const_item: ty::AssocItem,
-    trait_const_item: ty::AssocItem,
-) -> Result<(), ErrorGuaranteed> {
-    let impl_is_type_const = tcx.is_type_const_syntax(impl_const_item.def_id);
-    let trait_is_type_const = tcx.is_type_const_syntax(trait_const_item.def_id);
-
-    if trait_is_type_const && !impl_is_type_const {
-        return Err(tcx
-            .dcx()
-            .struct_span_err(
-                tcx.def_span(impl_const_item.def_id),
-                "implementation of a `type const` must also be marked as `type const`",
-            )
-            .with_span_note(
-                tcx.def_span(trait_const_item.def_id),
-                "trait declaration of const is marked as `type const`",
-            )
-            .emit());
-    }
-    Ok(())
 }
 
 pub(super) fn compare_const_directness<'tcx>(

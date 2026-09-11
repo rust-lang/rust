@@ -166,11 +166,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 mutability: s.mutability,
                 nested: false,
             },
-            ItemKind::Const(citem) => {
-                let is_type_const = citem.kind == ConstItemKind::TypeConst;
-                DefKind::Const { is_type_const }
-            }
-            ItemKind::ConstBlock(..) => DefKind::Const { is_type_const: false },
+            ItemKind::Const(..) => DefKind::Const,
+            ItemKind::ConstBlock(..) => DefKind::Const,
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
@@ -394,11 +391,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             | AssocItemKind::Delegation(Delegation { ident, .. }) => {
                 (*ident, DefKind::AssocFn, ValueNS)
             }
-            AssocItemKind::Const(ConstItem { ident, kind, .. }) => (
-                *ident,
-                DefKind::AssocConst { is_type_const: *kind == ConstItemKind::TypeConst },
-                ValueNS,
-            ),
+            AssocItemKind::Const(ConstItem { ident, .. }) => (*ident, DefKind::AssocConst, ValueNS),
             AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
             AssocItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);

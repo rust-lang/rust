@@ -1760,7 +1760,7 @@ impl Disambiguator {
                 "trait" => Kind(DefKind::Trait),
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
-                "const" | "constant" => Kind(DefKind::Const { is_type_const: false }),
+                "const" | "constant" => Kind(DefKind::Const),
                 "static" => Kind(DefKind::Static {
                     mutability: Mutability::Not,
                     nested: false,

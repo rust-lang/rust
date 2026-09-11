@@ -88,9 +88,7 @@ fn associated_item_from_trait_item(
     let owner_id = trait_item.owner_id;
     let name = trait_item.ident.name;
     let kind = match trait_item.kind {
-        hir::TraitItemKind::Const(_, _) => {
-            ty::AssocKind::Const { name, is_type_const: tcx.is_type_const_syntax(owner_id.def_id) }
-        }
+        hir::TraitItemKind::Const(_, _) => ty::AssocKind::Const { name },
         hir::TraitItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }
@@ -106,9 +104,7 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
     let owner_id = impl_item.owner_id;
     let name = impl_item.ident.name;
     let kind = match impl_item.kind {
-        hir::ImplItemKind::Const(..) => {
-            ty::AssocKind::Const { name, is_type_const: tcx.is_type_const_syntax(owner_id.def_id) }
-        }
+        hir::ImplItemKind::Const(..) => ty::AssocKind::Const { name },
         hir::ImplItemKind::Fn(..) => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }

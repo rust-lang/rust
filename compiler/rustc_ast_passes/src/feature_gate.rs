@@ -190,13 +190,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::TyAlias(ast::TyAlias { ty: Some(ty), .. }) => {
                 self.check_impl_trait(ty, false)
             }
-            ast::ItemKind::Const(ast::ConstItem {
-                kind: ast::ConstItemKind::TypeConst, ..
-            }) => {
-                // Make sure this is only allowed if the feature gate is enabled.
-                // #![feature(min_generic_const_args)]
-                gate!(self, min_generic_const_args, i.span, "top-level `type const` are unstable");
-            }
 
             _ => {}
         }
@@ -361,27 +354,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 if let Some(ty) = ty {
                     self.check_impl_trait(ty, true);
-                }
-                false
-            }
-            ast::AssocItemKind::Const(ast::ConstItem {
-                body,
-                kind: ast::ConstItemKind::TypeConst,
-                ..
-            }) => {
-                // Make sure this is only allowed if the feature gate is enabled.
-                // #![feature(min_generic_const_args)]
-                gate!(self, min_generic_const_args, i.span, "associated `type const` are unstable");
-                // Make sure associated `type const` defaults in traits are only allowed
-                // if the feature gate is enabled.
-                // #![feature(associated_type_defaults)]
-                if ctxt == AssocCtxt::Trait && body.is_some() {
-                    gate!(
-                        self,
-                        associated_type_defaults,
-                        i.span,
-                        "associated type defaults are unstable"
-                    );
                 }
                 false
             }
