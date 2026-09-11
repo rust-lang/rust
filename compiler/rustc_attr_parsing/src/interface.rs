@@ -162,6 +162,7 @@ impl<'sess> AttributeParser<'sess> {
             target_span,
             target,
             None,
+            None,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -317,6 +318,7 @@ impl<'sess> AttributeParser<'sess> {
         target_span: Span,
         target: Target,
         target_item: Option<&ast::Item>,
+        target_assoc_item: Option<&ast::AssocItem>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
@@ -524,6 +526,7 @@ impl<'sess> AttributeParser<'sess> {
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,
                     target_item,
+                    target_assoc_item,
                 },
                 attr_span,
             );
