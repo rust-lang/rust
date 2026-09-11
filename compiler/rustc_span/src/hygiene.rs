@@ -674,7 +674,8 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
                     expn_data.kind,
                 ))
             };
-            data.local_expn_data.iter_enumerated().for_each(|(id, expn_data)| {
+            // its ok to use `unstable_iter_enumerated` iter here, as this is just for debug formatting
+            data.local_expn_data.unstable_iter_enumerated().for_each(|(id, expn_data)| {
                 let expn_data = expn_data.as_ref().expect("no expansion data for an expansion ID");
                 debug_expn_data((&id.to_expn_id(), expn_data))
             });

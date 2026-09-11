@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec, StableIdx};
 use tracing::{debug, instrument, trace};
 
 use crate::fx::FxHashSet;
@@ -42,18 +42,18 @@ pub trait Annotation: Debug + Copy {
 }
 
 /// An accumulator for annotations.
-pub trait Annotations<N: Idx> {
+pub trait Annotations<N: StableIdx> {
     type Ann: Annotation;
-    type SccIdx: Idx + Ord;
+    type SccIdx: StableIdx + Ord;
 
     fn new(&self, element: N) -> Self::Ann;
     fn annotate_scc(&mut self, scc: Self::SccIdx, annotation: Self::Ann);
 }
 
 /// The nil annotation accumulator, which does nothing.
-struct NoAnnotations<S: Idx + Ord>(PhantomData<S>);
+struct NoAnnotations<S: StableIdx + Ord>(PhantomData<S>);
 
-impl<N: Idx, S: Idx + Ord> Annotations<N> for NoAnnotations<S> {
+impl<N: StableIdx, S: StableIdx + Ord> Annotations<N> for NoAnnotations<S> {
     type SccIdx = S;
     type Ann = ();
     fn new(&self, _element: N) {}
@@ -70,7 +70,7 @@ impl Annotation for () {
 /// the index type for the graph nodes and `S` is the index type for
 /// the SCCs. We can map from each node to the SCC that it
 /// participates in, and we also have the successors of each SCC.
-pub struct Sccs<N: Idx, S: Idx> {
+pub struct Sccs<N: StableIdx, S: StableIdx> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
     scc_indices: IndexVec<N, S>,
@@ -92,7 +92,7 @@ struct SccDetails {
 // is difficult when it's publicly inspectable.
 //
 // Obey the law of Demeter!
-struct SccData<S: Idx> {
+struct SccData<S: StableIdx> {
     /// Maps SCC indices to their metadata, including
     /// offsets into `all_successors`.
     scc_details: IndexVec<S, SccDetails>,
@@ -103,7 +103,7 @@ struct SccData<S: Idx> {
     all_successors: Vec<S>,
 }
 
-impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
+impl<N: StableIdx, S: StableIdx + Ord> Sccs<N, S> {
     /// Compute SCCs without annotations.
     pub fn new(graph: &impl Successors<Node = N>) -> Self {
         Self::new_with_annotation(graph, &mut NoAnnotations(PhantomData::<S>))
@@ -159,7 +159,7 @@ impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
     }
 }
 
-impl<N: Idx, S: Idx + Ord> DirectedGraph for Sccs<N, S> {
+impl<N: StableIdx, S: StableIdx + Ord> DirectedGraph for Sccs<N, S> {
     type Node = S;
 
     fn num_nodes(&self) -> usize {
@@ -167,19 +167,19 @@ impl<N: Idx, S: Idx + Ord> DirectedGraph for Sccs<N, S> {
     }
 }
 
-impl<N: Idx, S: Idx + Ord> NumEdges for Sccs<N, S> {
+impl<N: StableIdx, S: StableIdx + Ord> NumEdges for Sccs<N, S> {
     fn num_edges(&self) -> usize {
         self.scc_data.all_successors.len()
     }
 }
 
-impl<N: Idx, S: Idx + Ord> Successors for Sccs<N, S> {
+impl<N: StableIdx, S: StableIdx + Ord> Successors for Sccs<N, S> {
     fn successors(&self, node: S) -> impl Iterator<Item = Self::Node> {
         self.successors(node).iter().cloned()
     }
 }
 
-impl<S: Idx> SccData<S> {
+impl<S: StableIdx> SccData<S> {
     /// Number of SCCs,
     fn len(&self) -> usize {
         self.scc_details.len()

@@ -1,4 +1,4 @@
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{IndexVec, StableIdx};
 
 use crate::graph::{DirectedGraph, NumEdges, Predecessors, Successors};
 
@@ -8,7 +8,7 @@ mod tests;
 /// A directed graph, efficient for cases where node indices are pre-existing.
 ///
 /// If `BR` is true, the graph will store back-references, allowing you to get predecessors.
-pub struct VecGraph<N: Idx, const BR: bool = false> {
+pub struct VecGraph<N: StableIdx, const BR: bool = false> {
     // This is basically a `HashMap<N, (Vec<N>, If<BR, Vec<N>>)>` -- a map from a node index, to
     // a list of targets of outgoing edges and (if enabled) a list of sources of incoming edges.
     //
@@ -64,7 +64,7 @@ pub struct VecGraph<N: Idx, const BR: bool = false> {
     edge_targets: Vec<N>,
 }
 
-impl<N: Idx + Ord, const BR: bool> VecGraph<N, BR> {
+impl<N: StableIdx + Ord, const BR: bool> VecGraph<N, BR> {
     pub fn new(num_nodes: usize, mut edge_pairs: Vec<(N, N)>) -> Self {
         let num_edges = edge_pairs.len();
 
@@ -129,7 +129,7 @@ impl<N: Idx + Ord, const BR: bool> VecGraph<N, BR> {
     }
 }
 
-impl<N: Idx + Ord> VecGraph<N, true> {
+impl<N: StableIdx + Ord> VecGraph<N, true> {
     /// Gets the predecessors for `target` as a slice.
     pub fn predecessors(&self, target: N) -> &[N] {
         assert!(target.index() < self.num_nodes());
@@ -149,7 +149,7 @@ impl<N: Idx + Ord> VecGraph<N, true> {
 /// - `associated_edge_targets` are the edge *targets* in the same order as sources
 /// - `edge_targets` is the vec of targets to be extended
 /// - `node_starts` is the index to be filled
-fn create_index<N: Idx + Ord>(
+fn create_index<N: StableIdx + Ord>(
     num_nodes: usize,
     sorted_edge_sources: &mut dyn Iterator<Item = N>,
     associated_edge_targets: &mut dyn Iterator<Item = N>,
@@ -201,7 +201,7 @@ fn create_index<N: Idx + Ord>(
     assert_eq!(node_starts.len(), num_nodes + 1);
 }
 
-impl<N: Idx, const BR: bool> DirectedGraph for VecGraph<N, BR> {
+impl<N: StableIdx, const BR: bool> DirectedGraph for VecGraph<N, BR> {
     type Node = N;
 
     fn num_nodes(&self) -> usize {
@@ -213,7 +213,7 @@ impl<N: Idx, const BR: bool> DirectedGraph for VecGraph<N, BR> {
     }
 }
 
-impl<N: Idx, const BR: bool> NumEdges for VecGraph<N, BR> {
+impl<N: StableIdx, const BR: bool> NumEdges for VecGraph<N, BR> {
     fn num_edges(&self) -> usize {
         match BR {
             false => self.edge_targets.len(),
@@ -223,13 +223,13 @@ impl<N: Idx, const BR: bool> NumEdges for VecGraph<N, BR> {
     }
 }
 
-impl<N: Idx + Ord, const BR: bool> Successors for VecGraph<N, BR> {
+impl<N: StableIdx + Ord, const BR: bool> Successors for VecGraph<N, BR> {
     fn successors(&self, node: N) -> impl Iterator<Item = Self::Node> {
         self.successors(node).iter().cloned()
     }
 }
 
-impl<N: Idx + Ord> Predecessors for VecGraph<N, true> {
+impl<N: StableIdx + Ord> Predecessors for VecGraph<N, true> {
     fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.predecessors(node).iter().cloned()
     }

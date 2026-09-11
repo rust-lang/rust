@@ -35,6 +35,7 @@ rustc_index::newtype_index! {
 
 rustc_index::newtype_index! {
     /// Index identifying an `Init`.
+    #[orderable]
     #[debug_format = "in{}"]
     pub struct InitIndex {}
 }

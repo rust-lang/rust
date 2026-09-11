@@ -4,7 +4,7 @@ use std::ops::{Bound, Range, RangeBounds};
 
 use smallvec::SmallVec;
 
-use crate::idx::Idx;
+use crate::idx::{Idx, StableIdx};
 use crate::vec::IndexVec;
 
 #[cfg(test)]
@@ -362,16 +362,16 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
         SparseIntervalMatrix { rows: IndexVec::new(), column_size }
     }
 
-    pub fn rows(&self) -> impl Iterator<Item = R> {
-        self.rows.indices()
+    pub fn unstable_rows(&self) -> impl Iterator<Item = R> {
+        self.rows.unstable_indices()
     }
 
     pub fn row(&self, row: R) -> Option<&IntervalSet<C>> {
         self.rows.get(row)
     }
 
-    pub fn iter_enumerated(&self) -> impl Iterator<Item = (R, &IntervalSet<C>)> {
-        self.rows.iter_enumerated()
+    pub fn unstable_iter_enumerated(&self) -> impl Iterator<Item = (R, &IntervalSet<C>)> {
+        self.rows.unstable_iter_enumerated()
     }
 
     fn ensure_row(&mut self, row: R) -> &mut IntervalSet<C> {
@@ -419,5 +419,15 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
 
     pub fn contains(&self, row: R, point: C) -> bool {
         self.row(row).is_some_and(|r| r.contains(point))
+    }
+}
+
+impl<R: StableIdx, C: Step + Idx> SparseIntervalMatrix<R, C> {
+    pub fn rows(&self) -> impl Iterator<Item = R> {
+        self.unstable_rows()
+    }
+
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (R, &IntervalSet<C>)> {
+        self.unstable_iter_enumerated()
     }
 }
