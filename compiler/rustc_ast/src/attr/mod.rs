@@ -19,7 +19,7 @@ use crate::ast::{
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
-use crate::tokenarena::ArenaTokenStreamBuilder;
+use crate::tokenarena::{ArenaTokenStream, ArenaTokenStreamBuilder};
 use crate::tokenstream::{
     AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
     TokenStream, TokenStreamIter, TokenTree,
@@ -368,7 +368,7 @@ impl AttrItem {
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.args {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
-                MetaItemKind::list_from_tokens(args.tokens.clone())
+                MetaItemKind::list_from_tokens(args.tokens.to_token_stream())
             }
             AttrArgs::Delimited(_) | AttrArgs::Eq { .. } | AttrArgs::Empty => None,
         }
@@ -613,7 +613,7 @@ impl MetaItemKind {
         match args {
             AttrArgs::Empty => Some(MetaItemKind::Word),
             AttrArgs::Delimited(DelimArgs { dspan: _, delim: Delimiter::Parenthesis, tokens }) => {
-                MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List)
+                MetaItemKind::list_from_tokens(tokens.to_token_stream()).map(MetaItemKind::List)
             }
             AttrArgs::Delimited(..) => None,
             AttrArgs::Eq { expr, .. } => match expr.kind {
@@ -826,10 +826,10 @@ pub fn mk_attr_nested_word(
     inner: Symbol,
     span: Span,
 ) -> Attribute {
-    let inner_tokens = TokenStream::new(vec![TokenTree::Token(
+    let inner_tokens = ArenaTokenStream::from_token(
         Token::from_ast_ident(Ident::new(inner, span)),
         Spacing::Alone,
-    )]);
+    );
     let outer_ident = Ident::new(outer, span);
     let path = Path::from_ident(outer_ident);
     let attr_args = AttrArgs::Delimited(DelimArgs {

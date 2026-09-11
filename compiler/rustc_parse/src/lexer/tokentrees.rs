@@ -30,7 +30,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     Ok(value) => value,
                     Err(errs) => return Err(errs),
                 };
-                arena.finish_delimited(delimited, value);
+                arena.close_delimited(delimited, value);
             } else if let Some(delim) = self.token.kind.close_delim() {
                 // Invisible delimiters cannot occur here because `TokenTreesReader` parses
                 // code directly from strings, with no macro expansion involved.

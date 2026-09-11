@@ -378,6 +378,7 @@ impl ParenthesizedArgs {
 }
 
 pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
+use crate::tokenarena::ArenaTokenStream;
 
 /// Modifiers on a trait bound like `[const]`, `?` and `!`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Walkable)]
@@ -2093,7 +2094,7 @@ impl AttrArgs {
     pub fn inner_tokens(&self) -> TokenStream {
         match self {
             AttrArgs::Empty => TokenStream::default(),
-            AttrArgs::Delimited(args) => args.tokens.clone(),
+            AttrArgs::Delimited(args) => args.tokens.to_token_stream(),
             AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr),
         }
     }
@@ -2104,7 +2105,7 @@ impl AttrArgs {
 pub struct DelimArgs {
     pub dspan: DelimSpan,
     pub delim: Delimiter, // Note: `Delimiter::Invisible` never occurs
-    pub tokens: TokenStream,
+    pub tokens: ArenaTokenStream,
 }
 
 impl DelimArgs {

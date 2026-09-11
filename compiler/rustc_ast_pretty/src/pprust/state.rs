@@ -715,7 +715,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 None,
                 *delim,
                 None,
-                tokens,
+                &tokens.to_token_stream(),
                 true,
                 span,
             ),
@@ -926,7 +926,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             Some(*ident),
             macro_def.body.delim,
             None,
-            &macro_def.body.tokens,
+            &macro_def.body.tokens.to_token_stream(),
             true,
             sp,
         );
@@ -1674,7 +1674,7 @@ impl<'a> State<'a> {
             None,
             m.args.delim,
             None,
-            &m.args.tokens,
+            &m.args.tokens.to_token_stream(),
             true,
             m.span(),
         );

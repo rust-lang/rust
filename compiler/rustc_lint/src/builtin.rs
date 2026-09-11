@@ -1826,10 +1826,10 @@ impl KeywordIdents {
 
 impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
-        self.check_tokens(cx, &mac_def.body.tokens);
+        self.check_tokens(cx, &mac_def.body.tokens.to_token_stream());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        self.check_tokens(cx, &mac.args.tokens);
+        self.check_tokens(cx, &mac.args.tokens.to_token_stream());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: &Ident) {
         if ident.name.as_str().starts_with('\'') {

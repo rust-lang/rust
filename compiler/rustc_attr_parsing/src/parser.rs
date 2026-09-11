@@ -133,7 +133,7 @@ impl ArgParser {
                 // Therefore we can substitute with a dummy value on invalid syntax.
                 if matches!(parts, [sym::rustc_dummy] | [sym::diagnostic, ..]) {
                     match MetaItemListParser::new(
-                        &args.tokens,
+                        &args.tokens.to_token_stream(),
                         args.dspan.entire(),
                         psess,
                         ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
@@ -164,7 +164,7 @@ impl ArgParser {
 
                 Self::List(
                     MetaItemListParser::new(
-                        &args.tokens,
+                        &args.tokens.to_token_stream(),
                         args.dspan.entire(),
                         psess,
                         should_emit,

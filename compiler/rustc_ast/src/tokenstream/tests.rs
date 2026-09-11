@@ -20,7 +20,7 @@ fn foo() {
     arena.push_token_alone(Token::new(TokenKind::Plus, DUMMY_SP));
     let open2 = arena.start_delimited();
     arena.push_token_alone(Token::new(TokenKind::Plus, DUMMY_SP));
-    arena.finish_delimited(
+    arena.close_delimited(
         open2,
         DelimitedData {
             span: DelimSpan::from_single(DUMMY_SP),
@@ -28,7 +28,7 @@ fn foo() {
             delimiter: Delimiter::Parenthesis,
         },
     );
-    arena.finish_delimited(
+    arena.close_delimited(
         open1,
         DelimitedData {
             span: DelimSpan::from_single(DUMMY_SP),

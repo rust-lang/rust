@@ -153,7 +153,7 @@ impl<'a> State<'a> {
                     None,
                     *delim,
                     None,
-                    &tokens,
+                    &tokens.to_token_stream(),
                     true,
                     span,
                 ),
