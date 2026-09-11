@@ -19,7 +19,7 @@ use crate::ast::{
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
-use crate::tokenarena::TokenArena;
+use crate::tokenarena::ArenaTokenStreamBuilder;
 use crate::tokenstream::{
     AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
     TokenStream, TokenStreamIter, TokenTree,
@@ -309,7 +309,7 @@ impl Attribute {
         }
     }
 
-    pub fn push_token_trees(&self, arena: &mut TokenArena) {
+    pub fn push_token_trees(&self, arena: &mut ArenaTokenStreamBuilder) {
         match self.kind {
             AttrKind::Normal(ref normal) => {
                 for token_tree in normal

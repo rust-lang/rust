@@ -29,7 +29,7 @@ pub use path::PathStyle;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
-use rustc_ast::tokenarena::{ArenaTokenTree, TokenArena};
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree};
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
 };
@@ -245,8 +245,8 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn arena(&self) -> &TokenArena {
-        &self.token_cursor.arena
+    pub fn token_stream(&self) -> &ArenaTokenStream {
+        &self.token_cursor.stream
     }
 }
 
@@ -349,12 +349,12 @@ pub fn token_descr(token: &Token) -> String {
 impl<'a> Parser<'a> {
     pub fn new(
         psess: &'a ParseSess,
-        arena: TokenArena,
+        stream: ArenaTokenStream,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
             psess,
-            token_cursor: TokenCursor::new(arena),
+            token_cursor: TokenCursor::new(stream),
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
@@ -1387,7 +1387,7 @@ impl<'a> Parser<'a> {
 
         delimited.then(|| {
             let TokenTree::Delimited(dspan, _, delim, tokens) =
-                self.parse_token_tree().to_token_tree(&self.token_cursor.arena)
+                self.parse_token_tree().to_token_tree(&self.token_cursor.stream)
             else {
                 unreachable!()
             };
@@ -1451,7 +1451,7 @@ impl<'a> Parser<'a> {
             }
         }
         TokenStream::new(
-            result.into_iter().map(|tt| tt.to_token_tree(&self.token_cursor.arena)).collect(),
+            result.into_iter().map(|tt| tt.to_token_tree(&self.token_cursor.stream)).collect(),
         )
     }
 
