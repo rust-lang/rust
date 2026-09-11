@@ -825,7 +825,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // FIXME(const_trait_impl): does not enforce constness yet
                 self.write_splatted_call(
                     call_expr.hir_id,
-                    call_span,
                     fn_id,
                     callee_generic_args,
                     first_tupled_arg_index,
