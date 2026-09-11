@@ -203,7 +203,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     // while the enclosing body is type-checked. Doing this in the pass above lets the parallel
     // front end reach the nested body owner first, computing (and caching) an error type for
     // the anon const that then conflicts with the type fed later on.
-    tcx.par_hir_body_owners(|item_def_id| {
+    //
+    // This must not be parallelized since `coroutine_by_move_body_def_id` creates new `DefId`-s
+    // inside, which must be done in deterministic order to have reproducible binaries.
+    tcx.hir_body_owners().for_each(|item_def_id| {
         // Ensure we generate the new `DefId` before finishing `check_crate`.
         // Afterwards we freeze the list of `DefId`s.
         if tcx.needs_coroutine_by_move_body_def_id(item_def_id.to_def_id()) {

@@ -262,8 +262,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_type: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
-        let expected = self.resolve_vars_if_possible(expected_type);
-        let found = self.resolve_vars_if_possible(found_type);
+        let expected = self.deeply_resolve_ignoring_regions(expected_type);
+        let found = self.deeply_resolve_ignoring_regions(found_type);
 
         if expected.references_error() || found.references_error() || expected.is_unit() {
             return false;
@@ -992,7 +992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let found =
-            self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
+            self.resolve_numeric_literals_with_default(self.deeply_resolve_ignoring_regions(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()`, impl or closure).
         match &fn_decl.output {
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !expected.is_unit() {
             return;
         }
-        let found = self.resolve_vars_if_possible(found);
+        let found = self.deeply_resolve_ignoring_regions(found);
 
         let innermost_loop = if self.is_loop(id) {
             Some(self.tcx.hir_node(id))

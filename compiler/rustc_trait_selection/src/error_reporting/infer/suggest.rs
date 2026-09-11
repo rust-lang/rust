@@ -48,8 +48,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         second_span: Span,
     ) -> Option<SuggestRemoveSemiOrReturnBinding> {
         let remove_semicolon = [
-            (first_id, self.resolve_vars_if_possible(second_ty)),
-            (second_id, self.resolve_vars_if_possible(first_ty)),
+            (first_id, self.deeply_resolve_ignoring_regions(second_ty)),
+            (second_id, self.deeply_resolve_ignoring_regions(first_ty)),
         ]
         .into_iter()
         .find_map(|(id, ty)| {
@@ -926,7 +926,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .as_ref()
                     .and_then(|typeck_results| typeck_results.node_type_opt(*hir_id))
             {
-                let pat_ty = self.resolve_vars_if_possible(pat_ty);
+                let pat_ty = self.deeply_resolve_ignoring_regions(pat_ty);
                 if self.same_type_modulo_infer(pat_ty, expected_ty)
                     && !(pat_ty, expected_ty).references_error()
                     && shadowed.insert(ident.name)
