@@ -1,0 +1,15 @@
+error[E0277]: values of type `B` may not be movable
+  --> $DIR/feature-gate-move-trait.rs:16:18
+   |
+LL |     let _new_b = b;
+   |                  ^ may not be movable
+   |
+help: the nightly-only, unstable trait `Move` is not implemented for `B`
+  --> $DIR/feature-gate-move-trait.rs:8:1
+   |
+LL | struct B;
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

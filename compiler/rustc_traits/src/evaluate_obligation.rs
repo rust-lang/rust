@@ -5,7 +5,7 @@ use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::CanonicalPredicateGoal;
 use rustc_trait_selection::traits::{
     EvaluationResult, Obligation, ObligationCause, OverflowError, SelectionContext, TraitQueryMode,
-    sizedness_fast_path,
+    implicit_fast_path,
 };
 use tracing::debug;
 
@@ -24,7 +24,7 @@ fn evaluate_obligation<'tcx>(
     debug!("evaluate_obligation: goal={:#?}", goal);
     let ParamEnvAnd { param_env, value: predicate } = goal;
 
-    if !tcx.disable_trait_solver_fast_paths() && sizedness_fast_path(tcx, predicate, param_env) {
+    if !tcx.disable_trait_solver_fast_paths() && implicit_fast_path(tcx, predicate, param_env) {
         return Ok(EvaluationResult::EvaluatedToOk);
     }
 

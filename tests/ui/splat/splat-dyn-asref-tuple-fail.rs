@@ -5,7 +5,7 @@
 #![feature(tuple_trait)]
 
 // Strip binders and their lifetime numbers from error messages
-//@ normalize-stderr: "&.*value: (.*), bound_vars: .*" -> "$1"
+//@ normalize-stderr: "&.*?value: (.*?), bound_vars: .*" -> "$1"
 
 // FIXME(splat): Some errors are reported on the callee, but they would be more ergonomic on the
 // caller as well

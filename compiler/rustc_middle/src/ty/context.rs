@@ -45,7 +45,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::{CollectAndApply, WithCachedTypeInfo, elaborate, search_graph};
+use rustc_type_ir::{CollectAndApply, IncludingSized, WithCachedTypeInfo, elaborate, search_graph};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -115,6 +115,10 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
 
     fn coroutine_clone(self) -> bool {
         self.coroutine_clone()
+    }
+
+    fn move_trait(self) -> bool {
+        self.move_trait()
     }
 
     fn feature_bound_holds_in_crate(self, symbol: Symbol) -> bool {
@@ -927,6 +931,19 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_default_trait(self, def_id: DefId) -> bool {
         self.default_traits().iter().any(|&default_trait| self.is_lang_item(def_id, default_trait))
+    }
+
+    pub fn is_implicit_trait(self, def_id: DefId, including_sized: IncludingSized) -> bool {
+        self.is_default_trait(def_id)
+            || self.is_move_trait(def_id)
+            || match including_sized {
+                IncludingSized::Yes => self.is_sizedness_trait(def_id),
+                IncludingSized::No => false,
+            }
+    }
+
+    pub fn is_move_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Move))
     }
 
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {

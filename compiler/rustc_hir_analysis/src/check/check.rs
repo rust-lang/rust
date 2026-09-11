@@ -2094,12 +2094,11 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
                     None
                 }
             })
-            // FIXME: This assumes that elaborated `Sized` bounds come first (which does hold at the
-            // time of writing). This is a bit fragile since we later use the span to detect elaborated
-            // `Sized` bounds. If they came last for example, this would break `Trait + /*elab*/Sized`
-            // since it would overwrite the span of the user-written bound. This could be fixed by
-            // folding the spans with `Span::to` which requires a bit of effort I think.
-            .collect::<FxIndexMap<_, _>>()
+            // keeping all values, we are in an error branch anyway
+            .fold(FxIndexMap::<_, Vec<_>>::default(), |mut map, (index, span)| {
+                map.entry(index).or_default().push(span);
+                map
+            })
     });
 
     let mut params_used = DenseBitSet::new_empty(generics.own_params.len());
@@ -2123,7 +2122,9 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             // * check for emptiness to detect lone user-written `?Sized` bounds
             // * compare the param span to the pred span to detect lone user-written `Sized` bounds
             let has_explicit_bounds = bounded_params.is_empty()
-                || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
+                || (*bounded_params)
+                    .get(&param.index)
+                    .is_some_and(|pred_spans| pred_spans.iter().any(|&&pred_sp| pred_sp != span));
             let const_param_help = !has_explicit_bounds;
 
             let mut diag = tcx.dcx().create_err(diagnostics::UnusedGenericParameter {

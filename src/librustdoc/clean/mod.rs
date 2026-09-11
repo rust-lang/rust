@@ -943,6 +943,8 @@ fn clean_ty_generics_inner<'tcx>(
 
     for (idx, mut bounds) in impl_trait {
         let mut has_sized = false;
+        let mut has_move = false;
+
         bounds.retain(|b| {
             if b.is_sized_bound(cx.tcx) {
                 has_sized = true;
@@ -951,12 +953,18 @@ fn clean_ty_generics_inner<'tcx>(
                 // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
                 // is shown and none of the new sizedness traits leak into documentation.
                 false
+            } else if b.is_move_bound(cx.tcx) {
+                has_move = true;
+                false
             } else {
                 true
             }
         });
         if !has_sized {
             bounds.push(GenericBound::maybe_sized(cx));
+        }
+        if !has_move {
+            bounds.push(GenericBound::maybe_move(cx));
         }
 
         // Move trait bounds to the front.
