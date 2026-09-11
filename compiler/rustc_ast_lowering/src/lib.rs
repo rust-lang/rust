@@ -1599,7 +1599,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generic_params,
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
-                    decl: self.lower_fn_decl(&f.decl, t.id, t.span, FnDeclKind::Pointer, None),
+                    decl: self.lower_fn_decl(&f.decl, t.id, FnDeclKind::Pointer, None),
                     param_idents: self.lower_fn_params_to_idents(&f.decl),
                 }))
             }
@@ -1959,7 +1959,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         decl: &FnDecl,
         fn_node_id: NodeId,
-        fn_span: Span,
         kind: FnDeclKind,
         coro: Option<CoroutineMarker>,
     ) -> &'hir hir::FnDecl<'hir> {
