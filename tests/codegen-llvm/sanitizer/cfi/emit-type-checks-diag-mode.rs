@@ -2,7 +2,7 @@
 //
 //@ revisions: cfi-diag cfi-diag-minimal-runtime
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-diag=true -Copt-level=0 -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-diag=true -Copt-level=0 -C unsafe-allow-abi-mismatch=sanitizer,sanitizer-cfi-minimal-runtime
 //@ [cfi-diag-minimal-runtime] compile-flags: -Zsanitizer-cfi-minimal-runtime=true
 
 #![crate_type = "lib"]
