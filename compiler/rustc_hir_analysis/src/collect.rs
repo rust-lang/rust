@@ -28,21 +28,17 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
-use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
-use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
+use rustc_infer::infer::{InferCtxt, SolverRegionConstraint};
+use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::REPR_C_ENUMS_LARGER_THAN_INT;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
-    fold_regions,
-};
+use rustc_middle::ty::{self, AdtKind, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
-use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
+    FulfillmentError, hir_ty_lowering_dyn_compatibility_violations,
 };
 use tracing::{debug, instrument};
 use ty::region_constraint::LeafRegionConstraint;
@@ -160,20 +156,19 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
 fn placeholder_type_error_diag<'cx, 'tcx>(
     cx: &'cx dyn HirTyLowerer<'tcx>,
     generics: Option<&hir::Generics<'_>>,
-    placeholder_types: Vec<Span>,
+    placeholder_type: Option<Span>,
     additional_spans: Vec<Span>,
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
     kind: &'static str,
 ) -> Diag<'cx> {
-    if placeholder_types.is_empty() {
+    let Some(placeholder_type) = placeholder_type else {
         return bad_placeholder(cx, additional_spans, kind);
-    }
+    };
 
     let params = generics.map(|g| g.params).unwrap_or_default();
     let type_name = params.next_type_param_name(None);
-    let mut sugg: Vec<_> =
-        placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
+    let mut sugg = vec![(placeholder_type, type_name.clone())];
 
     if let Some(generics) = generics {
         if let Some(span) = params.iter().find_map(|arg| match arg.name {
@@ -182,7 +177,7 @@ fn placeholder_type_error_diag<'cx, 'tcx>(
         }) {
             // Account for `_` already present in cases like `struct S<_>(_);` and suggest
             // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-            sugg.push((span, (*type_name).to_string()));
+            sugg.push((span, type_name));
         } else if let Some(span) = generics.span_for_param_suggestion() {
             // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
             sugg.push((span, format!(", {type_name}")));
@@ -191,8 +186,11 @@ fn placeholder_type_error_diag<'cx, 'tcx>(
         }
     }
 
-    let mut err =
-        bad_placeholder(cx, placeholder_types.into_iter().chain(additional_spans).collect(), kind);
+    let mut err = bad_placeholder(
+        cx,
+        std::iter::once(placeholder_type).chain(additional_spans).collect(),
+        kind,
+    );
 
     // Suggest, but only if it is not a function in const or static
     if suggest {
@@ -286,9 +284,18 @@ impl<'tcx> ItemCtxt<'tcx> {
 
     fn report_placeholder_type_error(
         &self,
-        placeholder_types: Vec<Span>,
+        placeholder_type: Option<Span>,
         infer_replacements: Vec<(Span, String)>,
     ) -> ErrorGuaranteed {
+        let dcx = self.dcx();
+
+        // Don't emit another diagnostic for synthetic placeholders.
+        if let Some(span) = placeholder_type
+            && dcx.has_stashed_diagnostic(span, StashKey::ItemNoType)
+        {
+            return dcx.span_delayed_bug(span, "stashed error for typeless item not emitted");
+        }
+
         let node = self.tcx.hir_node_by_def_id(self.item_def_id);
         let generics = node.generics();
         let kind_id = match node {
@@ -301,7 +308,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         let mut diag = placeholder_type_error_diag(
             self,
             generics,
-            placeholder_types,
+            placeholder_type,
             infer_replacements.iter().map(|&(span, _)| span).collect(),
             false,
             None,
@@ -311,15 +318,18 @@ impl<'tcx> ItemCtxt<'tcx> {
             diag.multipart_suggestion(
                 format!(
                     "try replacing `_` with the type{} in the corresponding trait method \
-                        signature",
+                     signature",
                     rustc_errors::pluralize!(infer_replacements.len()),
                 ),
                 infer_replacements,
                 Applicability::MachineApplicable,
             );
         }
-
-        diag.emit()
+        if let Some(span) = placeholder_type {
+            diag.stash(span, StashKey::BadPlaceholder).unwrap()
+        } else {
+            diag.emit()
+        }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -531,15 +541,11 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        if !self.tcx.dcx().has_stashed_diagnostic(span, StashKey::ItemNoType) {
-            self.report_placeholder_type_error(vec![span], vec![]);
-        }
-        Ty::new_error_with_message(self.tcx(), span, "bad placeholder type")
+        Ty::new_error(self.tcx(), self.report_placeholder_type_error(Some(span), vec![]))
     }
 
     fn ct_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
-        self.report_placeholder_type_error(vec![span], vec![]);
-        ty::Const::new_error_with_message(self.tcx(), span, "bad placeholder constant")
+        ty::Const::new_error(self.tcx(), self.report_placeholder_type_error(Some(span), vec![]))
     }
 
     fn register_trait_ascription_bounds(
@@ -727,16 +733,16 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             .inputs
             .iter()
             .enumerate()
-            .map(|(i, a)| {
-                if let hir::TyKind::Infer(()) = a.kind
+            .map(|(idx, ty)| {
+                if let hir::TyKind::Infer(()) = ty.kind
                     && let Some(suggested_ty) =
-                        self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
+                        self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(idx))
                 {
-                    infer_replacements.push((a.span, suggested_ty.to_string()));
-                    return Ty::new_error_with_message(tcx, a.span, suggested_ty.to_string());
+                    infer_replacements.push((ty.span, suggested_ty.to_string()));
+                    return Ty::new_error_with_message(tcx, ty.span, suggested_ty.to_string());
                 }
 
-                self.lowerer().lower_ty(a)
+                self.lowerer().lower_ty(ty)
             })
             .collect();
 
@@ -756,7 +762,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         };
 
         if !infer_replacements.is_empty() {
-            self.report_placeholder_type_error(vec![], infer_replacements);
+            self.report_placeholder_type_error(None, infer_replacements);
         }
         (input_tys, output_ty)
     }
@@ -1177,46 +1183,26 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let output = match tcx.hir_node(hir_id) {
+    let node = &tcx.hir_node(hir_id);
+
+    let output = match *node {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
             ..
         })
-        | Item(hir::Item { kind: ItemKind::Fn { sig, generics, .. }, .. }) => {
-            lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
+        | Item(hir::Item { kind: ItemKind::Fn { sig, generics, .. }, .. })
+        | ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. })
+        | TraitItem(hir::TraitItem { kind: TraitItemKind::Fn(sig, _), generics, .. }) => {
+            icx.lowerer().lower_fn_ty(
+                hir_id,
+                sig.header.safety(),
+                sig.header.abi,
+                sig.decl,
+                Some(generics),
+                None,
+            )
         }
-
-        ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
-            // Do not try to infer the return type for a impl method coming from a trait
-            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.parent_hir_node(hir_id)
-                && i.of_trait.is_some()
-            {
-                icx.lowerer().lower_fn_ty(
-                    hir_id,
-                    sig.header.safety(),
-                    sig.header.abi,
-                    sig.decl,
-                    Some(generics),
-                    None,
-                )
-            } else {
-                lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
-            }
-        }
-
-        TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
-            generics,
-            ..
-        }) => icx.lowerer().lower_fn_ty(
-            hir_id,
-            header.safety(),
-            header.abi,
-            decl,
-            Some(generics),
-            None,
-        ),
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(sig, _, _), .. }) => {
             let abi = tcx.hir_get_foreign_abi(hir_id);
@@ -1253,313 +1239,6 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
         }
     };
     ty::EarlyBinder::bind(tcx, output)
-}
-
-fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
-    icx: &ItemCtxt<'tcx>,
-    sig: &'tcx hir::FnSig<'tcx>,
-    generics: &'tcx hir::Generics<'tcx>,
-    def_id: LocalDefId,
-) -> ty::PolyFnSig<'tcx> {
-    if let Some(infer_ret_ty) = sig.decl.output.is_suggestable_infer_ty() {
-        return recover_infer_ret_ty(icx, infer_ret_ty, generics, def_id);
-    }
-
-    icx.lowerer().lower_fn_ty(
-        icx.tcx().local_def_id_to_hir_id(def_id),
-        sig.header.safety(),
-        sig.header.abi,
-        sig.decl,
-        Some(generics),
-        None,
-    )
-}
-
-/// Convert `ReLateParam`s in `value` back into `ReBound`s and bind it with `bound_vars`.
-fn late_param_regions_to_bound<'tcx, T>(
-    tcx: TyCtxt<'tcx>,
-    scope: DefId,
-    bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
-    value: T,
-) -> ty::Binder<'tcx, T>
-where
-    T: ty::TypeFoldable<TyCtxt<'tcx>>,
-{
-    let value = fold_regions(tcx, value, |r, debruijn| match r.kind() {
-        ty::ReLateParam(lp) => {
-            // Should be in scope, otherwise inconsistency happens somewhere.
-            assert_eq!(lp.scope, scope);
-
-            let br = match lp.kind {
-                // These variants preserve the bound var index.
-                kind @ (ty::LateParamRegionKind::Anon(idx)
-                | ty::LateParamRegionKind::NamedAnon(idx, _)) => {
-                    let idx = idx as usize;
-                    let var = ty::BoundVar::from_usize(idx);
-
-                    let Some(ty::BoundVariableKind::Region(kind)) = bound_vars.get(idx).copied()
-                    else {
-                        bug!("unexpected late-bound region {kind:?} for bound vars {bound_vars:?}");
-                    };
-
-                    ty::BoundRegion { var, kind }
-                }
-
-                // For named regions, look up the corresponding bound var.
-                ty::LateParamRegionKind::Named(def_id) => bound_vars
-                    .iter()
-                    .enumerate()
-                    .find_map(|(idx, bv)| match bv {
-                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::Named(did))
-                            if did == def_id =>
-                        {
-                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
-                        }
-                        _ => None,
-                    })
-                    .unwrap(),
-
-                ty::LateParamRegionKind::ClosureEnv => bound_vars
-                    .iter()
-                    .enumerate()
-                    .find_map(|(idx, bv)| match bv {
-                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::ClosureEnv) => {
-                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
-                        }
-                        _ => None,
-                    })
-                    .unwrap(),
-            };
-
-            ty::Region::new_bound(tcx, debruijn, br)
-        }
-        _ => r,
-    });
-
-    ty::Binder::bind_with_vars(value, bound_vars)
-}
-
-fn recover_infer_ret_ty<'tcx>(
-    icx: &ItemCtxt<'tcx>,
-    infer_ret_ty: &'tcx hir::Ty<'tcx>,
-    generics: &'tcx hir::Generics<'tcx>,
-    def_id: LocalDefId,
-) -> ty::PolyFnSig<'tcx> {
-    let tcx = icx.tcx;
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-
-    let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
-
-    // Typeck doesn't expect erased regions to be returned from `type_of`.
-    // This is a heuristic approach. If the scope has region parameters,
-    // we should change fn_sig's lifetime from `ReErased` to `ReError`,
-    // otherwise to `ReStatic`.
-    let has_region_params = generics.params.iter().any(|param| match param.kind {
-        GenericParamKind::Lifetime { .. } => true,
-        _ => false,
-    });
-    let fn_sig = fold_regions(tcx, fn_sig, |r, _| match r.kind() {
-        ty::ReErased => {
-            if has_region_params {
-                ty::Region::new_error_with_message(
-                    tcx,
-                    DUMMY_SP,
-                    "erased region is not allowed here in return type",
-                )
-            } else {
-                tcx.lifetimes.re_static
-            }
-        }
-        _ => r,
-    });
-
-    let mut visitor = HirPlaceholderCollector::default();
-    visitor.visit_ty_unambig(infer_ret_ty);
-
-    let mut diag = bad_placeholder(icx.lowerer(), visitor.spans, "return type");
-    let ret_ty = fn_sig.output();
-
-    // Don't leak types into signatures unless they're nameable!
-    // For example, if a function returns itself, we don't want that
-    // recursive function definition to leak out into the fn sig.
-    let mut recovered_ret_ty = None;
-    if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
-        diag.span_suggestion_verbose(
-            infer_ret_ty.span,
-            "replace with the correct return type",
-            suggestable_ret_ty,
-            Applicability::MachineApplicable,
-        );
-        recovered_ret_ty = Some(suggestable_ret_ty);
-    } else if let Some(sugg) = suggest_impl_trait(
-        &tcx.infer_ctxt().build(TypingMode::non_body_analysis()),
-        tcx.param_env(def_id),
-        ret_ty,
-    ) {
-        diag.span_suggestion_verbose(
-            infer_ret_ty.span,
-            "replace with an appropriate return type",
-            sugg,
-            Applicability::MachineApplicable,
-        );
-    } else if ret_ty.is_closure() {
-        diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
-    }
-
-    // Also note how `Fn` traits work just in case!
-    if ret_ty.is_closure() {
-        diag.note(
-            "for more information on `Fn` traits and closure types, see \
-                     https://doc.rust-lang.org/book/ch13-01-closures.html",
-        );
-    }
-    let guar = diag.emit();
-
-    // If we return a dummy binder here, we can ICE later in borrowck when it encounters
-    // `ReLateParam` regions (e.g. in a local type annotation) which weren't registered via the
-    // signature binder. See #135845.
-    let bound_vars = tcx.late_bound_vars(hir_id);
-    let scope = def_id.to_def_id();
-
-    let fn_sig = tcx.mk_fn_sig(
-        fn_sig.inputs().iter().copied(),
-        recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
-        fn_sig.fn_sig_kind,
-    );
-
-    late_param_regions_to_bound(tcx, scope, bound_vars, fn_sig)
-}
-
-pub fn suggest_impl_trait<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ret_ty: Ty<'tcx>,
-) -> Option<String> {
-    let format_as_assoc: fn(_, _, _, _, _) -> _ =
-        |tcx: TyCtxt<'tcx>,
-         _: ty::GenericArgsRef<'tcx>,
-         trait_def_id: DefId,
-         assoc_item_def_id: DefId,
-         item_ty: Ty<'tcx>| {
-            let trait_name = tcx.item_name(trait_def_id);
-            let assoc_name = tcx.item_name(assoc_item_def_id);
-            Some(format!("impl {trait_name}<{assoc_name} = {item_ty}>"))
-        };
-    let format_as_parenthesized: fn(_, _, _, _, _) -> _ =
-        |tcx: TyCtxt<'tcx>,
-         args: ty::GenericArgsRef<'tcx>,
-         trait_def_id: DefId,
-         _: DefId,
-         item_ty: Ty<'tcx>| {
-            let trait_name = tcx.item_name(trait_def_id);
-            let args_tuple = args.type_at(1);
-            let ty::Tuple(types) = *args_tuple.kind() else {
-                return None;
-            };
-            let types = types.make_suggestable(tcx, false, None)?;
-            let maybe_ret =
-                if item_ty.is_unit() { String::new() } else { format!(" -> {item_ty}") };
-            Some(format!(
-                "impl {trait_name}({}){maybe_ret}",
-                types.iter().map(|ty| ty.to_string()).collect::<Vec<_>>().join(", ")
-            ))
-        };
-
-    for (trait_def_id, assoc_item_def_id, formatter) in [
-        (
-            infcx.tcx.get_diagnostic_item(sym::Iterator),
-            infcx.tcx.get_diagnostic_item(sym::IteratorItem),
-            format_as_assoc,
-        ),
-        (
-            infcx.tcx.lang_items().future_trait(),
-            infcx.tcx.lang_items().future_output(),
-            format_as_assoc,
-        ),
-        (
-            infcx.tcx.lang_items().async_fn_trait(),
-            infcx.tcx.lang_items().async_fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().async_fn_mut_trait(),
-            infcx.tcx.lang_items().async_fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().async_fn_once_trait(),
-            infcx.tcx.lang_items().async_fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().fn_trait(),
-            infcx.tcx.lang_items().fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().fn_mut_trait(),
-            infcx.tcx.lang_items().fn_once_output(),
-            format_as_parenthesized,
-        ),
-        (
-            infcx.tcx.lang_items().fn_once_trait(),
-            infcx.tcx.lang_items().fn_once_output(),
-            format_as_parenthesized,
-        ),
-    ] {
-        let Some(trait_def_id) = trait_def_id else {
-            continue;
-        };
-        let Some(assoc_item_def_id) = assoc_item_def_id else {
-            continue;
-        };
-        if infcx.tcx.def_kind(assoc_item_def_id) != DefKind::AssocTy {
-            continue;
-        }
-        let sugg = infcx.probe(|_| {
-            let args = ty::GenericArgs::for_item(infcx.tcx, trait_def_id, |param, _| {
-                if param.index == 0 { ret_ty.into() } else { infcx.var_for_def(DUMMY_SP, param) }
-            });
-            if !infcx
-                .type_implements_trait(trait_def_id, args, param_env)
-                .must_apply_modulo_regions()
-            {
-                return None;
-            }
-            let ocx = ObligationCtxt::new(&infcx);
-            let item_ty = ocx.normalize(
-                &ObligationCause::dummy(),
-                param_env,
-                Unnormalized::new(Ty::new_projection_from_args(
-                    infcx.tcx,
-                    ty::IsRigid::No,
-                    assoc_item_def_id,
-                    args,
-                )),
-            );
-            // FIXME(compiler-errors): We may benefit from resolving regions here.
-            if ocx.try_evaluate_obligations().no_errors()
-                && let item_ty = infcx.resolve_vars_if_possible(item_ty)
-                && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
-                && let Some(sugg) = formatter(
-                    infcx.tcx,
-                    infcx.resolve_vars_if_possible(args),
-                    trait_def_id,
-                    assoc_item_def_id,
-                    item_ty,
-                )
-            {
-                return Some(sugg);
-            }
-
-            None
-        });
-
-        if sugg.is_some() {
-            return sugg;
-        }
-    }
-    None
 }
 
 fn impl_is_fully_generic_for_reflection(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {

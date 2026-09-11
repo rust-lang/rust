@@ -483,29 +483,31 @@ fn infer_placeholder_type<'tcx>(
             if ty_span.from_expansion() {
                 return;
             }
-            if !ty.references_error() {
-                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
-                let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
+            if ty.references_error() {
+                return;
+            }
 
-                // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
-                // We are typeck and have the real type, so remove that and suggest the actual type.
-                if let Suggestions::Enabled(suggestions) = &mut err.suggestions {
-                    suggestions.clear();
-                }
+            // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
+            let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
 
-                if let Some(ty) = ty.make_suggestable(tcx, false, None) {
-                    err.span_suggestion(
-                        ty_span,
-                        format!("provide a type for the {kind}"),
-                        with_types_for_suggestion!(format!("{colon} {ty}")),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    with_forced_trimmed_paths!(err.span_note(
-                        body_span,
-                        format!("however, the inferred type `{ty}` cannot be named"),
-                    ));
-                }
+            // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
+            // We are typeck and have the real type, so remove that and suggest the actual type.
+            if let Suggestions::Enabled(suggestions) = &mut err.suggestions {
+                suggestions.clear();
+            }
+
+            if let Some(ty) = ty.make_suggestable(tcx, false, None) {
+                err.span_suggestion(
+                    ty_span,
+                    format!("provide a type for the {kind}"),
+                    with_types_for_suggestion!(format!("{colon} {ty}")),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                with_forced_trimmed_paths!(err.span_note(
+                    body_span,
+                    format!("however, the inferred type `{ty}` cannot be named"),
+                ));
             }
         })
         .unwrap_or_else(|| {

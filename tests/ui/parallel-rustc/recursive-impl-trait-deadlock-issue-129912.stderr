@@ -1,5 +1,5 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found reserved keyword `virtual`
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:80:11
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:77:11
    |
 LL |         x virtual ;
    |           ^^^^^^^ expected one of 8 possible tokens
@@ -22,19 +22,19 @@ LL |     if generator_sig() < 0 { None } else { Sized((option(i - Sized), i)) }
    = note: a trait named `Sized` exists in another namespace
 
 error[E0425]: cannot find value `i` in this scope
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:52:8
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:49:8
    |
 LL |     || i
    |        ^ not found in this scope
 
 error[E0404]: expected trait, found builtin type `i32`
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:56:32
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:53:32
    |
 LL | fn generator_capture() -> impl i32 {
    |                                ^^^ not a trait
 
 error[E0404]: cannot find trait `generator_capture` in this scope
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:72:29
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:69:29
    |
 LL | fn generator_hold() -> impl generator_capture {
    |                             ^^^^^^^^^^^^^^^^^ not found in this scope
@@ -42,7 +42,7 @@ LL | fn generator_hold() -> impl generator_capture {
    = note: a function named `generator_capture` exists in another namespace
 
 error[E0658]: yield syntax is experimental
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:60:9
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:57:9
    |
 LL |         yield;
    |         ^^^^^
@@ -52,7 +52,7 @@ LL |         yield;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: yield syntax is experimental
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:76:9
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:73:9
    |
 LL |         yield;
    |         ^^^^^
@@ -62,7 +62,7 @@ LL |         yield;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in cast expression types
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:24:22
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:22:22
    |
 LL |     &ptr() as *const impl Sized
    |                      ^^^^^^^^^^
@@ -70,7 +70,7 @@ LL |     &ptr() as *const impl Sized
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0658]: yield syntax is experimental
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:60:9
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:57:9
    |
 LL |         yield;
    |         ^^^^^
@@ -80,7 +80,7 @@ LL |         yield;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:60:9
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:57:9
    |
 LL |         yield;
    |         ^^^^^
@@ -91,7 +91,7 @@ LL |     #[coroutine] move || {
    |     ++++++++++++
 
 error[E0658]: yield syntax is experimental
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:76:9
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:73:9
    |
 LL |         yield;
    |         ^^^^^
@@ -101,7 +101,7 @@ LL |         yield;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:76:9
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:73:9
    |
 LL |         yield;
    |         ^^^^^
@@ -110,24 +110,6 @@ help: use `#[coroutine]` to make this closure a coroutine
    |
 LL |     #[coroutine] move || {
    |     ++++++++++++
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:17:15
-   |
-LL | fn array() -> _ {
-   |               ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:22:13
-   |
-LL | fn ptr() -> _ {
-   |             ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:46:21
-   |
-LL | fn closure_sig() -> _ {
-   |                     ^ not allowed in type signatures
 
 error[E0423]: cannot find function, tuple struct or tuple variant `Sized` in this scope
   --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:8:44
@@ -136,6 +118,24 @@ LL |     if generator_sig() < 0 { None } else { Sized((option(i - Sized), i)) }
    |                                            ^^^^^ not found in this scope
    |
    = note: a trait named `Sized` exists in another namespace
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:17:15
+   |
+LL | fn array() -> _ {
+   |               ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:21:13
+   |
+LL | fn ptr() -> _ {
+   |             ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:44:21
+   |
+LL | fn closure_sig() -> _ {
+   |                     ^ not allowed in type signatures
 
 error: aborting due to 17 previous errors
 

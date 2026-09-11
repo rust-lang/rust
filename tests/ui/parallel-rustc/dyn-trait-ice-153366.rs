@@ -4,7 +4,10 @@
 
 fn iso<A>(a: Fn) -> Option<_>
 //~^ ERROR missing generics for trait `Fn`
+//~| ERROR missing generics for trait `Fn`
 //~| ERROR the placeholder `_` is not allowed within types on item signatures for return types
+//~| WARN trait objects without an explicit `dyn` are deprecated
+//~| WARN this is accepted in the current edition
 //~| WARN trait objects without an explicit `dyn` are deprecated
 //~| WARN this is accepted in the current edition
 where

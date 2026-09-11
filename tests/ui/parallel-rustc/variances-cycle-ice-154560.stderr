@@ -1,24 +1,27 @@
-error[E0391]: cycle detected when computing the variances for items in this crate
-   |
-note: ...which requires computing function signature of `f`...
-  --> $DIR/variances-cycle-ice-154560.rs:8:1
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/variances-cycle-ice-154560.rs:5:18
    |
 LL | pub fn f<T>() -> _ {
-   | ^^^^^^^^^^^^^^^^^^
-   = note: ...which requires type-checking `f`...
-note: ...which requires computing the variances of `T`...
-  --> $DIR/variances-cycle-ice-154560.rs:6:1
+   |                  ^ not allowed in type signatures
    |
-LL | pub struct T<'a>(&'a str);
-   | ^^^^^^^^^^^^^^^^
-   = note: ...which again requires computing the variances for items in this crate, completing the cycle
-note: cycle used when computing the variances of `T`
-  --> $DIR/variances-cycle-ice-154560.rs:6:1
+help: replace with the correct return type
    |
-LL | pub struct T<'a>(&'a str);
-   | ^^^^^^^^^^^^^^^^
-   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+LL - pub fn f<T>() -> _ {
+LL + pub fn f<T>() -> fn(&str) -> T<'_> {
+   |
 
-error: aborting due to 1 previous error
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/variances-cycle-ice-154560.rs:9:29
+   |
+LL | pub fn g<'a>(val: T<'a>) -> _ {
+   |                             ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - pub fn g<'a>(val: T<'a>) -> _ {
+LL + pub fn g<'a>(val: T<'a>) -> fn(&str) -> T<'_> {
+   |
 
-For more information about this error, try `rustc --explain E0391`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

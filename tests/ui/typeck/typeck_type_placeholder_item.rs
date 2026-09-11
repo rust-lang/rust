@@ -47,6 +47,7 @@ impl Test9 {
 fn test11(x: &usize) -> &_ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
     &x
+    //~^ ERROR: `x` does not live long enough
 }
 
 unsafe fn test12(x: *const usize) -> *const *const _ {
@@ -129,6 +130,7 @@ pub fn main() {
 
     fn fn_test11(_: _) -> (_, _) { panic!() }
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for functions
     //~| ERROR type annotations needed
 
     fn fn_test12(x: i32) -> (_, _) { (x, x) }
@@ -136,6 +138,7 @@ pub fn main() {
 
     fn fn_test13(x: _) -> (i32, _) { (x, x) }
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
+    //~| ERROR the placeholder `_` is not allowed within types on item signatures for functions
 }
 
 trait T {
@@ -166,7 +169,6 @@ impl BadTrait<_> for BadStruct<_> {}
 
 fn impl_trait() -> impl BadTrait<_> {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
-//~| ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
     unimplemented!()
 }
 
@@ -187,7 +189,6 @@ trait Trait<T> {}
 impl Trait<usize> for Struct {}
 type Y = impl Trait<_>;
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
-//~| ERROR the placeholder `_` is not allowed within types on item signatures for opaque types
 #[define_opaque(Y)]
 fn foo() -> Y {
     Struct
@@ -204,7 +205,6 @@ trait Qux {
     // type E: _; // FIXME: make the parser propagate the existence of `B`
     type F: std::ops::Fn(_);
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
-    //~| ERROR the placeholder `_` is not allowed within types on item signatures for associated types
 }
 impl Qux for Struct {
     //~^ ERROR not all trait items implemented, missing: `F`
@@ -230,7 +230,6 @@ fn value() -> Option<&'static _> {
 
 const _: Option<_> = map(value);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
-//~| ERROR cannot call non-const function `map::<u8>` in constants
 
 fn evens_squared(n: usize) -> _ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
