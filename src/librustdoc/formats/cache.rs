@@ -19,7 +19,8 @@ use crate::html::render::{IndexItem, IndexItemInfo};
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 pub(crate) struct PathInfo {
-    /// Parts of the path. So in `foo::bar::bib`, it will be `["foo", "bar", "bib"]`.
+    /// Parts of the fully qualified path. So in `foo::bar::bib`, it will
+    /// be `["foo", "bar", "bib"]`.
     pub(crate) parts: Vec<Symbol>,
     pub(crate) ty: ItemType,
     /// When a reexport inline an item, we can end up with the same `DefId` with multiple local
@@ -35,8 +36,25 @@ pub(crate) struct PathInfo {
     /// ```
     ///
     /// To ensure that `a1` and `a2` links to `a1` and `a2` which have the same `DefId`, we need
-    /// to store both paths.
+    /// to store both `a1` and `a2` paths.
+    ///
+    /// The path stored in `parts` is not present in `alternatives`.
     pub(crate) alternatives: Vec<Vec<Symbol>>,
+}
+
+impl PathInfo {
+    pub(crate) fn get_preferred_path(&self, preferred_name: Option<&str>) -> &[Symbol] {
+        if let Some(preferred_name) = preferred_name
+            && let Some(alternative_path) = self
+                .alternatives
+                .iter()
+                .find(|path| path.last().is_some_and(|last| last.as_str() == preferred_name))
+        {
+            alternative_path
+        } else {
+            &self.parts
+        }
+    }
 }
 
 /// This cache is used to store information about the [`clean::Crate`] being
