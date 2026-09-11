@@ -1,11 +1,11 @@
 error[E0275]: overflow evaluating the requirement `A == _`
-  --> $DIR/free-const-recursive.rs:7:1
+  --> $DIR/free-const-recursive.rs:9:1
    |
 LL | type const A: () = A;
    | ^^^^^^^^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `the constant `A` has type `()``
-  --> $DIR/free-const-recursive.rs:7:1
+  --> $DIR/free-const-recursive.rs:9:1
    |
 LL | type const A: () = A;
    | ^^^^^^^^^^^^^^^^

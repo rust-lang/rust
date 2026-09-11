@@ -1,4 +1,4 @@
-warning: Use of ambiguously glob imported trait `Trait`
+warning: use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:32:9
    |
 LL |     use m1::*;
@@ -7,7 +7,7 @@ LL |     use m2::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
    = note: `#[warn(ambiguous_glob_imported_traits)]` (part of `#[warn(future_incompatible)]`) on by default
@@ -40,7 +40,7 @@ LL + use ambiguous_trait_reexport::m1::Trait;
 LL + use crate::m1::Trait;
    |
 
-warning: Use of ambiguously glob imported trait `Trait`
+warning: use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:42:9
    |
 LL |     use m2::*;
@@ -49,11 +49,11 @@ LL |     use m2::*;
 LL |     0u8.method2();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
 
-warning: Use of ambiguously glob imported trait `Trait`
+warning: use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:49:9
    |
 LL |     use m1_reexport::*;
@@ -62,7 +62,7 @@ LL |     use m2_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
 
@@ -80,7 +80,7 @@ LL + use ambiguous_trait_reexport::m2::Trait;
 LL + use crate::m2::Trait;
    |
 
-warning: Use of ambiguously glob imported trait `Trait`
+warning: use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:56:9
    |
 LL |     use ambig_reexport::*;
@@ -88,7 +88,7 @@ LL |     use ambig_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
 
@@ -106,7 +106,7 @@ LL + use ambiguous_trait_reexport::m2::Trait;
 LL + use crate::m2::Trait;
    |
 
-warning: Use of ambiguously glob imported trait `Trait`
+warning: use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:64:9
    |
 LL |     use external::m1::*;
@@ -115,7 +115,7 @@ LL |     use external::m2::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
 
@@ -133,7 +133,7 @@ LL + use ambiguous_trait_reexport::m2::Trait;
 LL + use crate::m2::Trait;
    |
 
-warning: Use of ambiguously glob imported trait `Trait`
+warning: use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:72:9
    |
 LL |     use external::m1_reexport::*;
@@ -142,7 +142,7 @@ LL |     use external::m2_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
 
@@ -160,7 +160,7 @@ LL + use ambiguous_trait_reexport::m2::Trait;
 LL + use crate::m2::Trait;
    |
 
-warning: Use of ambiguously glob imported trait `Trait`
+warning: use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:79:9
    |
 LL |     use external::ambig_reexport::*;
@@ -168,7 +168,7 @@ LL |     use external::ambig_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
 
