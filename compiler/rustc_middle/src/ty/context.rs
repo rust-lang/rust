@@ -858,10 +858,7 @@ impl<'tcx> TyCtxt<'tcx> {
             self.codegen_fn_attrs(def_id)
         } else if matches!(
             def_kind,
-            DefKind::AnonConst
-                | DefKind::AssocConst { .. }
-                | DefKind::Const { .. }
-                | DefKind::GlobalAsm
+            DefKind::AnonConst | DefKind::AssocConst | DefKind::Const | DefKind::GlobalAsm
         ) {
             CodegenFnAttrs::EMPTY
         } else {
@@ -1036,10 +1033,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// declare a regular const, but an `impl` could implement it with a directly represented const
     /// (a la refinement). This method would return false in such a case.
     pub fn is_direct_const(self, def_id: DefId) -> bool {
-        debug_assert_matches!(
-            self.def_kind(def_id),
-            DefKind::Const { .. } | DefKind::AssocConst { .. }
-        );
+        debug_assert_matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst);
         self.is_always_gca(def_id) || self.const_of_item(def_id).is_some()
     }
 
@@ -2270,7 +2264,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 debug_assert_matches!(self.def_kind(def_id), DefKind::AnonConst);
             }
             ty::AliasTermKind::ProjectionConst { def_id } => {
-                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst { .. });
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst);
                 debug_assert_matches!(
                     self.def_kind(self.parent(def_id)),
                     DefKind::Trait | DefKind::Impl { of_trait: true }
@@ -2278,14 +2272,14 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::InherentConstSelf { def_id }
             | ty::AliasTermKind::InherentConstImpl { def_id } => {
-                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst { .. });
+                debug_assert_matches!(self.def_kind(def_id), DefKind::AssocConst);
                 debug_assert_matches!(
                     self.def_kind(self.parent(def_id)),
                     DefKind::Impl { of_trait: false }
                 );
             }
             ty::AliasTermKind::FreeConst { def_id } => {
-                debug_assert_matches!(self.def_kind(def_id), DefKind::Const { .. });
+                debug_assert_matches!(self.def_kind(def_id), DefKind::Const);
             }
         }
     }

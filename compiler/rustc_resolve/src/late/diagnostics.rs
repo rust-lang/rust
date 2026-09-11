@@ -604,10 +604,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 .span_to_snippet(span)
                 .is_ok_and(|snippet| snippet.ends_with(')')),
             Res::Def(
-                DefKind::Ctor(..)
-                | DefKind::AssocFn
-                | DefKind::Const { .. }
-                | DefKind::AssocConst { .. },
+                DefKind::Ctor(..) | DefKind::AssocFn | DefKind::Const | DefKind::AssocConst,
                 _,
             )
             | Res::SelfCtor(_)
@@ -2778,7 +2775,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 res.borrow(self.r).best_decl().map(|binding| (key, binding.res()))
             })
             .filter(|(_, res)| match (kind, res) {
-                (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst { .. }, _)) => true,
+                (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,
                 (AssocItemKind::Type(..), Res::Def(DefKind::AssocTy, _)) => true,
                 (AssocItemKind::Delegation(_), Res::Def(DefKind::AssocFn, _)) => true,
@@ -2886,7 +2883,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             return Some(AssocSuggestion::AssocFn { called });
                         }
                     }
-                    Res::Def(DefKind::AssocConst { .. }, _) => {
+                    Res::Def(DefKind::AssocConst, _) => {
                         return Some(AssocSuggestion::AssocConst);
                     }
                     Res::Def(DefKind::AssocTy, _) => {

@@ -914,11 +914,11 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::ConstParam
         | DefKind::LifetimeParam
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::Macro(_)
         | DefKind::ExternCrate
         | DefKind::Use
@@ -945,10 +945,10 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::TraitAlias
         | DefKind::AssocTy
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Static { nested: false, .. }
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::Macro(_)
         | DefKind::Field
         | DefKind::ConstParam
@@ -991,12 +991,12 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::TyParam
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::ConstParam
         | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::Macro(_)
         | DefKind::ExternCrate
         | DefKind::Use
@@ -1025,11 +1025,11 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::TraitAlias
         | DefKind::AssocTy
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Static { nested: false, .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::Macro(..)
         | DefKind::Field => true,
         DefKind::Use
@@ -1058,11 +1058,11 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::Struct
         | DefKind::AssocTy
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Fn
         | DefKind::ForeignMod
         | DefKind::TyAlias
@@ -1114,7 +1114,7 @@ fn should_encode_mir(
         // instance_mir uses mir_for_ctfe rather than optimized_mir for constructors
         DefKind::Ctor(_, _) => (true, false),
         // Constants
-        DefKind::AnonConst | DefKind::AssocConst { .. } | DefKind::Const { .. } => (true, false),
+        DefKind::AnonConst | DefKind::AssocConst | DefKind::Const => (true, false),
         // Coroutines require optimized MIR to compute layout.
         DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
         DefKind::SyntheticCoroutineBody => (false, true),
@@ -1153,11 +1153,11 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         DefKind::Mod
         | DefKind::Variant
         | DefKind::Field
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::Impl { .. }
@@ -1188,11 +1188,11 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::TraitAlias
         | DefKind::AssocTy
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::OpaqueTy
         | DefKind::Impl { .. }
@@ -1221,13 +1221,13 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Ctor(..)
         | DefKind::Field
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Static { nested: false, .. }
         | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::Closure
         | DefKind::ConstParam
         | DefKind::AnonConst
@@ -1282,14 +1282,14 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Field
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Static { .. }
         | DefKind::Ctor(..)
         | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::Closure
         | DefKind::ConstParam
         | DefKind::AnonConst
@@ -1321,8 +1321,8 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Union
         | DefKind::Enum
         | DefKind::Field
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. }
+        | DefKind::Const
+        | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::Static { .. }
         | DefKind::TyAlias
@@ -1351,7 +1351,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
 fn should_encode_const(def_kind: DefKind) -> bool {
     match def_kind {
         // FIXME(mgca): should we remove Const and AssocConst here?
-        DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::AnonConst => true,
+        DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => true,
 
         DefKind::Struct
         | DefKind::Union
@@ -1631,7 +1631,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::AnonConst = def_kind {
                 record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));
             }
-            if let DefKind::Const { .. } | DefKind::AssocConst { .. } = def_kind {
+            if let DefKind::Const | DefKind::AssocConst = def_kind {
                 record!(self.tables.const_of_item[def_id] <- self.tcx.const_of_item(def_id));
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)

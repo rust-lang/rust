@@ -2165,12 +2165,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // Case 3. Reference to a top-level value.
-            DefKind::Fn | DefKind::Const { .. } | DefKind::ConstParam | DefKind::Static { .. } => {
+            DefKind::Fn | DefKind::Const | DefKind::ConstParam | DefKind::Static { .. } => {
                 generic_segments.push(GenericPathSegment(def_id, last));
             }
 
             // Case 4. Reference to a method or associated const.
-            DefKind::AssocFn | DefKind::AssocConst { .. } => {
+            DefKind::AssocFn | DefKind::AssocConst => {
                 if segments.len() >= 2 {
                     let generics = tcx.generics_of(def_id);
                     generic_segments.push(GenericPathSegment(generics.parent.unwrap(), last - 1));
@@ -2899,7 +2899,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 self.lower_const_param(def_id, hir_id)
             }
-            Res::Def(DefKind::Const { .. }, did) => {
+            Res::Def(DefKind::Const, did) => {
                 if let Err(guar) = self.check_const_item_in_type_system(did, span) {
                     return Const::new_error(self.tcx(), guar);
                 }
@@ -2980,7 +2980,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 ty::Const::zero_sized(tcx, tcx.type_of(did).instantiate(tcx, args).skip_norm_wip())
             }
-            Res::Def(DefKind::AssocConst { .. }, did) => {
+            Res::Def(DefKind::AssocConst, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
                     let _ = self.prohibit_generic_args(modules.iter(), GenericsArgsErrExtend::None);
                     Some(trait_)
@@ -3177,7 +3177,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         ],
                         Applicability::MaybeIncorrect,
                     );
-                } else if let DefKind::AssocConst { .. } = tcx.def_kind(def_id)
+                } else if let DefKind::AssocConst = tcx.def_kind(def_id)
                     && let DefKind::Trait = tcx.def_kind(tcx.parent(def_id))
                 {
                     let node = tcx.hir_node_by_def_id(local_def_id).expect_trait_item();

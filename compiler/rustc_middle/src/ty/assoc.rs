@@ -204,7 +204,7 @@ impl AssocKind {
 
     pub fn as_def_kind(&self) -> DefKind {
         match self {
-            &Self::Const { .. } => DefKind::AssocConst,
+            Self::Const { .. } => DefKind::AssocConst,
             Self::Fn { .. } => DefKind::AssocFn,
             Self::Type { .. } => DefKind::AssocTy,
         }

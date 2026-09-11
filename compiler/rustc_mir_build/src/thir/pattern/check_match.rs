@@ -1074,7 +1074,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
-                    && let Res::Def(DefKind::Const { .. }, id) = value_ns
+                    && let Res::Def(DefKind::Const, id) = value_ns
                     && infcx.can_eq(
                         param_env,
                         ty,
@@ -1095,7 +1095,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                 }
             }
-            if let DefKind::Const { .. } = cx.tcx.def_kind(item.owner_id)
+            if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
                 && infcx.can_eq(
                     param_env,
                     ty,
@@ -1238,7 +1238,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
     if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+        && tcx.def_kind(def_id) == DefKind::Const
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
     {
