@@ -1931,7 +1931,7 @@ fn supported_sanitizers(
         "aarch64-unknown-linux-gnu" => common_libs(
             "linux",
             "aarch64",
-            &["asan", "lsan", "msan", "tsan", "hwasan", "rtsan", "ubsan"],
+            &["asan", "lsan", "msan", "tsan", "hwasan", "rtsan", "ubsan", "ubsan_minimal"],
         ),
         "aarch64-unknown-linux-ohos" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
@@ -1952,7 +1952,17 @@ fn supported_sanitizers(
         "x86_64-unknown-linux-gnu" => common_libs(
             "linux",
             "x86_64",
-            &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan", "ubsan"],
+            &[
+                "asan",
+                "dfsan",
+                "lsan",
+                "msan",
+                "safestack",
+                "tsan",
+                "rtsan",
+                "ubsan",
+                "ubsan_minimal",
+            ],
         ),
         "x86_64-unknown-linux-gnuasan" => common_libs("linux", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnumsan" => common_libs("linux", "x86_64", &["msan"]),
