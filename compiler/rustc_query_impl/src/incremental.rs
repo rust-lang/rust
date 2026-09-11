@@ -19,19 +19,19 @@ fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
     state.active.lock_shards().all(|shard| shard.is_empty())
 }
 
-pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEncoder<'_, 'tcx>) {
+pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEncoder<'tcx>) {
     for_each_query_vtable!(CACHE_ON_DISK, tcx, |query| {
         encode_query_values_inner(tcx, query, encoder)
     });
 }
 
-fn encode_query_values_inner<'a, 'tcx, C, V>(
+fn encode_query_values_inner<'tcx, C, V>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
-    encoder: &mut CacheEncoder<'a, 'tcx>,
+    encoder: &mut CacheEncoder<'tcx>,
 ) where
     C: QueryCache<Value = Erased<V>>,
-    V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
+    V: Erasable + Encodable<CacheEncoder<'tcx>>,
 {
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
