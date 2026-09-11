@@ -1,5 +1,6 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-cfi
+//@ ignore-backends: gcc
 
 use run_make_support::{run, run_fail, rustc};
 
