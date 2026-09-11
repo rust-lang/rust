@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
@@ -28,6 +29,16 @@ impl ArenaTokenTree {
     /// Create a `TokenTree::Token` with joint spacing.
     pub fn token_joint(kind: TokenKind, span: Span) -> ArenaTokenTree {
         ArenaTokenTree::Token(Token::new(kind, span), Spacing::Joint)
+    }
+
+    pub fn uninterpolate(&self) -> Cow<'_, ArenaTokenTree> {
+        match self {
+            ArenaTokenTree::Token(token, spacing) => match token.uninterpolate() {
+                Cow::Owned(token) => Cow::Owned(ArenaTokenTree::Token(token, *spacing)),
+                Cow::Borrowed(_) => Cow::Borrowed(self),
+            },
+            _ => Cow::Borrowed(self),
+        }
     }
 
     /// Convert an arena token tree to the tree-shaped token tree.
@@ -279,53 +290,72 @@ impl ArenaTokenStream {
         self.tokens.get(index)
     }
 
-    /// Iter top-level token trees of a delimited token sequence.
-    pub fn iter_delimited(&self, bounds: &DelimitedBounds) -> impl Iterator<Item = ArenaTokenTree> {
-        let mut index = (bounds.start + 1) as usize;
-        let end = bounds.index_of_next_token_tree();
-        std::iter::from_fn(move || {
-            if index >= end {
-                return None;
-            }
-            let item = self.get_innermost_elem_at(index)?;
-            match item {
-                token @ ArenaTokenTree::Token(..) => {
-                    index += 1;
-                    Some(*token)
-                }
-                tree @ ArenaTokenTree::DelimitedStart(bounds, _) => {
-                    index = bounds.index_of_next_token_tree();
-                    Some(*tree)
-                }
-            }
-        })
+    /// Iterate top-level token trees of a delimited token sequence.
+    /// Does not return the delimited sequence start itself.
+    pub fn iter_delimited(&self, bounds: &DelimitedBounds) -> ArenaTokenTreeIter<'_> {
+        ArenaTokenTreeIter::new_delimited(self, bounds)
     }
 
-    pub fn iter_top_level_trees(&self) -> impl Iterator<Item = ArenaTokenTree> {
-        let mut index = 0;
-        let end = self.tokens.len();
-        std::iter::from_fn(move || {
-            if index >= end {
-                return None;
-            }
-            let item = self.get_innermost_elem_at(index)?;
-            match item {
-                token @ ArenaTokenTree::Token(..) => {
-                    index += 1;
-                    Some(*token)
-                }
-                tree @ ArenaTokenTree::DelimitedStart(bounds, _) => {
-                    index = bounds.index_of_next_token_tree();
-                    Some(*tree)
-                }
-            }
-        })
+    /// Iterate over the top-level token trees of the whole stream.
+    /// Does not recurse into delimited sequences.
+    pub fn iter_top_level_trees(&self) -> ArenaTokenTreeIter<'_> {
+        ArenaTokenTreeIter::new_top_level(self)
     }
 }
 
 impl StableHash for ArenaTokenStream {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.tokens.as_slice().stable_hash(hcx, hasher);
+    }
+}
+
+pub struct ArenaTokenTreeIter<'a> {
+    index: usize,
+    end: usize,
+    stream: &'a ArenaTokenStream,
+}
+
+impl<'a> ArenaTokenTreeIter<'a> {
+    fn new_top_level(stream: &'a ArenaTokenStream) -> Self {
+        Self { index: 0, end: stream.tokens.len(), stream }
+    }
+
+    fn new_delimited(stream: &'a ArenaTokenStream, bounds: &DelimitedBounds) -> Self {
+        let index = (bounds.start + 1) as usize;
+        let end = bounds.index_of_next_token_tree();
+        Self { index, end, stream }
+    }
+
+    pub fn stream(&self) -> &'a ArenaTokenStream {
+        self.stream
+    }
+
+    // Peeking could be done via `Peekable`, but most iterators need peeking,
+    // and this is simple and avoids the need to use `peekable` and `Peekable`
+    // at all the use sites.
+    pub fn peek(&self) -> Option<&'a ArenaTokenTree> {
+        self.stream.tokens.get(self.index)
+    }
+}
+
+impl<'a> Iterator for ArenaTokenTreeIter<'a> {
+    type Item = &'a ArenaTokenTree;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.end {
+            return None;
+        }
+        let item = self.stream.get_innermost_elem_at(self.index)?;
+        match item {
+            token @ ArenaTokenTree::Token(..) => {
+                self.index += 1;
+                Some(token)
+            }
+            tree @ ArenaTokenTree::DelimitedStart(bounds, _) => {
+                self.index = bounds.index_of_next_token_tree();
+                Some(tree)
+            }
+        }
     }
 }
 
