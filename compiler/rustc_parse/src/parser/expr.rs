@@ -180,8 +180,8 @@ impl<'a> Parser<'a> {
             }
 
             self.recover_from_strict_eq_op(op);
-            self.recover_from_diamond_ne_op(op);
-            self.recover_from_spaceship_cmp_op(op);
+            self.recover_from_diamond_ne_op();
+            self.recover_from_spaceship_cmp_op();
             self.recover_from_postfix_inc_op(&lhs, starts_stmt)?;
             self.recover_from_postfix_dec_op(&lhs, starts_stmt)?;
 
