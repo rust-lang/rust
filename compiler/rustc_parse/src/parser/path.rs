@@ -397,6 +397,7 @@ impl<'a> Parser<'a> {
                     }
 
                     let dcx = self.dcx();
+                    let mut first_param = true;
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
                         // Inside parenthesized type arguments, we want types only, not names.
                         let mode = FnParseMode {
@@ -404,7 +405,8 @@ impl<'a> Parser<'a> {
                             req_name: |_, _| false,
                             req_body: false,
                         };
-                        let param = p.parse_param_general(&mode, false, false)?;
+                        let param = p.parse_param_general(&mode, first_param, false)?;
+                        first_param = false;
                         if !matches!(param.pat.kind, PatKind::Missing) {
                             self.psess
                                 .gated_spans

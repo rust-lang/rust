@@ -26,10 +26,8 @@ fn semantics<F>(
     //~^ ERROR unexpected token: `:`
 
     self1: impl Fn(self),
-    //~^ ERROR unexpected `self` parameter in function
     self2: impl Fn(self, self),
     //~^ ERROR unexpected `self` parameter in function
-    //~| ERROR unexpected `self` parameter in function
     self3: impl Fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 
@@ -56,11 +54,9 @@ fn syntax<F>(
     pat5: impl Fn((((((x))))): bool),
     //~^ ERROR unexpected token: `:`
 
-    self1: impl Fn(self), // FIXME should be accepted
-    //~^ ERROR unexpected `self` parameter in function
+    self1: impl Fn(self),
     self2: impl Fn(self, self),
     //~^ ERROR unexpected `self` parameter in function
-    //~| ERROR unexpected `self` parameter in function
     self3: impl Fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 
