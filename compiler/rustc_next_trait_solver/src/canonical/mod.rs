@@ -100,7 +100,6 @@ where
 ///   the `normalization_nested_goals`
 pub(super) fn instantiate_and_apply_query_response<D, I>(
     delegate: &D,
-    param_env: I::ParamEnv,
     original_values: &[I::GenericArg],
     response: CanonicalResponse<I>,
     span: I::Span,
@@ -115,7 +114,7 @@ where
     let Response { var_values, external_constraints, certainty } =
         delegate.instantiate_canonical(response, instantiation);
 
-    unify_query_var_values(delegate, param_env, &original_values, var_values, span);
+    unify_query_var_values(delegate, &original_values, var_values, span);
 
     let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
         &*external_constraints;
@@ -490,7 +489,6 @@ where
 #[instrument(level = "trace", skip(delegate))]
 fn unify_query_var_values<D, I>(
     delegate: &D,
-    param_env: I::ParamEnv,
     original_values: &[I::GenericArg],
     var_values: CanonicalVarValues<I>,
     span: I::Span,
@@ -577,7 +575,6 @@ where
 pub fn instantiate_canonical_state<D, I, T>(
     delegate: &D,
     span: I::Span,
-    param_env: I::ParamEnv,
     prev_universe: ty::UniverseIndex,
     orig_values: &mut ThinVec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
@@ -609,7 +606,7 @@ where
 
     let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
 
-    unify_query_var_values(delegate, param_env, orig_values, var_values, span);
+    unify_query_var_values(delegate, orig_values, var_values, span);
     data
 }
 
