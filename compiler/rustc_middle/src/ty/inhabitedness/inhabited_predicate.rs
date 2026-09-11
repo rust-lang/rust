@@ -3,6 +3,7 @@ use rustc_span::def_id::{LocalModId, ModId};
 use smallvec::SmallVec;
 use tracing::instrument;
 
+use crate::ty::consts::ConstExt;
 use crate::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypingEnv, Unnormalized};
 
 /// Represents whether some type is inhabited in a given context.

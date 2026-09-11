@@ -24,6 +24,7 @@ use smallvec::SmallVec;
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::{IntoQueryKey, Providers};
+use crate::ty::consts::ConstExt;
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitClause,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -3143,8 +3144,7 @@ macro_rules! define_print_and_forward_display {
 
 forward_display_to_print! {
     Ty<'tcx>,
-    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ty::Const<'tcx>
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>
 }
 
 define_print! {

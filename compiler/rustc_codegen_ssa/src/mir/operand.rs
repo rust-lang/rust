@@ -8,6 +8,7 @@ use rustc_abi::{
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};

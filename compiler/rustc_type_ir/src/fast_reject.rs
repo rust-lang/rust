@@ -9,7 +9,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Const, Interner};
 
 /// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -486,7 +486,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
     // Unlike `types_may_unify_inner`, this does not take a depth as
     // we never recurse from this function.
-    fn consts_may_unify_inner(self, lhs: I::Const, rhs: I::Const) -> bool {
+    fn consts_may_unify_inner(self, lhs: Const<I>, rhs: Const<I>) -> bool {
         match rhs.kind() {
             ty::ConstKind::Param(_) => {
                 if INSTANTIATE_RHS_WITH_INFER {

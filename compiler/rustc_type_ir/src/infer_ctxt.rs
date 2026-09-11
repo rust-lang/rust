@@ -11,7 +11,7 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
+    self as ty, Const, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
 
@@ -437,17 +437,14 @@ pub trait InferCtxtLike: Sized {
         &self,
         vid: ty::FloatVid,
     ) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_ct_var(
-        &self,
-        vid: ty::ConstVid,
-    ) -> <Self::Interner as Interner>::Const;
+    fn opportunistic_resolve_ct_var(&self, vid: ty::ConstVid) -> Const<Self::Interner>;
     fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> Region<Self::Interner>;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
-    fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
+    fn next_const_infer(&self) -> Const<Self::Interner>;
     fn fresh_args_for_item(
         &self,
         def_id: <Self::Interner as Interner>::DefId,
@@ -484,7 +481,7 @@ pub trait InferCtxtLike: Sized {
     fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: <Self::Interner as Interner>::Ty);
     /// Use `instantiate_const_var` instead unless you have reasons to skip
     /// generalization.
-    fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: <Self::Interner as Interner>::Const);
+    fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: Const<Self::Interner>);
     fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
@@ -500,7 +497,7 @@ pub trait InferCtxtLike: Sized {
         relation: &mut R,
         target_is_expected: bool,
         target_vid: ty::ConstVid,
-        source_ct: <Self::Interner as Interner>::Const,
+        source_ct: Const<Self::Interner>,
     ) -> RelateResult<Self::Interner, ()>;
 
     fn set_tainted_by_errors(&self, e: <Self::Interner as Interner>::ErrorGuaranteed);
@@ -509,10 +506,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         ty: <Self::Interner as Interner>::Ty,
     ) -> <Self::Interner as Interner>::Ty;
-    fn shallow_resolve_const(
-        &self,
-        ty: <Self::Interner as Interner>::Const,
-    ) -> <Self::Interner as Interner>::Const;
+    fn shallow_resolve_const(&self, ty: Const<Self::Interner>) -> Const<Self::Interner>;
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
@@ -697,7 +691,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
         }
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const {
+    fn fold_const(&mut self, c: Const<I>) -> Const<I> {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
                 let resolved = self.delegate.opportunistic_resolve_ct_var(vid);

@@ -56,8 +56,8 @@ use tracing::{debug, instrument};
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
 use crate::{
-    self as ty, Binder, BoundVarIndexKind, ClauseKind, Flags, Interner, ProjectionClause, Region,
-    TypeSuperVisitable,
+    self as ty, Binder, BoundVarIndexKind, ClauseKind, Const, Flags, Interner, ProjectionClause,
+    Region, TypeSuperVisitable,
 };
 
 /// This trait is implemented for every type that can be folded,
@@ -144,7 +144,7 @@ pub trait TypeFolder<I: Interner>: Sized {
         r
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const {
+    fn fold_const(&mut self, c: Const<I>) -> Const<I> {
         c.super_fold_with(self)
     }
 
@@ -213,7 +213,7 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
         Ok(r)
     }
 
-    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error> {
+    fn try_fold_const(&mut self, c: Const<I>) -> Result<Const<I>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
@@ -448,7 +448,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         }
     }
 
-    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+    fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         match ct.kind() {
             ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ct)
                 if debruijn >= self.current_index =>
@@ -572,7 +572,7 @@ where
         if t.has_regions() { t.super_fold_with(self) } else { t }
     }
 
-    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+    fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         if ct.has_regions() { ct.super_fold_with(self) } else { ct }
     }
 
@@ -698,7 +698,7 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
         }
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const {
+    fn fold_const(&mut self, c: Const<I>) -> Const<I> {
         if !self.mode.needs_change(&c) {
             return c;
         }
@@ -708,13 +708,13 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
                 let alias_const = alias_const.fold_with(self);
                 match self.mode {
                     RigidnessFoldMode::AllToRigid => {
-                        I::Const::new_alias(self.cx, ty::IsRigid::Yes, alias_const)
+                        Const::new_alias(self.cx, ty::IsRigid::Yes, alias_const)
                     }
                     RigidnessFoldMode::AllToNonRigid => {
-                        I::Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
+                        Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
                     }
                     RigidnessFoldMode::OpaqueToNonRigid | RigidnessFoldMode::TypeToRigid => {
-                        I::Const::new_alias(self.cx(), is_rigid, alias_const)
+                        Const::new_alias(self.cx(), is_rigid, alias_const)
                     }
                 }
             }

@@ -5,6 +5,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Expr, LitToConstInput, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
