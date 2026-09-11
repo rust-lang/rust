@@ -2701,8 +2701,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         matches!(body, Expr { kind: ExprKind::DirectConstArg(_), .. })
                     }
                 };
-                // N.B.: the feature gate for this is generic_const_args, not min_generic_const_args
-                if self.tcx.features().generic_const_args()
+                if self.tcx.features().min_generic_const_args()
                     && let Some(body) = body
                     && is_direct(body)
                 {

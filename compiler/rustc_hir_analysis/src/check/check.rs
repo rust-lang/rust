@@ -864,6 +864,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                             ty::TraitRef::new_from_args(tcx, def_id.to_def_id(), trait_args),
                         );
                     }
+                    ty::AssocKind::Const { .. } if assoc_item.defaultness(tcx).has_value() => {
+                        let _: Result<_, rustc_errors::ErrorGuaranteed> =
+                            super::compare_impl_item::compare_const_directness(
+                                tcx, assoc_item, assoc_item,
+                            );
+                    }
                     _ => {}
                 }
             }

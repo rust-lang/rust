@@ -13,10 +13,11 @@ error[E0747]: constant provided when a type was expected
 LL |           _
    |           ^
 ...
-LL | /         y! {
-LL | |             x
-LL | |         }
-   | |_________- in this macro invocation
+LL |       core::direct_const_arg!(y! {
+   |  _____________________________-
+LL | |         x
+LL | |     }),
+   | |_____- in this macro invocation
    |
    = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -26,10 +27,11 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL |           _
    |           ^ not allowed in type signatures
 ...
-LL | /         y! {
-LL | |             x
-LL | |         }
-   | |_________- in this macro invocation
+LL |       core::direct_const_arg!(y! {
+   |  _____________________________-
+LL | |         x
+LL | |     }),
+   | |_____- in this macro invocation
    |
    = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
 

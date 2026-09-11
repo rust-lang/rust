@@ -385,6 +385,18 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 false
             }
+            ast::AssocItemKind::Const(ast::ConstItem { body: Some(_), .. }) => {
+                if ctxt == AssocCtxt::Trait && attr::contains_name(&i.attrs, sym::rustc_always_gca)
+                {
+                    gate!(
+                        self,
+                        associated_type_defaults,
+                        i.span,
+                        "associated type defaults are unstable"
+                    );
+                }
+                false
+            }
             _ => false,
         };
         if let ast::Defaultness::Default(_) = i.kind.defaultness() {

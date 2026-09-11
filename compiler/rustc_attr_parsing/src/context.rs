@@ -259,6 +259,7 @@ attribute_parsers!(
         Single<UnrollParser>,
         Single<WindowsSubsystemParser>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
+        Single<WithoutArgs<AlwaysGcaParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
         Single<WithoutArgs<ColdParser>>,
         Single<WithoutArgs<CompilerBuiltinsParser>>,

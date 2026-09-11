@@ -1040,7 +1040,14 @@ impl<'tcx> TyCtxt<'tcx> {
             self.def_kind(def_id),
             DefKind::Const { .. } | DefKind::AssocConst { .. }
         );
-        self.is_type_const_syntax(def_id) || self.const_of_item(def_id).is_some()
+        self.is_type_const_syntax(def_id)
+            || self.is_always_gca(def_id)
+            || self.const_of_item(def_id).is_some()
+    }
+
+    /// Whether this is a projection const marked with `#[always_gca]`
+    pub fn is_always_gca(self, def_id: DefId) -> bool {
+        find_attr!(self, def_id, AlwaysGca)
     }
 
     /// Check if the given `def_id` is declared with `type const` syntax (mgca)

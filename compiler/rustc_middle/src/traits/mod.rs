@@ -837,10 +837,10 @@ impl DynCompatibilityViolation {
             Self::AssocConst(name, AssocConstViolation::FeatureNotEnabled, _) => {
                 format!("it contains associated const `{name}`").into()
             }
-            Self::AssocConst(name, AssocConstViolation::NonType, _) => {
-                format!("it contains associated const `{name}` that's not defined as `type const`")
-                    .into()
-            }
+            Self::AssocConst(name, AssocConstViolation::NonType, _) => format!(
+                "it contains associated const `{name}` that's not defined as `#[rustc_always_gca]`"
+            )
+            .into(),
             Self::AssocConst(name, AssocConstViolation::Generic, _) => {
                 format!("it contains generic associated const `{name}`").into()
             }

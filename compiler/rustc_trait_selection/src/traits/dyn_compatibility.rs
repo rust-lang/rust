@@ -371,7 +371,10 @@ pub fn dyn_compatibility_violations_for_assoc_item(
             if tcx.features().min_generic_const_args() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
                     errors.push(AssocConstViolation::Generic);
-                } else if !is_type_const && !tcx.features().generic_const_args() {
+                } else if !is_type_const
+                    && !tcx.is_always_gca(item.def_id)
+                    && !tcx.features().generic_const_args()
+                {
                     errors.push(AssocConstViolation::NonType);
                 }
 
