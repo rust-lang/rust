@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
                 tree @ ArenaTokenTree::DelimitedStart(..) => {
                     // Optionally end with a comma.
                     let _ = self.eat(exp!(Comma));
-                    return Ok(match tree.to_token_tree(&self.token_cursor.arena) {
+                    return Ok(match tree.to_token_tree(&self.token_cursor.stream) {
                         TokenTree::Token(_, _) => unreachable!(),
                         TokenTree::Delimited(_, _, _, tts) => tts,
                     });

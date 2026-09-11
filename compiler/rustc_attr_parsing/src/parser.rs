@@ -14,7 +14,7 @@ use std::fmt::{Debug, Display};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
-use rustc_ast::tokenarena::TokenArena;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
     AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
@@ -722,13 +722,13 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     }
 
     fn parse(
-        arena: TokenArena,
+        stream: ArenaTokenStream,
         psess: &'sess ParseSess,
         span: Span,
         should_emit: ShouldEmit,
         allow_expr_metavar: AllowExprMetavar,
     ) -> PResult<'sess, MetaItemListParser> {
-        let mut parser = Parser::new(psess, arena, None);
+        let mut parser = Parser::new(psess, stream, None);
         if let ShouldEmit::ErrorsAndLints { recovery } = should_emit {
             parser = parser.recovery(recovery);
         }
@@ -765,7 +765,7 @@ impl MetaItemListParser {
         allow_expr_metavar: AllowExprMetavar,
     ) -> Result<Self, Diag<'sess>> {
         MetaItemListParserContext::parse(
-            TokenArena::from_stream(tokens),
+            ArenaTokenStream::from_stream(tokens),
             psess,
             span,
             should_emit,

@@ -1,5 +1,5 @@
 use rustc_ast::token::{self, Delimiter, Token};
-use rustc_ast::tokenarena::{ArenaTokenTree, DelimitedData, TokenArena};
+use rustc_ast::tokenarena::{ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedData};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::Diag;
@@ -14,7 +14,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     // opening delimiter.
     pub(super) fn lex_token_trees(
         &mut self,
-        arena: &mut TokenArena,
+        arena: &mut ArenaTokenStreamBuilder,
         is_delimited: bool,
     ) -> Result<Spacing, Diag<'psess>> {
         // Move past the opening delimiter.
@@ -52,7 +52,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
     fn lex_token_tree_open_delim(
         &mut self,
-        arena: &mut TokenArena,
+        token_builder: &mut ArenaTokenStreamBuilder,
         open_delim: Delimiter,
     ) -> Result<DelimitedData, Diag<'psess>> {
         // The span for beginning of the delimited section.
@@ -65,9 +65,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         // uses an incorrect delimiter.
 
         // We remember where we were in the arena, so that we can check how many trees were parsed
-        let index = arena.length();
-        let open_spacing = self.lex_token_trees(arena, /* is_delimited */ true)?;
-        let lexed_trees = arena.length() - index;
+        let index = token_builder.length();
+        let open_spacing = self.lex_token_trees(token_builder, /* is_delimited */ true)?;
+        let lexed_trees = token_builder.length() - index;
 
         // Expand to cover the entire delimited token tree.
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
@@ -97,7 +97,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 // A brace-delimited block whose first token is `&&`/`||` usually means
                 // the user meant to continue an if-let chain, e.g. `if let P = e { && cond {`.
                 if Delimiter::Brace == open_delim
-                    && let Some(ArenaTokenTree::Token(tok, _)) = arena.get_innermost_elem_at(index)
+                    && let Some(ArenaTokenTree::Token(tok, _)) =
+                        token_builder.get_innermost_elem_at(index)
                     && matches!(tok.kind, token::AndAnd | token::OrOr)
                 {
                     self.diag_info.if_let_chain_hint_spans.push(tok.span);
