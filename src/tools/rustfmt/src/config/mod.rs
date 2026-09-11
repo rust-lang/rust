@@ -538,14 +538,7 @@ fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
     // If a config file cannot be found from the given path, return error.
     match options.config_path() {
         Some(path) if !path.exists() => config_path_not_found(path.to_str().unwrap()),
-        Some(path) if path.is_dir() => {
-            let config_file_path = get_toml_path(path)?;
-            if config_file_path.is_some() {
-                Ok(config_file_path)
-            } else {
-                config_path_not_found(path.to_str().unwrap())
-            }
-        }
+        Some(path) if path.is_dir() => resolve_project_file(path),
         Some(path) => Ok(Some(
             // Canonicalize only after checking above that the `path.exists()`.
             path.canonicalize()?,

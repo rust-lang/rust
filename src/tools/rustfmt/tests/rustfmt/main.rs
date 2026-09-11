@@ -346,19 +346,15 @@ fn rustfmt_error_improvement_regarding_invalid_toml() {
 }
 
 #[test]
-fn config_path_does_not_walk_parent_directories_with_dir_name() {
+fn config_path_walks_parent_directories_with_dir_name() {
     let src_dir = "tests/config/issue_4660/inner_lib/src";
     let src_file = src_dir.to_owned() + "/lib.rs";
     let args = ["--config-path", src_dir, "--check", &src_file];
     let (stdout, stderr) = rustfmt(&args);
 
-    assert_eq!(
-        stderr,
-        format!(
-            "Error: unable to find a config file for the given path: `{}`\n",
-            Path::new(src_dir).display(),
-        )
-    );
+    assert_eq!(stderr, "");
+    // Due to `disable_all_formatting = true` in `tests/config/issue_4660/inner_lib/rustfmt.toml`,
+    // the source file should not be modified.
     assert_eq!(stdout, "");
 }
 
