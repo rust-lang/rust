@@ -13,8 +13,6 @@ pub enum ArenaTokenTree {
     Token(Token, Spacing),
     /// A delimited sequence of token trees.
     DelimitedStart(DelimitedBounds, DelimitedData),
-    // FIXME: get rid of this and represent it implicitly
-    DelimitedEnd,
 }
 
 impl ArenaTokenTree {
@@ -31,7 +29,6 @@ impl ArenaTokenTree {
                 let tts = arena.iter_delimited(bounds).map(|tt| tt.to_token_tree(arena)).collect();
                 TokenTree::Delimited(data.span, data.spacing, data.delimiter, TokenStream::new(tts))
             }
-            ArenaTokenTree::DelimitedEnd => unreachable!(),
         }
     }
 
@@ -40,7 +37,6 @@ impl ArenaTokenTree {
         match self {
             Self::Token(token, _) => token.span,
             Self::DelimitedStart(_, data) => data.span.entire(),
-            _ => unreachable!(),
         }
     }
 
@@ -48,7 +44,6 @@ impl ArenaTokenTree {
         match self {
             ArenaTokenTree::Token(_, _) => None,
             ArenaTokenTree::DelimitedStart(_, data) => Some(data),
-            ArenaTokenTree::DelimitedEnd => unreachable!(),
         }
     }
 
@@ -56,7 +51,6 @@ impl ArenaTokenTree {
         match self {
             ArenaTokenTree::Token(_, _) => None,
             ArenaTokenTree::DelimitedStart(bounds, _) => Some(bounds),
-            ArenaTokenTree::DelimitedEnd => unreachable!(),
         }
     }
 }
@@ -88,7 +82,7 @@ impl TokenArena {
     /// Iter top-level token trees of a delimited token sequence.
     pub fn iter_delimited(&self, bounds: &DelimitedBounds) -> impl Iterator<Item = ArenaTokenTree> {
         let mut index = (bounds.start + 1) as usize;
-        let end = bounds.index_of_next_token_tree().saturating_sub(1);
+        let end = bounds.index_of_next_token_tree();
         std::iter::from_fn(move || {
             if index >= end {
                 return None;
@@ -103,7 +97,6 @@ impl TokenArena {
                     index = bounds.index_of_next_token_tree();
                     Some(*tree)
                 }
-                ArenaTokenTree::DelimitedEnd => unreachable!(),
             }
         })
     }
@@ -125,7 +118,6 @@ impl TokenArena {
                     index = bounds.index_of_next_token_tree();
                     Some(*tree)
                 }
-                ArenaTokenTree::DelimitedEnd => unreachable!(),
             }
         })
     }
@@ -144,11 +136,10 @@ impl TokenArena {
     }
 
     pub fn finish_delimited(&mut self, open: OpenDelimited, delimited_data: DelimitedData) {
-        self.tokens.push(ArenaTokenTree::DelimitedEnd);
         let length = self.length();
         match &mut self.tokens[open.start] {
-            tree @ (ArenaTokenTree::Token(..) | ArenaTokenTree::DelimitedEnd) => {
-                unreachable!("Called finish_delimited on an invalid tree type {tree:?}")
+            ArenaTokenTree::Token(..) => {
+                unreachable!("Called finish_delimited on a token");
             }
             ArenaTokenTree::DelimitedStart(bounds, data) => {
                 let len = length.saturating_sub(open.start);
@@ -225,13 +216,8 @@ impl DelimitedBounds {
         (self.start + self.length) as usize
     }
 
-    /// Return the index of the closing delimiter of this token sequence.
-    pub fn index_of_closing_delimiter(&self) -> usize {
-        self.index_of_next_token_tree().saturating_sub(1)
-    }
-
     pub fn is_empty(&self) -> bool {
-        self.length == 2
+        self.length == 1
     }
 }
 

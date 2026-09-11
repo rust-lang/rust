@@ -907,6 +907,7 @@ pub struct TokenCursor {
     pub arena: Arc<TokenArena>,
     /// Global index into the token arena.
     index: usize,
+    delimited_sequence_end: usize,
     /// The current delimited sequences that we are inside of.
     stack: Vec<(DelimitedBounds, DelimitedData)>,
 }
@@ -914,7 +915,8 @@ pub struct TokenCursor {
 impl TokenCursor {
     #[inline]
     pub fn new(arena: TokenArena) -> Self {
-        TokenCursor { arena: Arc::new(arena), index: 0, stack: vec![] }
+        let end = arena.length() + 1;
+        TokenCursor { arena: Arc::new(arena), index: 0, delimited_sequence_end: end, stack: vec![] }
     }
 
     /// Gets the next token and advances the cursor by one.
@@ -929,6 +931,9 @@ impl TokenCursor {
         assert_ne!(n, 0);
         let mut index = self.index;
         for _ in 0..n.saturating_sub(1) {
+            if index == self.delimited_sequence_end {
+                return None;
+            }
             let elem = self.arena.get_innermost_elem_at(index);
             match elem {
                 Some(ArenaTokenTree::Token(..)) => {
@@ -938,19 +943,16 @@ impl TokenCursor {
                     // Skip the whole delimited sequence
                     index = bounds.index_of_next_token_tree();
                 }
-                Some(ArenaTokenTree::DelimitedEnd) => {
-                    // We reached the end of the current delimited sequence
-                    return None;
-                }
                 None => {
                     // We reached the end of the arena
                     return None;
                 }
             }
         }
-        match self.arena.get_innermost_elem_at(index) {
-            None | Some(ArenaTokenTree::DelimitedEnd) => None,
-            Some(t) => Some(t),
+        if index == self.delimited_sequence_end {
+            None
+        } else {
+            self.arena.get_innermost_elem_at(index)
         }
     }
 
@@ -974,7 +976,7 @@ impl TokenCursor {
     #[inline]
     pub fn bump_to_end(&mut self) {
         if let Some((bounds, _)) = self.stack.last() {
-            self.index = bounds.index_of_closing_delimiter();
+            self.index = bounds.index_of_next_token_tree();
         } else {
             self.index = self.arena.length();
         }
@@ -1000,6 +1002,25 @@ impl TokenCursor {
     #[inline(always)]
     pub fn inlined_next_and_bump(&mut self) -> (Token, Spacing) {
         loop {
+            if self.index == self.delimited_sequence_end {
+                let (_, data) = self.stack.pop().unwrap();
+
+                // How much is left for the now-current sequence?
+                self.delimited_sequence_end = self
+                    .stack
+                    .last()
+                    .map(|(bounds, _)| bounds.index_of_next_token_tree())
+                    .unwrap_or(self.arena.length() + 1);
+
+                if !data.delimiter.skip() {
+                    return (
+                        Token::new(data.delimiter.as_close_token_kind(), data.span.close),
+                        data.spacing.close,
+                    );
+                }
+                continue;
+            }
+
             // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
             // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
             // below can be removed.
@@ -1013,6 +1034,7 @@ impl TokenCursor {
                     &ArenaTokenTree::DelimitedStart(bounds, data) => {
                         self.stack.push((bounds, data));
                         self.index += 1;
+                        self.delimited_sequence_end = bounds.index_of_next_token_tree();
                         if !data.delimiter.skip() {
                             return (
                                 Token::new(data.delimiter.as_open_token_kind(), data.span.open),
@@ -1021,27 +1043,8 @@ impl TokenCursor {
                         }
                         // No open delimiter to return; continue on to the next iteration.
                     }
-                    &ArenaTokenTree::DelimitedEnd => {
-                        // Pop the stack
-                        self.index += 1;
-                        let (_, data) = self.stack.pop().unwrap();
-                        if !data.delimiter.skip() {
-                            return (
-                                Token::new(data.delimiter.as_close_token_kind(), data.span.close),
-                                data.spacing.close,
-                            );
-                        }
-                    }
                 }
             } else {
-                // self.index += 1;
-                // let (_, data) = self.stack.pop().unwrap();
-                // if !data.delimiter.skip() {
-                //     return (
-                //         Token::new(data.delimiter.as_close_token_kind(), data.span.close),
-                //         data.spacing.close,
-                //     );
-                // }
                 assert!(self.stack.is_empty());
 
                 // We have exhausted the outermost token stream. The use of
@@ -1100,7 +1103,7 @@ mod size_asserts {
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
-    static_assert_size!(LazyAttrTokenStreamInner, 88);
+    static_assert_size!(LazyAttrTokenStreamInner, 96);
     static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);

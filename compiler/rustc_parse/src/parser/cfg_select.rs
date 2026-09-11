@@ -30,7 +30,6 @@ impl<'a> Parser<'a> {
                         TokenTree::Delimited(_, _, _, tts) => tts,
                     });
                 }
-                _ => unreachable!(),
             }
         }
         let attrs = AttrWrapper::empty(); // FIXME expressions with attributes can be supported here
