@@ -1543,7 +1543,6 @@ pub(crate) fn apply_pgo(
             // Apparently necessary to avoid overflowing the counters during
             // a Cargo build profile
             cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
-            cargo.rustflag("-Zinline-mir=no");
             true
         } else {
             false
@@ -1554,7 +1553,6 @@ pub(crate) fn apply_pgo(
             if builder.is_verbose() {
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
             }
-            cargo.rustflag("-Zinline-mir=no");
             true
         } else {
             false
