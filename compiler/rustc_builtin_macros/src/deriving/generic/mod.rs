@@ -177,17 +177,17 @@
 use std::ops::Not;
 use std::{iter, vec};
 
-pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
+pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
-    GenericParamKind, Generics, Mutability, PatKind, Safety, SelfKind, VariantData,
+    AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
+    Mutability, PatKind, Safety, SelfKind, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
@@ -293,20 +293,6 @@ pub(crate) struct FieldInfo {
     pub maybe_scalar: bool,
 }
 
-#[derive(Copy, Clone)]
-pub(crate) enum IsTuple {
-    No,
-    Yes,
-}
-
-/// Fields for a static method
-pub(crate) enum StaticFields<'a> {
-    /// Tuple and unit structs/enum variants like this.
-    Unnamed(Vec<Span>, IsTuple),
-    /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span, Option<&'a AnonConst>)>),
-}
-
 /// A summary of the possible sets of fields.
 pub(crate) enum SubstructureFields<'a> {
     /// A non-static method where `Self` is a struct.
@@ -328,7 +314,7 @@ pub(crate) enum SubstructureFields<'a> {
     EnumDiscr(FieldInfo, Option<Box<Expr>>),
 
     /// A static method where `Self` is a struct.
-    StaticStruct(&'a ast::VariantData, StaticFields<'a>),
+    StaticStruct(&'a ast::VariantData),
 
     /// A static method where `Self` is an enum.
     StaticEnum(&'a ast::EnumDef),
@@ -473,8 +459,8 @@ impl<'a> TraitDef<'a> {
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
-        item: &'a Annotatable,
-        push: &mut dyn FnMut(Annotatable),
+        item: &'a ast::Item,
+        push: &mut dyn FnMut(Box<ast::Item>),
     ) {
         self.expand_ext(cx, mitem, item, push, false);
     }
@@ -483,72 +469,62 @@ impl<'a> TraitDef<'a> {
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
-        item: &'a Annotatable,
-        push: &mut dyn FnMut(Annotatable),
+        item: &'a ast::Item,
+        push: &mut dyn FnMut(Box<ast::Item>),
         from_scratch: bool,
     ) {
-        match item {
-            Annotatable::Item(item) => {
-                let is_packed = matches!(
-                    AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
-                    Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
-                );
+        let is_packed = matches!(
+            AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
+            Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
+        );
 
-                let mut newitem = match &item.kind {
-                    ast::ItemKind::Struct(ident, generics, struct_def) => self.expand_struct_def(
+        let mut newitem = match &item.kind {
+            ast::ItemKind::Struct(ident, generics, struct_def) => {
+                self.expand_struct_def(cx, struct_def, *ident, generics, from_scratch, is_packed)
+            }
+            ast::ItemKind::Enum(ident, generics, enum_def) => {
+                // We ignore `is_packed` here, because `repr(packed)`
+                // enums cause an error later on.
+                //
+                // This can only cause further compilation errors
+                // downstream in blatantly illegal code, so it is fine.
+                self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
+            }
+            ast::ItemKind::Union(ident, generics, struct_def) => {
+                if self.supports_unions {
+                    self.expand_struct_def(
                         cx,
                         struct_def,
                         *ident,
                         generics,
                         from_scratch,
                         is_packed,
-                    ),
-                    ast::ItemKind::Enum(ident, generics, enum_def) => {
-                        // We ignore `is_packed` here, because `repr(packed)`
-                        // enums cause an error later on.
-                        //
-                        // This can only cause further compilation errors
-                        // downstream in blatantly illegal code, so it is fine.
-                        self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
-                    }
-                    ast::ItemKind::Union(ident, generics, struct_def) => {
-                        if self.supports_unions {
-                            self.expand_struct_def(
-                                cx,
-                                struct_def,
-                                *ident,
-                                generics,
-                                from_scratch,
-                                is_packed,
-                            )
-                        } else {
-                            cx.dcx().emit_err(diagnostics::DeriveUnion { span: mitem.span });
-                            return;
-                        }
-                    }
-                    _ => unreachable!(),
-                };
-                // Keep the lint attributes of the previous item to control how the
-                // generated implementations are linted
-                newitem.attrs.extend(
-                    item.attrs
-                        .iter()
-                        .filter(|a| {
-                            a.has_any_name(&[
-                                sym::allow,
-                                sym::warn,
-                                sym::deny,
-                                sym::forbid,
-                                sym::stable,
-                                sym::unstable,
-                            ])
-                        })
-                        .cloned(),
-                );
-                push(Annotatable::Item(newitem))
+                    )
+                } else {
+                    cx.dcx().emit_err(diagnostics::DeriveUnion { span: mitem.span });
+                    return;
+                }
             }
             _ => unreachable!(),
-        }
+        };
+        // Keep the lint attributes of the previous item to control how the
+        // generated implementations are linted
+        newitem.attrs.extend(
+            item.attrs
+                .iter()
+                .filter(|a| {
+                    a.has_any_name(&[
+                        sym::allow,
+                        sym::warn,
+                        sym::deny,
+                        sym::forbid,
+                        sym::stable,
+                        sym::unstable,
+                    ])
+                })
+                .cloned(),
+        );
+        push(newitem);
     }
 
     /// Given that we are deriving a trait `DerivedTrait` for a type like:
@@ -869,12 +845,12 @@ impl<'a> TraitDef<'a> {
                     method_def.extract_arg_details(cx, self, type_ident, generics);
 
                 let body = if from_scratch || method_def.is_static() {
-                    method_def.expand_static_struct_method_body(
+                    method_def.call_substructure_method(
                         cx,
                         self,
-                        struct_def,
                         type_ident,
                         &nonselflike_args,
+                        &StaticStruct(struct_def),
                     )
                 } else {
                     method_def.expand_struct_method_body(
@@ -1139,25 +1115,6 @@ impl<'a> MethodDef<'a> {
             type_ident,
             nonselflike_args,
             &Struct(struct_def, selflike_fields),
-        )
-    }
-
-    fn expand_static_struct_method_body(
-        &self,
-        cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'a>,
-        struct_def: &'a VariantData,
-        type_ident: Ident,
-        nonselflike_args: &[Box<Expr>],
-    ) -> BlockOrExpr {
-        let summary = trait_.summarise_struct(cx, struct_def);
-
-        self.call_substructure_method(
-            cx,
-            trait_,
-            type_ident,
-            nonselflike_args,
-            &StaticStruct(struct_def, summary),
         )
     }
 
@@ -1459,34 +1416,6 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn summarise_struct(&self, cx: &ExtCtxt<'_>, struct_def: &'a VariantData) -> StaticFields<'a> {
-        let mut named_idents = Vec::new();
-        let mut just_spans = Vec::new();
-        for field in struct_def.fields() {
-            let sp = field.span.with_ctxt(self.span.ctxt());
-            match field.ident {
-                Some(ident) => named_idents.push((ident, sp, field.default_value())),
-                _ => just_spans.push(sp),
-            }
-        }
-
-        let is_tuple = match struct_def {
-            ast::VariantData::Tuple(..) => IsTuple::Yes,
-            _ => IsTuple::No,
-        };
-        match (just_spans.is_empty(), named_idents.is_empty()) {
-            (false, false) => cx
-                .dcx()
-                .span_bug(self.span, "a struct with named and unnamed fields in generic `derive`"),
-            // named fields
-            (_, false) => Named(named_idents),
-            // unnamed fields
-            (false, _) => Unnamed(just_spans, is_tuple),
-            // empty
-            _ => Named(Vec::new()),
-        }
-    }
-
     fn create_struct_patterns(
         &self,
         cx: &ExtCtxt<'_>,

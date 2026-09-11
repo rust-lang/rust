@@ -1,5 +1,5 @@
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
@@ -13,8 +13,8 @@ pub(crate) fn expand_deriving_partial_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let structural_trait_def = TraitDef {
@@ -47,9 +47,7 @@ pub(crate) fn expand_deriving_partial_eq(
         ret_ty: Path(generic::ty::Path::new_local(sym::bool)),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: combine_substructure(|a, b, c| {
-            BlockOrExpr::new_expr(get_substructure_equality_expr(a, b, c))
-        }),
+        combine_substructure: combine_substructure(get_substructure_equality_expr),
     }];
 
     let trait_def = TraitDef {
@@ -123,10 +121,10 @@ fn get_substructure_equality_expr(
     cx: &ExtCtxt<'_>,
     span: Span,
     substructure: &Substructure<'_>,
-) -> Box<Expr> {
+) -> BlockOrExpr {
     use SubstructureFields::*;
 
-    match substructure.fields {
+    BlockOrExpr::new_expr(match substructure.fields {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field| {
                 let rhs = get_field_equality_expr(cx, field);
@@ -151,7 +149,7 @@ fn get_substructure_equality_expr(
         EnumDiscr(disc, match_expr) => {
             let lhs = get_field_equality_expr(cx, disc);
             let Some(match_expr) = match_expr else {
-                return lhs;
+                return BlockOrExpr::new_expr(lhs);
             };
             // Compare the discriminant first (cheaper), then the rest of the
             // fields.
@@ -169,7 +167,7 @@ fn get_substructure_equality_expr(
             span,
             "unexpected all-fieldless enum encountered during `derive(PartialEq)` expansion",
         ),
-    }
+    })
 }
 
 /// Generates an equality comparison expression for a single struct or enum

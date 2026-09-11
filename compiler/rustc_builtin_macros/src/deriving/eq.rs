@@ -1,6 +1,6 @@
 use rustc_ast::{self as ast, MetaItem, Safety};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -12,8 +12,8 @@ pub(crate) fn expand_deriving_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
