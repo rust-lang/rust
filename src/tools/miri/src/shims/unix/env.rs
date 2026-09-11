@@ -44,7 +44,7 @@ impl<'tcx> UnixEnvVars<'tcx> {
         }
 
         // This is memory backing an extern static, hence `ExternStatic`, not `Env`.
-        let layout = ecx.machine.layouts.mut_raw_ptr;
+        let layout = ecx.machine.layouts.unit_ptr_mut;
         let environ = ecx.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
         let environ_block = alloc_environ_block(ecx, env_vars_machine.values().copied().collect())?;
         ecx.write_pointer(environ_block, &environ)?;
@@ -113,7 +113,7 @@ fn alloc_environ_block<'tcx>(
     // Make an array with all these pointers inside Miri.
     let vars_layout = ecx.layout_of(Ty::new_array(
         *ecx.tcx,
-        ecx.machine.layouts.mut_raw_ptr.ty,
+        ecx.machine.layouts.unit_ptr_mut.ty,
         u64::try_from(vars.len()).unwrap(),
     ))?;
     let vars_place = ecx.allocate(vars_layout, MiriMemoryKind::Machine.into())?;
