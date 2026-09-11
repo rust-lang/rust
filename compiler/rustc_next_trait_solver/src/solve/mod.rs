@@ -14,6 +14,8 @@
 mod assembly;
 mod effect_goals;
 mod eval_ctxt;
+mod fulfill;
+pub use fulfill::{FulfillmentCtxt, NextSolverError};
 pub mod inspect;
 mod normalizes_to;
 mod project_goals;
