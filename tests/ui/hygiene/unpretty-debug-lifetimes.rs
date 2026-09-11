@@ -11,8 +11,8 @@
 #![feature(no_core)]
 #![no_core]
 
-macro lifetime_hygiene($f:ident<$a:lifetime>) {
-    fn $f<$a, 'a>() {}
+macro lifetime_hygiene($a:lifetime) {
+    fn f<$a, 'a>() {}
 }
 
-lifetime_hygiene!(f<'a>);
+lifetime_hygiene!('a);

@@ -221,6 +221,7 @@ impl CodegenBackend for MiriCodegenBackend {
             internal_target_features: native_target_config.internal_target_features,
 
             // The basic types and ABI always work.
+            has_reliable_f16b: true,
             has_reliable_f16: true,
             has_reliable_f128: true,
             // We always provide the f16 intrinsics, but some are provided via the host,

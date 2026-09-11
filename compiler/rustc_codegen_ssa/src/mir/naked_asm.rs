@@ -508,6 +508,9 @@ fn wasm_primitive(primitive: Primitive, ptr_type: &'static str) -> &'static str 
             Integer::I128 => "i64, i64",
         },
         Primitive::Float(float) => match float {
+            // This could probably use an f32 for WASM however has not been
+            // verified so leaving as a `bug!(...)` for now.
+            Float::F16B => bug!("`f16b` unsupported on wasm"),
             Float::F16 | Float::F32 => "f32",
             Float::F64 => "f64",
             Float::F128 => "i64, i64",
