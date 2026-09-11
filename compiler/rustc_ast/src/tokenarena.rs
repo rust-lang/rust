@@ -162,16 +162,13 @@ impl ArenaTokenStream {
         self.tokens.is_empty()
     }
 
-    pub fn get_parent_of(
-        &self,
-        bounds: DelimitedBounds,
-    ) -> Option<(DelimitedBounds, DelimitedData)> {
+    pub fn get_parent_of(&self, bounds: DelimitedBounds) -> Option<DelimitedBounds> {
         let parent = bounds.parent?;
         match self.tokens.get(parent as usize).expect("Parent index was not found") {
             ArenaTokenTree::Token(..) => {
                 panic!("DelimitedBounds parent index points to a token. This is a bug.");
             }
-            ArenaTokenTree::DelimitedStart(bounds, data) => Some((*bounds, *data)),
+            ArenaTokenTree::DelimitedStart(bounds, _) => Some(*bounds),
         }
     }
 
