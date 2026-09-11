@@ -1318,7 +1318,6 @@ symbols! {
         meta,
         meta_sized,
         metadata_type,
-        mgca_type_const_syntax,
         min_adt_const_params,
         min_const_fn,
         min_const_generics,

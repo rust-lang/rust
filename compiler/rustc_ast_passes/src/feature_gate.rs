@@ -495,25 +495,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         gate!(visitor, min_generic_const_args, span, "associated const equality is incomplete");
     }
 
-    // `mgca_type_const_syntax` is part of `min_generic_const_args` so if
-    // either or both are enabled we don't need to emit a feature error.
-    for &span in spans.get(&sym::mgca_type_const_syntax).into_flat_iter() {
-        if visitor.features.min_generic_const_args()
-            || visitor.features.mgca_type_const_syntax()
-            || span.allows_unstable(sym::min_generic_const_args)
-            || span.allows_unstable(sym::mgca_type_const_syntax)
-        {
-            continue;
-        }
-        feature_err(
-            visitor.sess,
-            sym::min_generic_const_args,
-            span,
-            "`type const` syntax is experimental",
-        )
-        .emit();
-    }
-
     // Negative bounds are *super* internal. We require `-Zinternal-testing-features` *and*
     // `#![feature(negative_bounds)]` to prevent proliferation. Under no circumstances do we
     // want to advertise the flag and the feature name to users!
