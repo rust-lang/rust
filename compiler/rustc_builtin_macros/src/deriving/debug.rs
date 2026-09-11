@@ -1,5 +1,5 @@
 use rustc_ast::{self as ast, EnumDef, MetaItem, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -12,8 +12,8 @@ pub(crate) fn expand_deriving_debug(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     // &mut ::std::fmt::Formatter

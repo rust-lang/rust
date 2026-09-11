@@ -593,7 +593,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             )
         };
 
-        let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
+        let result =
+            bx.call(start_ty, None, None, start_fn, ReturnSlot::Direct, &args, None, instance);
         if cx.sess().target.os == Os::Uefi {
             bx.ret(result);
         } else {
