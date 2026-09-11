@@ -1286,9 +1286,6 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = self.cx();
         let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-        if self.opaque_accesses.might_rerun() {
-            match self.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)? {}
-        }
 
         for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
             if item_bound.as_trait_clause().is_some_and(|b| b.def_id() == goal.predicate.def_id()) {
@@ -1305,20 +1302,35 @@ where
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         });
 
-        let opaque_types_may_leak = match self.typing_mode() {
-            TypingMode::PostTypeckUntilBorrowck { .. } => false,
+        // New defining uses may leak an opaque's hidden type into the caller's
+        // inference state. This is safe after typeck, where hidden types are already
+        // fixed and only regions are inferred, but not during typeck while hidden
+        // types may still contain inference variables.
+        let allow_new_defining_uses = match self.typing_mode() {
+            // We're inferring regions of opaque types, but
+            // the type itself is already fully known, no way
+            // to leak the hidden type.
+            TypingMode::PostTypeckUntilBorrowck { .. } => true,
+            // We're inferring the hidden type of opaques, could
+            // leak types through it.
+            TypingMode::Typeck { .. } => false,
+            // we never add new uses to the opaque type storage
             TypingMode::Coherence
-            | TypingMode::Typeck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
-            | TypingMode::ErasedNotCoherence(MayBeErased) => true,
+            | TypingMode::ErasedNotCoherence(MayBeErased) => false,
         };
 
         match candidate {
             Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
-            Ok(candidate) if !opaque_types_may_leak => Ok(candidate),
+            Ok(candidate)
+                if allow_new_defining_uses
+                    && candidate.result.value.var_values.is_identity_modulo_regions() =>
+            {
+                Ok(candidate)
+            }
             Ok(_) => self.forced_ambiguity(MaybeInfo::AMBIGUOUS),
             Err(err) => Err(err),
         }
