@@ -2494,6 +2494,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(crate) fn suggest_literal_to_numeric(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        todo!();
+    }
+
     /// Suggest replacing comma with semicolon in incorrect repeat expressions
     /// like `["_", 10]` or `vec![String::new(), 10]`.
     pub(crate) fn suggest_semicolon_in_repeat_expr(
