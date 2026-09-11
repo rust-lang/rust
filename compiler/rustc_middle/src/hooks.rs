@@ -106,7 +106,7 @@ declare_hooks! {
     hook build_mir_inner_impl(def: LocalDefId) -> mir::Body<'tcx>;
 
     /// Serializes all eligible query return values into the on-disk cache.
-    hook encode_query_values(encoder: &mut CacheEncoder<'_, 'tcx>) -> ();
+    hook encode_query_values(encoder: &mut CacheEncoder<'tcx>) -> ();
 }
 
 #[cold]

@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -29,7 +31,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{OptLevel, TargetModifier};
 use rustc_span::def_id::CRATE_MOD_ID;
-use rustc_span::hygiene::HygieneEncodeContext;
+use rustc_span::hygiene::{HygieneEncodeContext, raw_encode_syntax_context};
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
     Symbol, SyntaxContext, sym,
@@ -66,7 +68,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // order of `SourceFiles`, and encoded inside `Span`s.
     required_source_files: Option<FxIndexSet<usize>>,
     is_proc_macro: bool,
-    hygiene_ctxt: &'a HygieneEncodeContext,
+    hygiene_ctxt: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
 }
@@ -156,7 +158,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
-        rustc_span::hygiene::raw_encode_syntax_context(syntax_context, self.hygiene_ctxt, self);
+        raw_encode_syntax_context(syntax_context, Rc::clone(&self.hygiene_ctxt), self)
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
@@ -165,7 +167,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
             // data from the corresponding crate's metadata.
             // FIXME(#43047) FIXME(#74731) We may eventually want to avoid relying on external
             // metadata from proc-macro crates.
-            self.hygiene_ctxt.schedule_expn_data_for_encoding(expn_id);
+            self.hygiene_ctxt.borrow_mut().schedule_expn_data_for_encoding(expn_id);
         }
         expn_id.krate.encode(self);
         expn_id.local_id.encode(self);
@@ -1966,14 +1968,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut expn_data_table: TableBuilder<_, _> = Default::default();
         let mut expn_hash_table: TableBuilder<_, _> = Default::default();
 
-        self.hygiene_ctxt.encode(
+        HygieneEncodeContext::encode(
+            &Rc::clone(&self.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), index, ctxt_data| {
                 syntax_contexts.set_some(index, this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
                 if let Some(index) = index.as_local() {
-                    expn_data_table.set_some(index.as_raw(), this.lazy(expn_data));
+                    expn_data_table
+                        .set_some(index.as_raw(), this.lazy(expn_data.expect("local expn")));
+
                     expn_hash_table.set_some(index.as_raw(), this.lazy(hash));
                 }
             },
@@ -2559,8 +2564,6 @@ fn with_encode_metadata_header(
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 
-    let hygiene_ctxt = HygieneEncodeContext::default();
-
     let mut ecx = EncodeContext {
         opaque: encoder,
         tcx,
@@ -2574,7 +2577,7 @@ fn with_encode_metadata_header(
         interpret_allocs: Default::default(),
         required_source_files,
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
-        hygiene_ctxt: &hygiene_ctxt,
+        hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
     };
 
