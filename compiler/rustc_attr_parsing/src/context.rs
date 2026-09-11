@@ -837,6 +837,10 @@ pub(crate) struct FinalizeCheckContext<'p, 'sess> {
     /// The AST item these attributes were applied to, when the target is an item.
     /// Used by `finalize_check` to inspect item structure that is not encoded in [`Target`].
     pub(crate) target_item: Option<&'p rustc_ast::ast::Item>,
+
+    /// The AST associated item these attributes were applied to, when the target is an associated item.
+    /// Used by `finalize_check` to inspect associated item structure that is not encoded in [`Target`].
+    pub(crate) target_assoc_item: Option<&'p rustc_ast::ast::AssocItem>,
 }
 
 impl<'p, 'sess: 'p> Deref for FinalizeCheckContext<'p, 'sess> {
