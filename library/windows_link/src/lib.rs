@@ -49,4 +49,5 @@ pub macro link($($tt:tt)*) {
 #[link(name = "userenv")]
 #[link(name = "ws2_32")]
 #[link(name = "dbghelp")] // required for backtrace-rs symbolization
+#[link(name = "synchronization")]
 unsafe extern "C" {}
