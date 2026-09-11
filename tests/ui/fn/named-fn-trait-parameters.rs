@@ -34,13 +34,18 @@ fn semantics<F>(
     self3: impl Fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 
-    // FIXME should be rejected
     restricted_pat1: impl Fn(mut x: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat2: impl Fn(&x: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat3: impl Fn(&&x: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat4: impl Fn(false: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat5: impl Fn(&_: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat6: impl Fn(&true: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
 ) { }
 
 // Patterns are also syntactically rejected, but restricted patterns are not

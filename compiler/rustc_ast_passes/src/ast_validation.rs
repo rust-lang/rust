@@ -291,8 +291,11 @@ impl<'a> AstValidator<'a> {
         });
     }
 
-    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
-        for Param { pat, .. } in &decl.inputs {
+    fn check_decl_no_pat(
+        fn_inputs: &[Param],
+        mut report_err: impl FnMut(Span, Option<Ident>, bool),
+    ) {
+        for Param { pat, .. } in fn_inputs {
             match pat.kind {
                 PatKind::Missing | PatKind::Ident(BindingMode::NONE, _, None) | PatKind::Wild => {}
                 PatKind::Ident(BindingMode::MUT, ident, None) => {
@@ -1200,7 +1203,7 @@ impl<'a> AstValidator<'a> {
                     SelfSemantic::No,
                     SplatSemantic::from_extern(bfty.ext),
                 );
-                Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
+                Self::check_decl_no_pat(&bfty.decl.inputs, |span, _, _| {
                     self.dcx().emit_err(diagnostics::PatternFnPointer { span });
                 });
                 if let Extern::Implicit(extern_span) = bfty.ext {
@@ -2009,7 +2012,7 @@ impl Visitor<'_> for AstValidator<'_> {
 
         // Functions without bodies cannot have patterns.
         if let FnKind::Fn(ctxt, _, Fn { body: None, sig, .. }) = fk {
-            Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
+            Self::check_decl_no_pat(&sig.decl.inputs, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
                         let is_foreign = matches!(ctxt, FnCtxt::Foreign);
@@ -2212,6 +2215,9 @@ impl Visitor<'_> for AstValidator<'_> {
     fn visit_path_segment(&mut self, seg: &PathSegment) -> Self::Result {
         if let Some(Parenthesized(args)) = &seg.args {
             self.check_decl_self_param(&args.inputs, SelfSemantic::No);
+            Self::check_decl_no_pat(&args.inputs, |span, _, _| {
+                self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
+            });
         }
         visit::walk_path_segment(self, seg);
     }
