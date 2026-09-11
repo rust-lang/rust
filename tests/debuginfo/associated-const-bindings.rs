@@ -14,10 +14,11 @@
 #![expect(unused_variables, incomplete_features)]
 
 trait Trait {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 impl Trait for () {
-    type const N: usize = 101;
+    const N: usize = core::direct_const_arg!(101);
 }
 
 fn main() {

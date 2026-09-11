@@ -17,7 +17,7 @@ struct Foo<T> {
     field: T,
 }
 
-type const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = { Foo::<T> { field: N } };
+const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = core::direct_const_arg!(Foo::<T> { field: N });
 
 fn main() {
     // What we're trying to accomplish here is winding up with an equality relation

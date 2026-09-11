@@ -1,5 +1,5 @@
 error: the constant `N` is not of type `bool`
-  --> $DIR/wf-mismatch-2.rs:10:12
+  --> $DIR/wf-mismatch-2.rs:13:12
    |
 LL |     let _: dyn Trait<CT = { N }>;
    |            ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `i32`

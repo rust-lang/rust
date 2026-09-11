@@ -16,7 +16,8 @@ trait UnderlyingImpl<const MAX_SIZE: usize> {
 
 trait LevelInfo {
     #[cfg(mgca)]
-    type const SUPPORTED_SLOTS: usize;
+    #[rustc_always_gca]
+    const SUPPORTED_SLOTS: usize;
 
     #[cfg(not(mgca))]
     const SUPPORTED_SLOTS: usize;
@@ -26,7 +27,7 @@ struct Info;
 
 impl LevelInfo for Info {
     #[cfg(mgca)]
-    type const SUPPORTED_SLOTS: usize = 1;
+    const SUPPORTED_SLOTS: usize = core::direct_const_arg!(1);
 
     #[cfg(not(mgca))]
     const SUPPORTED_SLOTS: usize = 1;

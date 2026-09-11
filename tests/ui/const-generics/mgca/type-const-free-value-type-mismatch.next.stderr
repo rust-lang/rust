@@ -1,8 +1,8 @@
 error: the constant `"this isn't a usize"` is not of type `usize`
   --> $DIR/type-const-free-value-type-mismatch.rs:8:1
    |
-LL | type const N: usize = "this isn't a usize";
-   | ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+LL | const N: usize = core::direct_const_arg!("this isn't a usize");
+   | ^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
 
 error[E0284]: type annotations needed
   --> $DIR/type-const-free-value-type-mismatch.rs:11:11

@@ -7,15 +7,18 @@
 use std::marker::{ConstParamTy, ConstParamTy_};
 
 trait Owner {
-    type const C<const N: u32>: u32;
-    type const K<const N: u32>: u32;
-    type const Q<T: ConstParamTy_>: Maybe<T>;
+    #[rustc_always_gca]
+    const C<const N: u32>: u32;
+    #[rustc_always_gca]
+    const K<const N: u32>: u32;
+    #[rustc_always_gca]
+    const Q<T: ConstParamTy_>: Maybe<T>;
 }
 
 impl Owner for () {
-    type const C<const N: u32>: u32 = N;
-    type const K<const N: u32>: u32 = const { 99 + 1 };
-    type const Q<T: ConstParamTy_>: Maybe<T> = Maybe::Nothing::<T>;
+    const C<const N: u32>: u32 = core::direct_const_arg!(N);
+    const K<const N: u32>: u32 = core::direct_const_arg!(const { 99 + 1 });
+    const Q<T: ConstParamTy_>: Maybe<T> = core::direct_const_arg!(Maybe::Nothing::<T>);
 }
 
 fn take0<const N: u32>(_: impl Owner<C<N> = { N }>) {}

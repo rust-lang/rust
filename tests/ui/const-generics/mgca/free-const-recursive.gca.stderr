@@ -1,14 +1,14 @@
 error[E0275]: overflow evaluating the requirement `A == _`
-  --> $DIR/free-const-recursive.rs:9:1
+  --> $DIR/free-const-recursive.rs:11:1
    |
-LL | type const A: () = A;
-   | ^^^^^^^^^^^^^^^^
+LL | const A: () = core::direct_const_arg!(A);
+   | ^^^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `the constant `A` has type `()``
-  --> $DIR/free-const-recursive.rs:9:1
+  --> $DIR/free-const-recursive.rs:11:1
    |
-LL | type const A: () = A;
-   | ^^^^^^^^^^^^^^^^
+LL | const A: () = core::direct_const_arg!(A);
+   | ^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

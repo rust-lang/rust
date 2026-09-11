@@ -1,7 +1,7 @@
 // Regression test for https://github.com/rust-lang/rust/issues/156729
 //
 // When a generic parameter is used in a const operation, the diagnostic should
-// suggest creating a `type const` item as an alternative to `generic_const_exprs`.
+// suggest creating a `direct_const_arg!` item as an alternative to `generic_const_exprs`.
 
 use std::mem::size_of;
 

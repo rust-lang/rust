@@ -1,7 +1,7 @@
 error[E0391]: cycle detected when computing the type-level value for `A`
-  --> $DIR/type_const-recursive.rs:4:1
+  --> $DIR/free-const-recursive.rs:11:1
    |
-LL | const A: u8 = core::direct_const_arg!(A);
+LL | const A: () = core::direct_const_arg!(A);
    | ^^^^^^^^^^^
    |
    = note: ...which immediately requires computing the type-level value for `A` again
