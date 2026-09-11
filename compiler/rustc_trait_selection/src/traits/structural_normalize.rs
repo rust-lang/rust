@@ -69,7 +69,7 @@ impl<'tcx> At<'_, 'tcx> {
                 return Err(errors);
             }
 
-            Ok(self.infcx.resolve_vars_if_possible(new_infer))
+            Ok(self.infcx.deeply_resolve_ignoring_regions(new_infer))
         } else {
             Ok(self.normalize(term).into_value_registering_obligations(self.infcx, fulfill_cx))
         }
