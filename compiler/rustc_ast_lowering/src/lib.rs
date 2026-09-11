@@ -2688,7 +2688,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match (body, kind) {
             (body, ConstItemKind::Body) => {
                 let is_direct = |body| {
-                    if self.tcx.features().macroless_generic_const_args() {
+                    if self.tcx.features().macroless_const_item_generic_const_args() {
                         self.can_lower_expr_to_const_arg_direct(
                             body,
                             DirectConstArgContext::MacrolessMinGenericConstArgs,
