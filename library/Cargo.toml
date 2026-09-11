@@ -41,17 +41,32 @@ object.debug = 0
 rustc-demangle.debug = 0
 rustc-demangle.opt-level = "s"
 
-# panic_abort must always be compiled with panic=abort, even when the rest of the
-# sysroot is panic=unwind.
-[profile.dev.package.panic_abort]
-rustflags = ["-Cpanic=abort"]
+# Until CI is moved to using the dist profile (via `--dist-std`), dev and release should copy the
+# settings in the dist profile
+[profile.dev]
+codegen-units = 1
+debug = 1 # "limited"
+rustflags = [
+    # Same as `profile.dist.rustflags`
+    "-Cembed-bitcode=yes",
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
+]
 
-[profile.release.package.panic_abort]
-rustflags = ["-Cpanic=abort"]
+[profile.release]
+codegen-units = 1
+debug = 1 # "limited"
+rustflags = [
+    # Same as `profile.dist.rustflags`
+    "-Cembed-bitcode=yes",
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
+]
 
-# The "dist" profile is used by bootstrap for prebuilt libstd artifacts
-# These settings ensure that the prebuilt artifacts support a variety of features
-# in the user's profile.
+# The "dist" profile is used by bootstrap when `--dist-std` is provided, and in the future will be
+# used for all prebuilt standard library artifacts.
+# These settings ensure that the prebuilt artifacts support a variety of features in the user's
+# profile.
 [profile.dist]
 inherits = "release"
 codegen-units = 1
@@ -67,9 +82,30 @@ rustflags = [
     "-Cforce-frame-pointers=non-leaf",
 ]
 
+# panic_abort must always be compiled with panic=abort, even when the rest of the
+# sysroot is panic=unwind.
+[profile.dev.package.panic_abort]
+rustflags = [
+    "-Cpanic=abort",
+    # Inherited from `profile.dev.rustflags`
+    "-Cembed-bitcode=yes",
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
+]
+
+[profile.release.package.panic_abort]
+rustflags = [
+    "-Cpanic=abort",
+    # Inherited from `profile.release.rustflags`
+    "-Cembed-bitcode=yes",
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
+]
+
 [profile.dist.package.panic_abort]
 rustflags = [
     "-Cpanic=abort",
+    # Inherited from `profile.dist.rustflags`
     "-Cembed-bitcode=yes",
     "-Zunstable-options",
     "-Cforce-frame-pointers=non-leaf",
