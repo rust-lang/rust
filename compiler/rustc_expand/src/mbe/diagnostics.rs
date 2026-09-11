@@ -52,7 +52,7 @@ pub(super) fn failed_to_match_macro(
         FailedMacro::Attr(attr_args) => {
             try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
         }
-        FailedMacro::Derive => try_match_macro_derive(psess, name, body, rules, &mut tracker),
+        FailedMacro::Derive => try_match_macro_derive(psess, body, rules, &mut tracker),
     };
 
     if try_success_result.is_ok() {
