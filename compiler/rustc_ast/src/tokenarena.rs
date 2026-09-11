@@ -57,11 +57,13 @@ impl ArenaTokenTree {
     }
 }
 
-static_assert_size!(ArenaTokenTree, 36);
+static_assert_size!(ArenaTokenTree, 40);
 
 #[derive(Debug, Default)]
 pub struct ArenaTokenStreamBuilder {
     tokens: Vec<ArenaTokenTree>,
+    /// Index of the current delimited sequence
+    current_delimited_sequence: Option<usize>,
 }
 
 impl ArenaTokenStreamBuilder {
@@ -99,8 +101,10 @@ impl ArenaTokenStreamBuilder {
 
     pub fn start_delimited(&mut self) -> OpenDelimited {
         let index = self.length();
+        let parent = self.current_delimited_sequence.replace(index);
+
         self.tokens.push(ArenaTokenTree::DelimitedStart(
-            DelimitedBounds { start: index as u32, length: 0 },
+            DelimitedBounds { start: index as u32, length: 0, parent: parent.map(|v| v as u32) },
             DelimitedData {
                 span: DelimSpan { open: Default::default(), close: Default::default() },
                 spacing: DelimSpacing { open: Spacing::Alone, close: Spacing::Alone },
@@ -120,6 +124,7 @@ impl ArenaTokenStreamBuilder {
                 let len = length.saturating_sub(open.start);
                 bounds.length = len as u32;
                 *data = delimited_data;
+                self.current_delimited_sequence = bounds.parent.map(|v| v as usize);
             }
         }
     }
@@ -157,6 +162,19 @@ impl ArenaTokenStream {
         self.tokens.is_empty()
     }
 
+    pub fn get_parent_of(
+        &self,
+        bounds: DelimitedBounds,
+    ) -> Option<(DelimitedBounds, DelimitedData)> {
+        let parent = bounds.parent?;
+        match self.tokens.get(parent as usize).expect("Parent index was not found") {
+            ArenaTokenTree::Token(..) => {
+                panic!("DelimitedBounds parent index points to a token. This is a bug.");
+            }
+            ArenaTokenTree::DelimitedStart(bounds, data) => Some((*bounds, *data)),
+        }
+    }
+
     pub fn to_token_stream(&self) -> TokenStream {
         let mut tokens = vec![];
         for tt in self.iter_top_level_trees() {
@@ -170,7 +188,10 @@ impl ArenaTokenStream {
     }
 
     pub fn from_stream(stream: &TokenStream) -> Self {
-        let mut arena = ArenaTokenStreamBuilder { tokens: Vec::with_capacity(stream.len()) };
+        let mut arena = ArenaTokenStreamBuilder {
+            tokens: Vec::with_capacity(stream.len()),
+            current_delimited_sequence: None,
+        };
         arena.fill(stream);
         arena.finish()
     }
@@ -229,6 +250,9 @@ pub struct DelimitedBounds {
     /// The length includes both the start and the end token.
     /// So an empty delimited sequence has length 2.
     pub length: u32,
+    /// Index of the parent of the current delimited sequence.
+    /// If this is the root delimited sequence, is `None`.
+    pub parent: Option<u32>,
 }
 
 impl DelimitedBounds {

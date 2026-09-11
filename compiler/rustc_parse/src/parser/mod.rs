@@ -254,7 +254,7 @@ impl<'a> Parser<'a> {
 // nonterminals. Make sure it doesn't unintentionally get bigger. We only check a few arches
 // though, because `TokenTypeSet(u128)` alignment varies on others, changing the total size.
 #[cfg(all(target_pointer_width = "64", any(target_arch = "aarch64", target_arch = "x86_64")))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 304);
+rustc_data_structures::static_assert_size!(Parser<'_>, 320);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
