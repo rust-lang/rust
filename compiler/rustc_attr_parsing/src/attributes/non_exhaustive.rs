@@ -1,11 +1,8 @@
-use rustc_attr_ir::AttributeKind;
-use rustc_attr_ir::target::Target;
+use rustc_ast::{ItemKind, VariantData};
 use rustc_feature::AttributeStability;
-use rustc_span::{Span, Symbol, sym};
 
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Warn};
+use super::prelude::*;
+use crate::diagnostics::NonExhaustiveWithDefaultFieldValues;
 
 pub(crate) struct NonExhaustiveParser;
 
@@ -23,4 +20,23 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        if cx.target != Target::Struct {
+            return;
+        }
+
+        let item = cx.target_item.expect("missing AST target item for Target::Struct");
+        let ItemKind::Struct(_, _, data) = &item.kind else {
+            panic!("expected struct AST target item for Target::Struct");
+        };
+        if let VariantData::Struct { fields, .. } = data
+            && fields.iter().any(|f| f.default_value().is_some())
+        {
+            cx.emit_err(NonExhaustiveWithDefaultFieldValues {
+                attr_span,
+                defn_span: cx.target_span,
+            });
+        }
+    }
 }

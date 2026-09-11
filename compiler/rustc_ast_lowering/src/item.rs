@@ -215,6 +215,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_ast_item(i),
+            Some(i),
             &extra_hir_attributes,
         );
 
