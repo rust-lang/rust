@@ -430,7 +430,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 self.dcx().create_err(FulfillReqLifetime {
                     span,
-                    ty: self.resolve_vars_if_possible(ty),
+                    ty: self.deeply_resolve_ignoring_regions(ty),
                     note,
                 })
             }
@@ -495,7 +495,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 self.dcx().create_err(RefLongerThanData {
                     span,
-                    ty: self.resolve_vars_if_possible(ty),
+                    ty: self.deeply_resolve_ignoring_regions(ty),
                     notes: pointer_valid.into_iter().chain(data_valid).collect(),
                 })
             }
