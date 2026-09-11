@@ -17,6 +17,7 @@ use rustc_hir::{
     BinOpKind, Block, ConstArgKind, ConstBlock, ConstItemRhs, Expr, ExprKind, HirId, PatExpr, PatExprKind, QPath,
     TyKind, UnOp,
 };
+use rustc_middle::ty::consts::ConstExt;
 use rustc_lexer::{FrontmatterAllowed, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;

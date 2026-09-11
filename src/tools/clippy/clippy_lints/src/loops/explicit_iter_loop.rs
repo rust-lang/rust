@@ -14,6 +14,7 @@ use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, EarlyBinder, Ty};
+use rustc_middle::ty::consts::ConstExt;
 
 pub(super) fn check(
     cx: &LateContext<'_>,
