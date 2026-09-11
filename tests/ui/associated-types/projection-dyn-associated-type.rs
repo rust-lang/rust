@@ -23,6 +23,7 @@ pub fn foo<'a>(
 ) -> &'a <dyn B + 'static as Mirror>::Assoc {
     //~^ ERROR the trait bound `(dyn B + 'static): Mirror` is not satisfied [E0277]
     //~| ERROR the trait bound `(dyn B + 'static): Mirror` is not satisfied [E0277]
+    //~| ERROR the trait bound `(dyn B + 'static): Mirror` is not satisfied [E0277]
     static
 } //~ ERROR expected identifier, found `}`
 

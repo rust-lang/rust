@@ -9,7 +9,9 @@ impl Lexer<'static> {
     type Cursor = ();
 }
 
-fn test(_: Lexer::Cursor) {} //~ ERROR mismatched types
-//~^ ERROR: lifetime may not live long enough
+fn test(_: Lexer::Cursor) {}
+//~^ ERROR: mismatched types
+//~| ERROR: mismatched types
+//~| ERROR: lifetime may not live long enough
 
 fn main() {}
