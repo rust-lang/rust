@@ -10,10 +10,14 @@ The tracking issue for this feature is: [#159006]
 
 Warning: This feature is incomplete; its design and syntax may change.
 
-Related features: [min_generic_const_args]. See that doc for what the `direct_const_arg!` is. This feature enables
+Related features:
+- [min_generic_const_args]. See that doc for what the `direct_const_arg!` is. This feature enables
 support for directly represented const arguments without the macro.
+- [macroless_const_item_generic_const_args]. For a version of this feature that works for const arguments
+as the right hand side of a const item.
 
 [min_generic_const_args]: min-generic-const-args.md
+[macroless_const_item_generic_const_args]: macroless-const-item-generic-const-args.md
 
 ## Examples
 
