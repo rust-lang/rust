@@ -10,7 +10,7 @@
 //@ [cfi-minimal-runtime] needs-sanitizer-cfi
 //@ [cfi-minimal-runtime] needs-sanitizer-support
 //@ compile-flags: -C target-feature=-crt-static
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer,sanitizer-cfi-minimal-runtime
 //@ compile-flags: -C opt-level=0 -C codegen-units=1 -C lto
 //@ compile-flags: -C prefer-dynamic=off
 //@ compile-flags: -Z sanitizer=cfi
