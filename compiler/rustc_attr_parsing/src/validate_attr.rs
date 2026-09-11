@@ -4,7 +4,6 @@ use std::convert::identity;
 use std::slice;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, AttrKind, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind,
@@ -77,9 +76,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
             AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
                 check_meta_bad_delim(psess, *dspan, *delim);
                 let nmis =
-                    parse_in(psess, ArenaTokenStream::from_stream(tokens), "meta list", |p| {
-                        p.parse_meta_seq_top()
-                    })?;
+                    parse_in(psess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
             AttrArgs::Eq { expr, .. } => {

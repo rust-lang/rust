@@ -731,23 +731,21 @@ impl<'a> Parser<'a> {
 
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match t.uninterpolate().kind {
-                token::Ident(
-                    kw::Move | kw::Use | kw::Static,
-                    IdentKind::Normal | IdentKind::ForcedKeyword,
-                )
-                | token::OrOr
-                | token::Or => true,
-                _ => false,
-            })
+
+            token::Ident(kw::Move | kw::Use | kw::Static, IdentKind::Normal | IdentKind::ForcedKeyword,)
+            | token::OrOr
+            | token::Or => true,
+            _ => false,
+        })
     }
 
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::OpenBrace => true,
-                token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Block)) => true,
-                _ => false,
-            })
+            token::OpenBrace => true,
+            token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Block)) => true,
+            _ => false,
+        })
     }
 
     /// Checks to see if the next token is either `+` or `+=`.
@@ -1251,7 +1249,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         }
-        .map(|(kind, span)| CoroutineMarker::new(kind, span))
+            .map(|(kind, span)| CoroutineMarker::new(kind, span))
     }
 
     /// Parses fn unsafety: `unsafe`, `safe` or nothing.
@@ -1396,12 +1394,14 @@ impl<'a> Parser<'a> {
             || self.check(exp!(OpenBrace));
 
         delimited.then(|| {
-            let TokenTree::Delimited(dspan, _, delim, tokens) =
-                self.parse_token_tree().to_token_tree(&self.token_cursor.stream)
-            else {
+            let ArenaTokenTree::DelimitedStart(bounds, data) = self.parse_token_tree() else {
                 unreachable!()
             };
-            DelimArgs { dspan, delim, tokens }
+            DelimArgs {
+                dspan: data.span,
+                delim: data.delimiter,
+                tokens: ArenaTokenStream::separate_delimited_inner(bounds, &self.token_cursor.stream),
+            }
         })
     }
 

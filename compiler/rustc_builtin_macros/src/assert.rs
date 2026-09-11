@@ -1,6 +1,7 @@
 mod context;
 
 use rustc_ast::token::Delimiter;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{Expr, ExprKind, Path, UnOp, token};
 use rustc_ast_pretty::pprust;
@@ -46,7 +47,7 @@ pub(crate) fn expand_assert<'cx>(
     let expr = if let Some(tokens) = custom_message {
         let then = cx.expr_macro_call(
             call_site_span,
-            cx.macro_call(call_site_span, panic_path(), Delimiter::Parenthesis, tokens),
+            cx.macro_call(call_site_span, panic_path(), Delimiter::Parenthesis, ArenaTokenStream::from_stream(&tokens)),
         );
         expr_if_not(cx, call_site_span, cond_expr, then, None)
     }

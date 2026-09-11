@@ -614,7 +614,8 @@ fn parse_source(
                             // in the macro input (!) to crudely detect main functions "masked by a
                             // wrapper macro". For the record, this is a horrible heuristic!
                             // See <https://github.com/rust-lang/rust/issues/56898>.
-                            let mut iter = mac_call.mac.args.tokens.iter();
+                            let iter = mac_call.mac.args.tokens.to_token_stream();
+                            let mut iter = iter.iter();
                             while let Some(token) = iter.next() {
                                 if let TokenTree::Token(token, _) = token
                                     && let TokenKind::Ident(kw::Fn, _) = token.kind

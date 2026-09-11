@@ -1,4 +1,5 @@
 use rustc_ast::token::Delimiter;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::*;
 use rustc_span::edition::Edition;
@@ -49,7 +50,7 @@ fn expand<'cx>(
             sp,
             cx.path(sp, cx.std_path(&[sym::panic, mac])),
             Delimiter::Parenthesis,
-            tts,
+            ArenaTokenStream::from_stream(&tts),
         ),
     )))
 }

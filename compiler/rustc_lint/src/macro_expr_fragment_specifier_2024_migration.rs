@@ -142,6 +142,6 @@ impl Expr2024 {
 
 impl EarlyLintPass for Expr2024 {
     fn check_mac_def(&mut self, cx: &crate::EarlyContext<'_>, mc: &rustc_ast::MacroDef) {
-        self.check_tokens(cx, &mc.body.tokens);
+        self.check_tokens(cx, &mc.body.tokens.to_token_stream());
     }
 }

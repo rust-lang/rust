@@ -4,7 +4,7 @@ use std::ops::Bound;
 
 use ast::Label;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
-use rustc_ast::tokenstream::TokenTree;
+use rustc_ast::tokenarena::ArenaTokenTree;
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
@@ -366,8 +366,8 @@ impl<'a> Parser<'a> {
 
         let init_wrapped = self
             .tree_look_ahead(2, |tree| match tree {
-                TokenTree::Token(tok, _) => tok.is_keyword(kw::Else),
-                TokenTree::Delimited(..) => false,
+                ArenaTokenTree::Token(tok, _) => tok.is_keyword(kw::Else),
+                ArenaTokenTree::DelimitedStart(..) => false,
             })
             .unwrap_or(false);
 

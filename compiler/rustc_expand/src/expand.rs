@@ -725,7 +725,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, span } => {
                 if let SyntaxExtensionKind::Bang(expander) = ext {
-                    match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                    match expander.expand(self.cx, span, mac.args.tokens.to_token_stream()) {
                         Ok(tok_result) => {
                             let fragment =
                                 self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span);
@@ -743,16 +743,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
                 } else if let Some(expander) = ext.as_legacy_bang() {
-                    let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {
-                        ExpandResult::Ready(tok_result) => tok_result,
-                        ExpandResult::Retry(_) => {
-                            // retry the original
-                            return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::Bang { mac, span },
-                                ..invoc
-                            });
-                        }
-                    };
+                    let tok_result =
+                        match expander.expand(self.cx, span, mac.args.tokens.to_token_stream()) {
+                            ExpandResult::Ready(tok_result) => tok_result,
+                            ExpandResult::Retry(_) => {
+                                // retry the original
+                                return ExpandResult::Retry(Invocation {
+                                    kind: InvocationKind::Bang { mac, span },
+                                    ..invoc
+                                });
+                            }
+                        };
                     if let Some(fragment) = fragment_kind.make_from(tok_result) {
                         if macro_stats {
                             update_bang_macro_stats(self.cx, fragment_kind, span, mac, &fragment);
