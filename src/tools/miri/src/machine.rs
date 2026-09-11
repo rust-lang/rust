@@ -433,15 +433,33 @@ pub struct PrimitiveLayouts<'tcx> {
     pub u128: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
-    pub mut_raw_ptr: TyAndLayout<'tcx>,   // *mut ()
-    pub const_raw_ptr: TyAndLayout<'tcx>, // *const ()
+    pub unit_ptr_mut: TyAndLayout<'tcx>,   // *mut ()
+    pub unit_ptr_const: TyAndLayout<'tcx>, // *const ()
+    pub void_ptr_mut: TyAndLayout<'tcx>,   // *mut c_void
+    pub void_ptr_const: TyAndLayout<'tcx>, // *const c_void
+    pub fn_ptr: TyAndLayout<'tcx>,         // extern "C" fn()
 }
 
 impl<'tcx> PrimitiveLayouts<'tcx> {
     fn new(layout_cx: LayoutCx<'tcx>) -> Result<Self, &'tcx LayoutError<'tcx>> {
         let tcx = layout_cx.tcx();
-        let mut_raw_ptr = Ty::new_mut_ptr(tcx, tcx.types.unit);
-        let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
+
+        let unit_ptr_mut = Ty::new_mut_ptr(tcx, tcx.types.unit);
+        let unit_ptr_const = Ty::new_imm_ptr(tcx, tcx.types.unit);
+        // We fall back to `()` if the lang item is missing, so `no_core` works better with Miri.
+        let c_void = match tcx.lang_items().c_void() {
+            Some(c_void) => ty::Instance::mono(tcx, c_void).ty(tcx, layout_cx.typing_env),
+            None => tcx.types.unit,
+        };
+        let void_ptr_mut = Ty::new_mut_ptr(tcx, c_void);
+        let void_ptr_const = Ty::new_imm_ptr(tcx, c_void);
+
+        let sig_kind = ty::FnSigKind::default()
+            .set_abi(ExternAbi::C { unwind: false })
+            .set_safety(rustc_hir::Safety::Safe);
+        let fn_ptr =
+            Ty::new_fn_ptr(tcx, ty::Binder::dummy(tcx.mk_fn_sig([], tcx.types.unit, sig_kind)));
+
         Ok(Self {
             unit: layout_cx.layout_of(tcx.types.unit)?,
             i8: layout_cx.layout_of(tcx.types.i8)?,
@@ -457,8 +475,11 @@ impl<'tcx> PrimitiveLayouts<'tcx> {
             u128: layout_cx.layout_of(tcx.types.u128)?,
             usize: layout_cx.layout_of(tcx.types.usize)?,
             bool: layout_cx.layout_of(tcx.types.bool)?,
-            mut_raw_ptr: layout_cx.layout_of(mut_raw_ptr)?,
-            const_raw_ptr: layout_cx.layout_of(const_raw_ptr)?,
+            unit_ptr_mut: layout_cx.layout_of(unit_ptr_mut)?,
+            unit_ptr_const: layout_cx.layout_of(unit_ptr_const)?,
+            void_ptr_mut: layout_cx.layout_of(void_ptr_mut)?,
+            void_ptr_const: layout_cx.layout_of(void_ptr_const)?,
+            fn_ptr: layout_cx.layout_of(fn_ptr)?,
         })
     }
 

@@ -1443,7 +1443,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let pwd = this.deref_pointer_as(pwd, this.libc_ty_layout("passwd"))?;
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_target_usize(buflen)?;
-                let result = this.deref_pointer_as(result, this.machine.layouts.mut_raw_ptr)?;
+                let result = this.deref_pointer_as(result, this.machine.layouts.unit_ptr_mut)?;
 
                 // Must be for "us".
                 if uid != UID {
