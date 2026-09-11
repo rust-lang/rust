@@ -1748,18 +1748,10 @@ impl InvocationCollectorNode for ast::GenericParam {
         walk_flat_map_generic_param(collector, self)
     }
     fn as_target(&self) -> Target {
-        Target::GenericParam {
-            kind: match &self.kind {
-                rustc_ast::GenericParamKind::Lifetime => {
-                    rustc_attr_ir::target::GenericParamKind::Lifetime
-                }
-                rustc_ast::GenericParamKind::Type { .. } => {
-                    rustc_attr_ir::target::GenericParamKind::Type
-                }
-                rustc_ast::GenericParamKind::Const { .. } => {
-                    rustc_attr_ir::target::GenericParamKind::Const
-                }
-            },
+        match self.kind {
+            rustc_ast::GenericParamKind::Lifetime => Target::LifetimeParam,
+            rustc_ast::GenericParamKind::Type { .. } => Target::TypeParam,
+            rustc_ast::GenericParamKind::Const { .. } => Target::ConstParam,
         }
     }
 }

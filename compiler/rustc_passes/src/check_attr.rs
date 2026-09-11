@@ -872,7 +872,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy
-            | Target::GenericParam { .. }
+            | Target::TypeParam
+            | Target::LifetimeParam
+            | Target::ConstParam
             | Target::MacroDef
             | Target::PatField
             | Target::ExprField

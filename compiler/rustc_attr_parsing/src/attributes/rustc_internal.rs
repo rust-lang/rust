@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::GenericParamKind;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
     RustcMirKind,
@@ -110,7 +109,7 @@ pub(crate) struct RustcPanicsWhenZeroParser;
 impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
     const PATH: &[Symbol] = &[sym::rustc_panics_when_zero];
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::GenericParam { kind: GenericParamKind::Const })]);
+        AllowedTargets::AllowList(&[Allow(Target::ConstParam)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenZero;

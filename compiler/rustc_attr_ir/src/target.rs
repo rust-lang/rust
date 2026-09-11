@@ -7,13 +7,6 @@ use rustc_ast::{AssocItemKind, ForeignItemKind, ast};
 use rustc_macros::StableHash;
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
-pub enum GenericParamKind {
-    Type,
-    Lifetime,
-    Const,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum MethodKind {
     /// Method in a `trait Trait` block
     Trait {
@@ -55,7 +48,9 @@ pub enum Target {
     ForeignFn,
     ForeignStatic,
     ForeignTy,
-    GenericParam { kind: GenericParamKind },
+    LifetimeParam,
+    TypeParam,
+    ConstParam,
     MacroDef,
     Param,
     PatField,
@@ -106,7 +101,9 @@ impl Target {
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy
-            | Target::GenericParam { .. }
+            | Target::TypeParam
+            | Target::LifetimeParam
+            | Target::ConstParam
             | Target::MacroDef
             | Target::Param
             | Target::PatField
@@ -222,11 +219,9 @@ impl Target {
             Target::ForeignFn => "foreign function",
             Target::ForeignStatic => "foreign static item",
             Target::ForeignTy => "foreign type",
-            Target::GenericParam { kind, .. } => match kind {
-                GenericParamKind::Type => "type parameter",
-                GenericParamKind::Lifetime => "lifetime parameter",
-                GenericParamKind::Const => "const parameter",
-            },
+            Target::TypeParam => "type parameter",
+            Target::LifetimeParam => "lifetime parameter",
+            Target::ConstParam => "const parameter",
             Target::MacroDef => "macro def",
             Target::Param => "function param",
             Target::PatField => "pattern field",
@@ -277,11 +272,9 @@ impl Target {
             Target::ForeignFn => "foreign functions",
             Target::ForeignStatic => "foreign statics",
             Target::ForeignTy => "foreign types",
-            Target::GenericParam { kind } => match kind {
-                GenericParamKind::Type => "type parameters",
-                GenericParamKind::Lifetime => "lifetime parameters",
-                GenericParamKind::Const => "const parameters",
-            },
+            Target::TypeParam => "type parameters",
+            Target::LifetimeParam => "lifetime parameters",
+            Target::ConstParam => "const parameters",
             Target::MacroDef => "macro defs",
             Target::Param => "function params",
             Target::PatField => "pattern fields",
