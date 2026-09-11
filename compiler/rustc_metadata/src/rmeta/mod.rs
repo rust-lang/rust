@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::mem::size_of;
 use std::num::NonZero;
 
 use decoder::LazyDecoder;
@@ -10,6 +11,7 @@ pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast as ast;
 use rustc_crate_store::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
@@ -60,14 +62,26 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 10;
+const METADATA_VERSION: u8 = 11;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
-/// This header is followed by the length of the compressed data, then
-/// the position of the `CrateRoot`, which is encoded as a 64-bit little-endian
-/// unsigned integer, and further followed by the rustc version string.
+/// This header is followed by the `CrateRoot` and `CrateRootUnhashed` positions
+/// which represent the hashed and unhashed metadata contents respectively, the
+/// crate hash (SVH), and the rustc version string. See the offset constants
+/// below for the exact layout.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+
+/// Fixed-size fields encoded immediately after `METADATA_HEADER`, in order:
+/// `CrateRoot` position (u64), `CrateRootUnhashed` position (u64), crate hash
+/// (`Fingerprint`/SVH), then the variable-length rustc version string.
+const ROOT_POS_OFFSET: usize = METADATA_HEADER.len();
+const ROOT_POS_LEN: usize = size_of::<u64>();
+const UNHASHED_POS_OFFSET: usize = ROOT_POS_OFFSET + ROOT_POS_LEN;
+const UNHASHED_POS_LEN: usize = size_of::<u64>();
+const CRATE_HASH_OFFSET: usize = UNHASHED_POS_OFFSET + UNHASHED_POS_LEN;
+const CRATE_HASH_LEN: usize = size_of::<Fingerprint>();
+const VERSION_OFFSET: usize = CRATE_HASH_OFFSET + CRATE_HASH_LEN;
 
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
@@ -213,7 +227,6 @@ pub enum ProcMacroKind {
 #[derive(MetadataEncodable, BlobDecodable)]
 pub(crate) struct CrateHeader {
     pub(crate) triple: TargetTuple,
-    pub(crate) hash: Svh,
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
     ///
@@ -250,7 +263,6 @@ pub(crate) struct CrateRoot {
     /// A header used to detect if this is the right crate to load.
     header: CrateHeader,
 
-    extra_filename: String,
     stable_crate_id: StableCrateId,
     required_panic_strategy: Option<PanicStrategy>,
     panic_in_drop_strategy: PanicStrategy,
@@ -307,6 +319,18 @@ pub(crate) struct CrateRoot {
     specialization_enabled_in: bool,
 }
 
+/// A separate struct for extra metadata that must be encoded *after*
+/// the main crate hash is finalized.
+#[derive(MetadataEncodable, LazyDecodable)]
+pub(crate) struct CrateRootUnhashed {
+    extra_filename: String,
+
+    /// The `-C extra-filename` of each dependency, indexed by the `CrateNum` they had in *this*
+    /// crate's encoding. The `LOCAL_CRATE` slot is unused filler so that dependency `CrateNum`s
+    /// can index this directly; this crate's own value is `extra_filename` above.
+    dep_extra_filenames: IndexVec<CrateNum, String>,
+}
+
 /// On-disk representation of `DefId`.
 /// This creates a type-safe way to enforce that we remap the CrateNum between the on-disk
 /// representation and the compilation session.
@@ -331,13 +355,16 @@ impl RawDefId {
     }
 }
 
+/// A dependency record, as stored in the hashed [`CrateRoot`].
+///
+/// Note the absence of the dependency's `-C extra-filename`: it lives in
+/// [`CrateRootUnhashed::dep_extra_filenames`] instead, deliberately outside the hash.
 #[derive(Encodable, BlobDecodable)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
     pub kind: CrateDepKind,
-    pub extra_filename: String,
     pub is_private: bool,
 }
 
