@@ -59,19 +59,19 @@ LL +     pat5: impl Fn(_: bool),
    |
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:30:26
+  --> $DIR/named-fn-trait-parameters.rs:31:26
    |
 LL |     self2: impl Fn(self, self),
    |                          ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:32:26
+  --> $DIR/named-fn-trait-parameters.rs:34:26
    |
 LL |     self3: impl Fn(bool, self),
    |                          ^^^^ must be the first parameter of an associated function
 
 error[E0642]: patterns aren't allowed in parenthesized argument list
-  --> $DIR/named-fn-trait-parameters.rs:47:19
+  --> $DIR/named-fn-trait-parameters.rs:49:19
    |
 LL |     pat1: impl Fn(1..3: bool),
    |                   ^^^^
@@ -83,7 +83,7 @@ LL +     pat1: impl Fn(_: bool),
    |
 
 error[E0642]: patterns aren't allowed in parenthesized argument list
-  --> $DIR/named-fn-trait-parameters.rs:49:19
+  --> $DIR/named-fn-trait-parameters.rs:51:19
    |
 LL |     pat2: impl Fn((x, y): (bool, bool)),
    |                   ^^^^^^
@@ -95,7 +95,7 @@ LL +     pat2: impl Fn(_: (bool, bool)),
    |
 
 error[E0642]: patterns aren't allowed in parenthesized argument list
-  --> $DIR/named-fn-trait-parameters.rs:51:19
+  --> $DIR/named-fn-trait-parameters.rs:53:19
    |
 LL |     pat3: impl Fn(Thing { a, b }: Thing),
    |                   ^^^^^^^^^^^^^^
@@ -107,7 +107,7 @@ LL +     pat3: impl Fn(_: Thing),
    |
 
 error[E0642]: patterns aren't allowed in parenthesized argument list
-  --> $DIR/named-fn-trait-parameters.rs:53:19
+  --> $DIR/named-fn-trait-parameters.rs:55:19
    |
 LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
    |                   ^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL +     pat4: impl Fn(_: NoThing),
    |
 
 error[E0642]: patterns aren't allowed in parenthesized argument list
-  --> $DIR/named-fn-trait-parameters.rs:55:19
+  --> $DIR/named-fn-trait-parameters.rs:57:19
    |
 LL |     pat5: impl Fn((((((x))))): bool),
    |                   ^^^^^^^^^^^
@@ -131,16 +131,32 @@ LL +     pat5: impl Fn(_: bool),
    |
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:59:26
+  --> $DIR/named-fn-trait-parameters.rs:61:26
    |
 LL |     self2: impl Fn(self, self),
    |                          ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/named-fn-trait-parameters.rs:61:26
+  --> $DIR/named-fn-trait-parameters.rs:63:26
    |
 LL |     self3: impl Fn(bool, self),
    |                          ^^^^ must be the first parameter of an associated function
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/named-fn-trait-parameters.rs:29:20
+   |
+LL |     self1: impl Fn(self),
+   |                    ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/named-fn-trait-parameters.rs:31:20
+   |
+LL |     self2: impl Fn(self, self),
+   |                    ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
 
 error[E0425]: cannot find type `NoThing` in this scope
   --> $DIR/named-fn-trait-parameters.rs:23:37
@@ -149,7 +165,7 @@ LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
    |                                     ^^^^^^^ not found in this scope
    |
 note: similarly named struct `Thing` defined here
-  --> $DIR/named-fn-trait-parameters.rs:73:1
+  --> $DIR/named-fn-trait-parameters.rs:75:1
    |
 LL | struct Thing { a: bool, b: bool }
    | ^^^^^^^^^^^^
@@ -159,7 +175,7 @@ LL -     pat4: impl Fn(NoThing { a, b }: NoThing),
 LL +     pat4: impl Fn(NoThing { a, b }: Thing),
    |
 
-error: aborting due to 15 previous errors
+error: aborting due to 17 previous errors
 
 Some errors have detailed explanations: E0425, E0642.
 For more information about an error, try `rustc --explain E0425`.

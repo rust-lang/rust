@@ -397,7 +397,7 @@ impl<'a> AstValidator<'a> {
         let c_variadic_span = self.check_decl_cvariadic_pos(fn_decl);
         self.check_decl_splatting(fn_decl, c_variadic_span, splat_semantic);
         self.check_decl_attrs(fn_decl);
-        self.check_decl_self_param(fn_decl, self_semantic);
+        self.check_decl_self_param(&fn_decl.inputs, self_semantic);
     }
 
     /// Emits fatal error if function declaration has more than `u16::MAX` arguments
@@ -544,8 +544,8 @@ impl<'a> AstValidator<'a> {
             });
     }
 
-    fn check_decl_self_param(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
-        if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs) {
+    fn check_decl_self_param(&self, fn_inputs: &[Param], self_semantic: SelfSemantic) {
+        if let (SelfSemantic::No, [param, ..]) = (self_semantic, fn_inputs) {
             if param.is_self() {
                 self.dcx().emit_err(diagnostics::FnParamForbiddenSelf { span: param.span });
             }
@@ -2207,6 +2207,13 @@ impl Visitor<'_> for AstValidator<'_> {
             Some(TildeConstReason::AnonConst { span: anon_const.value.span }),
             |this| visit::walk_anon_const(this, anon_const),
         )
+    }
+
+    fn visit_path_segment(&mut self, seg: &PathSegment) -> Self::Result {
+        if let Some(Parenthesized(args)) = &seg.args {
+            self.check_decl_self_param(&args.inputs, SelfSemantic::No);
+        }
+        visit::walk_path_segment(self, seg);
     }
 }
 

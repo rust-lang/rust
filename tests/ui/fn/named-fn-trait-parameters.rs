@@ -27,8 +27,10 @@ fn semantics<F>(
     //~^ ERROR patterns aren't allowed in parenthesized argument list
 
     self1: impl Fn(self),
+    //~^ ERROR `self` parameter is only allowed in associated functions
     self2: impl Fn(self, self),
-    //~^ ERROR unexpected `self` parameter in function
+    //~^ ERROR `self` parameter is only allowed in associated functions
+    //~| ERROR unexpected `self` parameter in function
     self3: impl Fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 
