@@ -6,7 +6,6 @@
 
 #![feature(coverage_attribute)]
 #![feature(extern_item_impls)]
-#![feature(optimize_attribute)]
 #![feature(sanitize)]
 
 #[eii]

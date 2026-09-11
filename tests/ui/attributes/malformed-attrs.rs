@@ -5,7 +5,6 @@
 #![feature(allow_internal_unstable)]
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
 #![feature(fn_align)]
-#![feature(optimize_attribute)]
 #![feature(dropck_eyepatch)]
 #![feature(export_stable)]
 #![allow(incomplete_features)]

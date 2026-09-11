@@ -63,7 +63,6 @@
 #![feature(const_trait_impl)]
 #![feature(dropck_eyepatch)]
 #![feature(min_specialization)]
-#![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
 #![feature(staged_api)]
