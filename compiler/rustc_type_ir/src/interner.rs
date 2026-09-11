@@ -177,7 +177,7 @@ pub trait Interner:
     type Symbol: Symbol<Self>;
 
     // Things stored inside of tys
-    type ErrorGuaranteed: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
+    type ErrorGuaranteed: Copy + Debug + Hash + Eq;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy
@@ -200,7 +200,7 @@ pub trait Interner:
     // Kinds of consts
     type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Const<Self>> + Default;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
-    type ValueConst: ValueConst<Self> + TypeVisitable<Self> + TypeFoldable<Self> + Display;
+    type ValueConst: ValueConst<Self> + TypeFoldable<Self> + Display;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq + IntoKind<Kind = ty::ValTreeKind<Self>>;
     type ScalarInt: Copy + Debug + Hash + Eq;

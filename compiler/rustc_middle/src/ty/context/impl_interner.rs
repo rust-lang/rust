@@ -798,9 +798,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx, T: std::fmt::Debug + Clone + Copy> rustc_type_ir::intern::Interned<TyCtxt<'tcx>>
-    for Interned<'tcx, T>
-{
+impl<'tcx, T: Clone + Copy> rustc_type_ir::intern::Interned<TyCtxt<'tcx>> for Interned<'tcx, T> {
     type Value = T;
     fn get(self) -> T {
         *self.0

@@ -226,9 +226,9 @@ impl<I: Interner> TypeSuperVisitable<I> for Const<I> {
             ConstKind::Alias(_, alias_const) => alias_const.visit_with(visitor),
             ConstKind::Value(v) => v.visit_with(visitor),
             ConstKind::Expr(e) => e.visit_with(visitor),
-            ConstKind::Error(e) => e.visit_with(visitor),
 
             ConstKind::Param(_)
+            | ConstKind::Error(_)
             | ConstKind::Infer(_)
             | ConstKind::Bound(..)
             | ConstKind::Placeholder(_) => V::Result::output(),
