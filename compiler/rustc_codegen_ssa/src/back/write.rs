@@ -12,7 +12,7 @@ use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{
     Diag, DiagArgMap, DiagCtxt, DiagCtxtHandle, DiagMessage, ErrCode, FatalError, FatalErrorMarker,
-    Level, MultiSpan, Style, Suggestions, catch_fatal_errors,
+    Level, MultiSpan, Style, Sublevel, Suggestions, catch_fatal_errors,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess};
@@ -1217,7 +1217,7 @@ struct Diagnostic {
 // missing the following fields from `rustc_errors::Subdiag`.
 // - `span`: it doesn't impl `Send`.
 struct Subdiagnostic {
-    level: Level,
+    level: Sublevel,
     messages: Vec<(DiagMessage, Style)>,
 }
 

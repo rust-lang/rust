@@ -4,6 +4,7 @@ error[E0282]: type annotations needed for `*mut _`
 LL |         let r = random_paulis().unwrap();
    |             ^
    |
+   = note: cannot infer type of hidden type of opaque
 help: consider giving `r` an explicit type, where the placeholder `_` is specified
    |
 LL |         let r: *mut _ = random_paulis().unwrap();
