@@ -1,4 +1,4 @@
-use rustc_ast::ItemKind;
+use rustc_ast::{AssocItemKind, ItemKind};
 use rustc_attr_ir::{
     CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, UsedBy, find_attr,
 };
@@ -333,16 +333,47 @@ impl AttributeParser for NakedParser {
     fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
         Some((
             |cx, _| match cx.target {
-                Target::Fn
-                | Target::Method(
-                    MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-                ) => {
+                Target::Fn => {
                     let Some(item) = cx.target_item else {
-                        return;
+                        panic!("expected struct AST target item for {:?}", cx.target);
                     };
 
                     let ItemKind::Fn(fn_item) = &item.kind else {
-                        return;
+                        panic!("expected struct AST target item for {:?}", cx.target);
+                    };
+
+                    let fn_sig = &fn_item.sig;
+                    let abi = fn_sig.header.ext;
+
+                    if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
+                        let abi_type = match abi {
+                            rustc_ast::ast::Extern::None => "Rust".into(),
+                            rustc_ast::ast::Extern::Explicit(name, _) => {
+                                name.symbol_unescaped.to_string()
+                            }
+                            rustc_ast::ast::Extern::Implicit(_) => unreachable!(),
+                        };
+                        feature_err(
+                            cx.sess(),
+                            sym::naked_functions_rustic_abi,
+                            fn_sig.span,
+                            format!(
+                                "`#[naked]` is currently unstable on `extern \"{}\"` functions",
+                                abi_type
+                            ),
+                        )
+                        .emit();
+                    }
+                }
+                Target::Method(
+                    MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+                ) => {
+                    let Some(assoc_item) = cx.target_assoc_item else {
+                        panic!("expected struct AST target associated item for {:?}", cx.target);
+                    };
+
+                    let AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
+                        panic!("expected struct AST target associated item for {:?}", cx.target);
                     };
 
                     let fn_sig = &fn_item.sig;

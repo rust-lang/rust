@@ -231,7 +231,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let old_attrs =
                         self.curr_owner.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
                     let new_attrs = self
-                        .lower_attrs_vec(&e.attrs, e.span, ex.hir_id, Target::from_expr(e), None)
+                        .lower_attrs_vec(
+                            &e.attrs,
+                            e.span,
+                            ex.hir_id,
+                            Target::from_expr(e),
+                            None,
+                            None,
+                        )
                         .into_iter()
                         .chain(old_attrs.iter().cloned());
                     let new_attrs = &*self.arena.alloc_from_iter(new_attrs);
@@ -255,7 +262,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         let expr_hir_id = self.lower_node_id(e.id);
-        self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
+        self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e), None);
 
         let kind = match &e.kind {
             ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -795,7 +802,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let guard = arm.guard.as_ref().map(|guard| self.lower_expr(&guard.cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
-        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm);
+        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm, None);
         let is_never_pattern = pat.is_never_pattern();
         // We need to lower the body even if it's unneeded for never pattern in match,
         // ensure that we can get HirId for DefId if need (issue #137708).
@@ -1659,7 +1666,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
+        self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField, None);
         hir::ExprField {
             hir_id,
             ident: self.lower_ident(f.ident),
@@ -1926,7 +1933,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //
         // Also, add the attributes to the outer returned expr node.
         let expr = self.expr_drop_temps_mut(for_span, match_expr);
-        self.lower_attrs(expr.hir_id, &e.attrs, e.span, Target::from_expr(e));
+        self.lower_attrs(expr.hir_id, &e.attrs, e.span, Target::from_expr(e), None);
         expr
     }
 
