@@ -1,7 +1,7 @@
 use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenarena::TokenArena;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::{DelimSpan, WithTokens};
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_attr_ir::target::Target;
@@ -310,9 +310,12 @@ pub fn parse_cfg_attr(
     match &cfg_attr.get_normal_item().args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
-            match parse_in(&sess.psess, TokenArena::from_stream(tokens), "`cfg_attr` input", |p| {
-                parse_cfg_attr_internal(p, sess, features, lint_node_id, cfg_attr)
-            }) {
+            match parse_in(
+                &sess.psess,
+                ArenaTokenStream::from_stream(tokens),
+                "`cfg_attr` input",
+                |p| parse_cfg_attr_internal(p, sess, features, lint_node_id, cfg_attr),
+            ) {
                 Ok(r) => return Some(r),
                 Err(e) => {
                     let suggestions = CFG_ATTR_TEMPLATE.suggestions(

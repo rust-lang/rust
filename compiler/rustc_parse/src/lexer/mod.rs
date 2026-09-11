@@ -1,7 +1,7 @@
 use diagnostics::make_errors_for_mismatched_closing_delims;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
-use rustc_ast::tokenarena::TokenArena;
+use rustc_ast::tokenarena::ArenaTokenStreamBuilder;
 use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_control_chars};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, StashKey};
@@ -67,7 +67,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
-    arena: &mut TokenArena,
+    arena: &mut ArenaTokenStreamBuilder,
     override_span: Option<Span>,
     strip_tokens: StripTokens,
 ) -> Result<(), Vec<Diag<'psess>>> {

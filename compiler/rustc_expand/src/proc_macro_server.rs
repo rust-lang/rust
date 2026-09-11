@@ -2,7 +2,7 @@ use std::ops::{Bound, Range};
 
 use rustc_ast as ast;
 use rustc_ast::token as tk;
-use rustc_ast::tokenarena::TokenArena;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
@@ -592,7 +592,7 @@ impl server::Server for Rustc<'_, '_> {
         let expr = try {
             let mut p = Parser::new(
                 self.psess(),
-                TokenArena::from_stream(stream),
+                ArenaTokenStream::from_stream(stream),
                 Some("proc_macro expand expr"),
             );
             let expr = p.parse_expr()?;

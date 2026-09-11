@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_ast::tokenarena::TokenArena;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::profiling::TimingGuard;
@@ -127,7 +127,7 @@ impl MultiItemModifier for DeriveProcMacro {
         let error_count_before = ecx.dcx().err_count();
         let mut parser = Parser::new(
             &ecx.sess.psess,
-            TokenArena::from_stream(&output),
+            ArenaTokenStream::from_stream(&output),
             Some("proc-macro derive"),
         );
         let mut items = vec![];

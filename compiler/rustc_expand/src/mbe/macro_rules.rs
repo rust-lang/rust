@@ -7,7 +7,7 @@ use ast::token::IdentIsRaw;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
-use rustc_ast::tokenarena::{DelimitedBounds, DelimitedData, TokenArena};
+use rustc_ast::tokenarena::{ArenaTokenStream, DelimitedBounds, DelimitedData};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId, Safety};
 use rustc_ast_pretty::pprust;
@@ -133,7 +133,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         matched_rule_bindings: &'b [MatcherLoc],
     ) -> Self {
         Self {
-            parser: Parser::new(&cx.sess.psess, TokenArena::from_stream(&tts), None),
+            parser: Parser::new(&cx.sess.psess, ArenaTokenStream::from_stream(&tts), None),
 
             // Pass along the original expansion site and the name of the macro
             // so we can print a useful error message if the parse of the expanded
@@ -797,7 +797,7 @@ pub fn compile_declarative_macro(
     let macro_rules = macro_def.macro_rules;
     let exp_sep = if macro_rules { exp!(Semi) } else { exp!(Comma) };
 
-    let body = TokenArena::from_stream(&macro_def.body.tokens);
+    let body = ArenaTokenStream::from_stream(&macro_def.body.tokens);
     let mut p = Parser::new(&sess.psess, body, rustc_parse::MACRO_ARGUMENTS);
 
     // Don't abort iteration early, so that multiple errors can be reported. We only abort early on
@@ -827,7 +827,7 @@ pub fn compile_declarative_macro(
             let args = tt.to_delimited_data();
             check_args_parens(sess, sym::attr, args);
             let args = parse_one_tt(
-                tt.to_token_tree(p.arena()),
+                tt.to_token_tree(p.token_stream()),
                 RulePart::Pattern,
                 sess,
                 node_id,
@@ -882,7 +882,7 @@ pub fn compile_declarative_macro(
             }
             (None, false)
         };
-        let lhs_tt = p.parse_token_tree().to_token_tree(p.arena());
+        let lhs_tt = p.parse_token_tree().to_token_tree(p.token_stream());
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
         check_emission(check_lhs(sess, features, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
@@ -891,7 +891,7 @@ pub fn compile_declarative_macro(
         if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
-        let rhs = p.parse_token_tree().to_token_tree(p.arena());
+        let rhs = p.parse_token_tree().to_token_tree(p.token_stream());
         let rhs = parse_one_tt(rhs, RulePart::Body, sess, node_id, features, edition);
         check_emission(check_rhs(sess, &rhs));
         check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs));
@@ -1886,6 +1886,6 @@ pub(super) fn parser_from_cx(
     recovery: Recovery,
 ) -> Parser<'_> {
     tts.desugar_doc_comments();
-    Parser::new(psess, TokenArena::from_stream(&tts), rustc_parse::MACRO_ARGUMENTS)
+    Parser::new(psess, ArenaTokenStream::from_stream(&tts), rustc_parse::MACRO_ARGUMENTS)
         .recovery(recovery)
 }

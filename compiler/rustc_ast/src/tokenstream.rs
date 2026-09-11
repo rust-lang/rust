@@ -20,7 +20,7 @@ use thin_vec::ThinVec;
 use crate::ast::AttrStyle;
 use crate::ast_traits::HasTokens;
 use crate::token::{self, Delimiter, Token, TokenKind};
-use crate::tokenarena::{ArenaTokenTree, DelimitedBounds, DelimitedData, TokenArena};
+use crate::tokenarena::{ArenaTokenStream, ArenaTokenTree, DelimitedBounds, DelimitedData};
 use crate::{AttrVec, Attribute};
 
 #[cfg(test)]
@@ -904,7 +904,7 @@ impl<'t> Iterator for TokenStreamIter<'t> {
 /// A `TokenArena` cursor that produces `Token`s.
 #[derive(Clone, Debug)]
 pub struct TokenCursor {
-    pub arena: Arc<TokenArena>,
+    pub stream: ArenaTokenStream,
     /// Global index into the token arena.
     index: usize,
     delimited_sequence_end: usize,
@@ -914,9 +914,9 @@ pub struct TokenCursor {
 
 impl TokenCursor {
     #[inline]
-    pub fn new(arena: TokenArena) -> Self {
-        let end = arena.length() + 1;
-        TokenCursor { arena: Arc::new(arena), index: 0, delimited_sequence_end: end, stack: vec![] }
+    pub fn new(stream: ArenaTokenStream) -> Self {
+        let end = stream.length() + 1;
+        TokenCursor { stream, index: 0, delimited_sequence_end: end, stack: vec![] }
     }
 
     /// Gets the next token and advances the cursor by one.
@@ -934,7 +934,7 @@ impl TokenCursor {
             if index == self.delimited_sequence_end {
                 return None;
             }
-            let elem = self.arena.get_innermost_elem_at(index);
+            let elem = self.stream.get_innermost_elem_at(index);
             match elem {
                 Some(ArenaTokenTree::Token(..)) => {
                     index += 1;
@@ -952,7 +952,7 @@ impl TokenCursor {
         if index == self.delimited_sequence_end {
             None
         } else {
-            self.arena.get_innermost_elem_at(index)
+            self.stream.get_innermost_elem_at(index)
         }
     }
 
@@ -961,7 +961,7 @@ impl TokenCursor {
     #[inline]
     pub fn look_ahead_past_close_delim(&self) -> Option<&ArenaTokenTree> {
         let (bounds, _) = self.stack.last().unwrap();
-        self.arena.get_innermost_elem_at(bounds.index_of_next_token_tree())
+        self.stream.get_innermost_elem_at(bounds.index_of_next_token_tree())
     }
 
     /// Clones the `TokenTree::Delimited` that we are currently within. Panics if we are not within
@@ -978,7 +978,7 @@ impl TokenCursor {
         if let Some((bounds, _)) = self.stack.last() {
             self.index = bounds.index_of_next_token_tree();
         } else {
-            self.index = self.arena.length();
+            self.index = self.stream.length();
         }
     }
 
@@ -1010,7 +1010,7 @@ impl TokenCursor {
                     .stack
                     .last()
                     .map(|(bounds, _)| bounds.index_of_next_token_tree())
-                    .unwrap_or(self.arena.length() + 1);
+                    .unwrap_or(self.stream.length() + 1);
 
                 if !data.delimiter.skip() {
                     return (
@@ -1024,7 +1024,7 @@ impl TokenCursor {
             // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
             // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
             // below can be removed.
-            if let Some(tree) = self.arena.get_innermost_elem_at(self.index) {
+            if let Some(tree) = self.stream.get_innermost_elem_at(self.index) {
                 match tree {
                     &ArenaTokenTree::Token(token, spacing) => {
                         debug_assert!(!token.kind.is_delim());

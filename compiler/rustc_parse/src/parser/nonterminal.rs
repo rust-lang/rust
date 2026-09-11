@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
         match kind {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => Ok(ParseNtResult::Tt(
-                self.parse_token_tree().to_token_tree(&self.token_cursor.arena),
+                self.parse_token_tree().to_token_tree(&self.token_cursor.stream),
             )),
             NonterminalKind::Item => match self
                 .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
