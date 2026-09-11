@@ -797,7 +797,7 @@ pub fn compile_declarative_macro(
     let macro_rules = macro_def.macro_rules;
     let exp_sep = if macro_rules { exp!(Semi) } else { exp!(Comma) };
 
-    let body = ArenaTokenStream::from_stream(&macro_def.body.tokens);
+    let body = macro_def.body.tokens.clone();
     let mut p = Parser::new(&sess.psess, body, rustc_parse::MACRO_ARGUMENTS);
 
     // Don't abort iteration early, so that multiple errors can be reported. We only abort early on

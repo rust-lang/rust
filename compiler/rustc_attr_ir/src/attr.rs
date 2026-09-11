@@ -154,7 +154,7 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Unparsed(n) => match n.as_ref() {
                 AttrItem { args: AttrArgs::Delimited(d), .. } => {
-                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+                    ast::MetaItemKind::list_from_tokens(d.tokens.to_token_stream())
                 }
                 _ => None,
             },

@@ -1,5 +1,5 @@
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::util::literal;
 use rustc_ast::{
     self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind,
@@ -56,7 +56,7 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         path: ast::Path,
         delim: Delimiter,
-        tokens: TokenStream,
+        tokens: ArenaTokenStream,
     ) -> Box<ast::MacCall> {
         Box::new(ast::MacCall {
             path,
@@ -486,7 +486,7 @@ impl<'a> ExtCtxt<'a> {
                     [sym::std, sym::unreachable].map(|s| Ident::new(s, span)).to_vec(),
                 ),
                 Delimiter::Parenthesis,
-                TokenStream::default(),
+                ArenaTokenStream::default(),
             ),
         )
     }

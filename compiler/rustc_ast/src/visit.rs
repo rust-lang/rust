@@ -354,6 +354,7 @@ macro_rules! common_visitor_and_walkers {
             crate::token::LitKind,
             crate::tokenstream::LazyAttrTokenStream,
             crate::tokenstream::TokenStream,
+            crate::tokenarena::ArenaTokenStream,
             Movability,
             Mutability,
             Pinnedness,

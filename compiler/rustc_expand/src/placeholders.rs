@@ -1,5 +1,6 @@
 use rustc_ast::mut_visit::*;
 use rustc_ast::token::Delimiter;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{self as ast};
 use rustc_data_structures::fx::FxHashMap;
@@ -20,7 +21,7 @@ pub(crate) fn placeholder(
             args: Box::new(ast::DelimArgs {
                 dspan: ast::tokenstream::DelimSpan::dummy(),
                 delim: Delimiter::Parenthesis,
-                tokens: ast::tokenstream::TokenStream::new(Vec::new()),
+                tokens: ArenaTokenStream::default(),
             }),
         })
     }

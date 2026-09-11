@@ -1,4 +1,5 @@
 use rustc_ast::token::Delimiter;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::*;
 use rustc_expand::base::*;
@@ -59,7 +60,7 @@ fn expand<'cx>(
                 args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(sp),
                     delim: Delimiter::Parenthesis,
-                    tokens: tts,
+                    tokens: ArenaTokenStream::from_stream(&tts),
                 }),
             })),
         ),

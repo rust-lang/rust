@@ -106,7 +106,7 @@ fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &Annotatable) -> Opt
         return None;
     }
 
-    let mut parser = cx.new_parser_from_tts(args.tokens.clone());
+    let mut parser = cx.new_parser_from_tts(args.tokens.to_token_stream());
     let target = match parser.parse_ty() {
         Ok(target) => target,
         Err(err) => {

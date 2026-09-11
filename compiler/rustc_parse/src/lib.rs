@@ -348,7 +348,7 @@ fn fake_token_stream_for_file_mod(
         attr.span.between(spans.inner_span.shrink_to_hi()),
         &mut arena,
     )?;
-    arena.finish_delimited(
+    arena.close_delimited(
         start,
         DelimitedData {
             span: DelimSpan::from_single(semi.span),
