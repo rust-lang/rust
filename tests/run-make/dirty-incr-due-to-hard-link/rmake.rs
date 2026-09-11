@@ -1,4 +1,6 @@
 //@ only-x86_64-unknown-linux-gnu
+// FIXME: Remove once this is fixed in cg_gcc
+//@ ignore-backends: gcc
 
 // Regression test for the incremental bug in <https://github.com/rust-lang/rust/issues/139407>.
 //

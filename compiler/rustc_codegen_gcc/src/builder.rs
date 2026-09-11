@@ -4,8 +4,8 @@ use std::convert::TryFrom;
 use std::ops::Deref;
 
 use gccjit::{
-    BinaryOp, Block, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue, Type,
-    UnaryOp,
+    BinaryOp, Block, CType, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue,
+    Type, UnaryOp,
 };
 use rustc_abi as abi;
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
@@ -36,7 +36,8 @@ use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use crate::abi::FnAbiGccExt;
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
-use crate::diagnostics;
+#[cfg(feature = "master")]
+use crate::context::PendingCleanup;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
@@ -65,6 +66,33 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.value_counter.get()
     }
 
+    /// Tell GCC that `pointer` is `align`-aligned, so that the bulk memory builtins can widen their
+    /// accesses: a pointer cast to an aligned type would be dropped as a useless conversion.
+    fn assume_aligned(&mut self, pointer: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+        if align.bytes() <= 1 {
+            return pointer;
+        }
+        let assume_aligned = self.context.get_builtin_function("__builtin_assume_aligned");
+        let alignment = self.context.new_rvalue_from_long(self.type_size_t(), align.bytes() as i64);
+        let pointer_type = pointer.get_type();
+        let const_void_ptr_type = self.context.new_type::<()>().make_const().make_pointer();
+        let pointer = self.context.new_cast(self.location, pointer, const_void_ptr_type);
+        let aligned = self.context.new_call(self.location, assume_aligned, &[pointer, alignment]);
+        self.context.new_cast(self.location, aligned, pointer_type)
+    }
+
+    /// GCC ignores a volatile qualifier on the pointers given to `memcpy`/`memmove`/`memset` and
+    /// happily deletes the call, so a barrier is what keeps the operation observable. The pointers
+    /// are fed to it because a clobber alone does not reach memory GCC believes never escapes.
+    fn volatile_barrier(&mut self, pointers: &[RValue<'gcc>]) {
+        let barrier = self.block.add_extended_asm(self.location, "");
+        for pointer in pointers {
+            barrier.add_input_operand(None, "r", *pointer);
+        }
+        barrier.add_clobber("memory");
+        barrier.set_volatile_flag(true);
+    }
+
     fn atomic_extremum(
         &mut self,
         operation: ExtremumOperation,
@@ -90,7 +118,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         );
         let previous_var =
             func.new_local(self.location, previous_value.get_type(), "previous_value");
-        let return_value = func.new_local(self.location, previous_value.get_type(), "return_value");
+        let return_value = self.new_temp(func, self.location, previous_value.get_type());
         self.llbb().add_assignment(self.location, previous_var, previous_value);
         self.llbb().add_assignment(self.location, return_value, previous_var.to_rvalue());
 
@@ -317,13 +345,47 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.block.get_function()
     }
 
+    /// Shared implementation of `call` and `tail_call`. For tail call it is important that this
+    /// returns a bare call, and not the result assigned to a local, or the result of `add_eval`.
+    fn build_call(
+        &mut self,
+        typ: Type<'gcc>,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        func: RValue<'gcc>,
+        args: &[RValue<'gcc>],
+        funclet: Option<&Funclet>,
+        must_tail: bool,
+    ) -> RValue<'gcc> {
+        // FIXME(antoyo): remove when having a proper API.
+        let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
+        let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
+            // FIXME(antoyo): remove when the API supports a different type for functions.
+            let func: Function<'gcc> = self.cx.rvalue_as_function(func);
+            self.function_call(func, args, funclet, must_tail)
+        } else {
+            // If it's a not function that was defined, it's a function pointer.
+            self.function_ptr_call(typ, fn_abi, func, args, funclet, must_tail)
+        };
+        if let Some(_fn_abi) = fn_abi {
+            // FIXME(bjorn3): Apply function attributes
+        }
+        call
+    }
+
     pub fn function_call(
         &mut self,
         func: Function<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
+        must_tail: bool,
     ) -> RValue<'gcc> {
         let args = self.check_call("call", func, args);
+
+        let call = self.cx.context.new_call(self.location, func, &args);
+        if must_tail {
+            // Return the bare tail call, don't assign or `add_eval` it yet.
+            return call;
+        }
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
@@ -331,20 +393,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let void_type = self.context.new_type::<()>();
         let current_func = self.block.get_function();
         if return_type != void_type {
-            let result = current_func.new_local(
-                self.location,
-                return_type,
-                format!("returnValue{}", self.next_value_counter()),
-            );
-            self.block.add_assignment(
-                self.location,
-                result,
-                self.cx.context.new_call(self.location, func, &args),
-            );
+            let result = self.new_temp(current_func, self.location, return_type);
+            self.block.add_assignment(self.location, result, call);
             result.to_rvalue()
         } else {
-            self.block
-                .add_eval(self.location, self.cx.context.new_call(self.location, func, &args));
+            self.block.add_eval(self.location, call);
             // Return dummy value when not having return value.
             self.context.new_rvalue_zero(self.isize_type)
         }
@@ -357,6 +410,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         mut func_ptr: RValue<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
+        must_tail: bool,
     ) -> RValue<'gcc> {
         let func_ptr_type = {
             let func_ptr_type = func_ptr.get_type();
@@ -381,6 +435,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let args_adjusted = args.len() != previous_arg_count;
         let args = self.check_ptr_call("call", func_ptr, &args, &on_stack_param_indices);
 
+        if must_tail {
+            // Return the bare tail call, don't assign or `add_eval` it yet.
+            let call = self.cx.context.new_call_through_ptr(self.location, func_ptr, &args);
+            return call;
+        }
+
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
         let return_type = gcc_func.get_return_type();
@@ -397,11 +457,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 args_adjusted,
                 orig_args,
             );
-            let result = current_func.new_local(
-                self.location,
-                return_value.get_type(),
-                format!("ptrReturnValue{}", self.next_value_counter()),
-            );
+            let result = self.new_temp(current_func, self.location, return_value.get_type());
             self.block.add_assignment(self.location, result, return_value);
             result.to_rvalue()
         } else {
@@ -423,8 +479,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 self.location,
                 self.cx.context.new_call_through_ptr(self.location, func_ptr, &args),
             );
-            // Return dummy value when not having return value.
-            self.context.new_rvalue_zero(self.isize_type)
+            // Return dummy value when not having return value, unless the intrinsic adapter
+            // needs to synthesize a non-void LLVM-level result from out-parameters.
+            llvm::adjust_intrinsic_return_value(
+                self,
+                self.context.new_rvalue_zero(self.isize_type),
+                &func_name,
+                &args,
+                args_adjusted,
+                orig_args,
+            )
         }
     }
 
@@ -439,11 +503,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let return_type = self.context.new_type::<bool>();
         let current_func = self.block.get_function();
         // FIXME(antoyo): return the new_call() directly? Since the overflow function has no side-effects.
-        let result = current_func.new_local(
-            self.location,
-            return_type,
-            format!("overflowReturnValue{}", self.next_value_counter()),
-        );
+        let result = self.new_temp(current_func, self.location, return_type);
         self.block.add_assignment(
             self.location,
             result,
@@ -575,6 +635,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         default_block: Block<'gcc>,
         cases: impl ExactSizeIterator<Item = (u128, Block<'gcc>)>,
     ) {
+        // A switch with no cases is equivalent to an unconditional jump to the
+        // default block. Such a `SwitchInt` (one with only an `otherwise` target)
+        // is normally simplified into a `goto`, but `-Z mir-preserve-ub` keeps it,
+        // so it can reach here with e.g. the `bool` discriminant produced by a
+        // range-pattern comparison. `gcc_jit_block_end_with_switch` rejects a
+        // discriminant that is not of integer type, so emit a plain jump instead
+        // of a (pointless) switch.
+        if cases.len() == 0 {
+            self.block.end_with_jump(self.location, default_block);
+            return;
+        }
+
         let mut gcc_cases = vec![];
         let typ = self.val_ty(value);
         // FIXME(FractalFir): This is a workaround for a libgccjit limitation.
@@ -614,24 +686,34 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _funclet: Option<&Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        let try_block = self.current_func().new_block("try");
+        let current_func = self.current_func();
+        let try_region = current_func.new_region(self.location);
+        let try_block = try_region.new_block("try");
 
         let current_block = self.block;
         self.block = try_block;
         let call = self.call(typ, fn_attrs, fn_abi, func, args, None, instance); // FIXME(antoyo): use funclet here?
         self.block = current_block;
 
-        let return_value =
-            self.current_func().new_local(self.location, call.get_type(), "invokeResult");
+        let return_value = self.new_temp(current_func, self.location, call.get_type());
 
         try_block.add_assignment(self.location, return_value, call);
 
         try_block.end_with_jump(self.location, then);
 
-        if self.cleanup_blocks.borrow().contains(&catch) {
-            self.block.add_try_finally(self.location, try_block, catch);
+        if self.cx.landing_pads.borrow().contains(&catch) {
+            let cleanup_region = current_func.new_region(self.location);
+            self.block.add_cleanup(self.location, try_region, cleanup_region);
+            self.cx
+                .pending_cleanups
+                .borrow_mut()
+                .push(PendingCleanup { region: cleanup_region, landing_pad: catch });
         } else {
-            self.block.add_try_catch(self.location, try_block, catch);
+            let catch_region = current_func.new_region(self.location);
+            for clone in gccjit::clone_blocks(&[catch]) {
+                catch_region.add_block(clone);
+            }
+            self.block.add_try_catch(self.location, try_region, catch_region);
         }
 
         self.block.end_with_jump(self.location, then);
@@ -669,8 +751,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         if return_type == void_type {
             self.block.end_with_void_return(self.location)
         } else {
-            let return_value =
-                self.current_func().new_local(self.location, return_type, "unreachableReturn");
+            let trap = self.context.get_builtin_function("__builtin_trap");
+            self.block.add_eval(self.location, self.context.new_call(self.location, trap, &[]));
+            let return_value = self.new_temp(self.current_func(), self.location, return_type);
             self.block.end_with_return(self.location, return_value)
         }
     }
@@ -989,11 +1072,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
         let deref = ptr.dereference(self.location).to_rvalue();
-        let loaded_value = function.new_local(
-            self.location,
-            aligned_type,
-            format!("loadedValue{}", self.next_value_counter()),
-        );
+        let loaded_value = self.new_temp(function, self.location, aligned_type);
         block.add_assignment(self.location, loaded_value, deref);
         loaded_value.to_rvalue()
     }
@@ -1112,7 +1191,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let next_bb = self.append_sibling_block("repeat_loop_next");
 
         let ptr_type = start.get_type();
-        let current = self.llbb().get_function().new_local(self.location, ptr_type, "loop_var");
+        let current = self.new_temp(self.llbb().get_function(), self.location, ptr_type);
         let current_val = current.to_rvalue();
         self.assign(current, start);
 
@@ -1403,47 +1482,53 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn memcpy(
         &mut self,
         dst: RValue<'gcc>,
-        _dst_align: Align,
+        dst_align: Align,
         src: RValue<'gcc>,
-        _src_align: Align,
+        src_align: Align,
         size: RValue<'gcc>,
         flags: MemFlags,
         _tt: Option<rustc_ast::expand::typetree::FncTree>, // Autodiff TypeTrees are LLVM-only, ignored in GCC backend
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_size_t(), false);
-        let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
+        let dst = self.assume_aligned(dst, dst_align);
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
+        let src = self.assume_aligned(src, src_align);
         let memcpy = self.context.get_builtin_function("memcpy");
-        // FIXME(antoyo): handle aligns and is_volatile.
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memcpy, &[dst, src, size]),
         );
+        if flags.contains(MemFlags::VOLATILE) {
+            self.volatile_barrier(&[dst, src]);
+        }
     }
 
     fn memmove(
         &mut self,
         dst: RValue<'gcc>,
-        _dst_align: Align,
+        dst_align: Align,
         src: RValue<'gcc>,
-        _src_align: Align,
+        src_align: Align,
         size: RValue<'gcc>,
         flags: MemFlags,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_size_t(), false);
-        let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
+        let dst = self.assume_aligned(dst, dst_align);
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
+        let src = self.assume_aligned(src, src_align);
 
         let memmove = self.context.get_builtin_function("memmove");
-        // FIXME(antoyo): handle is_volatile.
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memmove, &[dst, src, size]),
         );
+        if flags.contains(MemFlags::VOLATILE) {
+            self.volatile_barrier(&[dst, src]);
+        }
     }
 
     fn memset(
@@ -1451,20 +1536,22 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         ptr: RValue<'gcc>,
         fill_byte: RValue<'gcc>,
         size: RValue<'gcc>,
-        _align: Align,
+        align: Align,
         flags: MemFlags,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
-        let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
+        let ptr = self.assume_aligned(ptr, align);
         let memset = self.context.get_builtin_function("memset");
-        // FIXME(antoyo): handle align and is_volatile.
         let fill_byte = self.context.new_cast(self.location, fill_byte, self.i32_type);
         let size = self.intcast(size, self.type_size_t(), false);
         self.block.add_eval(
             self.location,
             self.context.new_call(self.location, memset, &[ptr, fill_byte, size]),
         );
+        if flags.contains(MemFlags::VOLATILE) {
+            self.volatile_barrier(&[ptr]);
+        }
     }
 
     fn vscale(&mut self, _: Self::Type) -> Self::Value {
@@ -1478,7 +1565,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         mut else_val: RValue<'gcc>,
     ) -> RValue<'gcc> {
         let func = self.current_func();
-        let variable = func.new_local(self.location, then_val.get_type(), "selectVar");
+        let variable = self.new_temp(func, self.location, then_val.get_type());
         let then_block = func.new_block("then");
         let else_block = func.new_block("else");
         let after_block = func.new_block("after");
@@ -1500,8 +1587,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         variable.to_rvalue()
     }
 
-    fn va_arg(&mut self, _list: RValue<'gcc>, _ty: Type<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    fn va_arg(&mut self, list: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {
+        let va_list_type = self.context.new_c_type(CType::VaList);
+        let list = self.context.new_cast(self.location, list, va_list_type.make_pointer());
+        self.context.new_va_arg(self.location, list, ty)
     }
 
     #[cfg(feature = "master")]
@@ -1604,45 +1693,32 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
         // generate a try/finally instead of a try/catch for this block.
-        self.cleanup_blocks.borrow_mut().insert(self.block);
+        self.cx.landing_pads.borrow_mut().insert(self.block);
 
-        let eh_pointer_builtin =
-            self.cx.context.get_target_builtin_function("__builtin_eh_pointer");
-        let zero = self.cx.context.new_rvalue_zero(self.int_type);
-        let ptr = self.cx.context.new_call(self.location, eh_pointer_builtin, &[zero]);
-
-        let value1_type = self.u8_type.make_pointer();
-        let ptr = self.cx.context.new_cast(self.location, ptr, value1_type);
-        let value1 = ptr;
-        let value2 = zero; // FIXME(antoyo): set the proper value here (the type of exception?).
-
+        // A cleanup resumes by falling through: it never inspects the exception
+        // object.
+        let value1 = self.context.new_null(self.u8_type.make_pointer());
+        let value2 = self.context.new_rvalue_zero(self.i32_type);
         (value1, value2)
     }
 
     #[cfg(not(feature = "master"))]
     fn cleanup_landing_pad(&mut self, _pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let value1 = self
-            .current_func()
-            .new_local(self.location, self.u8_type.make_pointer(), "landing_pad0")
+            .new_temp(self.current_func(), self.location, self.u8_type.make_pointer())
             .to_rvalue();
-        let value2 =
-            self.current_func().new_local(self.location, self.i32_type, "landing_pad1").to_rvalue();
+        let value2 = self.new_temp(self.current_func(), self.location, self.i32_type).to_rvalue();
         (value1, value2)
     }
 
     fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) {
-        // FIXME(antoyo): generate the correct landing pad
-        self.cleanup_landing_pad(pers_fn);
+        self.set_personality_fn(pers_fn);
     }
 
     #[cfg(feature = "master")]
-    fn resume(&mut self, exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
-        let exn_type = exn0.get_type();
-        let exn = self.context.new_cast(self.location, exn0, exn_type);
-        let unwind_resume = self.context.get_target_builtin_function("__builtin_unwind_resume");
-        self.llbb()
-            .add_eval(self.location, self.context.new_call(self.location, unwind_resume, &[exn]));
-        self.unreachable();
+    fn resume(&mut self, _exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
+        // End the cleanup by falling off the end of its region body.
+        self.block.end_with_fallthrough(self.location);
     }
 
     #[cfg(not(feature = "master"))]
@@ -1694,7 +1770,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: since success contains the call to the intrinsic, it must be added to the basic block before
         // expected so that we store expected after the call.
-        let success_var = self.current_func().new_local(self.location, self.bool_type, "success");
+        let success_var = self.new_temp(self.current_func(), self.location, self.bool_type);
         self.llbb().add_assignment(self.location, success_var, success);
 
         (expected.to_rvalue(), success_var.to_rvalue())
@@ -1783,34 +1859,34 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         funclet: Option<&Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        // FIXME(antoyo): remove when having a proper API.
-        let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
-        let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
-            // FIXME(antoyo): remove when the API supports a different type for functions.
-            let func: Function<'gcc> = self.cx.rvalue_as_function(func);
-            self.function_call(func, args, funclet)
-        } else {
-            // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(typ, fn_abi, func, args, funclet)
-        };
-        if let Some(_fn_abi) = fn_abi {
-            // FIXME(bjorn3): Apply function attributes
-        }
-        call
+        self.build_call(typ, fn_abi, func, args, funclet, false)
     }
 
     fn tail_call(
         &mut self,
-        _llty: Self::Type,
+        llty: Self::Type,
         _fn_attrs: Option<&CodegenFnAttrs>,
-        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        _llfn: Self::Value,
-        _args: &[Self::Value],
-        _funclet: Option<&Self::Funclet>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) {
-        // FIXME: implement support for explicit tail calls like rustc_codegen_llvm.
-        self.tcx.dcx().emit_fatal(diagnostics::ExplicitTailCallsUnsupported);
+        // `emit_call` returns a bare call for here, it has not been assigned or passed to add_eval.
+        let call = self.build_call(llty, Some(fn_abi), llfn, args, funclet, true);
+        call.set_require_tail_call(true);
+
+        let return_type = self.current_func().get_return_type();
+        let void_type = self.context.new_type::<()>();
+
+        if return_type == void_type {
+            // For a void return the call is emitted as its own statement, immediately
+            // followed by a void return, so the tail call sits in tail position.
+            self.llbb().add_eval(self.location, call);
+            self.ret_void();
+        } else {
+            self.ret(call)
+        }
     }
 
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
@@ -2395,11 +2471,31 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.bitcast_if_needed(res, result_type)
     }
 
+    /// Create a temporary variable.
+    ///
+    /// GCC will use more stack space with a local variable than with a temporary variable in debug mode,
+    /// so in order to avoid having the stack probe test fail in CI, we avoid creating local variables for temporaries.
+    pub fn new_temp(
+        &self,
+        function: Function<'gcc>,
+        location: Option<Location<'gcc>>,
+        typ: Type<'gcc>,
+    ) -> LValue<'gcc> {
+        #[cfg(feature = "master")]
+        {
+            function.new_temp(location, typ)
+        }
+        #[cfg(not(feature = "master"))]
+        {
+            function.new_local(location, typ, format!("temp{}", self.next_value_counter()))
+        }
+    }
+
     // GCC doesn't like deeply nested expressions.
     // By assigning intermediate expressions to a variable, this allow us to avoid deeply nested
     // expressions and GCC will use much less RAM.
     fn assign_to_var(&self, value: RValue<'gcc>) -> RValue<'gcc> {
-        let var = self.current_func().new_local(self.location, value.get_type(), "opResult");
+        let var = self.new_temp(self.current_func(), self.location, value.get_type());
         self.llbb().add_assignment(self.location, var, value);
         var.to_rvalue()
     }
