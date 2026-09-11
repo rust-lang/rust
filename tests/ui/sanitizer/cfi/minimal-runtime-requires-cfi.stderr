@@ -1,0 +1,6 @@
+error: `-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer=cfi`
+
+error: `-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer-cfi-recover` or `-Zsanitizer-cfi-diag`
+
+error: aborting due to 2 previous errors
+
