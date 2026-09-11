@@ -1061,7 +1061,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_rvalue(
         &mut self,
-        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
@@ -2100,7 +2099,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     ) {
         self.simplify_place_projection(lhs, location);
 
-        let value = self.simplify_rvalue(lhs, rvalue, location);
+        let value = self.simplify_rvalue(rvalue, location);
         if let Some(value) = value {
             // FIXME: Is it correct to make these retagging assignments?
             if let Some(const_) = self.try_as_constant(value) {
