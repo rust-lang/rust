@@ -576,7 +576,7 @@ pub trait MaybeDef: Copy {
     #[inline]
     fn assoc_parent<'tcx>(self, tcx: &impl HasTyCtxt<'tcx>) -> Option<DefId> {
         match self.opt_def(tcx) {
-            Some((DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, id)) => tcx.tcx().opt_parent(id),
+            Some((DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, id)) => tcx.tcx().opt_parent(id),
             _ => None,
         }
     }
