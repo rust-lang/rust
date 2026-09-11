@@ -401,7 +401,7 @@ impl<'a> Parser<'a> {
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
                         // Inside parenthesized type arguments, we want types only, not names.
                         let mode = FnParseMode {
-                            context: FnContext::Free,
+                            context: FnContext::ParenthesizedArgumentList,
                             req_name: |_, _| false,
                             req_body: false,
                         };

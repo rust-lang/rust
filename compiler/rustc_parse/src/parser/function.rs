@@ -103,6 +103,8 @@ pub(crate) enum FnContext {
     Free,
     /// A Function Pointer Type `fn(..)`.
     FunctionPtrType,
+    /// A Parenthesized Argument List `impl Fn(...)`
+    ParenthesizedArgumentList,
     /// A Trait context.
     Trait,
     /// An Impl block.
