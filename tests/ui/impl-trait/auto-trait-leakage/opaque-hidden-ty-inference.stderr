@@ -6,7 +6,7 @@ LL |     let opaque = require_auto(define::<T>());
    |                  |
    |                  required by a bound introduced by this call
    |
-  ::: $DIR/auxiliary/opaque-auto-trait-leakage.rs:14:29
+  ::: $DIR/auxiliary/opaque-auto-trait-leakage.rs:20:29
    |
 LL |     WaddupGamers(None::<T>, || ())
    |                             -- the expected closure
@@ -15,7 +15,7 @@ LL |     WaddupGamers(None::<T>, || ())
                  found type `!`
    = note: required for `WaddupGamers<T, {closure@dep::define<T>::{closure#0}}>` to implement `Unpin`
 note: required because it appears within the type `impl Sized`
-  --> $DIR/auxiliary/opaque-auto-trait-leakage.rs:13:23
+  --> $DIR/auxiliary/opaque-auto-trait-leakage.rs:19:23
    |
 LL | pub fn define<T>() -> impl Sized {
    |                       ^^^^^^^^^^

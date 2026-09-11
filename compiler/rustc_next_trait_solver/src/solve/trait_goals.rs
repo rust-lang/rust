@@ -5,7 +5,7 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::{
-    AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, MaybeInfo,
+    AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, ExternalConstraintsData, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunNonErased,
     RerunReason, RerunResultExt, SizedTraitKind,
 };
@@ -1286,9 +1286,6 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = self.cx();
         let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-        if self.opaque_accesses.might_rerun() {
-            match self.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)? {}
-        }
 
         for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
             if item_bound.as_trait_clause().is_some_and(|b| b.def_id() == goal.predicate.def_id()) {
@@ -1303,25 +1300,49 @@ where
                 goal.with(cx, goal.predicate.with_replaced_self_ty(cx, hidden_ty)),
             )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        });
+        })?;
 
-        let opaque_types_may_leak = match self.typing_mode() {
-            TypingMode::PostTypeckUntilBorrowck { .. } => false,
-            TypingMode::Coherence
-            | TypingMode::Typeck { .. }
-            | TypingMode::PostBorrowck { .. }
-            | TypingMode::Reflection
-            | TypingMode::PostAnalysis
-            | TypingMode::Codegen
-            | TypingMode::ErasedNotCoherence(MayBeErased) => true,
-        };
-
-        match candidate {
-            Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
-            Ok(candidate) if !opaque_types_may_leak => Ok(candidate),
-            Ok(_) => self.forced_ambiguity(MaybeInfo::AMBIGUOUS),
-            Err(err) => Err(err),
+        // Proving an auto trait for the hidden type must not constrain inference
+        // variables, as that would leak the hidden type itself.
+        if !candidate.result.value.var_values.is_identity_modulo_regions() {
+            return self.forced_ambiguity(MaybeInfo::AMBIGUOUS);
         }
+
+        let ExternalConstraintsData {
+            region_constraints: _,
+            ref opaque_types,
+            ref normalization_nested_goals,
+        } = *candidate.result.value.external_constraints;
+        debug_assert!(normalization_nested_goals.is_empty());
+
+        // New defining uses may leak an opaque's hidden type into the caller's
+        // inference state. This is safe after typeck, where hidden types are already
+        // fixed and only regions are inferred, but not during typeck while hidden
+        // types may still contain inference variables.
+        if !opaque_types.is_empty() {
+            match self.typing_mode() {
+                // We're inferring regions of opaque types, but
+                // the type itself is already fully known, no way
+                // to leak the hidden type.
+                TypingMode::PostTypeckUntilBorrowck { .. } => {}
+                // We're inferring the hidden type of opaques, could
+                // leak types through it.
+                TypingMode::Typeck { .. } => {
+                    return self.forced_ambiguity(MaybeInfo::AMBIGUOUS);
+                }
+                // we never add new uses to the opaque type storage
+                TypingMode::Coherence
+                | TypingMode::PostBorrowck { .. }
+                | TypingMode::Reflection
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen
+                | TypingMode::ErasedNotCoherence(MayBeErased) => {
+                    return self.forced_ambiguity(MaybeInfo::AMBIGUOUS);
+                }
+            }
+        }
+
+        Ok(candidate)
     }
 
     // Return `Some` if there is an impl (built-in or user provided) that may
