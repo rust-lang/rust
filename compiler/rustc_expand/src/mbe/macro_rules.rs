@@ -447,7 +447,7 @@ fn expand_macro<'cx, 'a: 'cx>(
     }
 
     // Track nothing for the best performance.
-    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut NoopTracker);
+    let try_success_result = try_match_macro(psess, &arg, rules, &mut NoopTracker);
 
     match try_success_result {
         Ok((rule_index, rule, named_matches)) => {
@@ -606,7 +606,6 @@ pub(super) enum CanRetry {
 #[instrument(level = "debug", skip(psess, arg, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     arg: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
