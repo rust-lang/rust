@@ -3012,6 +3012,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false,
                 ));
             }
+            (
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, inner),
+                &ty::Ref(_, exp_inner, hir::Mutability::Mut),
+                &ty::Ref(_, check_inner, hir::Mutability::Not),
+            ) if {
+                let new_mut_ref =
+                    Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, check_inner);
+                self.may_coerce(new_mut_ref, expected)
+                    || self.can_eq(self.param_env, check_inner, exp_inner)
+            } =>
+            {
+                let inner_span = inner.span.find_ancestor_inside(sp).unwrap_or(inner.span);
+                if sp.contains(inner_span) && sm.is_span_accessible(inner_span) {
+                    let borrow_span = sp.until(inner_span);
+                    return Some((
+                        vec![(borrow_span, "&mut ".to_string())],
+                        "change the borrow to be mutable".to_string(),
+                        Applicability::MachineApplicable,
+                        false,
+                    ));
+                }
+            }
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind

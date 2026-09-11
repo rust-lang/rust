@@ -1,0 +1,43 @@
+﻿error[E0308]: mismatched types
+  --> $DIR/suggest-changing-argument-mutability.rs:10:15
+   |
+LL |     takes_mut(&s);
+   |     --------- ^^ types differ in mutability
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut String`
+                      found reference `&String`
+note: function defined here
+  --> $DIR/suggest-changing-argument-mutability.rs:1:4
+   |
+LL | fn takes_mut(_: &mut String) {}
+   |    ^^^^^^^^^ ------------------
+help: change the borrow to be mutable
+   |
+LL |     takes_mut(&mut s);
+   |                +++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-changing-argument-mutability.rs:14:14
+   |
+LL |     S.mutate(&val);
+   |       ------ ^^^^ types differ in mutability
+   |       |
+   |       arguments to this method are incorrect
+   |
+   = note: expected mutable reference `&mut i32`
+                      found reference `&i32`
+note: method defined here
+  --> $DIR/suggest-changing-argument-mutability.rs:5:8
+   |
+LL |     fn mutate(&mut self, _: &mut i32) {}
+   |        ^^^^^^ -----------------------
+help: change the borrow to be mutable
+   |
+LL |     S.mutate(&mut val);
+   |               +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
