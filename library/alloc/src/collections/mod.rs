@@ -9,6 +9,8 @@
 pub mod binary_heap;
 #[cfg(not(no_global_oom_handling))]
 mod btree;
+#[cfg(not(test))]
+pub mod fallible;
 #[cfg(not(no_global_oom_handling))]
 pub mod linked_list;
 #[cfg(not(no_global_oom_handling))]
