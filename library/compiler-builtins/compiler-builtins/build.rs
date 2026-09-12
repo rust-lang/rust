@@ -551,13 +551,57 @@ mod c {
             sources.extend(&[("__aarch64_have_lse_atomics", cpu_model_src)]);
         }
 
+        let is_clang_cl = build.get_compiler().is_like_clang();
+
         let mut added_sources = HashSet::new();
+        let mut msvc_objs: Vec<(String, PathBuf)> = Vec::new();
+
         for (sym, src) in sources.map.iter() {
             let src = src_dir.join(src);
+
             if !link_against_prebuilt_rt && added_sources.insert(src.clone()) {
-                build.file(&src);
+                if cfg.target_env == "msvc" {
+                    let stem = src.file_stem().unwrap().to_string_lossy().into_owned();
+
+                    let mut per_file_build = build.clone();
+                    per_file_build.file(&src);
+
+                    if is_clang_cl {
+                        per_file_build.flag("-Xclang");
+                        per_file_build.flag(&format!("-object-file-name={stem}.obj"));
+
+                        per_file_build.flag("-gno-codeview-command-line");
+
+                        // Remap __FILE__ and other predefined source-path macros.
+                        per_file_build.flag("-Xclang");
+                        per_file_build.flag(&format!("-fmacro-prefix-map={}=.", root.display()));
+
+                        if let Some(maps) = env::var_os("RUSTC_DEBUGINFO_MAP")
+                            && let Some(maps_str) = maps.to_str()
+                        {
+                            for map in maps_str.split('\t').filter(|map| !map.is_empty()) {
+                                per_file_build.flag("-Xclang");
+                                per_file_build.flag(&format!("-fdebug-prefix-map={map}"));
+
+                                // __FILE__ and other predefined source-path macros.
+                                per_file_build.flag("-Xclang");
+                                per_file_build.flag(&format!("-fmacro-prefix-map={map}"));
+                            }
+                        }
+                    }
+
+                    let compiled = per_file_build.compile_intermediates();
+
+                    for obj in compiled {
+                        msvc_objs.push((format!("{stem}.obj"), obj));
+                    }
+                } else {
+                    build.file(&src);
+                }
+
                 println!("cargo:rerun-if-changed={}", src.display());
             }
+
             println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
         }
 
@@ -578,6 +622,12 @@ mod c {
                     lib.to_str().unwrap()
                 );
             }
+        } else if cfg.target_env == "msvc" {
+            let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+            build_archive_with_bare_names(build, &msvc_objs, &out_dir.join("libcompiler-rt.a"));
+
+            println!("cargo:rustc-link-lib=static=compiler-rt");
+            println!("cargo:rustc-link-search=native={}", out_dir.display());
         } else {
             build.compile("libcompiler-rt.a");
         }
@@ -638,5 +688,60 @@ mod c {
                 }
             }
         }
+    }
+    fn build_archive_with_bare_names(
+        build: &cc::Build,
+        objs: &[(String, PathBuf)],
+        out_path: &Path,
+    ) {
+        let out_dir = out_path.parent().unwrap();
+        let mut objs = objs.to_vec();
+        objs.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let mut member_names = Vec::with_capacity(objs.len());
+
+        // Give each intermediate object a deterministic filename.
+        for (member_name, obj_path) in objs {
+            let member_path = out_dir.join(&member_name);
+
+            if obj_path != member_path {
+                let _ = fs::remove_file(&member_path);
+                fs::rename(&obj_path, &member_path).expect("failed to rename compiler-rt object");
+            }
+
+            member_names.push(member_name);
+        }
+
+        let _ = fs::remove_file(out_path);
+
+        let mut archiver = build.get_archiver();
+        let is_llvm_ar = archiver.get_program().to_string_lossy().contains("llvm-ar");
+
+        if is_llvm_ar {
+            archiver
+                .env("ZERO_AR_DATE", "1")
+                .arg("cq")
+                .arg(out_path.file_name().unwrap());
+        } else {
+            let mut out = std::ffi::OsString::from("-out:");
+            out.push(out_path.file_name().unwrap());
+            archiver.arg(out);
+        }
+
+        let status = archiver
+            .args(&member_names)
+            .current_dir(out_dir)
+            .status()
+            .expect("failed to execute archiver");
+
+        assert!(status.success(), "failed to build compiler-rt archive");
+
+        // MSVC linking may look for compiler-rt.lib even though we construct
+        // libcompiler-rt.a.
+        let lib_path = out_dir.join("compiler-rt.lib");
+        let _ = fs::remove_file(&lib_path);
+        fs::hard_link(out_path, &lib_path)
+            .or_else(|_| fs::copy(out_path, &lib_path).map(|_| ()))
+            .expect("failed to create compiler-rt.lib");
     }
 }
