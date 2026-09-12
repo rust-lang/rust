@@ -1,0 +1,30 @@
+error[E0283]: type annotations needed
+  --> $DIR/next-solver-alias-relate-ambiguity-162559.rs:45:5
+   |
+LL |     use_host(getter);
+   |     ^^^^^^^^ cannot infer type of the type parameter `D2` declared on the function `use_host`
+   |
+   = note: the type must implement `HasData`
+   = note: cannot satisfy `for<'a> <D as HasData>::Data<'a> == _`
+   = note: cannot satisfy `for<'a> <D as HasData>::Data<'a>: Tr`
+note: required by a bound in `use_host`
+  --> $DIR/next-solver-alias-relate-ambiguity-162559.rs:35:17
+   |
+LL | fn use_host<D2: HasData>(f: fn(&mut ()) -> D2::Data<'_>)
+   |                 ^^^^^^^ required by this bound in `use_host`
+note: required by a bound in `use_host`
+  --> $DIR/next-solver-alias-relate-ambiguity-162559.rs:37:27
+   |
+LL | fn use_host<D2: HasData>(f: fn(&mut ()) -> D2::Data<'_>)
+   |    -------- required by a bound in this function
+LL | where
+LL |     for<'a> D2::Data<'a>: Tr,
+   |                           ^^ required by this bound in `use_host`
+help: consider specifying a concrete type for the type parameter `D2`
+   |
+LL |     use_host::</* Type */>(getter);
+   |             ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.
