@@ -160,8 +160,8 @@ pub(crate) fn rewrite_chain(
 
 #[derive(Debug)]
 enum CommentPosition {
-    Back,
-    Top,
+    SameLine,
+    DifferentLine,
 }
 
 /// Information about an expression in a chain.
@@ -204,6 +204,7 @@ enum ChainItemKind {
     Await,
     Use,
     Yield,
+    /// A comment within a chain, e.g. `parent. item /* comment */.rest`.
     Comment(String, CommentPosition),
 }
 
@@ -436,7 +437,7 @@ impl Chain {
                 children.push(ChainItem::comment(
                     post_comment_span,
                     trimmed_snippet.trim().to_owned(),
-                    CommentPosition::Back,
+                    CommentPosition::SameLine,
                 ));
                 *prev_span_end = post_comment_span.hi();
             }
@@ -475,7 +476,7 @@ impl Chain {
                         children.push(ChainItem::comment(
                             pre_comment_span,
                             pre_comment.to_owned(),
-                            CommentPosition::Top,
+                            CommentPosition::DifferentLine,
                         ));
                     }
                 }
@@ -838,8 +839,10 @@ impl<'a> ChainFormatterShared<'a> {
 
         for (rewrite, chain_item) in iter {
             match chain_item.kind {
-                ChainItemKind::Comment(_, CommentPosition::Back) => result.push(' '),
-                ChainItemKind::Comment(_, CommentPosition::Top) => result.push_str(&connector),
+                ChainItemKind::Comment(_, CommentPosition::SameLine) => result.push(' '),
+                ChainItemKind::Comment(_, CommentPosition::DifferentLine) => {
+                    result.push_str(&connector)
+                }
                 _ => result.push_str(&connector),
             }
             result.push_str(rewrite);
