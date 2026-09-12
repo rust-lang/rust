@@ -714,8 +714,6 @@ unsafe extern "C" {
 }
 #[repr(C)]
 pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
-#[repr(C)]
-pub(crate) struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type TargetMachine;
 }
@@ -1631,11 +1629,6 @@ unsafe extern "C" {
     /// Writes a module to the specified path. Returns 0 on success.
     pub(crate) fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
-    /// Creates a legacy pass manager -- only used for final codegen.
-    pub(crate) fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
-
-    pub(crate) fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
-
     pub(crate) fn LLVMGetHostCPUFeatures() -> *mut c_char;
 
     pub(crate) fn LLVMDisposeMessage(message: *mut c_char);
@@ -2410,20 +2403,14 @@ unsafe extern "C" {
         LargeDataThreshold: u64,
     ) -> *mut TargetMachine;
 
-    pub(crate) fn LLVMRustAddLibraryInfo<'a>(
-        T: &TargetMachine,
-        PM: &PassManager<'a>,
-        M: &'a Module,
-        DisableSimplifyLibCalls: bool,
-    );
     pub(crate) fn LLVMRustWriteOutputFile<'a>(
         T: &'a TargetMachine,
-        PM: *mut PassManager<'a>,
         M: &'a Module,
         Output: *const c_char,
         DwoOutput: *const c_char,
         FileType: FileType,
         VerifyIR: bool,
+        DisableSimplifyLibCalls: bool,
     ) -> LLVMRustResult;
     pub(crate) fn LLVMRustOptimize<'a>(
         M: &'a Module,

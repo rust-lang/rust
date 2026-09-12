@@ -71,17 +71,14 @@ fn write_output_file<'ll>(
         std::ptr::null()
     };
     let result = unsafe {
-        let pm = llvm::LLVMCreatePassManager();
-        llvm::LLVMAddAnalysisPasses(target, pm);
-        llvm::LLVMRustAddLibraryInfo(target, pm, m, no_builtins);
         llvm::LLVMRustWriteOutputFile(
             target,
-            pm,
             m,
             output_c.as_ptr(),
             dwo_output_ptr,
             file_type,
             verify_llvm_ir,
+            no_builtins,
         )
     };
 
