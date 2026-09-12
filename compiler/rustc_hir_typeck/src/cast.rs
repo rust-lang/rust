@@ -32,7 +32,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, ExprKind, expr_needs_parens, LangItem};
+use rustc_hir::{self as hir, ExprKind, LangItem, expr_needs_parens};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
@@ -211,7 +211,8 @@ fn make_invalid_casting_error<'a, 'tcx>(
 
 fn is_string_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     let ty = ty.peel_refs();
-    ty.is_str() || matches!(ty.kind(), ty::Adt(adt, _) if tcx.is_lang_item(adt.did(), LangItem::String))
+    ty.is_str()
+        || matches!(ty.kind(), ty::Adt(adt, _) if tcx.is_lang_item(adt.did(), LangItem::String))
 }
 
 /// If a cast from `from_ty` to `to_ty` is valid, returns a `Some` containing the kind
@@ -299,9 +300,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                 if self.cast_ty.is_numeric() {
                     let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-                    
+
                     if is_string_like(fcx.tcx, expr_ty)
-                        && !matches!(self.expr.kind, ExprKind::AddrOf(_, _, _) | ExprKind::Unary(_, _))
+                        && !matches!(
+                            self.expr.kind,
+                            ExprKind::AddrOf(_, _, _) | ExprKind::Unary(_, _)
+                        )
                         && !expr_needs_parens(self.expr)
                     {
                         let target_type_str = self.cast_ty.to_string();
@@ -607,7 +611,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
 
                         if is_string_like(fcx.tcx, expr_ty)
-                            && !matches!(self.expr.kind, ExprKind::AddrOf(_, _, _) | ExprKind::Unary(_, _))                      
+                            && !matches!(
+                                self.expr.kind,
+                                ExprKind::AddrOf(_, _, _) | ExprKind::Unary(_, _)
+                            )
                             && !expr_needs_parens(self.expr)
                         {
                             let target_ty_str = self.cast_ty.to_string();
@@ -620,7 +627,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             );
                         }
                     }
-               } else {
+                } else {
                     err.span_label(self.span, "invalid cast");
                 }
 
