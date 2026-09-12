@@ -119,11 +119,11 @@ impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
 pub(super) fn expand_cfg_select<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(
         match parse_cfg_select(
-            &mut ecx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts)),
+            &mut ecx.new_parser_from_tts(tts),
             ecx.sess,
             Some(ecx.ecfg.features),
             ecx.current_expansion.lint_node_id,

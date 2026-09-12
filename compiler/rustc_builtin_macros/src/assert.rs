@@ -2,7 +2,7 @@ mod context;
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
@@ -18,7 +18,7 @@ use crate::edition_panic::use_panic_2021;
 pub(crate) fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     span: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
@@ -59,7 +59,7 @@ pub(crate) fn expand_assert<'cx>(
                 args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(call_site_span),
                     delim: Delimiter::Parenthesis,
-                    tokens: ArenaTokenStream::from_stream(&tokens),
+                    tokens,
                 }),
             })),
         );
@@ -96,7 +96,7 @@ pub(crate) fn expand_assert<'cx>(
 
 struct Assert {
     cond_expr: Box<Expr>,
-    custom_message: Option<TokenStream>,
+    custom_message: Option<ArenaTokenStream>,
 }
 
 // if !{ ... } { ... } else { ... }
@@ -110,8 +110,8 @@ fn expr_if_not(
     cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
 }
 
-fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {
-    let mut parser = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&stream));
+fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: ArenaTokenStream) -> PResult<'a, Assert> {
+    let mut parser = cx.new_parser_from_tts(stream);
 
     if parser.token == token::Eof {
         return Err(cx.dcx().create_err(diagnostics::AssertRequiresBoolean { span: sp }));
@@ -157,7 +157,7 @@ fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<
     Ok(Assert { cond_expr, custom_message })
 }
 
-fn parse_custom_message(parser: &mut Parser<'_>) -> Option<TokenStream> {
+fn parse_custom_message(parser: &mut Parser<'_>) -> Option<ArenaTokenStream> {
     let ts = parser.parse_tokens();
     if !ts.is_empty() { Some(ts) } else { None }
 }

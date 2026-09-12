@@ -29,9 +29,9 @@ pub use path::PathStyle;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
-use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree};
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree};
 use rustc_ast::tokenstream::{
-    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
+    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenTree, WithTokens,
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -723,21 +723,21 @@ impl<'a> Parser<'a> {
     fn check_const_closure(&self) -> bool {
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match &t.kind {
-            // async closures do not work with const closures, so we do not parse that here.
-            token::Ident(kw::Move | kw::Use | kw::Static, IdentIsRaw::No)
-            | token::OrOr
-            | token::Or => true,
-            _ => false,
-        })
+                // async closures do not work with const closures, so we do not parse that here.
+                token::Ident(kw::Move | kw::Use | kw::Static, IdentIsRaw::No)
+                | token::OrOr
+                | token::Or => true,
+                _ => false,
+            })
     }
 
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-            token::OpenBrace => true,
-            token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Block)) => true,
-            _ => false,
-        })
+                token::OpenBrace => true,
+                token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Block)) => true,
+                _ => false,
+            })
     }
 
     /// Checks to see if the next token is either `+` or `+=`.
@@ -1241,7 +1241,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         }
-            .map(|(kind, span)| CoroutineMarker::new(kind, span))
+        .map(|(kind, span)| CoroutineMarker::new(kind, span))
     }
 
     /// Parses fn unsafety: `unsafe`, `safe` or nothing.
@@ -1392,7 +1392,10 @@ impl<'a> Parser<'a> {
             DelimArgs {
                 dspan: data.span,
                 delim: data.delimiter,
-                tokens: ArenaTokenStream::separate_delimited_inner(bounds, &self.token_cursor.stream),
+                tokens: ArenaTokenStream::separate_delimited_inner(
+                    bounds,
+                    &self.token_cursor.stream,
+                ),
             }
         })
     }
@@ -1443,18 +1446,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_tokens(&mut self) -> TokenStream {
-        let mut result = Vec::new();
+    pub fn parse_tokens(&mut self) -> ArenaTokenStream {
+        let mut builder = ArenaTokenStreamBuilder::default();
         loop {
             if self.token.kind.is_close_delim_or_eof() {
                 break;
             } else {
-                result.push(self.parse_token_tree());
+                builder.push_token_tree(
+                    &self.parse_token_tree().to_token_tree(&self.token_cursor.stream),
+                );
             }
         }
-        TokenStream::new(
-            result.into_iter().map(|tt| tt.to_token_tree(&self.token_cursor.stream)).collect(),
-        )
+        builder.finish()
     }
 
     /// Evaluates the closure with restrictions in place.

@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{join_path_idents, token};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{
@@ -31,10 +30,10 @@ use crate::util::{
 pub(crate) fn expand_line(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    check_zero_tts(cx, sp, tts, "line!");
+    check_zero_tts(cx, sp, &tts, "line!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
@@ -46,10 +45,10 @@ pub(crate) fn expand_line(
 pub(crate) fn expand_column(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    check_zero_tts(cx, sp, tts, "column!");
+    check_zero_tts(cx, sp, &tts, "column!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
@@ -61,10 +60,10 @@ pub(crate) fn expand_column(
 pub(crate) fn expand_file(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    check_zero_tts(cx, sp, tts, "file!");
+    check_zero_tts(cx, sp, &tts, "file!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
@@ -80,10 +79,10 @@ pub(crate) fn expand_file(
 pub(crate) fn expand_stringify(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    let s = pprust::tts_to_string(&ArenaTokenStream::from_stream(&tts));
+    let s = pprust::tts_to_string(&tts);
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&s))))
 }
 
@@ -91,10 +90,10 @@ pub(crate) fn expand_stringify(
 pub(crate) fn expand_mod(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    check_zero_tts(cx, sp, tts, "module_path!");
+    check_zero_tts(cx, sp, &tts, "module_path!");
     let mod_path = &cx.current_expansion.module.mod_path;
     let string = join_path_idents(mod_path);
 
@@ -107,7 +106,7 @@ pub(crate) fn expand_mod(
 pub(crate) fn expand_include<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let sp = cx.with_def_site_ctxt(sp);
     let ExpandResult::Ready(mac) = get_single_str_from_tts(cx, sp, tts, "include!") else {
@@ -205,7 +204,7 @@ pub(crate) fn expand_include<'cx>(
 pub(crate) fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
     let ExpandResult::Ready(mac) = get_single_str_spanned_from_tts(cx, sp, tts, "include_str!")
@@ -239,7 +238,7 @@ pub(crate) fn expand_include_str(
 pub(crate) fn expand_include_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
     let ExpandResult::Ready(mac) = get_single_str_spanned_from_tts(cx, sp, tts, "include_bytes!")

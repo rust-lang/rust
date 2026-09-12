@@ -1,4 +1,4 @@
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::{Span, kw};
 
@@ -7,13 +7,13 @@ use crate::diagnostics;
 pub(crate) fn expand_trace_macros(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tt: TokenStream,
+    tt: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
-    let mut iter = tt.iter();
+    let mut iter = tt.iter_top_level_trees();
     let mut err = false;
     let value = match iter.next() {
-        Some(TokenTree::Token(token, _)) if token.is_keyword(kw::True) => true,
-        Some(TokenTree::Token(token, _)) if token.is_keyword(kw::False) => false,
+        Some(ArenaTokenTree::Token(token, _)) if token.is_keyword(kw::True) => true,
+        Some(ArenaTokenTree::Token(token, _)) if token.is_keyword(kw::False) => false,
         _ => {
             err = true;
             false
