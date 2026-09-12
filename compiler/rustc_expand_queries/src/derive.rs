@@ -1,5 +1,4 @@
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::ExtCtxt;
 use rustc_middle::ty::{TyCtxt, tls};
 use rustc_proc_macro as pm;
@@ -54,13 +53,13 @@ scoped_tls::scoped_thread_local!(static DERIVE_EXPAND_CTX: QueryDeriveExpandCtx)
 
 pub(crate) fn expand_derive_macro_cached(
     invoc_id: LocalExpnId,
-    input: TokenStream,
+    input: ArenaTokenStream,
     ecx: &mut ExtCtxt<'_>,
     client: DeriveClient,
-) -> Result<TokenStream, ()> {
+) -> Result<ArenaTokenStream, ()> {
     tls::with(|tcx| {
         let input = &*tcx.arena.alloc(input);
-        let key: (LocalExpnId, &TokenStream) = (invoc_id, input);
+        let key: (LocalExpnId, &ArenaTokenStream) = (invoc_id, input);
 
         QueryDeriveExpandCtx::enter(ecx, client, move || tcx.derive_macro_expansion(key).cloned())
     })
@@ -69,20 +68,15 @@ pub(crate) fn expand_derive_macro_cached(
 /// Provide a query for computing the output of a derive macro.
 pub(crate) fn derive_macro_expansion<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (LocalExpnId, &'tcx TokenStream),
-) -> Result<&'tcx TokenStream, ()> {
+    key: (LocalExpnId, &'tcx ArenaTokenStream),
+) -> Result<&'tcx ArenaTokenStream, ()> {
     let (invoc_id, input) = key;
 
     // Make sure that we invalidate the query when the crate defining the proc macro changes
     let _ = tcx.crate_hash(invoc_id.expn_data().macro_def_id.unwrap().krate);
 
     QueryDeriveExpandCtx::with(|ecx, client| {
-        rustc_expand::proc_macro::expand_derive_macro(
-            invoc_id,
-            ArenaTokenStream::from_stream(input),
-            ecx,
-            client,
-        )
-        .map(|ts| &*tcx.arena.alloc(ts))
+        rustc_expand::proc_macro::expand_derive_macro(invoc_id, input.clone(), ecx, client)
+            .map(|ts| &*tcx.arena.alloc(ts))
     })
 }
