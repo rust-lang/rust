@@ -36,13 +36,23 @@ fn test_case_mapping(
     let mut start = '\u{80}';
     for &(key, val) in ranges {
         for c in start..key {
-            assert_eq!(lookup(c), fallback(c), "{c:?}");
+            assert_eq!(lookup(c), fallback(c), "Reached 1: {:#x?} {:#x?}", lookup(c), fallback(c));
         }
-        assert_eq!(lookup(key), val, "{key:?}");
+        print!("Lookup(key) ");
+        for c in &lookup(key) {
+		print!("{} ", c.escape_unicode());
+	}
+	println!();
+	print!("Val ");
+        for c in &val {
+		print!("{} ", c.escape_unicode());
+	}
+	println!();
+        assert_eq!(lookup(key), val, "Reached 2: {:#x?} {:#x?}", lookup(key), val);
         start = char::from_u32(key as u32 + 1).unwrap();
     }
     for c in start..=char::MAX {
-        assert_eq!(lookup(c), fallback(c), "{c:?}");
+        assert_eq!(lookup(c), fallback(c), "Reached 3: {:#x?} {:#x?}", lookup(c), fallback(c));
     }
 }
 
