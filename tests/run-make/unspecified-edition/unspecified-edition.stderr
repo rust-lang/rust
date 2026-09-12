@@ -1,0 +1,2 @@
+note: `--edition` is unspecified, defaulting to `2015` while the latest is `2024`; it must be one of: <2015|2018|2021|2024|future>
+
