@@ -348,7 +348,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )));
             } else if let RibKind::Block(Some(module)) = rib.kind
                 && let Ok(binding) = self.cm_mut().resolve_ident_in_scope_set(
-                    ident,
+                    orig_ident,
                     ScopeSet::Module(ns, module.to_module()),
                     parent_scope,
                     finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
