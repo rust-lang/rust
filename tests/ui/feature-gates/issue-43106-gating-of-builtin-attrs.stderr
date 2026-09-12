@@ -284,7 +284,7 @@ warning: the `link_section` attribute cannot be used on crates
 LL | #![link_section = ",1800"]
    |    ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on crates
@@ -876,7 +876,7 @@ warning: the `link_section` attribute cannot be used on modules
 LL | #[link_section = ",1800"]
    |   ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `link_section` attribute cannot be used on modules
@@ -885,7 +885,7 @@ warning: the `link_section` attribute cannot be used on modules
 LL |     mod inner { #![link_section=",1800"] }
    |                    ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `link_section` attribute cannot be used on structs
@@ -894,7 +894,7 @@ warning: the `link_section` attribute cannot be used on structs
 LL |     #[link_section = ",1800"] struct S;
    |       ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `link_section` attribute cannot be used on type aliases
@@ -903,7 +903,7 @@ warning: the `link_section` attribute cannot be used on type aliases
 LL |     #[link_section = ",1800"] type T = S;
    |       ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `link_section` attribute cannot be used on inherent impl blocks
@@ -912,7 +912,7 @@ warning: the `link_section` attribute cannot be used on inherent impl blocks
 LL |     #[link_section = ",1800"] impl S { }
    |       ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `link_section` attribute cannot be used on traits
@@ -921,7 +921,7 @@ warning: the `link_section` attribute cannot be used on traits
 LL |     #[link_section = ",1800"]
    |       ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `link` attribute cannot be used on modules
@@ -1598,7 +1598,7 @@ warning: the `link_section` attribute cannot be used on required trait methods
 LL |         #[link_section = ",1800"]
    |           ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions with a body and statics
+   = help: the `link_section` attribute can be applied to foreign functions, foreign statics, functions with a body, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: 171 warnings emitted
