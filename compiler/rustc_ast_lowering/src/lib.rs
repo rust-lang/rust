@@ -2682,56 +2682,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_const_item_rhs(
         &mut self,
         body: &Option<Box<Expr>>,
-        kind: ConstItemKind,
         span: Span,
     ) -> hir::ConstItemRhs<'hir> {
-        match (body, kind) {
-            (body, ConstItemKind::Body) => {
-                let is_direct = |body| {
-                    if self.tcx.features().macroless_const_item_generic_const_args() {
-                        self.can_lower_expr_to_const_arg_direct(
-                            body,
-                            DirectConstArgContext::MacrolessMinGenericConstArgs,
-                        )
-                        .is_ok()
-                    } else {
-                        // do not check can_lower_expr_to_const_arg_direct, but rather just
-                        // ExprKind::DirectConstArg, because we don't want e.g.
-                        // `impl<const N: u8> { const C: u8 = N; }` to be a direct-rhs const
-                        matches!(body, Expr { kind: ExprKind::DirectConstArg(_), .. })
-                    }
-                };
-                // N.B.: the feature gate for this is generic_const_args, not min_generic_const_args
-                if self.tcx.features().generic_const_args()
-                    && let Some(body) = body
-                    && is_direct(body)
-                {
-                    hir::ConstItemRhs::Direct(
-                        self.arena.alloc(self.lower_expr_to_const_arg_direct(&body, None)),
-                    )
-                } else {
-                    hir::ConstItemRhs::Body(self.lower_const_body(span, body.as_deref()))
-                }
-            }
-            (Some(body), ConstItemKind::TypeConst) => hir::ConstItemRhs::Direct(self.arena.alloc(
-                match self.can_lower_expr_to_const_arg_direct(
-                    &body,
+        let is_direct = |body| {
+            if self.tcx.features().macroless_const_item_generic_const_args() {
+                self.can_lower_expr_to_const_arg_direct(
+                    body,
                     DirectConstArgContext::MacrolessMinGenericConstArgs,
-                ) {
-                    Ok(()) => self.lower_expr_to_const_arg_direct(&body, None),
-                    Err(err) => err.emit(self),
-                },
-            )),
-            (None, ConstItemKind::TypeConst) => {
-                let const_arg = ConstArg {
-                    hir_id: self.next_id(),
-                    kind: hir::ConstArgKind::Error(
-                        self.dcx().span_delayed_bug(DUMMY_SP, "no block"),
-                    ),
-                    span: DUMMY_SP,
-                };
-                hir::ConstItemRhs::Direct(self.arena.alloc(const_arg))
+                )
+                .is_ok()
+            } else {
+                // do not check can_lower_expr_to_const_arg_direct, but rather just
+                // ExprKind::DirectConstArg, because we don't want e.g.
+                // `impl<const N: u8> { const C: u8 = N; }` to be a direct-rhs const
+                matches!(body, Expr { kind: ExprKind::DirectConstArg(_), .. })
             }
+        };
+        if self.tcx.features().min_generic_const_args()
+            && let Some(body) = body
+            && is_direct(body)
+        {
+            hir::ConstItemRhs::Direct(
+                self.arena.alloc(self.lower_expr_to_const_arg_direct(&body, None)),
+            )
+        } else {
+            hir::ConstItemRhs::Body(self.lower_const_body(span, body.as_deref()))
         }
     }
 

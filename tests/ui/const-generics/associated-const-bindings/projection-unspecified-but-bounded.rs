@@ -4,7 +4,8 @@
 // Issue 110549
 
 pub trait TraitWAssocConst {
-    type const A: usize;
+    #[rustc_always_gca]
+    const A: usize;
 }
 
 fn foo<T: TraitWAssocConst<A = 32>>() {}

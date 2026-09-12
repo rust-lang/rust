@@ -1,8 +1,8 @@
 error[E0191]: the value of the associated constant `K` in `Y` must be specified
-  --> $DIR/dyn-compat-const-projection-from-supertrait-mentions-self.rs:16:16
+  --> $DIR/dyn-compat-const-projection-from-supertrait-mentions-self.rs:18:16
    |
-LL |     type const K: usize;
-   |     ------------------- `K` defined here
+LL |     const K: usize;
+   |     -------------- `K` defined here
 ...
 LL |     let _: dyn X<Q = 10>;
    |                ^^^^^^^^^

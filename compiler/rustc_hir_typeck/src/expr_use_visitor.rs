@@ -905,8 +905,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
                     let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
                     match res {
-                        Res::Def(DefKind::Const { .. }, _)
-                        | Res::Def(DefKind::AssocConst { .. }, _) => {
+                        Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                             // Named constants have to be equated with the value
                             // being matched, so that's a read of the value being matched.
                             //
@@ -1402,9 +1401,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         match res {
             Res::Def(
                 DefKind::Ctor(..)
-                | DefKind::Const { .. }
+                | DefKind::Const
                 | DefKind::ConstParam
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Fn
                 | DefKind::AssocFn,
                 _,

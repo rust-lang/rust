@@ -2010,11 +2010,7 @@ impl<'a> StaticParts<'a> {
                 ),
                 ast::ItemKind::Const(c) => (
                     Some(c.defaultness),
-                    if c.kind == ast::ConstItemKind::TypeConst {
-                        "type const"
-                    } else {
-                        "const"
-                    },
+                    "const",
                     ast::Safety::Default,
                     c.ident,
                     &c.ty,
@@ -2039,25 +2035,14 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics, prefix) = match &ti.kind {
+        let (defaultness, ty, expr_opt, generics) = match &ti.kind {
             ast::AssocItemKind::Const(c) => {
-                let prefix = if c.kind == ast::ConstItemKind::TypeConst {
-                    "type const"
-                } else {
-                    "const"
-                };
-                (
-                    c.defaultness,
-                    &c.ty,
-                    c.body.as_deref(),
-                    Some(&c.generics),
-                    prefix,
-                )
+                (c.defaultness, &c.ty, c.body.as_deref(), Some(&c.generics))
             }
             _ => unreachable!(),
         };
         StaticParts {
-            prefix,
+            prefix: "const",
             safety: ast::Safety::Default,
             vis: &ti.vis,
             ident,
@@ -2071,25 +2056,14 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics, prefix) = match &ii.kind {
+        let (defaultness, ty, expr_opt, generics) = match &ii.kind {
             ast::AssocItemKind::Const(c) => {
-                let prefix = if c.kind == ast::ConstItemKind::TypeConst {
-                    "type const"
-                } else {
-                    "const"
-                };
-                (
-                    c.defaultness,
-                    &c.ty,
-                    c.body.as_deref(),
-                    Some(&c.generics),
-                    prefix,
-                )
+                (c.defaultness, &c.ty, c.body.as_deref(), Some(&c.generics))
             }
             _ => unreachable!(),
         };
         StaticParts {
-            prefix,
+            prefix: "const",
             safety: ast::Safety::Default,
             vis: &ii.vis,
             ident,

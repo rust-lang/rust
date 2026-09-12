@@ -18,7 +18,7 @@ pub(crate) fn thir_body<'tcx>(
     owner_def: LocalDefId,
 ) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
     if cfg!(debug_assertions)
-        && matches!(tcx.def_kind(owner_def), DefKind::Const { .. } | DefKind::AssocConst { .. })
+        && matches!(tcx.def_kind(owner_def), DefKind::Const | DefKind::AssocConst)
     {
         debug_assert!(
             tcx.const_of_item(owner_def.to_def_id()).is_none(),

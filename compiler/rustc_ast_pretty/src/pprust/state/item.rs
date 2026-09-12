@@ -229,7 +229,6 @@ impl<'a> State<'a> {
                 generics,
                 ty,
                 body,
-                kind: _,
                 define_opaque,
             }) => {
                 self.print_item_const(
@@ -621,7 +620,6 @@ impl<'a> State<'a> {
                 generics,
                 ty,
                 body,
-                kind: _,
                 define_opaque,
             }) => {
                 self.print_item_const(

@@ -256,11 +256,7 @@ impl ExternalCrate {
                 tcx.module_children(root)
                     .iter()
                     .filter_map(|item| {
-                        if let Res::Def(DefKind::Const { is_type_const: false }, did) = item.res {
-                            Some(did)
-                        } else {
-                            None
-                        }
+                        if let Res::Def(DefKind::Const, did) = item.res { Some(did) } else { None }
                     })
                     .filter_map(move |did| f(did, tcx)),
             )

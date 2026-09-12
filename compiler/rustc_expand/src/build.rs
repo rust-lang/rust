@@ -720,7 +720,6 @@ impl<'a> ExtCtxt<'a> {
         ident: Ident,
         ty: Box<ast::Ty>,
         body: Option<Box<Expr>>,
-        kind: ast::ConstItemKind,
     ) -> Box<ast::Item> {
         let defaultness = ast::Defaultness::Implicit;
         self.item(
@@ -734,7 +733,6 @@ impl<'a> ExtCtxt<'a> {
                     generics: ast::Generics::default(),
                     ty,
                     body,
-                    kind,
                     define_opaque: None,
                 }
                 .into(),

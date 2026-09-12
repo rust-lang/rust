@@ -612,8 +612,6 @@ declare_features! (
     (incomplete, macroless_generic_const_args, "1.99.0", Some(159006)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
-    /// Enable mgca `type const` syntax before expansion.
-    (incomplete, mgca_type_const_syntax, "1.95.0", Some(132980)),
     /// Allows additional const parameter types, such as [u8; 10] or user defined types.
     /// User defined types must not have fields more private than the type itself.
     (unstable, min_adt_const_params, "1.96.0", Some(154042)),

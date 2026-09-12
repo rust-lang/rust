@@ -7,11 +7,12 @@
 trait Abc {}
 
 trait A {
-    type const VALUE: usize;
+    #[rustc_always_gca]
+    const VALUE: usize;
 }
 
 impl<T: Abc> A for T {
-    type const VALUE: usize = 0;
+    const VALUE: usize = core::direct_const_arg!(0);
 }
 
 trait S<const K: usize> {}

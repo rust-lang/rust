@@ -241,6 +241,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // tidy-alphabetical-start
             AttributeKind::AllowInternalUnsafe(..) => (),
             AttributeKind::AllowInternalUnstable(..) => (),
+            AttributeKind::AlwaysGca => (),
             AttributeKind::AutomaticallyDerived => (),
             AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),

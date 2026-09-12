@@ -78,10 +78,8 @@ pub(crate) fn as_constant_inner<'tcx>(
             // FIXME(generic_const_args): there's a lot to consider here! `Const::Ty` uses valtrees
             // and `Const::Unevaluated` does not, we should revisit this before stabilization.
             if tcx.features().generic_const_args()
-                || matches!(
-                    tcx.def_kind(def_id),
-                    DefKind::Const { .. } | DefKind::AssocConst { .. }
-                ) && tcx.is_direct_const(def_id)
+                || matches!(tcx.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
+                    && tcx.is_direct_const(def_id)
             {
                 let uneval = ty::AliasConst::new(
                     tcx,

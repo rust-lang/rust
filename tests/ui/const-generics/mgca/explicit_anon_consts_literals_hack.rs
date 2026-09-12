@@ -4,7 +4,8 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const ASSOC: isize;
+    #[rustc_always_gca]
+    const ASSOC: isize;
 }
 
 fn ace<T: Trait<ASSOC = 1, ASSOC = -1>>() {}
@@ -16,7 +17,9 @@ struct Foo<const N: isize>;
 type NormalArg = (Foo<1>, Foo<-1>);
 
 #[derive(Eq, PartialEq, std::marker::ConstParamTy)]
-struct ADT { field: u8 }
+struct ADT {
+    field: u8,
+}
 
 fn struct_expr() {
     fn takes_n<const N: ADT>() {}

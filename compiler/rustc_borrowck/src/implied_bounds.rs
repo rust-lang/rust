@@ -90,7 +90,7 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
     // - We must compute the normalized signature and then compute implied bounds from that
     //   in order to connect any unconstrained region vars created during normalization to
     //   the types of the locals corresponding to the inputs and outputs of the item. #136547
-    if matches!(tcx.def_kind(body_def_id), DefKind::AssocFn | DefKind::AssocConst { .. }) {
+    if matches!(tcx.def_kind(body_def_id), DefKind::AssocFn | DefKind::AssocConst) {
         for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(body_def_id)) {
             let normalized_ty = ocx
                 .deeply_normalize(

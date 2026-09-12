@@ -5,9 +5,9 @@
 #![feature(macroless_generic_const_args)]
 #![feature(generic_const_items)]
 
-type const ADD1<const N: usize>: usize = const { N + 1 };
+const ADD1<const N: usize>: usize = core::direct_const_arg!(const { N + 1 });
 //~^ ERROR: unconstrained generic constant
-type const AliasFnUnused: ADD1 = ADD1::<{ Some::<usize> {} }>;
+const AliasFnUnused: ADD1 = core::direct_const_arg!(ADD1::<{ Some::<usize> {} }>);
 //~^ ERROR: cannot find type `ADD1` in this scope [E0573]
 //~| ERROR: struct expression with missing field initialiser for `0`
 

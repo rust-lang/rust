@@ -1,17 +1,17 @@
 error: the constant `Hold::<Self>` is not of type `i32`
-  --> $DIR/dyn-compat-const-projection-behind-trait-alias-mentions-self.rs:17:21
+  --> $DIR/dyn-compat-const-projection-behind-trait-alias-mentions-self.rs:18:21
    |
 LL | trait Bound = Trait<Y = { Hold::<Self> }>;
    |                     ^^^^^^^^^^^^^^^^^^^^ expected `i32`, found struct constructor
    |
 note: required by a const generic parameter in `Bound`
-  --> $DIR/dyn-compat-const-projection-behind-trait-alias-mentions-self.rs:17:21
+  --> $DIR/dyn-compat-const-projection-behind-trait-alias-mentions-self.rs:18:21
    |
 LL | trait Bound = Trait<Y = { Hold::<Self> }>;
    |                     ^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `Bound`
 
 error: associated constant binding in trait object type mentions `Self`
-  --> $DIR/dyn-compat-const-projection-behind-trait-alias-mentions-self.rs:21:12
+  --> $DIR/dyn-compat-const-projection-behind-trait-alias-mentions-self.rs:22:12
    |
 LL | trait Bound = Trait<Y = { Hold::<Self> }>;
    |                     -------------------- this binding mentions `Self`

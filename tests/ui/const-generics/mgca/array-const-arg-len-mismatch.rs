@@ -15,12 +15,13 @@ fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
 fn bar<const A: [u8; 2]>() {}
 
 trait Trait {
-    type const LEN: usize;
+    #[rustc_always_gca]
+    const LEN: usize;
 }
 
 struct S;
 impl Trait for S {
-    type const LEN: usize = 3;
+    const LEN: usize = core::direct_const_arg!(3);
 }
 
 fn baz<const A: [u8; <S as Trait>::LEN]>() {}

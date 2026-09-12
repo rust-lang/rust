@@ -3,14 +3,15 @@
 #![feature(generic_const_items, min_generic_const_args)]
 #![allow(incomplete_features)]
 
-type const CT<T: ?Sized>: usize = { <T as Trait>::N };
+const CT<T: ?Sized>: usize = core::direct_const_arg!(<T as Trait>::N);
 
 trait Trait {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 impl<T: ?Sized> Trait for T {
-    type const N:usize = 0;
+    const N: usize = core::direct_const_arg!(0);
 }
 
 fn f(_x: [(); CT::<()>]) {}

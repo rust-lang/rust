@@ -2145,35 +2145,53 @@ fn compare_impl_const<'tcx>(
     trait_const_item: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    compare_type_const(tcx, impl_const_item, trait_const_item)?;
+    compare_const_directness(tcx, impl_const_item, trait_const_item)?;
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
     compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
     compare_const_clause_entailment(tcx, impl_const_item, trait_const_item, impl_trait_ref)
 }
 
-fn compare_type_const<'tcx>(
+pub(super) fn compare_const_directness<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_const_item: ty::AssocItem,
     trait_const_item: ty::AssocItem,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_is_type_const = tcx.is_type_const_syntax(impl_const_item.def_id);
-    let trait_is_type_const = tcx.is_type_const_syntax(trait_const_item.def_id);
+    let trait_is_gca = tcx.is_always_gca(trait_const_item.def_id);
+    let impl_is_gca = tcx.const_of_item(impl_const_item.def_id).is_some();
 
-    if trait_is_type_const && !impl_is_type_const {
-        return Err(tcx
-            .dcx()
+    if trait_is_gca == impl_is_gca {
+        return Ok(());
+    }
+    // feature(generic_const_args) is allowed to impl non-GCA traits with a GCA const
+    if tcx.features().generic_const_args() && !trait_is_gca && impl_is_gca {
+        return Ok(());
+    }
+
+    let guar = if trait_is_gca {
+        tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a `type const` must also be marked as `type const`",
+                "implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),
-                "trait declaration of const is marked as `type const`",
+                "trait declaration of const is marked as `#[rustc_always_gca]`",
             )
-            .emit());
-    }
-    Ok(())
+            .emit()
+    } else {
+        tcx.dcx()
+            .struct_span_err(
+                tcx.def_span(impl_const_item.def_id),
+                "implementation of a regular const cannot have a `direct_const_arg!` RHS",
+            )
+            .with_span_note(
+                tcx.def_span(trait_const_item.def_id),
+                "trait declaration of const is not marked as `#[rustc_always_gca]`",
+            )
+            .emit()
+    };
+    Err(guar)
 }
 
 /// The equivalent of [compare_method_clause_entailment], but for associated constants

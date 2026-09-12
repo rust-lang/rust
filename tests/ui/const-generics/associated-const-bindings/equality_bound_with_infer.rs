@@ -7,11 +7,12 @@
 // though it contained inference variables, which would cause ICEs.
 
 trait Foo {
-    type const ASSOC<const N: u32>: u32;
+    #[rustc_always_gca]
+    const ASSOC<const N: u32>: u32;
 }
 
 impl Foo for () {
-    type const ASSOC<const N: u32>: u32 = N;
+    const ASSOC<const N: u32>: u32 = core::direct_const_arg!(N);
 }
 
 fn bar<const N: u32, T: Foo<ASSOC<N> = 10>>() {}

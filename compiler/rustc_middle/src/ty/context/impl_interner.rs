@@ -226,7 +226,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         inherent_args: ty::AliasConstInherentArgsKind,
     ) -> ty::AliasConstKind<'tcx> {
         match self.def_kind(def_id) {
-            DefKind::AssocConst { .. } => {
+            DefKind::AssocConst => {
                 if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
                     match inherent_args {
                         ty::AliasConstInherentArgsKind::WithSelf => {
@@ -240,7 +240,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     ty::AliasConstKind::Projection { def_id }
                 }
             }
-            DefKind::Const { .. } => ty::AliasConstKind::Free { def_id },
+            DefKind::Const => ty::AliasConstKind::Free { def_id },
             DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasConstKind::Anon { def_id }
             }
@@ -261,7 +261,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     ty::AliasTermKind::ProjectionTy { def_id }
                 }
             }
-            DefKind::AssocConst { .. } => {
+            DefKind::AssocConst => {
                 if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
                     match inherent_args {
                         ty::AliasConstInherentArgsKind::WithSelf => {
@@ -277,7 +277,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             }
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy { def_id },
             DefKind::TyAlias => ty::AliasTermKind::FreeTy { def_id },
-            DefKind::Const { .. } => ty::AliasTermKind::FreeConst { def_id },
+            DefKind::Const => ty::AliasTermKind::FreeConst { def_id },
             DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasTermKind::AnonConst { def_id }
             }
@@ -290,7 +290,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst { .. });
+        debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
         debug_assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
         let trait_ref = ty::TraitRef::from_assoc(self, trait_def_id, args);

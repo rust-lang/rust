@@ -442,8 +442,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 DefKind::Fn
                 | DefKind::AssocFn
                 | DefKind::Static { .. }
-                | DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
+                | DefKind::Const
+                | DefKind::AssocConst
                 | DefKind::Ctor(..),
                 _,
             ) => define_extern(ValueNS),
