@@ -1,0 +1,16 @@
+error[E0271]: type mismatch resolving `<S as HasLifetime>::AtLifetime<'static> == ExistentialLifetime<_>`
+  --> $DIR/rigid-alias-in-same-type-modulo-infer-158773.rs:11:9
+   |
+LL | ...   ExistentialLifetime(ExistentialLifetime(()))
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `ExistentialLifetime<_>`, found associated type
+   |
+   = note:       expected struct `ExistentialLifetime<_>`
+           found associated type `<S as HasLifetime>::AtLifetime<'static>`
+help: consider constraining the associated type `<S as HasLifetime>::AtLifetime<'static>` to `ExistentialLifetime<_>`
+   |
+LL | impl<S: HasLifetime<AtLifetime<'static> = ExistentialLifetime<_>>> ExistentialLifetime<S> {
+   |                    ++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.
