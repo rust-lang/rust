@@ -9,6 +9,7 @@
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]
 #![feature(num_internals)]
+#![feature(slice_internals)]
 #![feature(uint_gather_scatter_bits)]
 #![allow(internal_features)]
 

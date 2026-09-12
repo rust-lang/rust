@@ -1891,6 +1891,90 @@ pub mod memchr {
             assert_eq!(Some(pos - start), memrchr(needle, &data[start..]));
         }
     }
+
+    // Differential matrix across lengths, alignments, needles and match
+    // shapes, verifying the platform-specific (SWAR/NEON/SVE) paths against
+    // a naive scalar scan. `memchr` must return the first match and
+    // `memrchr` the last.
+    #[test]
+    fn exhaustive_matrix() {
+        const MAX_LEN: usize = 1024;
+        let lengths = [
+            0usize, 1, 2, 7, 8, 15, 16, 17, 31, 32, 33, 47, 48, 63, 64, 65, 95, 96, 127, 128, 129,
+            255, 256, 257, 511, 512, 1023, 1024,
+        ];
+        let needles = [0x00u8, 0x55, 0x80, 0xff, b'z'];
+        let mut backing = [0u8; MAX_LEN + 16];
+
+        for len in lengths {
+            for align in 0..=16usize {
+                for x in needles {
+                    let filler = if x == 0x55 { 0xAA } else { 0x55 };
+                    let mut positions: Vec<Option<usize>> = vec![None];
+                    for p in [
+                        0usize,
+                        1,
+                        15,
+                        16,
+                        17,
+                        31,
+                        32,
+                        63,
+                        64,
+                        65,
+                        len.wrapping_sub(2),
+                        len.wrapping_sub(1),
+                    ] {
+                        if p < len {
+                            positions.push(Some(p));
+                        }
+                    }
+
+                    for pos in positions {
+                        let buf = &mut backing[align..align + len];
+                        buf.fill(filler);
+                        if let Some(p) = pos {
+                            buf[p] = x;
+                        }
+                        let buf = &backing[align..align + len];
+                        let expected_first = buf.iter().position(|&b| b == x);
+                        let expected_last = buf.iter().rposition(|&b| b == x);
+                        assert_eq!(
+                            memchr(x, buf),
+                            expected_first,
+                            "memchr len={len} align={align} x={x:#x} pos={pos:?}"
+                        );
+                        assert_eq!(
+                            memrchr(x, buf),
+                            expected_last,
+                            "memrchr len={len} align={align} x={x:#x} pos={pos:?}"
+                        );
+                    }
+
+                    // Multiple matches: first + middle + last must not
+                    // confuse first/last recovery.
+                    if len >= 3 {
+                        let buf = &mut backing[align..align + len];
+                        buf.fill(filler);
+                        buf[0] = x;
+                        buf[len / 2] = x;
+                        buf[len - 1] = x;
+                        let buf = &backing[align..align + len];
+                        assert_eq!(
+                            memchr(x, buf),
+                            Some(0),
+                            "memchr multi len={len} align={align} x={x:#x}"
+                        );
+                        assert_eq!(
+                            memrchr(x, buf),
+                            Some(len - 1),
+                            "memrchr multi len={len} align={align} x={x:#x}"
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[test]
