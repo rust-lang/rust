@@ -200,10 +200,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ProcMacroDerive { .. } => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
             }
-            AttributeKind::Inline(InlineAttr::Force { .. }, ..) => {} // handled separately below
-            AttributeKind::Inline(kind, attr_span) => {
-                self.check_inline(hir_id, *attr_span, kind, target)
-            }
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
@@ -268,6 +264,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::FfiPure(..) => (),
             AttributeKind::Fundamental => (),
             AttributeKind::Ignore { .. } => (),
+            AttributeKind::Inline(..) => (),
             AttributeKind::InstructionSet(..) => (),
             AttributeKind::InstrumentFn(..) => (),
             AttributeKind::Lang(..) => (),
@@ -737,35 +734,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                 });
             }
-        }
-    }
-
-    /// Checks if an `#[inline]` is applied to a function or a closure.
-    fn check_inline(&self, hir_id: HirId, attr_span: Span, kind: &InlineAttr, target: Target) {
-        match target {
-            Target::Fn
-            | Target::Closure
-            | Target::Method(
-                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-            ) => {
-                // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
-                if let Some(did) = hir_id.as_owner()
-                    && self.tcx.def_kind(did).has_codegen_attrs()
-                    && kind != &InlineAttr::Never
-                {
-                    let attrs = self.tcx.codegen_fn_attrs(did);
-                    // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
-                    if attrs.contains_extern_indicator() {
-                        self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr_span,
-                            diagnostics::InlineIgnoredForExported,
-                        );
-                    }
-                }
-            }
-            _ => {}
         }
     }
 
