@@ -838,7 +838,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
-                    let inner_tokens = attr_item.args.inner_tokens();
+                    let inner_tokens = attr_item.args.inner_tokens().to_token_stream();
                     match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(

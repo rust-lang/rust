@@ -38,7 +38,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use crate::tokenstream::{DelimSpan, LazyAttrTokenStream};
 use crate::util::parser::{ExprPrecedence, Fixity};
 use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
@@ -2091,11 +2091,11 @@ impl AttrArgs {
 
     /// Tokens inside the delimiters or after `=`.
     /// Proc macros see these tokens, for example.
-    pub fn inner_tokens(&self) -> TokenStream {
+    pub fn inner_tokens(&self) -> ArenaTokenStream {
         match self {
-            AttrArgs::Empty => TokenStream::default(),
-            AttrArgs::Delimited(args) => args.tokens.to_token_stream(),
-            AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr),
+            AttrArgs::Empty => ArenaTokenStream::default(),
+            AttrArgs::Delimited(args) => args.tokens.clone(),
+            AttrArgs::Eq { expr, .. } => ArenaTokenStream::from_ast(expr),
         }
     }
 }
