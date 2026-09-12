@@ -3219,3 +3219,10 @@ pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
     #[help("consider using `&raw {$mutbl}` for a safer and more explicit raw pointer")]
     Spanless { mutbl: &'a str },
 }
+
+#[derive(Diagnostic)]
+#[diag("type `{$arg_ty}` does not implement `VaArgSafe`")]
+#[note("values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`")]
+pub(crate) struct BuiltinCVariadicArgument<'tcx> {
+    pub arg_ty: Ty<'tcx>,
+}

@@ -1,0 +1,253 @@
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:11:18
+   |
+LL |         variadic(String::new());
+   |                  ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+   = note: `#[warn(invalid_c_variadic_arguments)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:14:25
+   |
+LL |         variadic(1_i32, String::new());
+   |                         ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:17:18
+   |
+LL |         variadic(String::new(), 1_i32);
+   |                  ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:20:18
+   |
+LL |         variadic(String::new(), String::new());
+   |                  ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:20:33
+   |
+LL |         variadic(String::new(), String::new());
+   |                                 ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `T` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:30:18
+   |
+LL |         variadic(x);
+   |                  ^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:45:11
+   |
+LL |         f(String::new());
+   |           ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:49:15
+   |
+LL |         f_ref(String::new());
+   |               ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:53:11
+   |
+LL |         g(String::new());
+   |           ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:57:15
+   |
+LL |         g_ref(String::new());
+   |               ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:76:42
+   |
+LL |         variadic_after_struct(my_struct, String::new());
+   |                                          ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:79:49
+   |
+LL |         variadic_after_struct(my_struct, 1_i32, String::new());
+   |                                                 ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:82:42
+   |
+LL |         variadic_after_struct(my_struct, String::new(), 1_i32);
+   |                                          ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:85:42
+   |
+LL |         variadic_after_struct(my_struct, String::new(), String::new());
+   |                                          ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:85:57
+   |
+LL |         variadic_after_struct(my_struct, String::new(), String::new());
+   |                                                         ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `&dyn Send` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:109:18
+   |
+LL |         variadic(&String::new() as &dyn Send);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `&mut dyn Send` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:112:18
+   |
+LL |         variadic(&mut String::new() as &mut dyn Send);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `&U` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:117:18
+   |
+LL |         variadic(ur);
+   |                  ^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `&mut U` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:120:18
+   |
+LL |         variadic(um);
+   |                  ^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `u8` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:131:18
+   |
+LL |         variadic(x);
+   |                  ^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:154:31
+   |
+LL |         Thing.variadic_method(String::new());
+   |                               ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:157:38
+   |
+LL |         Thing.variadic_method(1_i32, String::new());
+   |                                      ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:160:31
+   |
+LL |         Thing.variadic_method(String::new(), 1_i32);
+   |                               ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:163:31
+   |
+LL |         Thing.variadic_method(String::new(), String::new());
+   |                               ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: type `String` does not implement `VaArgSafe`
+  --> $DIR/invalid_c_variadic_arguments.rs:163:46
+   |
+LL |         Thing.variadic_method(String::new(), String::new());
+   |                                              ^^^^^^^^^^^^^
+   |
+   = note: values passed as C-variadic arguments must implement `core::ffi::VaArgSafe`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162483 <https://github.com/rust-lang/rust/issues/162483>
+
+warning: 25 warnings emitted
+
