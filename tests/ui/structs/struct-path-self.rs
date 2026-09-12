@@ -8,8 +8,7 @@ trait Tr {
         //~^ ERROR expected struct, variant or union type, found type parameter
         //~| ERROR type arguments are not allowed on self type
         match s {
-            Self { .. } => {}
-            //~^ ERROR expected struct, variant or union type, found type parameter
+            Self { .. } => {} // OK
         }
     }
 }

@@ -152,6 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
         // The result shouldn't be tainted, otherwise it will cause ICE.
         if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind
             && cx.typeck_results().tainted_by_errors.is_none()
+            && !field_pats.is_empty()
         {
             let variant = cx
                 .typeck_results()

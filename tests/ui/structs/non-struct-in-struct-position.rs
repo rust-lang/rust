@@ -8,8 +8,8 @@ fn main() {
     let v = u32 { x: 1 }; //~ ERROR expected struct, variant or union type, found builtin type `u32`
     match () {
         A { x: 1 } => {}
-        //~^ ERROR expected struct, variant or union type, found module `A`
+        //~^ ERROR expected type or enum variant, found module `A`
         u32 { x: 1 } => {}
-        //~^ ERROR expected struct, variant or union type, found builtin type `u32`
+        //~^ ERROR expected struct, variant or union type, found `u32`
     }
 }

@@ -10,18 +10,19 @@ error[E0574]: expected struct, variant or union type, found builtin type `u32`
 LL |     let v = u32 { x: 1 };
    |             ^^^ not a struct, variant or union type
 
-error[E0574]: expected struct, variant or union type, found module `A`
+error[E0573]: expected type or enum variant, found module `A`
   --> $DIR/non-struct-in-struct-position.rs:10:9
    |
 LL |         A { x: 1 } => {}
-   |         ^ not a struct, variant or union type
+   |         ^ not a type or enum variant
 
-error[E0574]: expected struct, variant or union type, found builtin type `u32`
+error[E0071]: expected struct, variant or union type, found `u32`
   --> $DIR/non-struct-in-struct-position.rs:12:9
    |
 LL |         u32 { x: 1 } => {}
-   |         ^^^ not a struct, variant or union type
+   |         ^^^ not a struct
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0574`.
+Some errors have detailed explanations: E0071, E0573, E0574.
+For more information about an error, try `rustc --explain E0071`.

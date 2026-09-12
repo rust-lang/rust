@@ -25,14 +25,6 @@ LL |         Foo { zst: () } => {}
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:41:22
-   |
-LL |         Foo { pizza: Pizza { .. } } => {}
-   |                      ^^^^^^^^^^^^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
