@@ -1,0 +1,77 @@
+error[E0053]: method `f` has an incompatible type for trait
+  --> $DIR/mismatch-trait-mut.rs:27:18
+   |
+LL |         fn f(_x: &crate::bar::X) {}
+   |                  ^^^^^^^^^^^^^^ types differ in mutability
+   |
+note: type in trait
+  --> $DIR/mismatch-trait-mut.rs:12:14
+   |
+LL |     fn f(_x: &mut bar::X) {}
+   |              ^^^^^^^^^^^
+   = note: expected signature `fn(&mut X)`
+              found signature `fn(&X)`
+help: change the parameter type to match the trait
+   |
+LL |         fn f(_x: &mut crate::bar::X) {}
+   |                   +++
+
+error[E0053]: method `g` has an incompatible type for trait
+  --> $DIR/mismatch-trait-mut.rs:31:22
+   |
+LL |         fn g<'a>(_x: &'a crate::bar::X) -> &'a () { &() }
+   |                      ^^^^^^^^^^^^^^^^^ types differ in mutability
+   |
+note: type in trait
+  --> $DIR/mismatch-trait-mut.rs:14:18
+   |
+LL |     fn g<'a>(_x: &'a mut bar::X) -> &'a () { &() }
+   |                  ^^^^^^^^^^^^^^
+   = note: expected signature `fn(&'a mut X) -> &'a ()`
+              found signature `fn(&X) -> &()`
+help: change the parameter type to match the trait
+   |
+LL |         fn g<'a>(_x: &'a mut crate::bar::X) -> &'a () { &() }
+   |                          +++
+
+error[E0053]: method `f2` has an incompatible type for trait
+  --> $DIR/mismatch-trait-mut.rs:35:19
+   |
+LL |         fn f2(_x: &mut crate::bar::X) {}
+   |                   ^^^^^^^^^^^^^^^^^^ types differ in mutability
+   |
+note: type in trait
+  --> $DIR/mismatch-trait-mut.rs:16:15
+   |
+LL |     fn f2(_x: &bar::X) {}
+   |               ^^^^^^^
+   = note: expected signature `fn(&X)`
+              found signature `fn(&mut X)`
+help: change the parameter type to match the trait
+   |
+LL -         fn f2(_x: &mut crate::bar::X) {}
+LL +         fn f2(_x: &crate::bar::X) {}
+   |
+
+error[E0053]: method `g2` has an incompatible type for trait
+  --> $DIR/mismatch-trait-mut.rs:39:23
+   |
+LL |         fn g2<'a>(_x: &'a mut crate::bar::X) -> &'a () { &() }
+   |                       ^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
+   |
+note: type in trait
+  --> $DIR/mismatch-trait-mut.rs:18:19
+   |
+LL |     fn g2<'a>(_x: &'a bar::X) -> &'a () { &() }
+   |                   ^^^^^^^^^^
+   = note: expected signature `fn(&'a X) -> &'a ()`
+              found signature `fn(&mut X) -> &()`
+help: change the parameter type to match the trait
+   |
+LL -         fn g2<'a>(_x: &'a mut crate::bar::X) -> &'a () { &() }
+LL +         fn g2<'a>(_x: &'a crate::bar::X) -> &'a () { &() }
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

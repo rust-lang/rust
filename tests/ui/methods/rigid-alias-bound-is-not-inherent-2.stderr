@@ -9,7 +9,7 @@ LL |     x.method();
    = help: items from traits can only be used if the trait is in scope
 help: trait `Trait` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use module::Trait;
+LL + use crate::module::Trait;
    |
 
 error: aborting due to 1 previous error

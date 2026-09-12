@@ -26,23 +26,23 @@ pub mod foo {
         impl FooBar for i16 {} // OK
     }
 
-    impl bar::Foo for i8 {} //[e2015]~ ERROR trait cannot be implemented outside `foo::bar`
+    impl bar::Foo for i8 {} //[e2015]~ ERROR trait cannot be implemented outside `crate::foo::bar`
     //[e2018]~^ ERROR trait cannot be implemented outside `crate::foo::bar`
     impl bar::Bar for i8 {} // OK
     impl bar::Baz for i8 {} // OK
-    impl bar::Qux for i8 {} //[e2015]~ ERROR trait cannot be implemented outside `foo::bar`
+    impl bar::Qux for i8 {} //[e2015]~ ERROR trait cannot be implemented outside `crate::foo::bar`
     //[e2018]~^ ERROR trait cannot be implemented outside `crate::foo::bar`
     impl bar::FooBar for i8 {} // OK
 }
 
-impl foo::bar::Foo for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `foo::bar`
+impl foo::bar::Foo for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `crate::foo::bar`
 //[e2018]~^ ERROR trait cannot be implemented outside `crate::foo::bar`
-impl foo::bar::Bar for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `foo`
+impl foo::bar::Bar for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `crate::foo`
 //[e2018]~^ ERROR trait cannot be implemented outside `crate::foo`
 impl foo::bar::Baz for u8 {} // OK
-impl foo::bar::Qux for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `foo::bar`
+impl foo::bar::Qux for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `crate::foo::bar`
 //[e2018]~^ ERROR trait cannot be implemented outside `crate::foo::bar`
-impl foo::bar::FooBar for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `foo`
+impl foo::bar::FooBar for u8 {} //[e2015]~ ERROR trait cannot be implemented outside `crate::foo`
 //[e2018]~^ ERROR trait cannot be implemented outside `crate::foo`
 
 fn main() {}

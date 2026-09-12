@@ -22,7 +22,7 @@ note: trait restricted here
 LL |     pub impl(self) trait Inner {}
    |         ^^^^^^^^^^
 
-error: trait cannot be implemented outside `foo::bar`
+error: trait cannot be implemented outside `crate::foo::bar`
   --> $DIR/impl-restriction-check.rs:29:5
    |
 LL |     impl bar::Foo for i8 {}
@@ -34,7 +34,7 @@ note: trait restricted here
 LL |         pub(crate) impl(self) trait Foo {}
    |                    ^^^^^^^^^^
 
-error: trait cannot be implemented outside `foo::bar`
+error: trait cannot be implemented outside `crate::foo::bar`
   --> $DIR/impl-restriction-check.rs:38:1
    |
 LL | impl foo::bar::Foo for u8 {}
@@ -46,7 +46,7 @@ note: trait restricted here
 LL |         pub(crate) impl(self) trait Foo {}
    |                    ^^^^^^^^^^
 
-error: trait cannot be implemented outside `foo`
+error: trait cannot be implemented outside `crate::foo`
   --> $DIR/impl-restriction-check.rs:40:1
    |
 LL | impl foo::bar::Bar for u8 {}
@@ -58,7 +58,7 @@ note: trait restricted here
 LL |         pub(crate) impl(super) trait Bar {}
    |                    ^^^^^^^^^^^
 
-error: trait cannot be implemented outside `foo::bar`
+error: trait cannot be implemented outside `crate::foo::bar`
   --> $DIR/impl-restriction-check.rs:33:5
    |
 LL |     impl bar::Qux for i8 {}
@@ -70,7 +70,7 @@ note: trait restricted here
 LL |         pub(crate) impl(in crate::foo::bar) trait Qux {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: trait cannot be implemented outside `foo::bar`
+error: trait cannot be implemented outside `crate::foo::bar`
   --> $DIR/impl-restriction-check.rs:43:1
    |
 LL | impl foo::bar::Qux for u8 {}
@@ -82,7 +82,7 @@ note: trait restricted here
 LL |         pub(crate) impl(in crate::foo::bar) trait Qux {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: trait cannot be implemented outside `foo`
+error: trait cannot be implemented outside `crate::foo`
   --> $DIR/impl-restriction-check.rs:45:1
    |
 LL | impl foo::bar::FooBar for u8 {}
