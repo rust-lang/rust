@@ -1,30 +1,145 @@
 error: the `Self` constructor can only be used with tuple or unit structs
-  --> $DIR/self-constructor-type-error-56199.rs:7:17
+  --> $DIR/self-constructor-type-error-56199.rs:10:17
    |
 LL |         let _ = Self;
    |                 ^^^^
    |
-   = help: did you mean to use one of the enum's variants?
+help: the enum is unconstructable because it has no variants
+  --> $DIR/self-constructor-type-error-56199.rs:2:1
+   |
+LL | enum Foo {}
+   | ^^^^^^^^
 
 error: the `Self` constructor can only be used with tuple or unit structs
-  --> $DIR/self-constructor-type-error-56199.rs:9:17
+  --> $DIR/self-constructor-type-error-56199.rs:12:17
    |
 LL |         let _ = Self();
    |                 ^^^^^^
    |
-   = help: did you mean to use one of the enum's variants?
+help: the enum is unconstructable because it has no variants
+  --> $DIR/self-constructor-type-error-56199.rs:2:1
+   |
+LL | enum Foo {}
+   | ^^^^^^^^
 
 error: the `Self` constructor can only be used with tuple or unit structs
   --> $DIR/self-constructor-type-error-56199.rs:16:17
    |
 LL |         let _ = Self;
-   |                 ^^^^ help: use curly brackets: `Self { /* fields */ }`
+   |                 ^^^^
+   |
+help: you might have meant to refer to the `self` binding of type `Foo` (notice the capitalization)
+   |
+LL -         let _ = Self;
+LL +         let _ = self;
+   |
 
 error: the `Self` constructor can only be used with tuple or unit structs
   --> $DIR/self-constructor-type-error-56199.rs:18:17
    |
 LL |         let _ = Self();
-   |                 ^^^^^^ help: use curly brackets: `Self { /* fields */ }`
+   |                 ^^^^^^
+   |
+help: the enum is unconstructable because it has no variants
+  --> $DIR/self-constructor-type-error-56199.rs:2:1
+   |
+LL | enum Foo {}
+   | ^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:25:17
+   |
+LL |         let _ = Self;
+   |                 ^^^^
+   |
+help: use curly brackets
+   |
+LL |         let _ = Self { /* fields */ };
+   |                      ++++++++++++++++
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:27:17
+   |
+LL |         let _ = Self();
+   |                 ^^^^^^
+   |
+help: use curly brackets
+   |
+LL -         let _ = Self();
+LL +         let _ = Self { /* fields */ };
+   |
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:31:17
+   |
+LL |         let _ = Self;
+   |                 ^^^^
+   |
+help: you might have meant to refer to the `self` binding of type `Bar` (notice the capitalization)
+   |
+LL -         let _ = Self;
+LL +         let _ = self;
+   |
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:33:17
+   |
+LL |         let _ = Self();
+   |                 ^^^^^^
+   |
+help: use curly brackets
+   |
+LL -         let _ = Self();
+LL +         let _ = Self { /* fields */ };
+   |
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:40:17
+   |
+LL |         let _ = Self;
+   |                 ^^^^
+   |
+help: you might have meant to use one of the enum's variants
+  --> $DIR/self-constructor-type-error-56199.rs:3:1
+   |
+LL | enum Lab {
+   | ^^^^^^^^
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:42:17
+   |
+LL |         let _ = Self();
+   |                 ^^^^^^
+   |
+help: you might have meant to use one of the enum's variants
+  --> $DIR/self-constructor-type-error-56199.rs:3:1
+   |
+LL | enum Lab {
+   | ^^^^^^^^
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:46:17
+   |
+LL |         let _ = Self;
+   |                 ^^^^
+   |
+help: you might have meant to refer to the `self` binding of type `Lab` (notice the capitalization)
+   |
+LL -         let _ = Self;
+LL +         let _ = self;
+   |
+
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/self-constructor-type-error-56199.rs:48:17
+   |
+LL |         let _ = Self();
+   |                 ^^^^^^
+   |
+help: you might have meant to use one of the enum's variants
+  --> $DIR/self-constructor-type-error-56199.rs:3:1
+   |
+LL | enum Lab {
+   | ^^^^^^^^
+
+error: aborting due to 12 previous errors
 
