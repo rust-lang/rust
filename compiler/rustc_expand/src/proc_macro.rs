@@ -41,22 +41,24 @@ impl base::BangProcMacro for BangProcMacro {
         ecx: &mut ExtCtxt<'_>,
         span: Span,
         input: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         let _timer = record_expand_proc_macro(ecx, "expand_proc_macro", span);
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run1(&strategy, server, input.to_token_stream(), proc_macro_backtrace).map_err(
-            |e| {
+        let stream = self
+            .client
+            .run1(&strategy, server, input.to_token_stream(), proc_macro_backtrace)
+            .map_err(|e| {
                 ecx.dcx().emit_err(diagnostics::ProcMacroPanicked {
                     span,
                     message: e
                         .into_string()
                         .map(|message| diagnostics::ProcMacroPanickedHelp { message }),
                 })
-            },
-        )
+            });
+        stream.map(|stream| ArenaTokenStream::from_stream(&stream))
     }
 }
 
@@ -71,13 +73,14 @@ impl base::AttrProcMacro for AttrProcMacro {
         span: Span,
         annotation: ArenaTokenStream,
         annotated: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         let _timer = record_expand_proc_macro(ecx, "expand_proc_macro", span);
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client
+        let stream = self
+            .client
             .run2(
                 &strategy,
                 server,
@@ -92,7 +95,8 @@ impl base::AttrProcMacro for AttrProcMacro {
                         .into_string()
                         .map(|message| diagnostics::CustomAttributePanickedHelp { message }),
                 })
-            })
+            });
+        stream.map(|stream| ArenaTokenStream::from_stream(&stream))
     }
 }
 

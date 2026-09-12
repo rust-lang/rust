@@ -322,7 +322,7 @@ impl AttrProcMacro for MacroRulesMacroExpander {
         _sp: Span,
         _args: ArenaTokenStream,
         _body: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         unreachable!("`expand` called on `MacroRulesMacroExpander`, expected `expand_with_safety`")
     }
 
@@ -333,7 +333,7 @@ impl AttrProcMacro for MacroRulesMacroExpander {
         sp: Span,
         args: ArenaTokenStream,
         body: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         expand_macro_attr(
             cx,
             sp,
@@ -358,7 +358,7 @@ impl BangProcMacro for DummyBang {
         _: &'cx mut ExtCtxt<'_>,
         _: Span,
         _: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         Err(self.0)
     }
 }
@@ -526,7 +526,7 @@ fn expand_macro_attr(
     body: ArenaTokenStream,
     rules: &[MacroRule],
     on_unmatched_args: Option<&Directive>,
-) -> Result<TokenStream, ErrorGuaranteed> {
+) -> Result<ArenaTokenStream, ErrorGuaranteed> {
     let psess = &cx.sess.psess;
     // Macros defined in the current crate have a real node id,
     // whereas macros from an external crate have a dummy id.
@@ -582,7 +582,7 @@ fn expand_macro_attr(
                 cx.resolver.record_macro_rule_usage(node_id, i);
             }
 
-            Ok(tts.to_token_stream())
+            Ok(tts)
         }
         Err(CanRetry::No(guar)) => Err(guar),
         Err(CanRetry::Yes) => {

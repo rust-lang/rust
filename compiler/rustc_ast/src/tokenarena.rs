@@ -93,6 +93,10 @@ impl ArenaTokenStreamBuilder {
         Self { tokens: Vec::with_capacity(capacity), current_delimited_sequence: None }
     }
 
+    pub fn tokens(&self) -> &[ArenaTokenTree] {
+        &self.tokens
+    }
+
     pub fn push_token(&mut self, token: Token, spacing: Spacing) {
         self.tokens.push(ArenaTokenTree::Token(token, spacing));
     }
