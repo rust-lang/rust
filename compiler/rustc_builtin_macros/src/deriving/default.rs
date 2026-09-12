@@ -14,7 +14,6 @@ use crate::diagnostics;
 pub(crate) fn expand_deriving_default(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &ast::MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -30,7 +29,7 @@ pub(crate) fn expand_deriving_default(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: kw::Default,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: false,
             nonself_args: SmallVec::new(),
             ret_ty: Self_,
@@ -44,7 +43,9 @@ pub(crate) fn expand_deriving_default(
                     StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span)
                     }
-                    _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
+                    _ => cx
+                        .dcx()
+                        .span_bug(trait_span, "unexpected substructure in `derive(Default)`"),
                 }
             }),
         }],
@@ -53,7 +54,7 @@ pub(crate) fn expand_deriving_default(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
@@ -65,7 +66,7 @@ fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
 fn default_struct_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
     variant_data: &VariantData,
 ) -> BlockOrExpr {
     let expr = match variant_data {

@@ -2,7 +2,7 @@ use ast::HasAttrs;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::{BoundKind, Visitor};
 use rustc_ast::{
-    self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
+    self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind,
     TraitBoundModifiers, VariantData, WherePredicate,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -21,7 +21,6 @@ macro_rules! path {
 pub(crate) fn expand_deriving_coerce_pointee(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
@@ -320,7 +319,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
     let gen_args = vec![GenericArg::Type(alt_self_type)];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
-    add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args);
+    add_impl_block(impl_generics, sym::CoerceUnsized, gen_args);
 }
 
 fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee: Symbol) -> bool {
@@ -328,10 +327,8 @@ fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee:
         if let ast::WherePredicateKind::BoundPredicate(bound) = &bound.kind
             && bound.bounded_ty.kind.is_simple_path().is_some_and(|name| name == pointee)
         {
-            for bound in &bound.bounds {
-                if is_maybe_sized_bound(bound) {
-                    return true;
-                }
+            if contains_maybe_sized_bound(&bound.bounds) {
+                return true;
             }
         }
     }

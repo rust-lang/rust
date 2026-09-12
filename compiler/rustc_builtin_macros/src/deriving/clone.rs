@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, Safety, VariantData};
+use rustc_ast::{self as ast, Generics, ItemKind, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
@@ -11,7 +11,6 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_clone(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -55,7 +54,7 @@ pub(crate) fn expand_deriving_clone(
             is_simple = true;
             substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
         }
-        _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
+        _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
 
     // If the clone method is just copying the value, also mark the type as
@@ -77,7 +76,7 @@ pub(crate) fn expand_deriving_clone(
             document: false,
         };
 
-        trivial_def.expand(cx, mitem, item, push);
+        trivial_def.expand(cx, item, push);
     }
 
     let trait_def = TraitDef {
@@ -89,7 +88,7 @@ pub(crate) fn expand_deriving_clone(
         supports_unions: true,
         methods: smallvec![MethodDef {
             name: sym::clone,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: SmallVec::new(),
             ret_ty: Self_,
@@ -103,13 +102,13 @@ pub(crate) fn expand_deriving_clone(
         document: true,
     };
 
-    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+    trait_def.expand_ext(cx, item, push, is_simple)
 }
 
 fn cs_clone_simple(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
     is_union: bool,
 ) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
@@ -150,7 +149,7 @@ fn cs_clone_simple(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match *substr.fields {
+        match substr.fields {
             StaticStruct(vdata, ..) => {
                 process_variant(vdata);
             }
@@ -165,55 +164,41 @@ fn cs_clone_simple(
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
-    let ctor_path;
-    let all_fields;
+fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
-    let subcall = |cx: &ExtCtxt<'_>, field: &FieldInfo| {
-        let args = thin_vec![field.self_expr.clone()];
+    let subcall = |field: FieldInfo| {
+        let args = thin_vec![field.self_expr];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
+    let ctor_path;
+    let all_fields;
     let vdata;
     match substr.fields {
         Struct(vdata_, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident]);
             all_fields = af;
-            vdata = *vdata_;
+            vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumDiscr(..) | AllFieldlessEnum(..) => {
-            cx.dcx().span_bug(trait_span, "enum discriminants in `derive(Clone)`")
-        }
-        StaticEnum(..) | StaticStruct(..) => {
-            cx.dcx().span_bug(trait_span, "associated function in `derive(Clone)`")
-        }
+        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Clone)`"),
     }
 
     let expr = match *vdata {
         VariantData::Struct { .. } => {
             let fields = all_fields
-                .iter()
-                .map(|field| {
-                    let Some(ident) = field.name else {
-                        cx.dcx().span_bug(
-                            trait_span,
-                            "unnamed field in normal struct in `derive(Clone)`",
-                        );
-                    };
-                    let call = subcall(cx, field);
-                    cx.field_imm(field.span, ident, call)
-                })
+                .into_iter()
+                .map(|field| cx.field_imm(field.span, field.name.unwrap(), subcall(field)))
                 .collect::<ThinVec<_>>();
 
             cx.expr_struct(trait_span, ctor_path, fields)
         }
         VariantData::Tuple(..) => {
-            let subcalls = all_fields.iter().map(|f| subcall(cx, f)).collect();
+            let subcalls = all_fields.into_iter().map(subcall).collect();
             let path = cx.expr_path(ctor_path);
             cx.expr_call(trait_span, path, subcalls)
         }

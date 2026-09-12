@@ -1,4 +1,4 @@
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
+use rustc_ast::{ExprKind, ItemKind, PatKind, Safety, ast};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
@@ -10,7 +10,6 @@ use crate::deriving::{path_std, pathvec};
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -72,7 +71,7 @@ pub(crate) fn expand_deriving_partial_ord(
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
-        generics: Bounds::empty(),
+        generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
         ret_ty,
@@ -94,7 +93,7 @@ pub(crate) fn expand_deriving_partial_ord(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+    trait_def.expand_ext(cx, item, push, is_simple)
 }
 
 // Special case for the type deriving both `PartialOrd` and `Ord`. Builds:
@@ -111,7 +110,7 @@ fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr
 fn cs_partial_cmp(
     cx: &ExtCtxt<'_>,
     span: Span,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
     discr_then_data: bool,
 ) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);

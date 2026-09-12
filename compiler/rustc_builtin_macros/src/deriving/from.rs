@@ -5,7 +5,7 @@ use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::{Bounds, Path, PathKind, Ty};
+use crate::deriving::generic::ty::{Path, PathKind, Ty};
 use crate::deriving::generic::*;
 use crate::deriving::pathvec;
 use crate::diagnostics;
@@ -15,7 +15,6 @@ use crate::diagnostics;
 pub(crate) fn expand_deriving_from(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &ast::MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -75,7 +74,7 @@ pub(crate) fn expand_deriving_from(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::from,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: false,
             nonself_args: smallvec![(from_type, sym::value)],
             ret_ty: Ty::Self_,
@@ -123,5 +122,5 @@ pub(crate) fn expand_deriving_from(
         document: true,
     };
 
-    from_trait_def.expand(cx, mitem, item, push);
+    from_trait_def.expand(cx, item, push);
 }
