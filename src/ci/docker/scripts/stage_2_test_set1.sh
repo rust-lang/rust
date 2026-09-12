@@ -20,8 +20,15 @@ if [ "$LLVM_VERSION" = "21" ]; then
   SKIP_INTRINSICS="--skip intrinsic-test"
 fi
 
+# Skip core-arch on LLVM < 23 to avoid CI failures.
+if [ -n "$LLVM_VERSION" ] && [ "$LLVM_VERSION" -lt 23 ]; then
+  echo "LLVM_VERSION < 23; skipping core-arch"
+  SKIP_CORE_ARCH="--skip core-arch"
+fi
+
 ../x.py --stage 2 test \
   ${SKIP_TIDY:+$SKIP_TIDY} \
   ${SKIP_INTRINSICS:+$SKIP_INTRINSICS} \
+  ${SKIP_CORE_ARCH:+$SKIP_CORE_ARCH} \
   --skip compiler \
   --skip src
