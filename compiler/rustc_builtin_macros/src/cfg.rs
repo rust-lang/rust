@@ -3,7 +3,6 @@
 //! current compilation environment.
 
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, token};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{AttrPath, CfgEntry};
@@ -22,7 +21,7 @@ use crate::diagnostics;
 pub(crate) fn expand_cfg(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
 
@@ -36,8 +35,12 @@ pub(crate) fn expand_cfg(
     })
 }
 
-fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry, ErrorGuaranteed> {
-    let mut parser = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts));
+fn parse_cfg(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    tts: ArenaTokenStream,
+) -> Result<CfgEntry, ErrorGuaranteed> {
+    let mut parser = cx.new_parser_from_tts(tts);
     if parser.token == token::Eof {
         return Err(cx.dcx().emit_err(diagnostics::RequiresCfgPattern { span }));
     }

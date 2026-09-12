@@ -78,7 +78,7 @@ declare_lint! {
 declare_lint_pass!(Expr2024 => [EDITION_2024_EXPR_FRAGMENT_SPECIFIER,]);
 
 impl Expr2024 {
-    fn check_tokens(&mut self, cx: &crate::EarlyContext<'_>, tokens: ArenaTokenTreeIter) {
+    fn check_tokens(&mut self, cx: &crate::EarlyContext<'_>, tokens: ArenaTokenTreeIter<'_>) {
         let mut prev_colon = false;
         let mut prev_identifier = false;
         let mut prev_dollar = false;

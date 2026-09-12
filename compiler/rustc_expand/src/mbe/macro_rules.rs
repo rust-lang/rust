@@ -1943,8 +1943,10 @@ fn desugar_doc_comments(stream: ArenaTokenStream) -> ArenaTokenStream {
             // `/// foo` becomes `[doc = r"foo"]`.
             let delim_span = DelimSpan::from_single(span);
             let start = builder.start_delimited();
-            builder
-                .push_token_alone(Token::new(token::Ident(sym::doc, token::IdentIsRaw::No), span));
+            builder.push_token_alone(Token::new(
+                token::Ident(sym::doc, token::IdentKind::Normal),
+                span,
+            ));
             builder.push_token_alone(Token::new(token::Eq, span));
             builder.push_token_alone(Token::new(
                 TokenKind::lit(token::StrRaw(num_of_hashes), *data, None),
