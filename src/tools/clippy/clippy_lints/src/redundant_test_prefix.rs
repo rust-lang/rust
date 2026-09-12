@@ -131,7 +131,7 @@ fn name_conflicts<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, fn_name: S
     let id = body.id().hir_id;
 
     // Iterate over items in the same module/scope
-    let (module, _module_span, _module_hir) = tcx.hir_get_module(tcx.parent_module(id));
+    let (module, _module_span) = tcx.hir_get_module(tcx.parent_module(id));
     if module
         .item_ids
         .iter()

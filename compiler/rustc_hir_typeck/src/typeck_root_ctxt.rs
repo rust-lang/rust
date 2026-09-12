@@ -7,7 +7,7 @@ use rustc_infer::infer::{InferCtxt, InferOk, OpaqueTypeStorageEntries, TyCtxtInf
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVid, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
-use rustc_span::def_id::LocalDefIdMap;
+use rustc_span::def_id::{LocalDefIdMap, LocalModId};
 use rustc_trait_selection::traits::{self, FulfillmentEngine, FulfillmentError, TraitEngine};
 use tracing::instrument;
 
@@ -68,6 +68,9 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<Vec<TyVid>>,
+
+    /// Parent module
+    pub(super) mod_id: LocalModId,
 }
 
 impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
@@ -79,6 +82,7 @@ impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
 
 impl<'tcx> TypeckRootCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+        let mod_id = tcx.parent_module_from_def_id(def_id);
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
         let infcx = tcx
@@ -103,6 +107,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
+            mod_id,
         }
     }
 

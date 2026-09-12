@@ -26,6 +26,7 @@ use rustc_middle::lint::{
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
+use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -190,7 +191,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
             hir::OwnerNode::ImplItem(item) => levels.visit_impl_item(item),
             hir::OwnerNode::Crate(mod_) => {
                 levels.add_id(hir::CRATE_HIR_ID);
-                levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
+                levels.visit_mod(mod_, mod_.spans.inner_span, CRATE_MOD_ID)
             }
             hir::OwnerNode::Synthetic => unreachable!(),
         },
