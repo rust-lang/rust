@@ -9,10 +9,11 @@ use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
+use crate::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, SearchStep, Searcher};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
-use crate::sys::os_str::{Buf, Slice};
+use crate::sys::os_str::{Buf, BytesFlavour, Slice};
 use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{cmp, fmt, slice};
 
@@ -1342,6 +1343,266 @@ impl OsStr {
     pub const fn as_os_str(&self) -> &OsStr {
         self
     }
+
+    /// Returns `true` if the given pattern matches a prefix of this `OsStr`
+    /// slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// assert!(OsStr::new("foo").starts_with('f'));
+    /// assert!(!OsStr::new("foo").starts_with('F'));
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn starts_with<'a, P: Pattern<OsStr>>(&'a self, pat: P) -> bool {
+        pat.is_prefix_of(self)
+    }
+
+    /// Returns `true` if the given pattern matches a suffix of this `OsStr`
+    /// slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// assert!(OsStr::new("foo").ends_with('o'));
+    /// assert!(!OsStr::new("foo").ends_with('O'));
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn ends_with<'a, P>(&'a self, pat: P) -> bool
+    where
+        P: Pattern<OsStr, Searcher<'a>: ReverseSearcher<'a, OsStr>>,
+    {
+        pat.is_suffix_of(self)
+    }
+
+    /// Returns a `OsStr` slice with the prefix removed.
+    ///
+    /// If the string starts with the pattern `prefix`, returns substring after
+    /// the prefix, wrapped in `Some`.  If the string doesn’t start with
+    /// `prefix`, returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// assert_eq!(Some(OsStr::new("foo")), OsStr::new("--foo").strip_prefix("--"));
+    /// assert_eq!(None, OsStr::new("-f").strip_prefix("--"));
+    /// ```
+    #[must_use = "this returns the remaining substring as a new slice, \
+                  without modifying the original"]
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn strip_prefix<'a, P>(&'a self, prefix: P) -> Option<&'a OsStr>
+    where
+        P: Pattern<OsStr>,
+    {
+        prefix.strip_prefix_of(self)
+    }
+
+    /// Returns a `OsStr` slice with the suffix removed.
+    ///
+    /// If the string ends with the pattern `suffix`, returns substring before
+    /// the suffix, wrapped in `Some`.  If the string doesn’t end with `suffix`,
+    /// returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// assert_eq!(Some(OsStr::new("fo")), OsStr::new("foo").strip_suffix('o'));
+    /// assert_eq!(None, OsStr::new("foo").strip_suffix('O'));
+    /// ```
+    #[must_use = "this returns the remaining substring as a new slice, \
+                  without modifying the original"]
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn strip_suffix<'a, P>(&'a self, suffix: P) -> Option<&'a OsStr>
+    where
+        P: Pattern<OsStr>,
+        <P as Pattern<OsStr>>::Searcher<'a>: ReverseSearcher<'a, OsStr>,
+    {
+        suffix.strip_suffix_of(self)
+    }
+
+    /// Splits the string on the first occurrence of the specified delimiter and
+    /// returns prefix before delimiter and suffix after delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// assert_eq!(Some((OsStr::new("foo"), OsStr::new("bar=baz"))),
+    ///            OsStr::new("foo=bar=baz").split_once('='));
+    /// assert_eq!(None, OsStr::new("foobar").split_once(','));
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn split_once<'a, P: Pattern<OsStr>>(
+        &'a self,
+        delimiter: P,
+    ) -> Option<(&'a Self, &'a Self)> {
+        use core::pattern::Haystack as _;
+        let (start, end) = delimiter.into_searcher(self).next_match()?;
+        // SAFETY: `Searcher` is known to return valid indices.
+        Some(unsafe { (self.get_unchecked(0..start), self.get_unchecked(end..self.len())) })
+    }
+
+    /// Splits the string on the last occurrence of the specified delimiter and
+    /// returns prefix before delimiter and suffix after delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// assert_eq!(Some((OsStr::new("foo=bar"), OsStr::new("baz"))),
+    ///            OsStr::new("foo=bar=baz").rsplit_once('='));
+    /// assert_eq!(None, OsStr::new("foobar").rsplit_once(','));
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn rsplit_once<'a, P: Pattern<OsStr>>(
+        &'a self,
+        delimiter: P,
+    ) -> Option<(&'a Self, &'a Self)>
+    where
+        P: Pattern<OsStr, Searcher<'a>: ReverseSearcher<'a, OsStr>>,
+    {
+        use core::pattern::Haystack as _;
+        let (start, end) = delimiter.into_searcher(self).next_match_back()?;
+        // SAFETY: `Searcher` is known to return valid indices.
+        Some(unsafe { (self.get_unchecked(0..start), self.get_unchecked(end..self.len())) })
+    }
+
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let value = OsStr::new("foo,bar,baz");
+    /// let got = value.split(',').collect::<Vec<_>>();
+    /// let want = [OsStr::new("foo"), OsStr::new("bar"), OsStr::new("baz")];
+    /// assert_eq!(&want[..], &got[..]);
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn split<'hs, P: Pattern<OsStr>>(&'hs self, delimiter: P) -> Split<'hs, P::Searcher<'hs>> {
+        Split(core::pattern::Split::new(delimiter.into_searcher(self)).with_allow_trailing_empty())
+    }
+
+    /// Returns the byte index of the first character of this string slice that
+    /// matches the pattern.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: core::pattern
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard Gepardi");
+    ///
+    /// assert_eq!(s.find('L'), Some(0));
+    /// assert_eq!(s.find('é'), Some(14));
+    /// assert_eq!(s.find("pard"), Some(17));
+    /// ```
+    ///
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn find<'a>(&'a self, pat: impl Pattern<OsStr>) -> Option<usize> {
+        pat.into_searcher(self).next_match().map(|(i, _)| i)
+    }
+
+    /// Returns the byte index for the first character of the last match of the pattern in
+    /// this string slice.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: core::pattern
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard Gepardi");
+    ///
+    /// assert_eq!(s.rfind('L'), Some(13));
+    /// assert_eq!(s.rfind('é'), Some(14));
+    /// assert_eq!(s.rfind("pard"), Some(24));
+    /// ```
+    ///
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn rfind<'a, P>(&'a self, pat: P) -> Option<usize>
+    where
+        P: Pattern<OsStr, Searcher<'a>: ReverseSearcher<'a, OsStr>>,
+    {
+        pat.into_searcher(self).next_match_back().map(|(i, _)| i)
+    }
+
+    /// Returns `true` if the given pattern matches a sub-slice of
+    /// this string slice.
+    ///
+    /// Returns `false` if it does not.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: core::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let bananas = OsStr::new("bananas");
+    ///
+    /// assert!(bananas.contains("nana"));
+    /// assert!(!bananas.contains("apples"));
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
+    pub fn contains<'a>(&'a self, pat: impl Pattern<OsStr>) -> bool {
+        pat.is_contained_in(self)
+    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
@@ -1896,3 +2157,269 @@ impl<'a> FromIterator<Cow<'a, OsStr>> for OsString {
         }
     }
 }
+
+#[unstable(feature = "str_internals", issue = "none")]
+impl<'a> From<&'a OsStr> for &'a core::str_bytes::Bytes<BytesFlavour> {
+    fn from(val: &'a OsStr) -> Self {
+        val.inner.into()
+    }
+}
+
+#[unstable(feature = "str_internals", issue = "none")]
+impl<'a> From<&'a core::str_bytes::Bytes<BytesFlavour>> for &'a OsStr {
+    fn from(val: &'a core::str_bytes::Bytes<BytesFlavour>) -> Self {
+        OsStr::from_inner(<&Slice>::from(val))
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl core::pattern::Haystack for OsStr {
+    #[inline(always)]
+    fn cursor_at_front(&self) -> usize {
+        0
+    }
+    #[inline(always)]
+    fn cursor_at_back(&self) -> usize {
+        self.inner.inner.len()
+    }
+
+    #[inline(always)]
+    fn is_empty(&self) -> bool {
+        self.inner.inner.is_empty()
+    }
+
+    #[inline(always)]
+    unsafe fn get_unchecked(&self, range: core::ops::Range<usize>) -> &Self {
+        // SAFETY: Caller promises that `range` is valid.
+        OsStr::from_inner(unsafe { self.inner.get_unchecked(range) })
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl core::pattern::Pattern<OsStr> for char {
+    type Searcher<'hs> = CharSearcher<'hs>;
+
+    #[inline]
+    fn into_searcher<'h>(self, haystack: &'h OsStr) -> Self::Searcher<'h> {
+        CharSearcher::new(haystack, self)
+    }
+
+    #[inline]
+    fn is_contained_in(self, haystack: &OsStr) -> bool {
+        self.is_contained_in(<&core::str_bytes::Bytes<_>>::from(haystack))
+    }
+
+    #[inline]
+    fn is_prefix_of(self, haystack: &OsStr) -> bool {
+        self.is_prefix_of(<&core::str_bytes::Bytes<_>>::from(haystack))
+    }
+
+    #[inline]
+    fn is_suffix_of<'h>(self, haystack: &'h OsStr) -> bool
+    where
+        Self::Searcher<'h>: ReverseSearcher<'h, OsStr>,
+    {
+        self.is_suffix_of(<&core::str_bytes::Bytes<_>>::from(haystack))
+    }
+
+    /// Removes the pattern from the front of haystack, if it matches.
+    #[inline]
+    fn strip_prefix_of<'h>(self, haystack: &'h OsStr) -> Option<&'h OsStr> {
+        self.strip_prefix_of(<&core::str_bytes::Bytes<_>>::from(haystack)).map(|bytes| bytes.into())
+    }
+
+    /// Removes the pattern from the back of haystack, if it matches.
+    #[inline]
+    fn strip_suffix_of<'h>(self, haystack: &'h OsStr) -> Option<&'h OsStr>
+    where
+        Self::Searcher<'h>: ReverseSearcher<'h, OsStr>,
+    {
+        self.strip_suffix_of(<&core::str_bytes::Bytes<_>>::from(haystack)).map(|bytes| bytes.into())
+    }
+}
+
+/// Associated type for `<char as Pattern<OsStr>>::Searcher`.
+#[derive(Clone, Debug)]
+#[unstable(feature = "pattern", issue = "27721")]
+pub struct CharSearcher<'hs>(core::str_bytes::CharSearcher<'hs, BytesFlavour>);
+
+impl<'hs> CharSearcher<'hs> {
+    #[inline]
+    fn new(haystack: &'hs OsStr, needle: char) -> CharSearcher<'hs> {
+        Self(core::str_bytes::CharSearcher::new(
+            <&core::str_bytes::Bytes<_>>::from(haystack),
+            needle,
+        ))
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs> Searcher<'hs, OsStr> for CharSearcher<'hs> {
+    #[inline(always)]
+    fn haystack(&self) -> &'hs OsStr {
+        self.0.haystack().into()
+    }
+
+    #[inline(always)]
+    fn next(&mut self) -> SearchStep {
+        self.0.next()
+    }
+    #[inline(always)]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match()
+    }
+    #[inline(always)]
+    fn next_reject(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs> ReverseSearcher<'hs, OsStr> for CharSearcher<'hs> {
+    #[inline(always)]
+    fn next_back(&mut self) -> SearchStep {
+        self.0.next_back()
+    }
+    #[inline(always)]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match_back()
+    }
+    #[inline(always)]
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject_back()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs> DoubleEndedSearcher<'hs, OsStr> for CharSearcher<'hs> {}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'p> core::pattern::Pattern<OsStr> for &'p str {
+    type Searcher<'hs> = StrSearcher<'hs, 'p>;
+
+    #[inline]
+    fn into_searcher<'h>(self, haystack: &'h OsStr) -> Self::Searcher<'h> {
+        StrSearcher::new(haystack, self)
+    }
+
+    #[inline]
+    fn is_contained_in(self, haystack: &OsStr) -> bool {
+        self.is_contained_in(<&core::str_bytes::Bytes<_>>::from(haystack))
+    }
+
+    #[inline]
+    fn is_prefix_of(self, haystack: &OsStr) -> bool {
+        self.is_prefix_of(<&core::str_bytes::Bytes<_>>::from(haystack))
+    }
+
+    #[inline]
+    fn is_suffix_of<'h>(self, haystack: &'h OsStr) -> bool
+    where
+        Self::Searcher<'h>: ReverseSearcher<'h, OsStr>,
+    {
+        self.is_suffix_of(<&core::str_bytes::Bytes<_>>::from(haystack))
+    }
+
+    /// Removes the pattern from the front of haystack, if it matches.
+    #[inline]
+    fn strip_prefix_of<'h>(self, haystack: &'h OsStr) -> Option<&'h OsStr> {
+        self.strip_prefix_of(<&core::str_bytes::Bytes<_>>::from(haystack)).map(|bytes| bytes.into())
+    }
+
+    /// Removes the pattern from the back of haystack, if it matches.
+    #[inline]
+    fn strip_suffix_of<'h>(self, haystack: &'h OsStr) -> Option<&'h OsStr>
+    where
+        Self::Searcher<'h>: ReverseSearcher<'h, OsStr>,
+    {
+        self.strip_suffix_of(<&core::str_bytes::Bytes<_>>::from(haystack)).map(|bytes| bytes.into())
+    }
+}
+
+/// Associated type for `<&str as Pattern<OsStr>>::Searcher`.
+#[derive(Clone, Debug)]
+#[unstable(feature = "pattern", issue = "27721")]
+pub struct StrSearcher<'hs, 'p>(core::str_bytes::StrSearcher<'hs, 'p, BytesFlavour>);
+
+impl<'hs, 'p> StrSearcher<'hs, 'p> {
+    #[inline]
+    fn new(haystack: &'hs OsStr, needle: &'p str) -> StrSearcher<'hs, 'p> {
+        //        let haystack = (&core::str_bytes::Bytes)::from(haystack);
+        Self(core::str_bytes::StrSearcher::new(haystack.into(), needle))
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, 'p> Searcher<'hs, OsStr> for StrSearcher<'hs, 'p> {
+    #[inline(always)]
+    fn haystack(&self) -> &'hs OsStr {
+        self.0.haystack().into()
+    }
+
+    #[inline(always)]
+    fn next(&mut self) -> SearchStep {
+        self.0.next()
+    }
+    #[inline(always)]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match()
+    }
+    #[inline(always)]
+    fn next_reject(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, 'p> ReverseSearcher<'hs, OsStr> for StrSearcher<'hs, 'p> {
+    #[inline(always)]
+    fn next_back(&mut self) -> SearchStep {
+        self.0.next_back()
+    }
+    #[inline(always)]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match_back()
+    }
+    #[inline(always)]
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject_back()
+    }
+}
+
+/// An iterator over substrings of an `OsStr`, separated by characters matched
+/// by a pattern.
+#[unstable(feature = "pattern", issue = "27721")]
+pub struct Split<'hs, S: Searcher<'hs, OsStr>>(core::pattern::Split<'hs, OsStr, S>);
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, S: Searcher<'hs, OsStr> + Clone> Clone for Split<'hs, S> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, S: Searcher<'hs, OsStr> + fmt::Debug> fmt::Debug for Split<'hs, S> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(fmt)
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, S: Searcher<'hs, OsStr>> Iterator for Split<'hs, S> {
+    type Item = &'hs OsStr;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next_fwd::<false>()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, S: DoubleEndedSearcher<'hs, OsStr>> DoubleEndedIterator for Split<'hs, S> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_bwd::<false>()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, S: Searcher<'hs, OsStr>> core::iter::FusedIterator for Split<'hs, S> {}
