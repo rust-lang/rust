@@ -37,10 +37,6 @@ impl Lock {
         let ret = unsafe { libc::fcntl(file.as_raw_fd(), cmd, &flock) };
         if ret == -1 { Err(io::Error::last_os_error()) } else { Ok(Lock { file }) }
     }
-
-    pub fn error_unsupported(err: &io::Error) -> bool {
-        matches!(err.raw_os_error(), Some(libc::ENOTSUP) | Some(libc::ENOSYS))
-    }
 }
 
 impl Drop for Lock {
