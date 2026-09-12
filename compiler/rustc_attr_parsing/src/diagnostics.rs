@@ -898,6 +898,13 @@ pub(crate) struct InlineForceInlineConflict {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[inline]` is ignored on externally exported functions")]
+#[help(
+    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
+)]
+pub(crate) struct InlineIgnoredForExported;
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
