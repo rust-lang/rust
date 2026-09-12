@@ -747,21 +747,13 @@ impl<'scope> ScopeBase<'scope> {
     }
 
     fn job_panicked(&self, err: Box<dyn Any + Send + 'static>) {
-        // capture the first error we see, free the rest
-        if self.panic.load(Ordering::Relaxed).is_null() {
-            let nil = ptr::null_mut();
-            let mut err = ManuallyDrop::new(Box::new(err)); // box up the fat ptr
-            let err_ptr: *mut Box<dyn Any + Send + 'static> = &mut **err;
-            if self
-                .panic
-                .compare_exchange(nil, err_ptr, Ordering::Release, Ordering::Relaxed)
-                .is_ok()
-            {
-                // ownership now transferred into self.panic
-            } else {
-                // another panic raced in ahead of us, so drop ours
-                let _: Box<Box<_>> = ManuallyDrop::into_inner(err);
-            }
+        // Capture the first error we see. Panic payloads can panic in `Drop`, and this runs
+        // before the scope waits, so losing payloads are intentionally leaked.
+        let nil = ptr::null_mut();
+        let mut err = ManuallyDrop::new(Box::new(err)); // box up the fat ptr
+        let err_ptr: *mut Box<dyn Any + Send + 'static> = &mut **err;
+        if self.panic.compare_exchange(nil, err_ptr, Ordering::Release, Ordering::Relaxed).is_ok() {
+            // ownership now transferred into self.panic
         }
     }
 
