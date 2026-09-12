@@ -365,16 +365,20 @@ pub struct OpenDelimited {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub struct DelimitedBounds {
-    pub start: u32,
+    start: u32,
     /// The length includes both the start and the end token.
     /// So an empty delimited sequence has length 2.
-    pub length: u32,
+    length: u32,
     /// Index of the parent of the current delimited sequence.
     /// If this is the root delimited sequence, is `None`.
-    pub parent: Option<u32>,
+    parent: Option<u32>,
 }
 
 impl DelimitedBounds {
+    pub fn start(&self) -> usize {
+        self.start as usize
+    }
+
     /// Return the index of the next token tree that follows this delimited token sequence.
     pub fn index_of_next_token_tree(&self) -> usize {
         (self.start + self.length) as usize
