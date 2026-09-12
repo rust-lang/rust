@@ -135,6 +135,9 @@ define_valid_range_type! {
     pub struct U64NotAllOnes(u64 is 0..u64::MAX);
     pub struct I64NotAllOnes(i64 is ..-1 | 0..);
 
+    pub struct PositiveNonZeroI64(i64 is 1..);
+    pub struct PositiveI64(i64 is 0..);
+
     pub struct NonZeroCharInner(char is '\u{1}' ..= '\u{10ffff}');
 }
 
