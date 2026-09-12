@@ -16,6 +16,7 @@
 #![cfg_attr(test, expect(unreachable_pub))]
 
 extern crate rustc_codegen_ssa;
+extern crate rustc_data_structures;
 extern crate rustc_driver as _;
 extern crate rustc_interface;
 extern crate rustc_lexer;

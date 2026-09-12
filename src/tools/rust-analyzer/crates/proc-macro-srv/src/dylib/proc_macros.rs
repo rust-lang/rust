@@ -2,6 +2,7 @@
 use crate::{
     ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, TrackedEnv, token_stream::TokenStream,
 };
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_proc_macro::bridge;
 
 impl From<bridge::PanicMessage> for crate::PanicMessage {
@@ -10,11 +11,13 @@ impl From<bridge::PanicMessage> for crate::PanicMessage {
     }
 }
 
-pub(crate) struct ProcMacros(Vec<(bridge::client::Client, rustc_metadata::ProcMacroKind)>);
+pub(crate) struct ProcMacros(
+    Vec<(IntoDynSyncSend<bridge::server::DynClient>, rustc_metadata::ProcMacroKind)>,
+);
 
 impl ProcMacros {
     pub(super) fn new(
-        macros: Vec<(bridge::client::Client, rustc_metadata::ProcMacroKind)>,
+        macros: Vec<(IntoDynSyncSend<bridge::server::DynClient>, rustc_metadata::ProcMacroKind)>,
     ) -> Self {
         ProcMacros(macros)
     }

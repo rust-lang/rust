@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::hash::Hash;
 use std::ops::{Bound, Range};
 use std::sync::atomic::AtomicU32;
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
 use std::{panic, thread};
 
 use crate::bridge::{
@@ -139,7 +139,7 @@ pub trait ExecutionStrategy {
         &self,
         dispatcher: &mut Dispatcher<impl Server>,
         input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+        run_client: &(dyn Fn(BridgeConfig<'_>) -> Buffer + Sync),
         force_show_panics: bool,
     ) -> Buffer;
 }
@@ -188,30 +188,32 @@ impl ExecutionStrategy for MaybeCrossThread {
         &self,
         dispatcher: &mut Dispatcher<impl Server>,
         input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+        run_client: &(dyn Fn(BridgeConfig<'_>) -> Buffer + Sync),
         force_show_panics: bool,
     ) -> Buffer {
         if self.cross_thread || ALREADY_RUNNING_SAME_THREAD.get() {
             let (mut server, mut client) = MessagePipe::new();
 
-            let join_handle = thread::spawn(move || {
-                let mut dispatch = |b: Buffer| -> Buffer {
-                    client.send(b);
-                    client.recv().expect("server died while client waiting for reply")
-                };
+            thread::scope(|scope| {
+                let join_handle = scope.spawn(move || {
+                    let mut dispatch = |b: Buffer| -> Buffer {
+                        client.send(b);
+                        client.recv().expect("server died while client waiting for reply")
+                    };
 
-                run_client(BridgeConfig {
-                    input,
-                    dispatch: (&mut dispatch).into(),
-                    force_show_panics,
-                })
-            });
+                    run_client(BridgeConfig {
+                        input,
+                        dispatch: (&mut dispatch).into(),
+                        force_show_panics,
+                    })
+                });
 
-            while let Some(b) = server.recv() {
-                server.send(dispatcher.dispatch(b));
-            }
+                while let Some(b) = server.recv() {
+                    server.send(dispatcher.dispatch(b));
+                }
 
-            join_handle.join().unwrap()
+                join_handle.join().unwrap()
+            })
         } else {
             let _guard = RunningSameThreadGuard::new();
 
@@ -258,7 +260,7 @@ fn run_server<
     strategy: &impl ExecutionStrategy,
     server: S,
     input: I,
-    run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+    run_client: &(dyn Fn(BridgeConfig<'_>) -> Buffer + Sync),
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher = Dispatcher { handle_store: HandleStore::new(), server };
@@ -274,7 +276,18 @@ fn run_server<
     Result::decode(&mut &buf[..], &mut dispatcher.handle_store)
 }
 
+#[derive(Clone)]
+pub struct DynClient {
+    pub run: Arc<dyn Fn(BridgeConfig<'_>) -> Buffer + Send + Sync>,
+}
+
 impl client::Client {
+    pub fn into_dyn_client(self) -> DynClient {
+        DynClient { run: Arc::new(move |config| (self.run)(config)) }
+    }
+}
+
+impl DynClient {
     pub fn run1<S>(
         &self,
         strategy: &impl ExecutionStrategy,
@@ -285,8 +298,8 @@ impl client::Client {
     where
         S: Server,
     {
-        let client::Client { run } = *self;
-        run_server(strategy, server, <MarkedTokenStream<S>>::mark(input), run, force_show_panics)
+        let DynClient { run } = self;
+        run_server(strategy, server, <MarkedTokenStream<S>>::mark(input), &**run, force_show_panics)
             .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
     }
 
@@ -301,12 +314,12 @@ impl client::Client {
     where
         S: Server,
     {
-        let client::Client { run } = *self;
+        let DynClient { run } = self;
         run_server(
             strategy,
             server,
             (<MarkedTokenStream<S>>::mark(input), <MarkedTokenStream<S>>::mark(input2)),
-            run,
+            &**run,
             force_show_panics,
         )
         .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())

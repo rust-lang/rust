@@ -1,7 +1,7 @@
 //! Buffer management for same-process client<->server communication.
 
 use std::mem::{self, ManuallyDrop};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::slice;
 
 #[repr(C)]
@@ -28,6 +28,13 @@ impl Deref for Buffer {
     #[inline]
     fn deref(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.data as *const u8, self.len) }
+    }
+}
+
+impl DerefMut for Buffer {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [u8] {
+        unsafe { slice::from_raw_parts_mut(self.data as *mut u8, self.len) }
     }
 }
 
