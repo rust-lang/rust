@@ -332,7 +332,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, itctx, |this| {
-                        this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coroutine_marker)
+                        this.lower_fn_decl(decl, id, FnDeclKind::Fn, coroutine_marker)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -741,7 +741,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
                     (
                         // Disallow `impl Trait` in foreign items.
-                        this.lower_fn_decl(fdec, i.id, sig.span, FnDeclKind::ExternFn, None),
+                        this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None),
                         this.lower_fn_params_to_idents(fdec),
                     )
                 });
@@ -1668,7 +1668,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_marker)
+            this.lower_fn_decl(&sig.decl, id, kind, coroutine_marker)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }

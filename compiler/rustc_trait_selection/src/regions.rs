@@ -74,10 +74,12 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.resolve_regions_with_outlives_env(
-            &OutlivesEnvironment::new(self, body_def_id, param_env, assumed_wf_tys),
-            self.tcx.def_span(body_def_id),
-        )
+        self.resolve_regions_with_outlives_env(&OutlivesEnvironment::new(
+            self,
+            body_def_id,
+            param_env,
+            assumed_wf_tys,
+        ))
     }
 }
 
