@@ -4,11 +4,12 @@ use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
+use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _, Size};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_crate_store::DllImport;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
@@ -30,11 +31,9 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     cx: &CodegenCx<'ll, '_>,
     instance: Instance<'tcx>,
     llfn: &'ll llvm::Value,
-    schema: &PointerAuthSchema,
+    ptrauth_schema: PointerAuthSchema,
 ) -> &'ll llvm::Value {
-    if cx.tcx.sess.pointer_authentication_functions().is_none() {
-        return llfn;
-    }
+    assert!(cx.tcx.sess.pointer_authentication_functions().is_some());
 
     // Only free functions or methods
     let def_id = instance.def_id();
@@ -54,7 +53,7 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
         return llfn;
     }
 
-    let addr_diversity = match schema.is_address_discriminated {
+    let addr_diversity = match ptrauth_schema.is_address_discriminated {
         PointerAuthAddressDiscriminator::HardwareAddress(true) => Some(llfn),
         PointerAuthAddressDiscriminator::HardwareAddress(false) => None,
         PointerAuthAddressDiscriminator::Synthetic(val) => {
@@ -63,7 +62,12 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
             Some(unsafe { llvm::LLVMConstIntToPtr(llval, llty) })
         }
     };
-    const_ptr_auth(llfn, schema.key as u32, schema.constant_discriminator as u64, addr_diversity)
+    const_ptr_auth(
+        llfn,
+        ptrauth_schema.key as u32,
+        ptrauth_schema.constant_discriminator as u64,
+        addr_diversity,
+    )
 }
 
 /*
@@ -179,11 +183,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         global_alloc: GlobalAlloc<'tcx>,
         need_symbol_name: bool,
-        schema: Option<&PointerAuthSchema>,
+        ptrauth_schema: Option<PointerAuthSchema>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
     ) -> Result<&'ll Value, u64> {
         let alloc = match global_alloc {
             GlobalAlloc::Function { instance, .. } => {
-                return Ok(self.get_fn_addr(instance, schema));
+                return Ok(self.get_fn_addr(instance, ptrauth_schema));
             }
             GlobalAlloc::Static(def_id) => {
                 assert!(self.tcx.is_static(def_id));
@@ -226,7 +231,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             }
         };
 
-        let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
+        let init = const_alloc_to_llvm(
+            self,
+            alloc.inner(),
+            IsStatic::No,
+            IsInitOrFini::No,
+            ptrauth_discriminators,
+        );
         let alloc = alloc.inner();
 
         if need_symbol_name {
@@ -405,7 +416,8 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         cv: Scalar,
         layout: abi::Scalar,
         llty: &'ll Type,
-        schema: Option<&PointerAuthSchema>,
+        ptrauth_schema: Option<PointerAuthSchema>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -422,7 +434,12 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                 let base_addr_space = global_alloc.address_space(self);
-                let base_addr = match self.alloc_to_backend(global_alloc, false, schema) {
+                let base_addr = match self.alloc_to_backend(
+                    global_alloc,
+                    false,
+                    ptrauth_schema,
+                    ptrauth_discriminators,
+                ) {
                     Ok(base_addr) => base_addr,
                     Err(base_addr) => {
                         let val = base_addr.wrapping_add(offset.bytes());
