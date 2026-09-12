@@ -1,0 +1,51 @@
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/fake-borrow-in-divergent-guard.rs:11:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Some(_) if { x = None; false } && return => {}
+   |                      ^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/fake-borrow-in-divergent-guard.rs:23:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Some(_) if { x = None; return } => {}
+   |                      ^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/fake-borrow-in-divergent-guard.rs:33:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Some(_) if { x = None; panic!() } => {}
+   |                      ^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/fake-borrow-in-divergent-guard.rs:44:26
+   |
+LL |         match x {
+   |               - value is immutable in match guard
+LL |             Some(_) if { x = None; break 'b } => {}
+   |                          ^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/fake-borrow-in-divergent-guard.rs:56:26
+   |
+LL |         match x {
+   |               - value is immutable in match guard
+LL |             Some(_) if { x = None; continue } => {}
+   |                          ^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/fake-borrow-in-divergent-guard.rs:67:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Some(_) if { x = None; become always_become_after_mutation() } => {}
+   |                      ^ cannot assign
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0510`.

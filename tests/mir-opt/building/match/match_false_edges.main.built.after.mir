@@ -136,6 +136,7 @@ fn main() -> () {
 
     bb17: {
         StorageDead(_8);
+        FakeRead(ForMatchGuard, _3);
         StorageDead(_7);
         goto -> bb13;
     }
@@ -164,6 +165,7 @@ fn main() -> () {
     bb21: {
         StorageDead(_13);
         StorageDead(_12);
+        FakeRead(ForMatchGuard, _3);
         StorageDead(_11);
         goto -> bb10;
     }
@@ -182,6 +184,7 @@ fn main() -> () {
     }
 
     bb24 (cleanup): {
+        FakeRead(ForMatchGuard, _3);
         resume;
     }
 }
