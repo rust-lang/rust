@@ -11,6 +11,7 @@
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![cfg_attr(bootstrap, feature(never_type))]
+#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]
@@ -34,7 +35,6 @@
 #![feature(thread_id_value)]
 #![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
-#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
 // This allows derive macros to reference this crate

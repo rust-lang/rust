@@ -1,7 +1,7 @@
+#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![feature(deref_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(rustc_private)]
-#![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 #![expect(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
 #![warn(
