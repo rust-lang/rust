@@ -1,0 +1,20 @@
+error: unable to satisfy constraints involving placeholders due to unknown implied bounds
+  --> $DIR/mixed-ambiguous-alias-outlives.rs:35:9
+   |
+LL |         forall<'a, U> {
+   |         ^^^^^^
+
+error: unable to satisfy constraints involving placeholders due to unknown implied bounds
+  --> $DIR/mixed-ambiguous-alias-outlives.rs:63:9
+   |
+LL |         forall<'a, U> {
+   |         ^^^^^^
+
+error: unable to satisfy constraints involving placeholders due to unknown implied bounds
+  --> $DIR/mixed-ambiguous-alias-outlives.rs:75:9
+   |
+LL |         forall<'a, U, V> {
+   |         ^^^^^^
+
+error: aborting due to 3 previous errors
+
