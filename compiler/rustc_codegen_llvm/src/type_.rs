@@ -183,6 +183,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn type_bf16(&self) -> &'ll Type {
         unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
     }
+
+    pub(crate) fn type_x86_fp80(&self) -> &'ll Type {
+        unsafe { llvm::LLVMX86FP80TypeInContext(self.llcx()) }
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {

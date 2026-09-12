@@ -17,9 +17,28 @@ rust_dbg_extern_identity_u64(uint64_t u) {
     return u;
 }
 
+float
+rust_dbg_extern_identity_float(float u) {
+    return u;
+}
+
 double
 rust_dbg_extern_identity_double(double u) {
     return u;
+}
+
+typedef float (*float_callback)(float);
+
+void
+rust_dbg_extern_call_float(float_callback f, float u, float* res) {
+    *res = f(u);
+}
+
+typedef double (*double_callback)(double);
+
+void
+rust_dbg_extern_call_double(double_callback f, double u, double* res) {
+    *res = f(u);
 }
 
 char
