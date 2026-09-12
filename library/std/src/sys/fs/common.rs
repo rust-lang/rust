@@ -54,14 +54,6 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     ignore_notfound(fs::remove_dir(path))
 }
 
-pub fn exists(path: &Path) -> io::Result<bool> {
-    match fs::metadata(path) {
-        Ok(_) => Ok(true),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
-        Err(error) => Err(error),
-    }
-}
-
 pub struct Dir {
     path: PathBuf,
 }

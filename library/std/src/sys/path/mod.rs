@@ -28,8 +28,8 @@ cfg_select! {
         pub use sgx::*;
     }
     target_os = "solid_asp3" => {
-        mod unsupported_backslash;
-        pub use unsupported_backslash::*;
+        mod solid;
+        pub use solid::*;
     }
     target_os = "uefi" => {
         mod uefi;
@@ -40,8 +40,22 @@ cfg_select! {
         mod windows_prefix;
         pub use cygwin::*;
     }
+    target_os = "motor" => {
+        mod motor;
+        mod unix_like;
+        pub use motor::*;
+        pub use unix_like::*;
+    }
+    any(target_family = "unix", target_os = "vexos", target_os = "hermit", target_os = "wasi") => {
+        mod unix_like;
+        pub use unix_like::*;
+
+        pub use crate::sys::helpers::run_path_with_cstr as with_native_path;
+    }
     _ => {
-        mod unix;
-        pub use unix::*;
+        mod unix_like;
+        mod unsupported;
+        pub use unix_like::*;
+        pub use unsupported::*;
     }
 }
