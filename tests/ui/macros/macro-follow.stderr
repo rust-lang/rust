@@ -4,7 +4,7 @@ error: `$p:pat` is followed by `(`, which is not allowed for `pat` fragments
 LL |     ($p:pat ()) => {};
    |             ^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `[`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:13:13
@@ -12,7 +12,7 @@ error: `$p:pat` is followed by `[`, which is not allowed for `pat` fragments
 LL |     ($p:pat []) => {};
    |             ^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `{`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:14:13
@@ -20,15 +20,7 @@ error: `$p:pat` is followed by `{`, which is not allowed for `pat` fragments
 LL |     ($p:pat {}) => {};
    |             ^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
-
-error: `$p:pat` is followed by `:`, which is not allowed for `pat` fragments
-  --> $DIR/macro-follow.rs:15:13
-   |
-LL |     ($p:pat :) => {};
-   |             ^ not allowed after `pat` fragments
-   |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `>`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:16:13
@@ -36,7 +28,7 @@ error: `$p:pat` is followed by `>`, which is not allowed for `pat` fragments
 LL |     ($p:pat >) => {};
    |             ^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `+`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:17:13
@@ -44,7 +36,7 @@ error: `$p:pat` is followed by `+`, which is not allowed for `pat` fragments
 LL |     ($p:pat +) => {};
    |             ^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `ident`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:18:13
@@ -52,7 +44,7 @@ error: `$p:pat` is followed by `ident`, which is not allowed for `pat` fragments
 LL |     ($p:pat ident) => {};
    |             ^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$q:pat`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:19:13
@@ -60,7 +52,7 @@ error: `$p:pat` is followed by `$q:pat`, which is not allowed for `pat` fragment
 LL |     ($p:pat $q:pat) => {};
    |             ^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$e:expr`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:20:13
@@ -68,7 +60,7 @@ error: `$p:pat` is followed by `$e:expr`, which is not allowed for `pat` fragmen
 LL |     ($p:pat $e:expr) => {};
    |             ^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$t:ty`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:21:13
@@ -76,7 +68,7 @@ error: `$p:pat` is followed by `$t:ty`, which is not allowed for `pat` fragments
 LL |     ($p:pat $t:ty) => {};
    |             ^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$s:stmt`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:22:13
@@ -84,7 +76,7 @@ error: `$p:pat` is followed by `$s:stmt`, which is not allowed for `pat` fragmen
 LL |     ($p:pat $s:stmt) => {};
    |             ^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$q:path`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:23:13
@@ -92,7 +84,7 @@ error: `$p:pat` is followed by `$q:path`, which is not allowed for `pat` fragmen
 LL |     ($p:pat $q:path) => {};
    |             ^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$b:block`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:24:13
@@ -100,7 +92,7 @@ error: `$p:pat` is followed by `$b:block`, which is not allowed for `pat` fragme
 LL |     ($p:pat $b:block) => {};
    |             ^^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$i:ident`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:25:13
@@ -108,7 +100,7 @@ error: `$p:pat` is followed by `$i:ident`, which is not allowed for `pat` fragme
 LL |     ($p:pat $i:ident) => {};
    |             ^^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$t:tt`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:26:13
@@ -116,7 +108,7 @@ error: `$p:pat` is followed by `$t:tt`, which is not allowed for `pat` fragments
 LL |     ($p:pat $t:tt) => {};
    |             ^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$i:item`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:27:13
@@ -124,7 +116,7 @@ error: `$p:pat` is followed by `$i:item`, which is not allowed for `pat` fragmen
 LL |     ($p:pat $i:item) => {};
    |             ^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$p:pat` is followed by `$m:meta`, which is not allowed for `pat` fragments
   --> $DIR/macro-follow.rs:28:13
@@ -132,7 +124,7 @@ error: `$p:pat` is followed by `$m:meta`, which is not allowed for `pat` fragmen
 LL |     ($p:pat $m:meta) => {};
    |             ^^^^^^^ not allowed after `pat` fragments
    |
-   = note: allowed there are: `=>`, `,`, `=`, `|`, `if`, `if let` or `in`
+   = note: allowed there are: `=>`, `,`, `=`, `|`, `:`, `if`, `if let` or `in`
 
 error: `$e:expr` is followed by `(`, which is not allowed for `expr` fragments
   --> $DIR/macro-follow.rs:32:14
@@ -710,5 +702,5 @@ LL |     ($p:path $g:guard) => {};
    |
    = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
-error: aborting due to 89 previous errors
+error: aborting due to 88 previous errors
 
