@@ -548,8 +548,8 @@ pub trait Hasher {
     #[inline]
     #[unstable(feature = "hasher_prefixfree_extras", issue = "96762")]
     fn write_str(&mut self, s: &str) {
+        self.write_length_prefix(s.len());
         self.write(s.as_bytes());
-        self.write_u8(0xff);
     }
 }
 
