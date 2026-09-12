@@ -67,6 +67,14 @@ pub(crate) fn inline_attr<'tcx, 'll>(
 
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
+        // LLVM 22 and older may inline a target-featured function into a caller
+        // that lacks those features. Keep the function inlineable, but do not force it.
+        InlineAttr::Always
+            if !codegen_fn_attrs.target_features.is_empty()
+                && llvm_util::get_version() < (23, 0, 0) =>
+        {
+            Some(AttributeKind::InlineHint.create_attr(cx.llcx))
+        }
         InlineAttr::Always | InlineAttr::Force { .. } => {
             Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
         }
