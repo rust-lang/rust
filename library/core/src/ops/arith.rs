@@ -618,17 +618,21 @@ macro_rules! rem_impl_float {
 
         /// The remainder from the division of two floats.
         ///
-        /// The remainder has the same sign as the dividend and is computed as:
-        /// `x - (x / y).trunc() * y`.
+        /// The remainder has the same sign as the dividend and is computed
+        /// as the exact value `x - trunc(x / y) * y` (using infinite
+        /// precision arithmetic, then rounded to the result type). This is
+        /// the IEEE 754 remainder as implemented by C's `fmod`.
+        ///
+        /// Note that evaluating `x - (x / y).trunc() * y` literally as a
+        /// Rust expression may give a different result due to intermediate
+        /// rounding, since each floating-point operation can introduce
+        /// rounding error.
         ///
         /// # Examples
         /// ```
         /// let x: f32 = 50.50;
         /// let y: f32 = 8.125;
-        /// let remainder = x - (x / y).trunc() * y;
-        ///
-        /// // The answer to both operations is 1.75
-        /// assert_eq!(x % y, remainder);
+        /// assert_eq!(x % y, 1.75);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
