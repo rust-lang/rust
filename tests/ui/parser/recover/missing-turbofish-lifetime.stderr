@@ -1,0 +1,57 @@
+error: labels cannot use keyword names
+  --> $DIR/missing-turbofish-lifetime.rs:6:20
+   |
+LL |     let _ = Struct<'_> {
+   |                    ^^
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/missing-turbofish-lifetime.rs:6:22
+   |
+LL |     let _ = Struct<'_> {
+   |                      ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let _ = Struct<'_'> {
+   |                      +
+
+error: comparison operators cannot be chained
+  --> $DIR/missing-turbofish-lifetime.rs:6:19
+   |
+LL |     let _ = Struct<'_> {
+   |                   ^  ^
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/missing-turbofish-lifetime.rs:15:22
+   |
+LL |     let _ = Struct<'a> {
+   |                      ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let _ = Struct<'a'> {
+   |                      +
+
+error: comparison operators cannot be chained
+  --> $DIR/missing-turbofish-lifetime.rs:15:19
+   |
+LL |     let _ = Struct<'a> {
+   |                   ^  ^
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/missing-turbofish-lifetime.rs:23:24
+   |
+LL |     let _ = Struct<'abc> {
+   |                        ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: comparison operators cannot be chained
+  --> $DIR/missing-turbofish-lifetime.rs:23:19
+   |
+LL |     let _ = Struct<'abc> {
+   |                   ^    ^
+   |
+   = help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+
+error: aborting due to 7 previous errors
+
