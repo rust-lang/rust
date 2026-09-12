@@ -111,6 +111,9 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
 
     bb17: {
         StorageDead(_13);
+        FakeRead(ForMatchGuard, _6);
+        FakeRead(ForMatchGuard, _7);
+        FakeRead(ForMatchGuard, _8);
         falseEdge -> [real: bb3, imaginary: bb5];
     }
 
