@@ -1,0 +1,28 @@
+error: unexpected `...`
+  --> $DIR/recover-invalid-function-parameter-pattern.rs:3:9
+   |
+LL | fn main(... : ...)
+   |         ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL - fn main(... : ...)
+LL + fn main(.. : ...)
+   |
+
+error: unexpected `...`
+  --> $DIR/recover-invalid-function-parameter-pattern.rs:3:15
+   |
+LL | fn main(... : ...)
+   |               ^^^
+   |
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: expected one of `->`, `where`, or `{`, found `<eof>`
+  --> $DIR/recover-invalid-function-parameter-pattern.rs:3:18
+   |
+LL | fn main(... : ...)
+   |                  ^ expected one of `->`, `where`, or `{`
+
+error: aborting due to 3 previous errors
+
