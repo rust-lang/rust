@@ -449,6 +449,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             sess.replaced_intrinsics = FxHashSet::from_iter(codegen_backend.replaced_intrinsics());
             sess.fallback_intrinsics = FxHashSet::from_iter(codegen_backend.fallback_intrinsics());
             sess.thin_lto_supported = codegen_backend.thin_lto_supported();
+            sess.codegen_backend_supports_eh_personality_mangling =
+                codegen_backend.can_mangle_eh_personality();
 
             let target_config = codegen_backend.target_config(&sess);
 

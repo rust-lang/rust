@@ -25,7 +25,11 @@ fn create_jit_module(
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
     jit_builder.symbol_lookup_fn(dep_symbol_lookup_fn(tcx.sess, crate_info.clone()));
-    let mut jit_module = UnwindModule::new(JITModule::new(jit_builder), false);
+    let mut jit_module = UnwindModule::new(
+        JITModule::new(jit_builder),
+        &rustc_symbol_mangling::eh_personality_symbol(tcx),
+        false,
+    );
 
     let cx = DebugContext::new(tcx, jit_module.isa(), false, "dummy_cgu_name");
 
