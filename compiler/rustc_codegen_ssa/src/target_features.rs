@@ -10,7 +10,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edit_distance, sym};
-use rustc_target::spec::{Arch, SanitizerSet};
+use rustc_target::spec::{Arch, Os, SanitizerSet};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
@@ -449,6 +449,18 @@ pub fn target_spec_to_backend_features<'a>(
         )
     {
         extend_backend_features("ptx70", true);
+    }
+
+    // When targetting aarch64 Fuchsia, the +fix-cortex-a53-835769 should be applied by default
+    // whenever using the generic (armv8-a) CPU. This matches Clang's behavior for aarch64 Fuchsia.
+    if sess.target.os == Os::Fuchsia
+        && sess.target.arch == Arch::AArch64
+        && matches!(
+            sess.opts.cg.target_cpu.as_deref().unwrap_or(&sess.target.cpu),
+            "generic" | "cortex-a53"
+        )
+    {
+        extend_backend_features("fix-cortex-a53-835769", true);
     }
 
     // Compute implied features
