@@ -5,9 +5,11 @@ use rustc_infer::infer::{
     InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt, TypeOutlivesConstraint,
 };
 use rustc_macros::extension;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, elaborate};
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized, elaborate};
 use rustc_span::DUMMY_SP;
 
+use crate::traits::ScrubbedTraitError;
 use crate::traits::outlives_bounds::InferCtxtExt;
 
 #[extension(pub trait OutlivesEnvironmentBuildExt<'tcx>)]
@@ -88,16 +90,38 @@ pub fn ty_known_to_outlive<'tcx>(
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
-    ty: Ty<'tcx>,
+    ty: Unnormalized<'tcx, Ty<'tcx>>,
     region: ty::Region<'tcx>,
 ) -> bool {
-    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
-            sub_region: region,
-            sup_type: ty,
-            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
-        });
-    })
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+
+    let ty = ty.skip_norm_wip();
+
+    // Unlike ordinary `TypeOutlives` goals, this helper directly registers a
+    // region obligation. Normalize non-rigid aliases before lexical region
+    // solving, while avoiding trait solving for inputs without non-rigid aliases.
+    let ty = if infcx.next_trait_solver() && ty.has_non_rigid_aliases() {
+        let Ok(ty) = crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
+            infcx.at(&ObligationCause::dummy_with_span(DUMMY_SP), param_env),
+            Unnormalized::new_wip(ty),
+        ) else {
+            return false;
+        };
+        ty
+    } else {
+        ty
+    };
+
+    infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
+        sub_region: region,
+        sup_type: ty,
+        origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
+    });
+
+    let errors = infcx.resolve_regions(id, param_env, wf_tys.iter().copied());
+    tracing::debug!(?errors, "errors");
+
+    errors.is_empty()
 }
 
 /// Given a known `param_env` and a set of well formed types, can we prove that
