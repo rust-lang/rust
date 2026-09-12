@@ -1,0 +1,21 @@
+error[E0080]: evaluation panicked: panic
+  --> $DIR/codeview-annotation-bad-args.rs:27:24
+   |
+LL |     const NAME: &str = panic!("panic");
+   |                        ^^^^^^^^^^^^^^^ evaluation of `<i32 as GetName>::NAME` failed here
+
+note: erroneous constant encountered
+  --> $DIR/codeview-annotation-bad-args.rs:33:29
+   |
+LL |     const ARGS: &[&str] = &[T::NAME];
+   |                             ^^^^^^^
+
+error[E0080]: evaluation panicked: panic
+  --> $DIR/codeview-annotation-bad-args.rs:16:27
+   |
+LL |     const ARGS: &[&str] = panic!("panic");
+   |                           ^^^^^^^^^^^^^^^ evaluation of `<Invalid as std::hint::CodeViewAnnotationArgs>::ARGS` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
