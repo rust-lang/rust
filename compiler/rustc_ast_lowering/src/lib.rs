@@ -1181,8 +1181,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
+        ast_target_item: Option<ast::AstItemKind<'_>>,
     ) -> &'hir [hir::Attribute] {
-        self.lower_attrs_with_extra(id, attrs, target_span, target, None, &[])
+        self.lower_attrs_with_extra(id, attrs, target_span, target, ast_target_item, &[])
     }
 
     fn lower_attrs_with_extra(
@@ -1191,14 +1192,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        target_item: Option<&ast::Item>,
+        ast_target_item: Option<ast::AstItemKind<'_>>,
         extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
-            let mut lowered_attrs =
-                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target, target_item);
+            let mut lowered_attrs = self.lower_attrs_vec(
+                attrs,
+                self.lower_span(target_span),
+                id,
+                target,
+                ast_target_item,
+            );
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             assert_eq!(id.owner, self.curr_owner.owner_id);
@@ -1225,14 +1231,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
-        target_item: Option<&ast::Item>,
+        ast_target_item: Option<ast::AstItemKind<'_>>,
     ) -> Vec<hir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
-            target_item,
+            ast_target_item,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {
@@ -2304,7 +2310,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
             source,
         };
-        self.lower_attrs(hir_id, param_attrs, param_span, Target::from(&param));
+        self.lower_attrs(hir_id, param_attrs, param_span, Target::from(&param), None);
         param
     }
 
@@ -2899,7 +2905,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // FIXME(mgca): This might result in lowering attributes that
                     // then go unused as the `Target::ExprField` is not actually
                     // corresponding to `Node::ExprField`.
-                    self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
+                    self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField, None);
                     let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
                     &*self.arena.alloc(hir::ConstArgExprField {

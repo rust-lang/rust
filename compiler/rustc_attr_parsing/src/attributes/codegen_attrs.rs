@@ -1,3 +1,4 @@
+use rustc_ast::{AssocItemKind, ItemKind};
 use rustc_attr_ir::{
     CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, UsedBy, find_attr,
 };
@@ -8,6 +9,7 @@ use rustc_structures::SanitizerSet;
 
 use super::prelude::*;
 use crate::attributes::AttributeSafety;
+use crate::context::FinalizeCheckFn;
 use crate::diagnostics::{
     EmptyExportName, EmptySection, NakedFunctionIncompatibleAttribute, NullOnExport,
     NullOnObjcClass, NullOnObjcSelector, NullOnSection, ObjcClassExpectedStringLiteral,
@@ -326,6 +328,60 @@ impl AttributeParser for NakedParser {
         }
 
         Some(AttributeKind::Naked(span))
+    }
+
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        Some((
+            |cx, _| match cx.target {
+                Target::Fn
+                | Target::Method(
+                    MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+                ) => {
+                    let fn_sig = match cx.ast_target_item {
+                        Some(rustc_ast::ast::AstItemKind::Item(ast_item)) => {
+                            let ItemKind::Fn(fn_item) = &ast_item.kind else {
+                                panic!("expected struct AST target item for {:?}", ast_item);
+                            };
+                            &fn_item.sig
+                        }
+                        Some(rustc_ast::ast::AstItemKind::AssocItem(assoc_item)) => {
+                            let AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
+                                panic!(
+                                    "expected struct AST target associated item for {:?}",
+                                    assoc_item
+                                );
+                            };
+                            &fn_item.sig
+                        }
+                        _ => panic!("expected enum AST target kind for {:?}", cx.ast_target_item),
+                    };
+
+                    let abi = fn_sig.header.ext;
+
+                    if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
+                        let abi_type = match abi {
+                            rustc_ast::ast::Extern::None => "Rust".into(),
+                            rustc_ast::ast::Extern::Explicit(name, _) => {
+                                name.symbol_unescaped.to_string()
+                            }
+                            rustc_ast::ast::Extern::Implicit(_) => unreachable!(),
+                        };
+                        feature_err(
+                            cx.sess(),
+                            sym::naked_functions_rustic_abi,
+                            fn_sig.span,
+                            format!(
+                                "`#[naked]` is currently unstable on `extern \"{}\"` functions",
+                                abi_type
+                            ),
+                        )
+                        .emit();
+                    }
+                }
+                _ => {}
+            },
+            self.span?,
+        ))
     }
 }
 

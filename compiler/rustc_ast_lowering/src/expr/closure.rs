@@ -19,7 +19,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure: &Closure,
     ) -> hir::Expr<'hir> {
         let expr_hir_id = self.lower_node_id(e.id);
-        let attrs = self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
+        let attrs = self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e), None);
 
         match closure.coroutine_marker {
             Some(coroutine_marker) => self.lower_expr_coroutine_closure_with_move_exprs(

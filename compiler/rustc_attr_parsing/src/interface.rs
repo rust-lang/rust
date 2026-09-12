@@ -316,7 +316,7 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
-        target_item: Option<&ast::Item>,
+        ast_target_item: Option<ast::AstItemKind<'_>>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
@@ -523,7 +523,7 @@ impl<'sess> AttributeParser<'sess> {
                     },
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,
-                    target_item,
+                    ast_target_item,
                 },
                 attr_span,
             );
