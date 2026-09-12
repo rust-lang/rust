@@ -961,6 +961,8 @@ pub struct TokenCursor {
     // stream which never has delimiters.
     curr: TokenTreeCursor,
 
+    parent: Option<TokenTreeCursor>,
+
     // Token streams surrounding the current one. The `next_idx` within each cursor
     // is always greater than zero and always points one past the current
     // `TokenTree::Delimited`.
@@ -970,7 +972,14 @@ pub struct TokenCursor {
 impl TokenCursor {
     #[inline]
     pub fn new(stream: TokenStream) -> Self {
-        TokenCursor { curr: TokenTreeCursor::new(stream), stack: vec![] }
+        TokenCursor { curr: TokenTreeCursor::new(stream), parent: None, stack: vec![] }
+    }
+
+    /// Clone the cursor while keeping only its immediate parent (if present).
+    /// This can be used as a faster clone for situations where you only want to continue parsing
+    /// the currently delimited sequence or its children, but not return back to its parents.
+    pub fn clone_without_stack(&self) -> Self {
+        Self { curr: self.curr.clone(), parent: self.parent.clone(), stack: vec![] }
     }
 
     /// Gets the next token and advances the cursor by one.
@@ -989,14 +998,14 @@ impl TokenCursor {
     /// delimited sequence. Panics if we are not within a delimited sequence.
     #[inline]
     pub fn look_ahead_past_close_delim(&self) -> Option<&TokenTree> {
-        self.stack.last().unwrap().next()
+        self.parent.as_ref().unwrap().next()
     }
 
     /// Clones the `TokenTree::Delimited` that we are currently within. Panics if we are not within
     /// a delimited sequence.
     #[inline]
     pub fn clone_enclosing_delim(&self) -> TokenTree {
-        self.stack.last().unwrap().curr().unwrap().clone()
+        self.parent.as_ref().unwrap().curr().unwrap().clone()
     }
 
     /// For skipping to the end of the current sequence, in rare circumstances.
@@ -1008,13 +1017,13 @@ impl TokenCursor {
     /// Note: the outermost stream has depth of 0.
     #[inline]
     pub fn depth(&self) -> usize {
-        self.stack.len()
+        self.parent.is_some() as usize + self.stack.len()
     }
 
     /// Returns details about the parent delimited sequence, if there is one.
     #[inline]
     pub fn parent_delim_and_span(&self) -> Option<(Delimiter, DelimSpan)> {
-        if let Some(last) = self.stack.last()
+        if let Some(last) = &self.parent
             && let Some(TokenTree::Delimited(span, _, delim, _)) = last.curr()
         {
             Some((*delim, *span))
@@ -1041,19 +1050,26 @@ impl TokenCursor {
                     &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
                         let trees = TokenTreeCursor::new(tts.clone());
                         self.curr.bump(); // move past the `Delimited`
-                        self.stack.push(mem::replace(&mut self.curr, trees));
+
+                        let prev_curr = mem::replace(&mut self.curr, trees);
+                        let prev_parent = mem::replace(&mut self.parent, Some(prev_curr));
+                        if let Some(parent) = prev_parent {
+                            self.stack.push(parent);
+                        }
+
                         if !delim.skip() {
                             return (Token::new(delim.as_open_token_kind(), sp.open), spacing.open);
                         }
                         // No open delimiter to return; continue on to the next iteration.
                     }
                 };
-            } else if let Some(parent) = self.stack.pop() {
+            } else if let Some(parent) = self.parent.take() {
                 // We have exhausted this token stream. Move back to its parent token stream.
                 let Some(&TokenTree::Delimited(span, spacing, delim, _)) = parent.curr() else {
                     panic!("parent should be Delimited")
                 };
                 self.curr = parent;
+                self.parent = self.stack.pop();
                 if !delim.skip() {
                     return (Token::new(delim.as_close_token_kind(), span.close), spacing.close);
                 }
@@ -1115,7 +1131,7 @@ mod size_asserts {
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
-    static_assert_size!(LazyAttrTokenStreamInner, 88);
+    static_assert_size!(LazyAttrTokenStreamInner, 104);
     static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
