@@ -367,9 +367,8 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
     let lock_file_path = lock_file_path(source_dir);
 
     // not exclusive
-    let Ok(_lock) = flock::Lock::new(
+    let Ok(_lock) = flock::Lock::try_lock(
         &lock_file_path,
-        false, // don't wait,
         false, // don't create
         false,
     ) else {
@@ -452,10 +451,9 @@ fn lock_directory(sess: &Session, session_dir: &Path) -> (flock::Lock, PathBuf) 
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
-    match flock::Lock::new(
+    match flock::Lock::try_lock(
         &lock_file_path,
-        false, // don't wait
-        true,  // create the lock file
+        true, // create the lock file
         true,
     ) {
         // the lock should be exclusive
@@ -736,9 +734,8 @@ pub(crate) fn garbage_collect_session_directories(
 
             if is_finalized(directory_name) {
                 let lock_file_path = crate_directory.join(lock_file_name);
-                match flock::Lock::new(
+                match flock::Lock::try_lock(
                     &lock_file_path,
-                    false, // don't wait
                     false, // don't create the lock-file
                     true,
                 ) {
@@ -780,9 +777,8 @@ pub(crate) fn garbage_collect_session_directories(
                 // means that the owning process is still alive and we
                 // leave this directory alone.
                 let lock_file_path = crate_directory.join(lock_file_name);
-                match flock::Lock::new(
+                match flock::Lock::try_lock(
                     &lock_file_path,
-                    false, // don't wait
                     false, // don't create the lock-file
                     true,
                 ) {
