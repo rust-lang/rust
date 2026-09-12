@@ -15,6 +15,7 @@ use core::ops::{
 use core::str::{FromStr, Utf8Error};
 use core::{fmt, hash};
 
+use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_rc))]
@@ -597,10 +598,10 @@ impl<'a> TryFrom<&'a ByteString> for &'a str {
 // Additional impls for `ByteStr` that require types from `alloc`:
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl Clone for Box<ByteStr> {
+impl<A: Allocator + Clone> Clone for Box<ByteStr, A> {
     #[inline]
     fn clone(&self) -> Self {
-        Self::from(Box::<[u8]>::from(&self.0))
+        Box::clone_from_ref_in(&**self, Self::allocator(self).clone())
     }
 }
 
