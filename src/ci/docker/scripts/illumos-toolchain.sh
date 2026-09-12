@@ -47,11 +47,10 @@ GCC_BASE="gcc-$GCC_VERSION"
 GCC_TAR="gcc-$GCC_VERSION.tar.xz"
 GCC_URL="https://ftp.gnu.org/gnu/gcc/$GCC_BASE/$GCC_TAR"
 
-SYSROOT_VER='20181213-de6af22ae73b-v1'
-SYSROOT_SUM='ee792d956dfa6967453cebe9286a149143290d296a8ce4b8a91d36bea89f8112'
+SYSROOT_VER='20210501-e0b4275f34-v0'
+SYSROOT_SUM='28d8f4f6d84331ff1e99ac3d68b917cf8174897a5c00171c5e493253eb1587f6'
 SYSROOT_TAR="illumos-sysroot-$SYSROOT_MACH-$SYSROOT_VER.tar.gz"
-SYSROOT_URL='https://github.com/illumos/sysroot/releases/download/'
-SYSROOT_URL+="$SYSROOT_VER/$SYSROOT_TAR"
+SYSROOT_URL="https://github.com/illumos/sysroot/releases/download/$SYSROOT_VER/$SYSROOT_TAR"
 SYSROOT_DIR="$PREFIX/sysroot"
 
 BINUTILS_VERSION='2.40'
