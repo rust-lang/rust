@@ -10,7 +10,8 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
-use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree, DelimitedData};
+use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
@@ -324,19 +325,22 @@ fn print_crate_inner<'a>(
 /// Returns `true` if both token trees are identifier-like tokens that would
 /// merge into a single token if printed without a space between them.
 /// E.g. `ident` + `where` would merge into `identwhere`.
-fn idents_would_merge(tt1: &TokenTree, tt2: &TokenTree) -> bool {
-    fn is_ident_like(tt: &TokenTree) -> bool {
-        matches!(tt, TokenTree::Token(tk::Token { kind: tk::Ident(..) | tk::NtIdent(..), .. }, _,))
+fn idents_would_merge(tt1: &ArenaTokenTree, tt2: &ArenaTokenTree) -> bool {
+    fn is_ident_like(tt: &ArenaTokenTree) -> bool {
+        matches!(
+            tt,
+            ArenaTokenTree::Token(tk::Token { kind: tk::Ident(..) | tk::NtIdent(..), .. }, _,)
+        )
     }
     is_ident_like(tt1) && is_ident_like(tt2)
 }
 
-fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
-    use TokenTree::{Delimited as Del, Token as Tok};
+fn space_between(tt1: &ArenaTokenTree, tt2: &ArenaTokenTree) -> bool {
+    use ArenaTokenTree::{DelimitedStart as Del, Token as Tok};
     use tk::Delimiter::{Bracket, Parenthesis};
 
-    fn is_punct(tt: &TokenTree) -> bool {
-        matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())
+    fn is_punct(tt: &ArenaTokenTree) -> bool {
+        matches!(tt, ArenaTokenTree::Token(tok, _) if tok.is_punct())
     }
 
     // Each match arm has one or more examples in comments. The default is to
@@ -372,18 +376,23 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
 
         // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
         //      but `let (a, b) = (1, 2)` needs a space after the `let`
-        (Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _), Del(_, _, Parenthesis, _))
-            if !Ident::new(*sym, *span).is_reserved()
-                || *sym == kw::Fn
-                || *sym == kw::SelfUpper
-                || *sym == kw::Pub
-                || matches!(is_raw, tk::IdentIsRaw::Yes) =>
+        (
+            Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _),
+            Del(_, DelimitedData { delimiter: Parenthesis, .. }),
+        ) if !Ident::new(*sym, *span).is_reserved()
+            || *sym == kw::Fn
+            || *sym == kw::SelfUpper
+            || *sym == kw::Pub
+            || matches!(is_raw, tk::IdentIsRaw::Yes) =>
         {
             false
         }
 
         // `#` + `[`: `#[attr]`
-        (Tok(tk::Token { kind: tk::Pound, .. }, _), Del(_, _, Bracket, _)) => false,
+        (
+            Tok(tk::Token { kind: tk::Pound, .. }, _),
+            Del(_, DelimitedData { delimiter: Bracket, .. }),
+        ) => false,
 
         _ => true,
     }
@@ -715,7 +724,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 None,
                 *delim,
                 None,
-                &tokens.to_token_stream(),
+                tokens,
                 true,
                 span,
             ),
@@ -744,9 +753,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// appropriate macro, transcribe back into the grammar we just parsed from,
     /// and then pretty-print the resulting AST nodes (so, e.g., we print
     /// expression arguments as expressions). It can be done! I think.
-    fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) -> Spacing {
+    fn print_tt(
+        &mut self,
+        tt: &ArenaTokenTree,
+        stream: &ArenaTokenStream,
+        convert_dollar_crate: bool,
+    ) -> Spacing {
         match tt {
-            TokenTree::Token(token, spacing) => {
+            ArenaTokenTree::Token(token, spacing) => {
                 let token_str = self.token_to_string_ext(token, convert_dollar_crate);
                 self.word(token_str);
                 // Emit hygiene annotations for identity-bearing tokens,
@@ -771,18 +785,18 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 }
                 *spacing
             }
-            TokenTree::Delimited(dspan, spacing, delim, tts) => {
+            ArenaTokenTree::DelimitedStart(bounds, data) => {
                 self.print_mac_common(
                     None,
                     false,
                     None,
-                    *delim,
-                    Some(spacing.open),
-                    tts,
+                    data.delimiter,
+                    Some(data.spacing.open),
+                    &ArenaTokenStream::separate_delimited_inner(*bounds, stream),
                     convert_dollar_crate,
-                    dspan.entire(),
+                    data.span.entire(),
                 );
-                spacing.close
+                data.spacing.close
             }
         }
     }
@@ -816,10 +830,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     // output with simple string matching that can't handle whitespace changes.
     // E.g. we have seen cases where a proc macro can handle `a :: b` but not
     // `a::b`. See #117433 for some examples.
-    fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
-        let mut iter = tts.iter().peekable();
+    fn print_tts(&mut self, tts: &ArenaTokenStream, convert_dollar_crate: bool) {
+        let mut iter = tts.iter_top_level_trees();
         while let Some(tt) = iter.next() {
-            let spacing = self.print_tt(tt, convert_dollar_crate);
+            let spacing = self.print_tt(tt, tts, convert_dollar_crate);
             if let Some(next) = iter.peek() {
                 if spacing == Spacing::Alone && space_between(tt, next) {
                     self.space();
@@ -842,7 +856,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         ident: Option<Ident>,
         delim: tk::Delimiter,
         open_spacing: Option<Spacing>,
-        tts: &TokenStream,
+        tts: &ArenaTokenStream,
         convert_dollar_crate: bool,
         span: Span,
     ) {
@@ -926,7 +940,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             Some(*ident),
             macro_def.body.delim,
             None,
-            &macro_def.body.tokens.to_token_stream(),
+            &macro_def.body.tokens,
             true,
             sp,
         );
@@ -1172,7 +1186,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn tts_to_string(&self, tokens: &TokenStream) -> String {
-        Self::to_string(|s| s.print_tts(tokens, false))
+        Self::to_string(|s| s.print_tts(&ArenaTokenStream::from_stream(tokens), false))
     }
 
     fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
@@ -1674,7 +1688,7 @@ impl<'a> State<'a> {
             None,
             m.args.delim,
             None,
-            &m.args.tokens.to_token_stream(),
+            &m.args.tokens,
             true,
             m.span(),
         );
@@ -2410,9 +2424,9 @@ impl<'a> State<'a> {
         Self::to_string(|s| s.print_where_bound_predicate(where_bound_predicate))
     }
 
-    pub(crate) fn tt_to_string(&self, tt: &TokenTree) -> String {
+    pub(crate) fn tt_to_string(&self, tt: &ArenaTokenTree, stream: &ArenaTokenStream) -> String {
         Self::to_string(|s| {
-            s.print_tt(tt, false);
+            s.print_tt(tt, stream, false);
         })
     }
 

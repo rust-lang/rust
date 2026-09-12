@@ -6,7 +6,8 @@ use std::borrow::Cow;
 
 use rustc_ast as ast;
 use rustc_ast::token::{Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree};
+use rustc_ast::tokenstream::TokenStream;
 pub use state::{
     AnnNode, Comments, PpAnn, PrintState, State, print_crate, print_crate_as_interface,
 };
@@ -44,8 +45,8 @@ pub fn expr_to_string(e: &ast::Expr) -> String {
     State::new().expr_to_string(e)
 }
 
-pub fn tt_to_string(tt: &TokenTree) -> String {
-    State::new().tt_to_string(tt)
+pub fn tt_to_string(tt: &ArenaTokenTree, stream: &ArenaTokenStream) -> String {
+    State::new().tt_to_string(tt, stream)
 }
 
 pub fn tts_to_string(tokens: &TokenStream) -> String {
