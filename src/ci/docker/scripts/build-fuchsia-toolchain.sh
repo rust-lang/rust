@@ -4,13 +4,13 @@ set -ex
 source shared.sh
 
 FUCHSIA_SDK_URL=https://chrome-infra-packages.appspot.com/dl/fuchsia/sdk/core/linux-amd64
-FUCHSIA_SDK_ID=version:26.20241211.7.1
-FUCHSIA_SDK_SHA256=2cb7a9a0419f7413a46e0ccef7dad89f7c9979940d7c1ee87fac70ff499757d6
+FUCHSIA_SDK_ID=version:33.20260909.5.1
+FUCHSIA_SDK_SHA256=5d82a1ba625e91e0e93cf4f718dfde7e5c0fb833f83e95b8d8c00e3a3fe4f02e
 FUCHSIA_SDK_USR_DIR=/usr/local/core-linux-amd64-fuchsia-sdk
 CLANG_DOWNLOAD_URL=\
 https://chrome-infra-packages.appspot.com/dl/fuchsia/third_party/clang/linux-amd64
-CLANG_DOWNLOAD_ID=git_revision:388d7f144880dcd85ff31f06793304405a9f44b6
-CLANG_DOWNLOAD_SHA256=970d1f427b9c9a3049d8622c80c86830ff31b5334ad8da47a2f1e81143197e8b
+CLANG_DOWNLOAD_ID=git_revision:5e63f2ce42db2c42f1d0012a3b5fa9c6113f750a
+CLANG_DOWNLOAD_SHA256=2a97bbf480661bcc6f71f0abb1ff62365b9e94cc105a4d9a152e715c233f74d0
 
 install_clang() {
   mkdir -p clang_download

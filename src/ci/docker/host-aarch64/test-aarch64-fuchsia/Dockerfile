@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   clang \
   g++ \
-  g++-aarch64-linux-gnu \
+  g++-x86-64-linux-gnu \
   make \
   ninja-build \
   file \
