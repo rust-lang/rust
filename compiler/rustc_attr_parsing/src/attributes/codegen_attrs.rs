@@ -333,50 +333,29 @@ impl AttributeParser for NakedParser {
     fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
         Some((
             |cx, _| match cx.target {
-                Target::Fn => {
-                    let Some(item) = cx.target_item else {
-                        panic!("expected struct AST target item for {:?}", cx.target);
-                    };
-
-                    let ItemKind::Fn(fn_item) = &item.kind else {
-                        panic!("expected struct AST target item for {:?}", cx.target);
-                    };
-
-                    let fn_sig = &fn_item.sig;
-                    let abi = fn_sig.header.ext;
-
-                    if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
-                        let abi_type = match abi {
-                            rustc_ast::ast::Extern::None => "Rust".into(),
-                            rustc_ast::ast::Extern::Explicit(name, _) => {
-                                name.symbol_unescaped.to_string()
-                            }
-                            rustc_ast::ast::Extern::Implicit(_) => unreachable!(),
-                        };
-                        feature_err(
-                            cx.sess(),
-                            sym::naked_functions_rustic_abi,
-                            fn_sig.span,
-                            format!(
-                                "`#[naked]` is currently unstable on `extern \"{}\"` functions",
-                                abi_type
-                            ),
-                        )
-                        .emit();
-                    }
-                }
-                Target::Method(
+                Target::Fn
+                | Target::Method(
                     MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
                 ) => {
-                    let Some(assoc_item) = cx.target_assoc_item else {
-                        panic!("expected struct AST target associated item for {:?}", cx.target);
+                    let fn_sig = match cx.ast_target_item {
+                        Some(rustc_ast::ast::AstItemKind::Item(ast_item)) => {
+                            let ItemKind::Fn(fn_item) = &ast_item.kind else {
+                                panic!("expected struct AST target item for {:?}", ast_item);
+                            };
+                            &fn_item.sig
+                        }
+                        Some(rustc_ast::ast::AstItemKind::AssocItem(assoc_item)) => {
+                            let AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
+                                panic!(
+                                    "expected struct AST target associated item for {:?}",
+                                    assoc_item
+                                );
+                            };
+                            &fn_item.sig
+                        }
+                        _ => panic!("expected enum AST target kind for {:?}", cx.ast_target_item),
                     };
 
-                    let AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
-                        panic!("expected struct AST target associated item for {:?}", cx.target);
-                    };
-
-                    let fn_sig = &fn_item.sig;
                     let abi = fn_sig.header.ext;
 
                     if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
