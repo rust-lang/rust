@@ -1,24 +1,15 @@
+#![feature(panic_unwind)]
 #![feature(rustc_attrs)]
 #![no_std]
 #![no_main]
 
 extern crate alloc;
+extern crate unwind;
 
 use alloc::alloc::{GlobalAlloc, Layout};
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
-#[no_mangle]
-extern "C" fn rust_eh_personality(
-    _version: i32,
-    _actions: i32,
-    _exception_class: u64,
-    _exception_object: *mut (),
-    _context: *mut (),
-) -> i32 {
     loop {}
 }
 

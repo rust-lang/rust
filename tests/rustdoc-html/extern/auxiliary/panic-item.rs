@@ -2,6 +2,9 @@
 #![crate_type = "lib"]
 #![no_std]
 #![feature(lang_items)]
+#![feature(panic_unwind)]
+
+extern crate unwind;
 
 use core::panic::PanicInfo;
 use core::sync::atomic::{self, Ordering};
@@ -12,6 +15,3 @@ fn panic(_info: &PanicInfo) -> ! {
         atomic::compiler_fence(Ordering::SeqCst);
     }
 }
-
-#[lang = "eh_personality"]
-fn foo() {}
