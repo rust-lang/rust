@@ -1298,6 +1298,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let mut next_round = vec![];
 
             for remaining_trait in remaining_candidates {
+                if child_trait.def_id() == remaining_trait.def_id()
+                    && self.tcx().anonymize_bound_vars(child_trait)
+                        != self.tcx().anonymize_bound_vars(remaining_trait)
+                {
+                    return None;
+                }
                 if supertraits.contains(&remaining_trait.def_id()) {
                     made_progress = true;
                     continue;
