@@ -629,6 +629,7 @@ tested:\n  {untested_types}"
 
 def tested_all_variables() -> bool:
     expected_vars = [set(vars) for vars in INPUT_DATA.breakpoints]
+
     untested_vars = [
         expected.difference(tested.keys())
         for expected, tested in zip(expected_vars, VARS_TESTED)
@@ -640,6 +641,19 @@ def tested_all_variables() -> bool:
     ]
 
     result = True
+
+    # `zip()` stops producing values once the shorter of the 2 iterators are exhausted, so we need
+    # to check if we found more breakpoints than expected.
+    #
+    # If `expected_vars` were shorter, it would have caused an indexing error during the `check`
+    # logic (which also outputs an error message and returns `Result.Mismatch`), so that case does
+    # not need to be checked here.
+    if len(VARS_TESTED) > len(expected_vars):
+        result = False
+        print(
+            f"{ANSI_RED}[repr error]{ANSI_END} Expected data for {len(expected_vars)} \
+breakpoints, got data for {len(VARS_TESTED)} breakpoints.w"
+        )
 
     for i, v in enumerate(untested_vars):
         if len(v) == 0:

@@ -68,7 +68,7 @@ def check(var_name: str):
     return result
 
 
-def type_matches(gdb_type: gdb.Type, provider_ok: bool = False):
+def type_matches(gdb_type: gdb.Type, provider_ok: bool = False) -> Result:
     name = get_type_name(gdb_type)
     error_source = f"type '{name}'"
 
