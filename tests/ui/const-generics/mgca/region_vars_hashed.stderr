@@ -1,0 +1,8 @@
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/region_vars_hashed.rs:11:30
+   |
+LL |     foo::<{ Some::<&u8> { 0: const { &0_u8 } } }>()
+   |                              ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
