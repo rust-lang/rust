@@ -361,7 +361,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                     span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty);
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
-                PatKind::Leaf { subpatterns }
+                PatKind::Leaf { subpatterns, has_rest: ddpos.is_some() }
             }
 
             hir::PatKind::Binding(explicit_ba, id, ident, sub) => {
@@ -420,10 +420,10 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 };
                 let variant_def = adt_def.variant_of_res(res);
                 let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
-                return self.lower_variant_or_leaf(pat, None, res, subpatterns);
+                return self.lower_variant_or_leaf(pat, None, res, subpatterns, ddpos.is_some());
             }
 
-            hir::PatKind::Struct(ref qpath, fields, _) => {
+            hir::PatKind::Struct(ref qpath, fields, rest) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let subpatterns = fields
                     .iter()
@@ -437,7 +437,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                     })
                     .collect();
 
-                return self.lower_variant_or_leaf(pat, None, res, subpatterns);
+                return self.lower_variant_or_leaf(pat, None, res, subpatterns, rest.is_some());
             }
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
@@ -513,6 +513,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
         res: Res,
         subpatterns: Vec<FieldPat<'tcx>>,
+        has_rest: bool,
     ) -> Box<Pat<'tcx>> {
         // Check whether the caller should have provided an `expr` for this pattern kind.
         assert_matches!(
@@ -563,7 +564,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                         subpatterns,
                     }
                 } else {
-                    PatKind::Leaf { subpatterns }
+                    PatKind::Leaf { subpatterns, has_rest }
                 }
             }
 
@@ -577,7 +578,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
             )
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. }
-            | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
+            | Res::SelfCtor(..) => PatKind::Leaf { subpatterns, has_rest },
             _ => {
                 let e = match res {
                     Res::Def(DefKind::ConstParam, def_id) => {
@@ -644,7 +645,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
             _ => {
                 // The path isn't the name of a constant, so it must actually
                 // be a unit struct or unit variant (e.g. `Option::None`).
-                return self.lower_variant_or_leaf(pat, Some(expr), res, vec![]);
+                return self.lower_variant_or_leaf(pat, Some(expr), res, vec![], false);
             }
         };
 

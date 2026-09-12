@@ -804,6 +804,9 @@ pub enum PatKind<'tcx> {
     /// a single variant.
     Leaf {
         subpatterns: Vec<FieldPat<'tcx>>,
+        /// Whether this leaf pattern contains a rest pattern `..`.
+        /// Used in unsafety checking of union field patterns
+        has_rest: bool,
     },
 
     /// Explicit or implicit `&P` or `&mut P`, for some subpattern `P`.
