@@ -633,3 +633,72 @@ const _: () = ();
 ///
 /// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
 const _: () = ();
+
+#[doc(attribute = "recursion_limit")]
+//
+/// Sets the maximum depth for recursive compile-time operations.
+///
+/// The compiler limits how deeply it recurses while performing operations that could
+/// otherwise expand forever, such as macro expansion and auto-dereference. The
+/// `recursion_limit` attribute raises that limit. It applies to the whole crate and is
+/// written at the crate root:
+///
+/// ```
+/// #![recursion_limit = "256"]
+///
+/// // Macros may now expand up to 256 levels deep.
+/// ```
+///
+/// The value is a string containing the new limit. The default is 128.
+///
+/// This limit affects only compile-time recursion. It does not change how deeply
+/// recursive code can run at runtime.
+///
+/// When a compile-time operation recurses deeper than the limit, compilation fails. For
+/// example, this macro expands itself forever, so it always hits the limit:
+///
+/// ```compile_fail
+/// macro_rules! a {
+///     () => { a!(); };
+/// }
+///
+/// a!();
+/// ```
+///
+/// This produces an error whose help message suggests how to raise the limit:
+///
+/// ```text
+/// error: recursion limit reached while expanding `a!`
+///  --> src/main.rs:2:13
+///   |
+/// 2 |     () => { a!(); };
+///   |             ^^^^
+/// ...
+/// 5 | a!();
+///   | ---- in this macro invocation
+///   |
+///   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+///           attribute to your crate
+/// ```
+///
+/// Auto-dereference is limited in the same way:
+///
+/// ```compile_fail
+/// #![recursion_limit = "1"]
+///
+/// // Error: two recursive steps are needed to auto-dereference `&&&1` to `&u8`.
+/// let f = |_: &u8| {};
+/// f(&&&1);
+/// ```
+///
+/// Reaching the limit is most common in code that nests many macros, such as code expanded
+/// by `derive` macros or deeply nested `async` code. Raising the limit is safe, but very
+/// large values can make the compiler use more time and memory, and deeply nested code can
+/// still overflow the compiler's own stack. Increase the limit in measured steps rather
+/// than jumping to a very large number. If the limit is reached without an obvious cause,
+/// the code may be more deeply recursive than intended.
+///
+/// For more information, see the Reference on [the `recursion_limit` attribute].
+///
+/// [the `recursion_limit` attribute]: ../reference/attributes/limits.html#the-recursion_limit-attribute
+const _: () = ();
