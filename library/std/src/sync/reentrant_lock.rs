@@ -275,7 +275,7 @@ impl<T: ?Sized> ReentrantLock<T> {
     ///
     /// thread::spawn(move || {
     ///     c_lock.lock().set(10);
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(lock.lock().get(), 10);
     /// ```
     pub fn lock(&self) -> ReentrantLockGuard<'_, T> {
