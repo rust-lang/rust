@@ -731,7 +731,12 @@ impl<'a> Arguments<'a> {
         args: &'a [rt::Argument<'a>; M],
     ) -> Arguments<'a> {
         // SAFETY: Responsibility of the caller.
-        unsafe { Arguments { template: mem::transmute(template), args: mem::transmute(args) } }
+        unsafe {
+            Arguments {
+                template: mem::transmute::<&[u8; N], NonNull<u8>>(template),
+                args: mem::transmute::<&[rt::Argument<'_>; M], NonNull<rt::Argument<'_>>>(args),
+            }
+        }
     }
 
     // Same as `from_str`, but not const.
@@ -816,8 +821,8 @@ impl<'a> Arguments<'a> {
         // SAFETY: This is the "static str" representation of fmt::Arguments; see above.
         unsafe {
             Arguments {
-                template: mem::transmute(s.as_ptr()),
-                args: mem::transmute(s.len() << 1 | 1),
+                template: mem::transmute::<*const u8, NonNull<u8>>(s.as_ptr()),
+                args: mem::transmute::<usize, NonNull<rt::Argument<'_>>>(s.len() << 1 | 1),
             }
         }
     }

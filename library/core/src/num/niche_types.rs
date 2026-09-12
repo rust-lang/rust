@@ -24,7 +24,7 @@ macro_rules! define_valid_range_type {
                 #[allow(non_contiguous_range_endpoints)]
                 if let $pat = val {
                     // SAFETY: just checked that the value matches the pattern
-                    Some(unsafe { $name(crate::mem::transmute(val)) })
+                    Some(unsafe { $name(crate::mem::transmute::<$int, pattern_type!($int is $pat)>(val)) })
                 } else {
                     None
                 }

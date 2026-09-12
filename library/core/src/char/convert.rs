@@ -294,7 +294,7 @@ const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
         Err(CharTryFromError(()))
     } else {
         // SAFETY: checked that it's a legal unicode value
-        Ok(unsafe { transmute(i) })
+        Ok(unsafe { transmute::<u32, char>(i) })
     }
 }
 
