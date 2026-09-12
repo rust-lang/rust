@@ -560,7 +560,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         // we'll use this to check whether it was originally from an overloaded
         // operator.
         match self.move_data.rev_lookup.find(deref_base) {
-            LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
+            LookupResult::Exact(mpi) | LookupResult::Parent { mpi, .. } => {
                 debug!("borrowed_content_source: mpi={:?}", mpi);
 
                 for i in &self.move_data.init_path_map[mpi] {
@@ -597,7 +597,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
             // Base is a `static` so won't be from an overloaded operator
-            _ => (),
+            LookupResult::None => (),
         };
 
         // If we didn't find an overloaded deref or index, then assume it's a

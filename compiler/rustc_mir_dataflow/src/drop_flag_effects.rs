@@ -55,7 +55,7 @@ pub fn on_lookup_result_bits<'tcx, F>(
     F: FnMut(MovePathIndex),
 {
     match lookup_result {
-        LookupResult::Parent(..) => {
+        LookupResult::Parent { .. } | LookupResult::None => {
             // access to untracked value - do not touch children
         }
         LookupResult::Exact(e) => on_all_children_bits(move_data, e, each_child),

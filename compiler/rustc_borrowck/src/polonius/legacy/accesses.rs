@@ -67,7 +67,7 @@ impl<'a, 'tcx> Visitor<'tcx> for AccessFactsExtractor<'a, 'tcx> {
         match context {
             PlaceContext::NonMutatingUse(_)
             | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
-                let (LookupResult::Exact(path) | LookupResult::Parent(Some(path))) =
+                let (LookupResult::Exact(path) | LookupResult::Parent { mpi: path, .. }) =
                     self.move_data.rev_lookup.find(place.as_ref())
                 else {
                     // There's no path access to emit.
