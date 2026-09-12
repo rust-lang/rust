@@ -1410,9 +1410,30 @@ where
         &mut self,
         param_env: I::ParamEnv,
         alias_const: ty::AliasConst<I>,
+        ensure_wf_before_eval: bool,
     ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
+        }
+
+        if ensure_wf_before_eval && !self.typing_mode().is_coherence() {
+            let cx = self.cx();
+
+            let wf_goal = Goal::new(
+                cx,
+                param_env,
+                ty::ClauseKind::WellFormed(
+                    I::Const::new_alias(cx, ty::IsRigid::Yes, alias_const).into(),
+                ),
+            );
+
+            self.add_goal(GoalSource::AliasWellFormed, wf_goal)?;
+
+            let wf_certainty = self.try_evaluate_added_goals()?;
+
+            if matches!(wf_certainty, Certainty::Maybe(_)) {
+                return Ok(None);
+            }
         }
 
         self.delegate.evaluate_const(param_env, alias_const, |ty| {
@@ -1427,7 +1448,7 @@ where
         expected_term: I::Term,
         alias_const: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        match self.evaluate_const(param_env, alias_const)? {
+        match self.evaluate_const(param_env, alias_const, true)? {
             Some(evaluated) => {
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
