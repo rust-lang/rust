@@ -1,5 +1,5 @@
 // ignore-tidy-file-linelength
-//@ only-pauthtest
+//@ needs-llvm-components: aarch64
 //@ revisions: DEFAULT ALL DISABLE_JUMP DISABLE_AUTH_TRAPS DISABLE_CALLS DISABLE_INDIRCT_GOTOS DISABLE_RETURNS DISABLE_INTRINSICS DISABLE_TYPEINFO DISABLE_VT_PTR_ADDR DISABLE_VT_PTR_TYPE NONE
 
 //@ add-minicore

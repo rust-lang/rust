@@ -3,6 +3,8 @@
 // Make sure that compiler generated functions (main wrapper and __rust_try) also have ptrauth
 // attributes set correctly. Rustc only generates __rust_try at O0, so use that opt level for the
 // test.
+// Cannot be converted to minicore: catch_unwind is a std API and is what causes rustc to generate
+// the __rust_try wrapper this test is checking.
 
 //@ needs-llvm-components: aarch64
 
