@@ -1,11 +1,13 @@
+//@ run-pass
+
 extern "C" fn f() {
 }
 
-fn is_fn<F>(_: F) where F: Fn() {}
+fn is_fn<F>(f: F) where F: Fn() {
+    f();
+}
 
 fn main() {
-    // extern functions are extern "C" fn
     let _x: extern "C" fn() = f; // OK
     is_fn(f);
-    //~^ ERROR expected an `Fn()` closure, found `extern "C" fn() {f}`
 }
