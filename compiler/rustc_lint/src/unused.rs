@@ -1,4 +1,5 @@
 use rustc_ast::util::{classify, parser};
+use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, ExprKind, FnRetTy, ForLoop, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
@@ -64,6 +65,7 @@ enum UnusedDelimsCtx {
     FunctionArg,
     MethodArg,
     AssignedValue,
+    AssignedValueWithWildcard,
     AssignedValueLetElse,
     IfCond,
     WhileCond,
@@ -85,9 +87,9 @@ impl From<UnusedDelimsCtx> for &'static str {
         match ctx {
             UnusedDelimsCtx::FunctionArg => "function argument",
             UnusedDelimsCtx::MethodArg => "method argument",
-            UnusedDelimsCtx::AssignedValue | UnusedDelimsCtx::AssignedValueLetElse => {
-                "assigned value"
-            }
+            UnusedDelimsCtx::AssignedValue
+            | UnusedDelimsCtx::AssignedValueWithWildcard
+            | UnusedDelimsCtx::AssignedValueLetElse => "assigned value",
             UnusedDelimsCtx::IfCond => "`if` condition",
             UnusedDelimsCtx::WhileCond => "`while` condition",
             UnusedDelimsCtx::ForIterExpr => "`for` iterator expression",
@@ -102,6 +104,32 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::ClosureBody => "closure body",
         }
     }
+}
+
+fn expr_contains_wildcard(expr: &ast::Expr) -> bool {
+    struct WildcardVisitor {
+        found: bool,
+    }
+
+    impl<'ast> Visitor<'ast> for WildcardVisitor {
+        fn visit_expr(&mut self, expr: &'ast ast::Expr) {
+            if self.found {
+                return;
+            }
+            match &expr.kind {
+                ast::ExprKind::Underscore
+                | ast::ExprKind::Range(None, None, ast::RangeLimits::HalfOpen) => self.found = true,
+                ast::ExprKind::Struct(expr) if matches!(expr.rest, ast::StructRest::Rest(_)) => {
+                    self.found = true;
+                }
+                _ => visit::walk_expr(self, expr),
+            }
+        }
+    }
+
+    let mut visitor = WildcardVisitor { found: false };
+    visitor.visit_expr(expr);
+    visitor.found
 }
 
 /// Used by both `UnusedParens` and `UnusedBraces` to prevent code duplication.
@@ -494,7 +522,15 @@ trait UnusedDelimLint {
 
             Index(_, ref value, _) => (value, UnusedDelimsCtx::IndexExpr, false, None, None, false),
 
-            Assign(_, ref value, _) | AssignOp(.., ref value) => {
+            Assign(ref lhs, ref value, _) => {
+                let ctx = if expr_contains_wildcard(lhs) {
+                    UnusedDelimsCtx::AssignedValueWithWildcard
+                } else {
+                    UnusedDelimsCtx::AssignedValue
+                };
+                (value, ctx, false, None, None, false)
+            }
+            AssignOp(.., ref value) => {
                 (value, UnusedDelimsCtx::AssignedValue, false, None, None, false)
             }
             // either function/method call, or something this lint doesn't care about
@@ -1184,6 +1220,7 @@ impl UnusedDelimLint for UnusedBraces {
                     && (ctx != UnusedDelimsCtx::AnonConst
                         || (matches!(expr.kind, ast::ExprKind::Lit(_))
                             && !expr.span.from_expansion()))
+                    && ctx != UnusedDelimsCtx::AssignedValueWithWildcard
                     && ctx != UnusedDelimsCtx::ClosureBody
                     && !cx.sess().source_map().is_multiline(value.span)
                     && value.attrs.is_empty()
