@@ -170,6 +170,16 @@ pub enum GenerateProofTree {
     No,
 }
 
+impl<'a, D, I> EvalCtxt<'a, D>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    pub(super) fn is_projection_compute_assoc_term_candidate(&self) -> bool {
+        matches!(self.current_goal_kind, CurrentGoalKind::ProjectionComputeAssocTermCandidate)
+    }
+}
+
 pub trait SolverDelegateEvalExt: SolverDelegate {
     /// Evaluates a goal from **outside** of the trait solver.
     ///

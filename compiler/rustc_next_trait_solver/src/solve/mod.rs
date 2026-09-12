@@ -79,6 +79,29 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
         && normalization_nested_goals.is_empty()
 }
 
+fn has_no_non_region_external_constraints<I: Interner>(
+    response: ty::Canonical<I, Response<I>>,
+) -> bool {
+    let ExternalConstraintsData {
+        region_constraints: _,
+        ref opaque_types,
+        ref normalization_nested_goals,
+    } = *response.value.external_constraints;
+
+    opaque_types.is_empty() && normalization_nested_goals.is_empty()
+}
+
+fn var_values_eq_modulo_regions<I: Interner>(
+    a: ty::CanonicalVarValues<I>,
+    b: ty::CanonicalVarValues<I>,
+) -> bool {
+    a.var_values.len() == b.var_values.len()
+        && a.var_values.iter().zip(b.var_values.iter()).all(|(a, b)| match (a.kind(), b.kind()) {
+            (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_)) => true,
+            _ => a == b,
+        })
+}
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -317,6 +340,29 @@ where
         });
         if let Some((i, c)) = always_applicable {
             return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
+        }
+
+        // Some projection candidates may compute the same non-region response
+        // while differing only in region constraints. If one of these candidates
+        // has no region constraints, prefer it instead of floundering.
+        if self.is_projection_compute_assoc_term_candidate()
+            && candidates.len() > 1
+            && candidates.iter().all(|candidate| {
+                candidate.result.value.certainty == Certainty::Yes
+                    && has_no_non_region_external_constraints(candidate.result)
+                    && var_values_eq_modulo_regions(
+                        candidate.result.value.var_values,
+                        candidates[0].result.value.var_values,
+                    )
+            })
+            && let Some(candidate) = candidates.iter().find(|candidate| {
+                let ExternalConstraintsData { ref region_constraints, .. } =
+                    *candidate.result.value.external_constraints;
+
+                region_constraints.is_empty()
+            })
+        {
+            return Some((candidate.result, MergeCandidateInfo::EqualResponse));
         }
 
         let one: CanonicalResponse<I> = candidates[0].result;
