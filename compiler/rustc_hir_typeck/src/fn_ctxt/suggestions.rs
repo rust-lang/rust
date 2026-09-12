@@ -2505,7 +2505,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         // Return if:
         //  expected ty is not numeric
-        //  assigned ty is not str or String
+        //  assigned ty is not &str or String
+        //  note: &String, &&str excluded on purpose, doing so yields &T instead of T
         if !expected.is_numeric() {
             return false;
         }
@@ -2567,6 +2568,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 return true;
             }
+
+            // Ignore binary and unary ops, currently out of scope
+            ExprKind::Binary(_, _, _) | ExprKind::Unary(_, _) => return false,
 
             // For everything else (functions calls, variables, etc.) just suggest parsing directly
             _ => {
