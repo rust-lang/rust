@@ -316,19 +316,19 @@ pub trait BangProcMacro {
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         ts: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed>;
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed>;
 }
 
 impl<F> BangProcMacro for F
 where
-    F: Fn(&mut ExtCtxt<'_>, Span, ArenaTokenStream) -> Result<TokenStream, ErrorGuaranteed>,
+    F: Fn(&mut ExtCtxt<'_>, Span, ArenaTokenStream) -> Result<ArenaTokenStream, ErrorGuaranteed>,
 {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         ts: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         // FIXME setup implicit context in TLS before calling self.
         self(ecx, span, ts)
     }
@@ -341,7 +341,7 @@ pub trait AttrProcMacro {
         span: Span,
         annotation: ArenaTokenStream,
         annotated: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed>;
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed>;
 
     // Default implementation for safe attributes; override if the attribute can be unsafe.
     fn expand_with_safety<'cx>(
@@ -351,7 +351,7 @@ pub trait AttrProcMacro {
         span: Span,
         annotation: ArenaTokenStream,
         annotated: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         if let Safety::Unsafe(span) = safety {
             ecx.dcx().span_err(span, "unnecessary `unsafe` on safe attribute");
         }
@@ -361,7 +361,7 @@ pub trait AttrProcMacro {
 
 impl<F> AttrProcMacro for F
 where
-    F: Fn(ArenaTokenStream, ArenaTokenStream) -> TokenStream,
+    F: Fn(ArenaTokenStream, ArenaTokenStream) -> ArenaTokenStream,
 {
     fn expand<'cx>(
         &self,
@@ -369,7 +369,7 @@ where
         _span: Span,
         annotation: ArenaTokenStream,
         annotated: ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         // FIXME setup implicit context in TLS before calling self.
         Ok(self(annotation, annotated))
     }
@@ -935,7 +935,7 @@ impl SyntaxExtension {
             ecx: &mut ExtCtxt<'_>,
             span: Span,
             _ts: ArenaTokenStream,
-        ) -> Result<TokenStream, ErrorGuaranteed> {
+        ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
             Err(ecx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"))
         }
         SyntaxExtension::default(SyntaxExtensionKind::Bang(Arc::new(expand)), edition)

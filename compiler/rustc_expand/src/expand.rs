@@ -727,12 +727,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 if let SyntaxExtensionKind::Bang(expander) = ext {
                     match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
-                            let fragment = self.parse_ast_fragment(
-                                ArenaTokenStream::from_stream(&tok_result),
-                                fragment_kind,
-                                &mac.path,
-                                span,
-                            );
+                            let fragment =
+                                self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span);
                             if macro_stats {
                                 update_bang_macro_stats(
                                     self.cx,
@@ -840,7 +836,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
-                                ArenaTokenStream::from_stream(&tok_result),
+                                tok_result,
                                 fragment_kind,
                                 &attr_item.path,
                                 span,
