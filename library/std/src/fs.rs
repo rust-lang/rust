@@ -3056,6 +3056,73 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
     fs_imp::rename(from.as_ref(), to.as_ref())
 }
 
+/// Renames a file or directory to a new name, returning [`AlreadyExists`] if `to` already
+/// exists.
+///
+/// Unlike [`fs::rename`], the destination is never overwritten. The check happens as part of the
+/// same operation, which avoids check-then-rename races, but does not guarantee crash safety.
+///
+/// This will not work if the new name is on a different mount point.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to:
+///
+/// * [renameat2] with `RENAME_NOREPLACE` on Linux and Android
+/// * `renamex_np` with `RENAME_EXCL` on Apple platforms
+/// * [MoveFileExW] without the `MOVEFILE_REPLACE_EXISTING` flag, with a fallback to
+///   `SetFileInformationByHandle`, on Windows
+/// * `link` followed by `unlink` on other Unix platforms and on WASI
+/// * Otherwise, this function returns [`Unsupported`]
+///
+/// The `link` and `unlink` fallback is also used at runtime on Linux, Android and Apple platforms
+/// when the kernel or the filesystem does not support the flag, so which of these applies can
+/// differ between filesystems on the same machine.
+///
+/// Note that, this [may change in the future][changes].
+///
+/// [changes]: io#platform-specific-behavior
+/// [renameat2]: https://man7.org/linux/man-pages/man2/renameat2.2.html
+/// [MoveFileExW]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw
+/// [`AlreadyExists`]: crate::io::ErrorKind::AlreadyExists
+/// [`Unsupported`]: crate::io::ErrorKind::Unsupported
+/// [`fs::rename`]: crate::fs::rename
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `from` does not exist.
+/// * The user lacks permissions to view contents.
+/// * `from` and `to` are on separate filesystems.
+/// * `to` already exists.
+/// * The platform does not support this operation.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(rename_noreplace)]
+/// use std::fs;
+/// use std::io::ErrorKind;
+///
+/// fn main() -> std::io::Result<()> {
+///     // Renames a.txt to b.txt, b.txt does not exist yet.
+///     fs::rename_noreplace("a.txt", "b.txt")?;
+///
+///     // b.txt exists now, so this fails instead of silently overwriting it.
+///     let err = fs::rename_noreplace("c.txt", "b.txt").unwrap_err();
+///     assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+///     Ok(())
+/// }
+/// ```
+#[doc(alias = "renameat2", alias = "renamex_np", alias = "MoveFileEx", alias = "RENAME_NOREPLACE")]
+#[unstable(feature = "rename_noreplace", issue = "161427")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_rename_noreplace")]
+pub fn rename_noreplace<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
+    fs_imp::rename_noreplace(from.as_ref(), to.as_ref())
+}
+
 /// Copies the contents of one file to another. This function will also
 /// copy the permission bits of the original file to the destination file.
 ///
