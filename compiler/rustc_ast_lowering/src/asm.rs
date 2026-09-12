@@ -173,25 +173,33 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         })
                     }
                 };
+                let explicit_reg_name = |&reg| match reg {
+                    InlineAsmRegOrRegClass::Reg(reg) => Some(reg),
+                    InlineAsmRegOrRegClass::RegClass(_) => None,
+                };
 
                 let op = match op {
                     InlineAsmOperand::In { reg, expr } => hir::InlineAsmOperand::In {
                         reg: lower_reg(reg),
+                        explicit_reg_name: explicit_reg_name(reg),
                         expr: self.lower_expr(expr),
                     },
                     InlineAsmOperand::Out { reg, late, expr } => hir::InlineAsmOperand::Out {
                         reg: lower_reg(reg),
+                        explicit_reg_name: explicit_reg_name(reg),
                         late: *late,
                         expr: expr.as_ref().map(|expr| self.lower_expr(expr)),
                     },
                     InlineAsmOperand::InOut { reg, late, expr } => hir::InlineAsmOperand::InOut {
                         reg: lower_reg(reg),
+                        explicit_reg_name: explicit_reg_name(reg),
                         late: *late,
                         expr: self.lower_expr(expr),
                     },
                     InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
                         hir::InlineAsmOperand::SplitInOut {
                             reg: lower_reg(reg),
+                            explicit_reg_name: explicit_reg_name(reg),
                             late: *late,
                             in_expr: self.lower_expr(in_expr),
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr(expr)),
@@ -393,24 +401,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     }
                                     _ => None,
                                 };
-                                let reg_str = |idx| -> &str {
-                                    // HIR asm doesn't preserve the original alias string of the explicit register,
-                                    // so we have to retrieve it from AST
-                                    let (op, _): &(InlineAsmOperand, Span) = &asm.operands[idx];
-                                    if let Some(ast::InlineAsmRegOrRegClass::Reg(reg_sym)) =
-                                        op.reg()
-                                    {
-                                        reg_sym.as_str()
-                                    } else {
-                                        unreachable!("{op:?} is not a register operand");
-                                    }
+                                let Some(reg1_name) = op.explicit_reg_name() else {
+                                    unreachable!("{op:?} has no source register name");
+                                };
+                                let Some(reg2_name) = op2.explicit_reg_name() else {
+                                    unreachable!("{op2:?} has no source register name");
                                 };
 
                                 self.dcx().emit_err(RegisterConflict {
                                     op_span1: op_sp,
                                     op_span2: op_sp2,
-                                    reg1_name: reg_str(idx),
-                                    reg2_name: reg_str(idx2),
+                                    reg1_name: reg1_name.as_str(),
+                                    reg2_name: reg2_name.as_str(),
                                     in_out,
                                 });
                             }
@@ -458,6 +460,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     operands.push((
                         hir::InlineAsmOperand::Out {
                             reg: asm::InlineAsmRegOrRegClass::Reg(clobber),
+                            // ABI clobbers are compiler-generated, so they have no source name.
+                            explicit_reg_name: None,
                             late: true,
                             expr: None,
                         },
