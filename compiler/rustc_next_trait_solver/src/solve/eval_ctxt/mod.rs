@@ -24,7 +24,7 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::has_only_region_constraints;
+use super::has_only_region_constraints_or_opaques;
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -673,7 +673,7 @@ where
         )
         .entered();
 
-        let (result, orig_values, canonical_goal, succeeded_in_erased) = 'retry_canonicalize: {
+        let (result, orig_values, succeeded_in_erased) = 'retry_canonicalize: {
             let skip_erased_attempt = match typing_mode {
                 TypingMode::Reflection | TypingMode::Coherence => true,
                 TypingMode::Typeck { .. }
@@ -739,7 +739,6 @@ where
                         break 'retry_canonicalize (
                             canonical_result,
                             orig_values,
-                            canonical_goal,
                             SucceededInErased::Yes { accessed_opaques },
                         );
                     }
@@ -748,7 +747,6 @@ where
                         break 'retry_canonicalize (
                             canonical_result,
                             orig_values,
-                            canonical_goal,
                             // If we're propagating up, we should never retry the goal.
                             // That means `No` is fine to return, it doesn't really matter.
                             SucceededInErased::No,
@@ -772,7 +770,7 @@ where
                 "we run without TypingMode::ErasedNotCoherence, so opaques are available, and we don't retry if the outer typing mode is ErasedNotCoherence: {accessed_opaques:?} after {goal:?}"
             );
 
-            (canonical_result, orig_values, canonical_goal, SucceededInErased::No)
+            (canonical_result, orig_values, SucceededInErased::No)
         };
 
         debug!(?result);
@@ -789,8 +787,11 @@ where
 
         drop(tracing_span);
 
-        let has_changed =
-            if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
+        let has_changed = if !has_only_region_constraints_or_opaques(response) {
+            HasChanged::Yes
+        } else {
+            HasChanged::No
+        };
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -818,12 +819,9 @@ where
                 // that is not resolved. Only when *these* have changed is it meaningful
                 // to recompute this goal.
                 HasChanged::Yes => None,
-                HasChanged::No => Some(self.build_stalled_on(
-                    canonical_goal,
-                    maybe_info,
-                    orig_values,
-                    succeeded_in_erased,
-                )),
+                HasChanged::No => {
+                    Some(self.build_stalled_on(maybe_info, orig_values, succeeded_in_erased))
+                }
             },
         };
 
@@ -835,7 +833,6 @@ where
 
     fn build_stalled_on(
         &self,
-        canonical_goal: I::CanonicalInput,
         maybe_info: MaybeInfo,
         stalled_vars: ThinVec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
@@ -872,11 +869,7 @@ where
             sub_roots,
             stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
-                num_opaques_in_storage: canonical_goal
-                    .canonical
-                    .value
-                    .predefined_opaques_in_body
-                    .len(),
+                num_opaques_in_storage: self.delegate.num_opaques_in_storage(),
                 previously_succeeded_in_erased,
             },
         }

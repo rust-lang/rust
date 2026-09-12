@@ -72,6 +72,10 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         }
     }
 
+    pub fn num_opaques(&self) -> usize {
+        self.opaque_types.len()
+    }
+
     pub fn opaque_types_added_since(
         &self,
         prev_entries: OpaqueTypeStorageEntries,
