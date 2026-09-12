@@ -1,0 +1,176 @@
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:13:22
+   |
+LL |     let _ = receiver.iter();
+   |                      ^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = receiver.iter();
+LL +     let _ = receiver;
+   |
+
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:18:25
+   |
+LL |     let _ = receiver   .iter();
+   |                         ^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = receiver   .iter();
+LL +     let _ = receiver   ;
+   |
+
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:24:10
+   |
+LL |       let _ = receiver
+   |  _____________-
+LL | |         .iter();
+   | |_________-^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -         .iter();
+LL +         ;
+   |
+
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:30:34
+   |
+LL |     let _ = receiver /* info */ .iter();
+   |                                  ^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = receiver /* info */ .iter();
+LL +     let _ = receiver /* info */ ;
+   |
+
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:36:10
+   |
+LL |       let _ = receiver // info
+   |  _____________-
+LL | |         .iter();
+   | |_________-^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -         .iter();
+LL +         ;
+   |
+
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:41:32
+   |
+LL |     let _ = receiver /* . */ . iter();
+   |                                ^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = receiver /* . */ . iter();
+LL +     let _ = receiver /* . */ ;
+   |
+
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:46:22
+   |
+LL |     let _ = receiver.iter() /* wait, keep this! */;
+   |                      ^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = receiver.iter() /* wait, keep this! */;
+LL +     let _ = receiver /* wait, keep this! */;
+   |
+
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:51:22
+   |
+LL |     let _ = receiver.iter().map(|x| x);
+   |                      ^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = receiver.iter().map(|x| x);
+LL +     let _ = receiver.map(|x| x);
+   |
+
+error[E0599]: no method named `iter` found for struct `std::iter::Empty<T>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:55:39
+   |
+LL |     let _ = std::iter::empty::<i32>().iter();
+   |                                       ^^^^
+   |
+   = note: `std::iter::Empty<i32>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = std::iter::empty::<i32>().iter();
+LL +     let _ = std::iter::empty::<i32>();
+   |
+
+error[E0599]: no method named `iter` found for struct `MyIter` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:71:16
+   |
+LL |     let _ = it.iter();
+   |                ^^^^
+   |
+   = note: `MyIter` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = it.iter();
+LL +     let _ = it;
+   |
+
+error[E0599]: no method named `iter` found for struct `Box<(dyn Iterator<Item = i32> + 'static)>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:77:16
+   |
+LL |     let _ = it.iter();
+   |                ^^^^
+   |
+   = note: `Box<(dyn Iterator<Item = i32> + 'static)>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = it.iter();
+LL +     let _ = it;
+   |
+
+error[E0599]: no method named `iter` found for type parameter `I` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:83:16
+   |
+LL |     let _ = it.iter();
+   |                ^^^^
+   |
+   = note: `I` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = it.iter();
+LL +     let _ = it;
+   |
+
+error[E0599]: no method named `iter_mut` found for struct `std::slice::IterMut<'a, T>` in the current scope
+  --> $DIR/iter-on-already-iterator.rs:91:16
+   |
+LL |     let _ = it.iter_mut();
+   |                ^^^^^^^^
+   |
+   = note: `std::slice::IterMut<'_, {integer}>` already implements `Iterator`
+help: consider removing the `.iter_mut()` call
+   |
+LL -     let _ = it.iter_mut();
+LL +     let _ = it;
+   |
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
