@@ -465,6 +465,9 @@ where
             // `PathKind::Inductive`. Keeping them as unknown until we're confident
             // about this and have an example where it is necessary.
             GoalSource::AliasBoundConstCondition | GoalSource::AliasWellFormed => PathKind::Unknown,
+            // Item bounds may recursively refer to the opaque whose hidden type
+            // we're currently normalizing. Stepping into these bounds is productive.
+            GoalSource::OpaqueTypeBound => PathKind::Coinductive,
         }
     }
 
@@ -1399,7 +1402,7 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::AliasWellFormed, goals)?;
+        self.add_goals(GoalSource::OpaqueTypeBound, goals)?;
         Ok(())
     }
 
