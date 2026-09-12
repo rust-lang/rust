@@ -20,7 +20,10 @@ use thin_vec::ThinVec;
 use crate::ast::AttrStyle;
 use crate::ast_traits::HasTokens;
 use crate::token::{self, Delimiter, Token, TokenKind};
-use crate::tokenarena::{ArenaTokenStream, ArenaTokenTree, DelimitedBounds, DelimitedData};
+use crate::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedBounds, DelimitedData,
+    attrs_and_tokens_to_token_trees_arena,
+};
 use crate::{AttrVec, Attribute};
 
 #[cfg(test)]
@@ -470,6 +473,37 @@ impl AttrTokenStream {
             }
         }
         res
+    }
+
+    /// Pushes this `AttrTokenStream` to a token builder. During
+    /// conversion, any `AttrTokenTree::AttrsTarget` gets "flattened" back to a
+    /// `ArenaTokenStream`, as described in the comment on
+    /// `attrs_and_tokens_to_token_trees_arena`.
+    pub fn push_token_trees(&self, builder: &mut ArenaTokenStreamBuilder) {
+        let start = builder.length();
+        for tree in self.0.iter() {
+            match tree {
+                AttrTokenTree::Token(inner, spacing) => {
+                    builder.push_token(inner.clone(), *spacing);
+                }
+                AttrTokenTree::Delimited(span, spacing, delim, stream) => {
+                    let start = builder.start_delimited();
+                    stream.push_token_trees(builder);
+                    builder.close_delimited(
+                        start,
+                        DelimitedData { span: *span, spacing: *spacing, delimiter: *delim },
+                    );
+                }
+                AttrTokenTree::AttrsTarget(target) => {
+                    attrs_and_tokens_to_token_trees_arena(
+                        &target.attrs,
+                        &target.tokens,
+                        builder,
+                        start,
+                    );
+                }
+            }
+        }
     }
 }
 
