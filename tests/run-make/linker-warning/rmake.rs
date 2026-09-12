@@ -1,4 +1,5 @@
 //@ ignore-cross-compile (need to run fake linker)
+//@ ignore-backends: gcc
 
 use run_make_support::{Rustc, diff, regex, rustc};
 
