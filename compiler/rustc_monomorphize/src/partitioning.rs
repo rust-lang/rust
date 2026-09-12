@@ -260,7 +260,7 @@ where
         // time). Sharding trades a fraction of false invalidation (~1 /
         // shard_count of unrelated instantiations still get swept in) for a
         // hard cap on how many extra CGUs a volatile bucket can ever produce.
-        let cgu_name = if is_volatile && cx.tcx.sess.opts.unstable_opts.fine_grained_generic_cgus {
+        let cgu_name = if is_volatile /* && cx.tcx.sess.opts.unstable_opts.fine_grained_generic_cgus */ {
             fine_grained_cgu_name(cx.tcx, cgu_name, &mono_item)
         } else {
             cgu_name
