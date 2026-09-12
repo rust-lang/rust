@@ -7,7 +7,15 @@ LL |     pub fn with<R, F: FnOnce(NfaBuilder<'_>) -> R>(f: F) -> R {
 LL |         Brand::with(|brand| {
    |                      ----- has type `Brand<'1>`
 LL |             f(Self { brand: brand.lt })
-   |                             ^^^^^^^^ this usage requires that `'1` must outlive `'2`
+   |               ----          ^^^^^^^^ this usage requires that `'1` must outlive `'2`
+   |               |
+   |               requires lifetime `'2` from the `impl`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -             f(Self { brand: brand.lt })
+LL +             f(NfaBuilder { brand: brand.lt })
+   |
 
 error: lifetime may not live long enough
   --> $DIR/issue-102209.rs:10:29
@@ -16,7 +24,15 @@ LL | impl NfaBuilder<'_> {
    |                 -- lifetime `'1` appears in the `impl`'s self type
 ...
 LL |             f(Self { brand: brand.lt })
-   |                             ^^^^^^^^ this usage requires that `'1` must outlive `'static`
+   |               ----          ^^^^^^^^ this usage requires that `'1` must outlive `'static`
+   |               |
+   |               requires lifetime `'static` from the `impl`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -             f(Self { brand: brand.lt })
+LL +             f(NfaBuilder { brand: brand.lt })
+   |
 
 error: aborting due to 2 previous errors
 

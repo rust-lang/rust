@@ -1,0 +1,91 @@
+// https://github.com/rust-lang/rust/issues/101393
+//@ run-rustfix
+#![allow(unused, mismatched_lifetime_syntaxes)]
+
+mod _struct {
+    pub struct Path<'a> {
+        string: &'a mut String,
+    }
+
+    impl<'a> Path<'a> {
+        //~^ NOTE lifetime `'a` defined here
+        //~| NOTE lifetime `'a` defined here
+        //~| NOTE lifetime `'a` defined here
+        pub fn sub(&mut self) -> Path/*<'_>*/ {
+            //~^ NOTE: let's call the lifetime of this reference `'1`
+            // FIXME(estebank): we should extend the diagnostic to mention that `Path` in the
+            //                  return type has a hidden `'_` lifetime in it.
+            Self {
+            //~^ NOTE: requires lifetime `'a` from the `impl`
+            //~| HELP: consider using the type's name directly instead
+                string: self.string,
+                //~^ ERROR: lifetime may not live long enough
+                //~| NOTE: this usage requires that `'1` must outlive `'a`
+            }
+        }
+        pub fn sup(&mut self) -> Path/*<'_>*/ {
+            //~^ NOTE: let's call the lifetime of this reference `'1`
+            let x = Self {
+            //~^ NOTE: requires lifetime `'a` from the `impl`
+            //~| HELP: consider using the type's name directly instead
+                string: self.string,
+                //~^ ERROR: lifetime may not live long enough
+                //~| NOTE: this usage requires that `'1` must outlive `'a`
+            };
+            x
+        }
+        pub fn soup(&mut self) -> Path/*<'_>*/ {
+            //~^ NOTE: let's call the lifetime of this reference `'1`
+            let x: Self = Path {
+            //~^ ERROR: lifetime may not live long enough
+            //~| NOTE: type annotation requires that `'1` must outlive `'a`
+            //~| HELP: consider using the type directly instead
+                string: self.string,
+            };
+            x
+        }
+    }
+}
+
+mod tuple_struct {
+    pub struct Path<'a>(&'a mut String);
+
+    impl<'a> Path<'a> {
+        //~^ NOTE lifetime `'a` defined here
+        //~| NOTE lifetime `'a` defined here
+        //~| NOTE lifetime `'a` defined here
+        pub fn sub(&mut self) -> Path/*<'_>*/ {
+            //~^ NOTE: let's call the lifetime of this reference `'1`
+            Self(
+            //~^ HELP: consider using the type's name directly instead
+            //~| NOTE: requires lifetime `'a` from the `impl`
+                self.0,
+                //~^ ERROR: lifetime may not live long enough
+                //~| NOTE: this usage requires that `'1` must outlive `'a`
+            )
+        }
+        pub fn sup(&mut self) -> Path/*<'_>*/ {
+            //~^ NOTE: let's call the lifetime of this reference `'1`
+            let x = Self(
+            //~^ NOTE: requires lifetime `'a` from the `impl`
+            //~| HELP: consider using the type's name directly instead
+                self.0,
+                //~^ ERROR: lifetime may not live long enough
+                //~| NOTE: this usage requires that `'1` must outlive `'a`
+            );
+            x
+        }
+        pub fn soup(&mut self) -> Path/*<'_>*/ {
+            //~^ NOTE: let's call the lifetime of this reference `'1`
+            let x: Self = Path(
+            //~^ ERROR: lifetime may not live long enough
+            //~| NOTE: type annotation requires that `'1` must outlive `'a`
+            //~| HELP: consider using the type directly instead
+                self.0,
+            );
+            x
+        }
+    }
+}
+
+fn main() {}
