@@ -10,6 +10,7 @@
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
+#![feature(iter_partition_in_place)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
