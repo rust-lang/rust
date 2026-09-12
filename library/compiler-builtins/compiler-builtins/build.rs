@@ -153,7 +153,6 @@ mod c {
     use std::fs::{self, File};
     use std::io::Write;
     use std::path::{Path, PathBuf};
-    use ar_archive_writer::{ArchiveKind, NewArchiveMember, write_archive_to_stream, DEFAULT_OBJECT_READER};
 
     use super::Config;
 
@@ -559,7 +558,7 @@ mod c {
             sources.extend(&[("__aarch64_have_lse_atomics", cpu_model_src)]);
         }
 
-        let is_clang_cl = build.get_compiler().is_like_clang_cl();
+        let is_clang_cl = build.get_compiler().is_like_clang();
 
         let mut added_sources = HashSet::new();
         let mut msvc_objs: Vec<(String, PathBuf)> = Vec::new();
@@ -569,39 +568,43 @@ mod c {
 
             if !link_against_prebuilt_rt && added_sources.insert(src.clone()) {
                 if cfg.target_env == "msvc" {
-                let stem = src.file_stem().unwrap().to_string_lossy().into_owned();
+                    let stem = src.file_stem().unwrap().to_string_lossy().into_owned();
 
-                let mut per_file_build = build.clone();
-                per_file_build.file(&src);
+                    let mut per_file_build = build.clone();
+                    per_file_build.file(&src);
 
-                if is_clang_cl {
-                    per_file_build.flag("-Xclang");
-                    per_file_build.flag(&format!("-object-file-name={stem}.obj"));
+                    if is_clang_cl {
+                        per_file_build.flag("-Xclang");
+                        per_file_build.flag(&format!("-object-file-name={stem}.obj"));
 
-                    per_file_build.flag("-gno-codeview-command-line");
+                        per_file_build.flag("-gno-codeview-command-line");
 
-                    if let Some(maps) = env::var_os("RUSTC_DEBUGINFO_MAP")
-                        && let Some(maps_str) = maps.to_str()
-                    {
-                        for map in maps_str.split('\t').filter(|map| !map.is_empty()) {
-                            per_file_build.flag("-Xclang");
-                            per_file_build.flag(&format!("-fdebug-prefix-map={map}"));
+                        // Remap __FILE__ and other predefined source-path macros.
+                        per_file_build.flag("-Xclang");
+                        per_file_build.flag(&format!("-fmacro-prefix-map={}=.", root.display()));
 
-                            // __FILE__ and other predefined source-path macros.
-                            per_file_build.flag("-Xclang");
-                            per_file_build.flag(&format!("-fmacro-prefix-map={map}"));
+                        if let Some(maps) = env::var_os("RUSTC_DEBUGINFO_MAP")
+                            && let Some(maps_str) = maps.to_str()
+                        {
+                            for map in maps_str.split('\t').filter(|map| !map.is_empty()) {
+                                per_file_build.flag("-Xclang");
+                                per_file_build.flag(&format!("-fdebug-prefix-map={map}"));
+
+                                // __FILE__ and other predefined source-path macros.
+                                per_file_build.flag("-Xclang");
+                                per_file_build.flag(&format!("-fmacro-prefix-map={map}"));
+                            }
                         }
                     }
-                }
 
-                let compiled = per_file_build.compile_intermediates();
+                    let compiled = per_file_build.compile_intermediates();
 
-                for obj in compiled {
-                    msvc_objs.push((format!("{stem}.obj"), obj));
+                    for obj in compiled {
+                        msvc_objs.push((format!("{stem}.obj"), obj));
+                    }
+                } else {
+                    build.file(&src);
                 }
-            } else {
-                build.file(&src);
-            }
 
                 println!("cargo:rerun-if-changed={}", src.display());
             }
@@ -628,7 +631,7 @@ mod c {
             }
         } else if cfg.target_env == "msvc" {
             let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-            build_archive_with_bare_names(&msvc_objs, &out_dir.join("libcompiler-rt.a"));
+            build_archive_with_bare_names(build, &msvc_objs, &out_dir.join("libcompiler-rt.a"));
 
             println!("cargo:rustc-link-lib=static=compiler-rt");
             println!("cargo:rustc-link-search=native={}", out_dir.display());
@@ -693,30 +696,59 @@ mod c {
             }
         }
     }
-    fn build_archive_with_bare_names(objs: &[(String, PathBuf)], out_path: &Path) {
-    let target = env::var("TARGET").unwrap_or_default();
-    let kind = if target.contains("windows-msvc") { ArchiveKind::Coff } else { ArchiveKind::Gnu };
-    let is_ec = Some(target.starts_with("arm64ec"));
+    fn build_archive_with_bare_names(
+        build: &cc::Build,
+        objs: &[(String, PathBuf)],
+        out_path: &Path,
+    ) {
+        let out_dir = out_path.parent().unwrap();
+        let mut objs = objs.to_vec();
+        objs.sort_by(|a, b| a.0.cmp(&b.0));
 
-    let mut objs = objs.to_vec();
-    objs.sort_by(|a, b| a.0.cmp(&b.0));  // sort by bare name now, not path
+        let mut member_names = Vec::with_capacity(objs.len());
 
-    let members: Vec<NewArchiveMember> = objs
-        .iter()
-        .map(|(member_name, obj_path)| {
-            let buf = fs::read(obj_path).expect("failed to read object file");
-            NewArchiveMember {
-                buf: Box::new(buf),
-                object_reader: &DEFAULT_OBJECT_READER,
-                member_name: member_name.clone(),
-                mtime: 0, uid: 0, gid: 0, perms: 0o644,
+        // Give each intermediate object a deterministic filename.
+        for (member_name, obj_path) in objs {
+            let member_path = out_dir.join(&member_name);
+
+            if obj_path != member_path {
+                let _ = fs::remove_file(&member_path);
+                fs::rename(&obj_path, &member_path).expect("failed to rename compiler-rt object");
             }
-        })
-        .collect();
 
-        let file = File::create(out_path).expect("failed to create archive file");
-        let mut writer = std::io::BufWriter::new(file);
-        write_archive_to_stream(&mut writer, &members, kind, false, is_ec)
-            .expect("failed to write archive");
+            member_names.push(member_name);
+        }
+
+        let _ = fs::remove_file(out_path);
+
+        let mut archiver = build.get_archiver();
+        let is_llvm_ar = archiver.get_program().to_string_lossy().contains("llvm-ar");
+
+        if is_llvm_ar {
+            archiver
+                .env("ZERO_AR_DATE", "1")
+                .arg("cq")
+                .arg(out_path.file_name().unwrap());
+        } else {
+            let mut out = std::ffi::OsString::from("-out:");
+            out.push(out_path.file_name().unwrap());
+            archiver.arg(out);
+        }
+
+        let status = archiver
+            .args(&member_names)
+            .current_dir(out_dir)
+            .status()
+            .expect("failed to execute archiver");
+
+        assert!(status.success(), "failed to build compiler-rt archive");
+
+        // MSVC linking may look for compiler-rt.lib even though we construct
+        // libcompiler-rt.a.
+        let lib_path = out_dir.join("compiler-rt.lib");
+        let _ = fs::remove_file(&lib_path);
+        fs::hard_link(out_path, &lib_path)
+            .or_else(|_| fs::copy(out_path, &lib_path).map(|_| ()))
+            .expect("failed to create compiler-rt.lib");
     }
 }
