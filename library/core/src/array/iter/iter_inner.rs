@@ -1,7 +1,7 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
 use crate::clone::TrivialClone;
-use crate::mem::MaybeUninit;
+use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::num::NonZero;
 use crate::ops::{IndexRange, NeverShortCircuit, Try};
 use crate::{fmt, iter, ptr};
@@ -94,6 +94,12 @@ impl<T, const N: usize> PolymorphicIter<[MaybeUninit<T>; N]> {
     #[inline]
     pub(super) const unsafe fn new_unchecked(alive: IndexRange, data: [MaybeUninit<T>; N]) -> Self {
         Self { alive, data }
+    }
+
+    pub(super) unsafe fn into_inner(self) -> (IndexRange, [MaybeUninit<T>; N]) {
+        let this = ManuallyDrop::new(self);
+        let Self { alive, data } = &*this;
+        unsafe { (ptr::read(alive), ptr::read(data)) }
     }
 }
 
