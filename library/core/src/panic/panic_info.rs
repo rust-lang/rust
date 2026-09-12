@@ -68,29 +68,22 @@ impl<'a> PanicInfo<'a> {
     /// This method will currently always return [`Some`], but this may change
     /// in future versions.
     ///
-    /// # Examples
+    /// # Example
     ///
-    /// ```should_panic
-    /// use std::panic;
-    ///
-    /// panic::set_hook(Box::new(|panic_info| {
+    /// ```ignore (no_std)
+    /// #[panic_handler]
+    /// fn panic_handler(panic_info: &PanicInfo<'_>) -> ! {
     ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occurred in file '{}' at line {}",
-    ///             location.file(),
-    ///             location.line(),
-    ///         );
-    ///     } else {
-    ///         println!("panic occurred but can't get location information...");
+    ///         write!(DEBUG_OUTPUT, "panicked at {}", location);
     ///     }
-    /// }));
-    ///
-    /// panic!("Normal panic");
+    ///     loop {}
+    /// }
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn location(&self) -> Option<&'static Location<'static>> {
         // NOTE: If this is changed to sometimes return None,
-        // deal with that case in std::panicking::default_hook and core::panicking::panic_fmt.
+        // deal with that case in std::panicking::panic_handler and core::panicking::panic_fmt.
         Some(self.location)
     }
 
