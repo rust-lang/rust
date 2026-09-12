@@ -1,0 +1,12 @@
+warning: the type parameter `T` may not live long enough
+  --> $DIR/unsatisfied-hrtb-arg-lifetime.rs:16:34
+   |
+LL | fn warns<'b, T>(_: &'b ()) where for<'a> W<'a, 'b, T>: Sized {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` must outlive `'b`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162200 <https://github.com/rust-lang/rust/issues/162200>
+   = note: `#[warn(unsatisfied_hrtb_arg)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+
