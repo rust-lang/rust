@@ -1,0 +1,58 @@
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/offset-missing-features-issue-162338.rs:17:6
+   |
+LL |     <field_of!(Struct, b)>::OFFSET;
+   |      ^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `generic_const_args` requires `min_generic_const_args` to be enabled
+  --> $DIR/offset-missing-features-issue-162338.rs:4:12
+   |
+LL | #![feature(generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: enable all of these features
+
+error[E0601]: `main` function not found in crate `offset_missing_features_issue_162338`
+  --> $DIR/offset-missing-features-issue-162338.rs:20:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/offset-missing-features-issue-162338.rs`
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/offset-missing-features-issue-162338.rs:8:18
+   |
+LL | use std::field::{field_of, Field};
+   |                  ^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/offset-missing-features-issue-162338.rs:8:28
+   |
+LL | use std::field::{field_of, Field};
+   |                            ^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `field_projections`
+  --> $DIR/offset-missing-features-issue-162338.rs:17:5
+   |
+LL |     <field_of!(Struct, b)>::OFFSET;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+   = help: add `#![feature(field_projections)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0601, E0658.
+For more information about an error, try `rustc --explain E0601`.
