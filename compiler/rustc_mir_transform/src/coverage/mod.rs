@@ -8,6 +8,7 @@ use crate::coverage::counters::BcbCountersData;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
 
+mod branch;
 mod counters;
 mod expansion;
 mod from_mir;
