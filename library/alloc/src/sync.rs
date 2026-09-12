@@ -3058,7 +3058,7 @@ impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
     #[stable(feature = "rc_downcast", since = "1.29.0")]
     pub fn downcast<T>(self) -> Result<Arc<T, A>, Self>
     where
-        T: Any + Send + Sync,
+        T: Any,
     {
         if (*self).is::<T>() {
             // SAFETY: Check ensures the typecast is okay.
@@ -3101,7 +3101,7 @@ impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T>(self) -> Arc<T, A>
     where
-        T: Any + Send + Sync,
+        T: Any,
     {
         // SAFETY: Upheld by caller.
         unsafe {
