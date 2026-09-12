@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 trait CollectSlice<'a>: Iterator {
     fn inner_array<const N: usize>(&mut self) -> [Self::Item; N];
 
-    fn collect_array<const N: usize>(&mut self) -> [Self::Item; N] {
+    fn custom_collect_array<const N: usize>(&mut self) -> [Self::Item; N] {
         let result = self.inner_array();
         assert!(self.next().is_none());
         result
@@ -34,5 +34,5 @@ where
 
 fn main() {
     let mut foos = [0u64; 9].iter().cloned();
-    let _bar: [u64; 9] = foos.collect_array::<9_usize>();
+    let _bar: [u64; 9] = foos.custom_collect_array::<9_usize>();
 }
