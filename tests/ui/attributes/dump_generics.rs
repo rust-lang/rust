@@ -57,6 +57,7 @@ const fn i_dare_you<'a: 'a, 'b, const N: usize, T, U>(you_can: &'a bool, _: &'b 
     let _to_find_it = if *you_can { 1 } else { 2 };
 
     let we_got_to_find_the_foundation =
+        // FIXME: it isn't doing anything here
         #[rustc_dump_generics]
         || {};
         // and you gotta help us!

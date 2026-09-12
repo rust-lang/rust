@@ -89,7 +89,7 @@ note: Generics {
               ),
           ],
           has_self: true,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
   --> $DIR/dump_generics.rs:8:1
    |
@@ -187,7 +187,7 @@ note: Generics {
               ),
           ],
           has_self: true,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
   --> $DIR/dump_generics.rs:28:1
    |
@@ -271,7 +271,7 @@ note: Generics {
               ),
           ],
           has_self: false,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
   --> $DIR/dump_generics.rs:33:1
    |
@@ -355,7 +355,7 @@ note: Generics {
               ),
           ],
           has_self: false,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
   --> $DIR/dump_generics.rs:40:1
    |
@@ -439,7 +439,7 @@ note: Generics {
               ),
           ],
           has_self: false,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
   --> $DIR/dump_generics.rs:48:1
    |
@@ -512,9 +512,9 @@ note: Generics {
               ),
           ],
           has_self: false,
-          has_late_bound_regions: Some(
+          own_late_bound_regions: [
               $DIR/dump_generics.rs:55:29: 55:31 (#0),
-          ),
+          ],
       }
   --> $DIR/dump_generics.rs:55:1
    |
@@ -522,7 +522,7 @@ LL | const fn i_dare_you<'a: 'a, 'b, const N: usize, T, U>(you_can: &'a bool, _:
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: rustc_dump_generics: DefId(..)
-  --> $DIR/dump_generics.rs:66:1
+  --> $DIR/dump_generics.rs:67:1
    |
 LL | trait IfYouNeed<'_a: '_a, '_b, const N: usize, T, U: Clone> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -612,15 +612,15 @@ note: Generics {
               ),
           ],
           has_self: true,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
-  --> $DIR/dump_generics.rs:66:1
+  --> $DIR/dump_generics.rs:67:1
    |
 LL | trait IfYouNeed<'_a: '_a, '_b, const N: usize, T, U: Clone> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: rustc_dump_generics: DefId(..)
-  --> $DIR/dump_generics.rs:70:1
+  --> $DIR/dump_generics.rs:71:1
    |
 LL | type Instructions<'a: 'a, 'b, const N: usize, T, U: Clone> = dyn IfYouNeed<'a, 'b, N, T, U>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -696,15 +696,15 @@ note: Generics {
               ),
           ],
           has_self: false,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
-  --> $DIR/dump_generics.rs:70:1
+  --> $DIR/dump_generics.rs:71:1
    |
 LL | type Instructions<'a: 'a, 'b, const N: usize, T, U: Clone> = dyn IfYouNeed<'a, 'b, N, T, U>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: rustc_dump_generics: DefId(..)
-  --> $DIR/dump_generics.rs:74:1
+  --> $DIR/dump_generics.rs:75:1
    |
 LL | const ON_HOW_TO_GET: usize = <() as NiceOfTheFoundation::<'static, 'static, 7, (), ()>>::OVER_FOR;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -715,9 +715,9 @@ note: Generics {
           own_params: [],
           param_def_id_to_index: [],
           has_self: false,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
-  --> $DIR/dump_generics.rs:74:1
+  --> $DIR/dump_generics.rs:75:1
    |
 LL | const ON_HOW_TO_GET: usize = <() as NiceOfTheFoundation::<'static, 'static, 7, (), ()>>::OVER_FOR;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -752,7 +752,7 @@ note: Generics {
               ),
           ],
           has_self: true,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
   --> $DIR/dump_generics.rs:12:5
    |
@@ -773,7 +773,7 @@ note: Generics {
           own_params: [],
           param_def_id_to_index: [],
           has_self: true,
-          has_late_bound_regions: None,
+          own_late_bound_regions: [],
       }
   --> $DIR/dump_generics.rs:16:5
    |
@@ -813,9 +813,9 @@ note: Generics {
               ),
           ],
           has_self: true,
-          has_late_bound_regions: Some(
+          own_late_bound_regions: [
               $DIR/dump_generics.rs:21:9: 21:10 (#0),
-          ),
+          ],
       }
   --> $DIR/dump_generics.rs:20:5
    |

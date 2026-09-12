@@ -421,7 +421,7 @@ impl Foo {
     // ----------------------------------------------------------
     // -----------------------------------------------------------
     // ----------------------------------------------------------
-    // ----------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------
     // -------------------------
     // ----------------------------------------------------------------------------------
     // -------------------------
@@ -443,7 +443,7 @@ impl Foo {
     // if we lower generics before the body, then the `HirId` for
     // things in the body will be affected. So if you start to see
     // `typeck_root` appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="bpass2", except="hir_owner,fn_sig,type_of")]
+    #[rustc_clean(cfg="bpass2", except="hir_owner,fn_sig,type_of,generics_of")]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(cfg="bpass5", except="hir_owner,fn_sig,type_of,generics_of")]
     #[rustc_clean(cfg="bpass6")]
