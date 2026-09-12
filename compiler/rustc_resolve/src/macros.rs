@@ -1143,9 +1143,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
             && let Some(decl) = decl
             // This is a `macro_rules` itself, not some import.
-            && let DeclKind::Def(res) = decl.kind
-            && let Res::Def(DefKind::Macro(kinds), def_id) = res
-            && kinds.contains(MacroKinds::BANG)
+            && let Some(def_id) = match decl.kind {
+                DeclKind::Def(res) | DeclKind::Extern { res, .. } if let Res::Def(DefKind::Macro(kinds), def_id) = res
+                    && kinds.contains(MacroKinds::BANG) =>
+                {
+                    Some(def_id)
+                }
+                _ => None,
+            }
             // And the `macro_rules` is defined inside the attribute's module,
             // so it cannot be in scope unless imported.
             && self.tcx.is_descendant_of(def_id, mod_def_id)

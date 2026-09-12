@@ -358,7 +358,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let Some(ambiguity_warning) = ambiguity_error.warning {
                 let node_id = match ambiguity_error.b1.0.kind {
                     DeclKind::Import { import, .. } => import.root_id,
-                    DeclKind::Def(_) => CRATE_NODE_ID,
+                    DeclKind::Def(_) | DeclKind::Extern { .. } => CRATE_NODE_ID,
                 };
 
                 let lint = match ambiguity_warning {
@@ -2465,14 +2465,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
     fn ctor_fields_span(&self, decl: Decl<'_>) -> Option<Span> {
-        let DeclKind::Def(Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id)) =
-            decl.kind
-        else {
-            return None;
-        };
-
-        let def_id = self.tcx.parent(ctor_def_id);
-        self.field_idents(def_id)?.iter().map(|&f| f.span).reduce(Span::to) // None for `struct Foo()`
+        match decl.kind {
+            DeclKind::Def(res) | DeclKind::Extern { res, .. } => {
+                let Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id) = res else {
+                    return None;
+                };
+                let def_id = self.tcx.parent(ctor_def_id);
+                // None for `struct Foo()`
+                self.field_idents(def_id)?.iter().map(|&f| f.span).reduce(Span::to)
+            }
+            _ => None,
+        }
     }
 
     /// Returns the path segments (as symbols) of a module, including `kw::Crate` at the start.
@@ -2735,7 +2738,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match binding.kind {
                 DeclKind::Import { source_decl, import, .. } => {
-                    let through_reexport = !matches!(source_decl.kind, DeclKind::Def(_));
+                    let through_reexport =
+                        !matches!(source_decl.kind, DeclKind::Def(_) | DeclKind::Extern { .. });
                     let uses_relative_path = import
                         .module_path
                         .first()
@@ -2810,7 +2814,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         sugg_paths.push((path, through_reexport));
                     }
                 }
-                DeclKind::Def(_) => {}
+                DeclKind::Def(_) | DeclKind::Extern { .. } => {}
             }
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);

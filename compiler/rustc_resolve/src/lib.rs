@@ -1042,7 +1042,14 @@ enum DeclKind<'ra> {
     /// can be provided by source code or built into the language.
     Def(Res),
     /// The name declaration is a link to another name declaration.
-    Import { source_decl: Decl<'ra>, import: Import<'ra> },
+    Import {
+        source_decl: Decl<'ra>,
+        import: Import<'ra>,
+    },
+    Extern {
+        res: Res,
+        reexport_chain: &'ra [Reexport],
+    },
 }
 
 impl<'ra> DeclKind<'ra> {
@@ -1152,7 +1159,7 @@ impl<'ra> DeclData<'ra> {
 
     fn res(&self) -> Res {
         match self.kind {
-            DeclKind::Def(res) => res,
+            DeclKind::Def(res) | DeclKind::Extern { res, .. } => res,
             DeclKind::Import { source_decl, .. } => source_decl.res(),
         }
     }
@@ -1185,10 +1192,9 @@ impl<'ra> DeclData<'ra> {
     fn is_possibly_imported_variant(&self) -> bool {
         match self.kind {
             DeclKind::Import { source_decl, .. } => source_decl.is_possibly_imported_variant(),
-            DeclKind::Def(Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _)) => {
-                true
+            DeclKind::Def(res) | DeclKind::Extern { res, .. } => {
+                matches!(res, Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _))
             }
-            DeclKind::Def(..) => false,
         }
     }
 
@@ -1197,7 +1203,9 @@ impl<'ra> DeclData<'ra> {
             DeclKind::Import { import, .. } => {
                 matches!(import.kind, ImportKind::ExternCrate { .. })
             }
-            DeclKind::Def(Res::Def(_, def_id)) => def_id.is_crate_root(),
+            DeclKind::Def(res) | DeclKind::Extern { res, .. } if let Res::Def(_, def_id) = res => {
+                def_id.is_crate_root()
+            }
             _ => false,
         }
     }
@@ -1229,13 +1237,28 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn reexport_chain(self: Decl<'ra>) -> SmallVec<[Reexport; 2]> {
-        let mut reexport_chain = SmallVec::new();
+        let mut full_reexport_chain: SmallVec<[Reexport; 2]> = SmallVec::new();
         let mut next_binding = self;
-        while let DeclKind::Import { source_decl, import, .. } = next_binding.kind {
-            reexport_chain.push(import.simplify());
-            next_binding = source_decl;
+        loop {
+            match next_binding.kind {
+                DeclKind::Import { source_decl, import, .. } => {
+                    full_reexport_chain.push(import.simplify());
+                    next_binding = source_decl;
+                }
+                DeclKind::Extern { reexport_chain, .. } => {
+                    // We filter out `extern crate` items as we cannot query their attributes.
+                    full_reexport_chain.extend(
+                        reexport_chain
+                            .iter()
+                            .filter(|i| !matches!(i, Reexport::ExternCrate(_)))
+                            .copied(),
+                    );
+                    break;
+                }
+                DeclKind::Def(..) => break,
+            }
         }
-        reexport_chain
+        full_reexport_chain
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
