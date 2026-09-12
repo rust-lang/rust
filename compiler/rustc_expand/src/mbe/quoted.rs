@@ -7,7 +7,7 @@ use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 
 use crate::diagnostics;
 use crate::mbe::macro_parser::count_metavar_decls;
@@ -204,9 +204,14 @@ fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, sp
     }
 }
 
-fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Session, span: Span) {
+fn maybe_emit_macro_metavar_expr_concat_feature(
+    features: &Features,
+    sess: &Session,
+    span: Span,
+    what: Symbol,
+) {
     if !features.macro_metavar_expr_concat() {
-        let msg = "the `concat` meta-variable expression is unstable";
+        let msg = format!("the `{what}` meta-variable expression is unstable");
         feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
     }
 }
@@ -278,11 +283,19 @@ fn parse_tree<'a>(
                                         return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
-                                        if let MetaVarExpr::Concat(_) = elem {
+                                        if matches!(elem, MetaVarExpr::ConcatIdent(_)) {
                                             maybe_emit_macro_metavar_expr_concat_feature(
                                                 features,
                                                 sess,
                                                 delim_span.entire(),
+                                                sym::concat,
+                                            );
+                                        } else if matches!(elem, MetaVarExpr::ConcatStr(_)) {
+                                            maybe_emit_macro_metavar_expr_concat_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                                sym::concat_str,
                                             );
                                         } else {
                                             maybe_emit_macro_metavar_expr_feature(

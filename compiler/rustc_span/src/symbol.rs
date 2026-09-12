@@ -679,6 +679,7 @@ symbols! {
         complex,
         concat,
         concat_bytes,
+        concat_str,
         conservative_impl_trait,
         console,
         const_allocate,
