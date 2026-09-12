@@ -666,38 +666,6 @@ impl<'a> Parser<'a> {
                 // `usize < y` as a type with generic arguments.
                 let parser_snapshot_after_type = mem::replace(self, parser_snapshot_before_type);
 
-                // Check for typo of `'a: loop { break 'a }` with a missing `'`.
-                match (&lhs.kind, &self.token.kind) {
-                    (
-                        // `foo: `
-                        ExprKind::Path(None, ast::Path { segments, .. }),
-                        token::Ident(kw::For | kw::Loop | kw::While, IdentIsRaw::No),
-                    ) if let [segment] = segments.as_slice() => {
-                        let snapshot = self.create_snapshot_for_diagnostic();
-                        let label = Label {
-                            ident: Ident::from_str_and_span(
-                                &format!("'{}", segment.ident),
-                                segment.ident.span,
-                            ),
-                        };
-                        match self.parse_expr_labeled(label, false) {
-                            Ok(expr) => {
-                                type_err.cancel();
-                                self.dcx().emit_err(diagnostics::MalformedLoopLabel {
-                                    span: label.ident.span,
-                                    suggestion: label.ident.span.shrink_to_lo(),
-                                });
-                                return Ok(expr);
-                            }
-                            Err(err) => {
-                                err.cancel();
-                                self.restore_snapshot(snapshot);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
                 match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
                         let span_after_type = parser_snapshot_after_type.token.span;
