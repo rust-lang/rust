@@ -237,7 +237,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     let opt_self = if let Node::Item(item) = node
         && let ItemKind::Trait { .. } | ItemKind::TraitAlias(..) = item.kind
     {
-        // Something of a hack: We reuse the node ID of the trait for the self type parameter.
+        // Something of a hack: We reuse the DefId of the trait for the self type parameter.
         Some(ty::GenericParamDef {
             index: 0,
             name: kw::SelfUpper,
