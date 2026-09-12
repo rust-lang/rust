@@ -189,7 +189,6 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     i.span,
                     Target::MacroDef,
                     None,
-                    None,
                     std::convert::identity,
                     |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly

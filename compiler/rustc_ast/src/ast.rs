@@ -3713,6 +3713,12 @@ impl VariantData {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum AstItemKind<'a> {
+    Item(&'a Item),
+    AssocItem(&'a Item<AssocItemKind>),
+}
+
 /// An item definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Item<K = ItemKind> {
