@@ -261,7 +261,7 @@ impl<'a> Parser<'a> {
             let op = op.node;
             // Special cases:
             if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span)?;
                 continue;
             } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
@@ -645,17 +645,17 @@ impl<'a> Parser<'a> {
         lhs: Box<Expr>,
         lhs_span: Span,
         op_span: Span,
-        expr_kind: fn(Box<Expr>, Box<Ty>) -> ExprKind,
     ) -> PResult<'a, Box<Expr>> {
-        let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Box<Ty>| {
-            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span), expr_kind(lhs, rhs))
+        let mk_expr = |this: &mut Self, rhs: Box<Ty>| {
+            let span = this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
+            this.mk_expr(span, ExprKind::Cast(lhs, rhs))
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
         let cast_expr = match self.parse_as_cast_ty() {
-            Ok(rhs) => mk_expr(self, lhs, rhs),
+            Ok(rhs) => mk_expr(self, rhs),
             Err(type_err) => {
                 if !self.may_recover() {
                     return Err(type_err);
@@ -669,11 +669,8 @@ impl<'a> Parser<'a> {
                 match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
                         let span_after_type = parser_snapshot_after_type.token.span;
-                        let expr = mk_expr(
-                            self,
-                            lhs,
-                            self.mk_ty(path.span, TyKind::Path(None, path.clone())),
-                        );
+                        let expr =
+                            mk_expr(self, self.mk_ty(path.span, TyKind::Path(None, path.clone())));
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
                         match self.token.kind {
@@ -737,42 +734,38 @@ impl<'a> Parser<'a> {
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
-            let msg = format!(
-                "cast cannot be followed by {}",
-                match with_postfix.kind {
-                    ExprKind::Index(..) => "indexing",
-                    ExprKind::Try(_) => "`?`",
-                    ExprKind::Field(_, _) => "a field access",
-                    ExprKind::MethodCall(_) => "a method call",
-                    ExprKind::Call(_, _) => "a function call",
-                    ExprKind::Await(_, _) => "`.await`",
-                    ExprKind::Use(_, _) => "`.use`",
-                    ExprKind::Yield(YieldKind::Postfix(_)) => "`.yield`",
-                    ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
-                    ExprKind::Err(_) => return Ok(with_postfix),
-                    _ => unreachable!(
-                        "did not expect {:?} as an illegal postfix operator following cast",
-                        with_postfix.kind
+            self.dcx()
+                .struct_span_err(
+                    span,
+                    format!(
+                        "cast cannot be followed by {}",
+                        match with_postfix.kind {
+                            ExprKind::Index(..) => "indexing",
+                            ExprKind::Try(_) => "`?`",
+                            ExprKind::Field(_, _) => "a field access",
+                            ExprKind::MethodCall(_) => "a method call",
+                            ExprKind::Call(_, _) => "a function call",
+                            ExprKind::Await(_, _) => "`.await`",
+                            ExprKind::Use(_, _) => "`.use`",
+                            ExprKind::Yield(YieldKind::Postfix(_)) => "`.yield`",
+                            ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
+                            ExprKind::Err(_) => return Ok(with_postfix),
+                            _ => unreachable!(
+                                "did not expect {:?} as an illegal postfix operator following cast",
+                                with_postfix.kind
+                            ),
+                        }
                     ),
-                }
-            );
-            let mut err = self.dcx().struct_span_err(span, msg);
-
-            let suggest_parens = |err: &mut Diag<'_>| {
-                let suggestions = vec![
-                    (span.shrink_to_lo(), "(".to_string()),
-                    (span.shrink_to_hi(), ")".to_string()),
-                ];
-                err.multipart_suggestion(
+                )
+                .with_multipart_suggestion(
                     "try surrounding the expression in parentheses",
-                    suggestions,
+                    vec![
+                        (span.shrink_to_lo(), "(".to_string()),
+                        (span.shrink_to_hi(), ")".to_string()),
+                    ],
                     Applicability::MachineApplicable,
-                );
-            };
-
-            suggest_parens(&mut err);
-
-            err.emit();
+                )
+                .emit();
         };
         Ok(with_postfix)
     }
