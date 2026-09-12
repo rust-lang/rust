@@ -2531,7 +2531,38 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     }
 }
 
+/// `associated_types_for_impl_traits_in_trait_or_impl` creates new `DefId`-s inside the query. We
+/// must make sure this is done in a deterministic order (not in parallel).
+fn assign_anon_assoc_item_def_ids(tcx: TyCtxt<'_>) {
+    let items = tcx.hir_crate_items(());
+    for def_id in items.free_items().map(|item| item.owner_id.def_id) {
+        match tcx.def_kind(def_id) {
+            DefKind::Trait | DefKind::Impl { .. } => {
+                tcx.ensure_ok().associated_types_for_impl_traits_in_trait_or_impl(def_id);
+            }
+            _ => (),
+        }
+    }
+}
+
+/// `resolve_bound_vars` creates new `DefId`-s inside the query (in `remap_opaque_captures`). We
+/// must make sure this is done in a deterministic order (not in parallel).
+fn remap_opaque_captures(tcx: TyCtxt<'_>) {
+    let items = tcx.hir_crate_items(());
+    for def_id in items.opaques() {
+        let opaque = tcx.hir_expect_opaque_ty(def_id);
+        let origin_id = match opaque.origin {
+            rustc_hir::OpaqueTyOrigin::TyAlias { parent, .. }
+            | rustc_hir::OpaqueTyOrigin::AsyncFn { parent, .. }
+            | rustc_hir::OpaqueTyOrigin::FnReturn { parent, .. } => parent,
+        };
+        tcx.ensure_ok().resolve_bound_vars(rustc_hir::OwnerId { def_id: origin_id });
+    }
+}
+
 pub(super) fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
+    assign_anon_assoc_item_def_ids(tcx);
+    remap_opaque_captures(tcx);
     let items = tcx.hir_crate_items(());
     let res =
         items
