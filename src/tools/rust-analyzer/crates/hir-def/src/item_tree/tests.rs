@@ -2,11 +2,11 @@ use expect_test::{Expect, expect};
 use span::Edition;
 use test_fixture::WithFixture;
 
-use crate::{db::DefDatabase, test_db::TestDB};
+use crate::test_db::TestDB;
 
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    let item_tree = db.file_item_tree(file_id.into(), db.test_crate());
+    let item_tree = crate::file_item_tree(&db, file_id.into(), db.test_crate());
     let pretty = item_tree.pretty_print(&db, Edition::CURRENT);
     expect.assert_eq(&pretty);
 }
@@ -122,14 +122,14 @@ enum E {
         "#,
         expect![[r#"
             // AstId: Struct[ED35, 0]
-            pub(self) struct Unit;
+            pub(self) struct Unit { ... }
 
             #[derive(Debug)]
             // AstId: Struct[A47C, 0]
             pub(self) struct Struct { ... }
 
             // AstId: Struct[C8C9, 0]
-            pub(self) struct Tuple(...);
+            pub(self) struct Tuple { ... }
 
             // AstId: Union[2797, 0]
             pub(self) union Ize { ... }
@@ -240,7 +240,7 @@ pub(self) struct S;
         "#,
         expect![[r#"
             // AstId: Struct[5024, 0]
-            pub(self) struct S;
+            pub(self) struct S { ... }
         "#]],
     )
 }

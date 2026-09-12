@@ -2,26 +2,26 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::visit::{try_visit, walk_list};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
-use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
+use rustc_hir::attrs::lang_items;
 use rustc_hir::intravisit::{
-    Visitor, VisitorExt, walk_fn_decl, walk_generic_args, walk_generic_param, walk_generics, walk_impl_item_ref,
-    walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
+    IgnoreNested, NestedFilter, Visitor, walk_fn_decl, walk_generic_args, walk_generic_param,
+    walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
+    walk_where_predicate,
 };
 use rustc_hir::{
     AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
-    WherePredicate, WherePredicateKind, lang_items,
+    WherePredicate, WherePredicateKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, kw};
@@ -136,7 +136,7 @@ pub struct Lifetimes {
 
 impl Lifetimes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -376,8 +376,8 @@ fn could_use_elision<'tcx>(
 
     // A lifetime can be newly elided if:
     // - It occurs only once among the inputs.
-    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the
-    //   outputs (because eliding such an lifetime would create an ambiguity).
+    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the outputs (because
+    //   eliding such an lifetime would create an ambiguity).
     let elidable_lts = named_lifetime_occurrences(&input_lts)
         .into_iter()
         .filter_map(|(def_id, occurrences)| {
@@ -714,7 +714,7 @@ fn report_extra_trait_object_lifetimes<'tcx>(
     generic_params: &'tcx [GenericParam<'_>],
     trait_ref: &'tcx TraitRef<'tcx>,
 ) {
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generic_params);
+    let mut checker = LifetimeChecker::<IgnoreNested>::new(cx, generic_params);
 
     for param in generic_params {
         walk_generic_param(&mut checker, param);
@@ -738,7 +738,7 @@ fn report_extra_trait_object_lifetimes<'tcx>(
 }
 
 fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, generics: &'tcx Generics<'_>) {
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generics.params);
+    let mut checker = LifetimeChecker::<IgnoreNested>::new(cx, generics.params);
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
@@ -914,10 +914,10 @@ fn elision_suggestions(
         vec![(generics.span, String::new())]
     } else {
         // 1. Start from the last elidable lifetime
-        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current
-        //    lifetime to the comma before it
-        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the
-        //    current lifetime to the comma _after_ it
+        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current lifetime to the
+        //    comma before it
+        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the current lifetime
+        //    to the comma _after_ it
         let mut end: Option<LocalDefId> = None;
         elidable_lts
             .iter()

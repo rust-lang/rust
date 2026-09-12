@@ -50,7 +50,7 @@ fn spin_until(value: u64) {
     unsafe { miri_genmc_assume(false) };
 }
 
-#[cfg(not(any(bounded123, bounded321)))]
+#[cfg(any(replaced123, replaced321))]
 /// For full replacement, we limit it to only 1 load.
 fn spin_until(value: u64) {
     unsafe { miri_genmc_assume(FLAG.load(Acquire) == value) };

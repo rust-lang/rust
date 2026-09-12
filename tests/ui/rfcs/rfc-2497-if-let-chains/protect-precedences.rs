@@ -12,6 +12,7 @@ fn main() {
         // Should associate as `(let _ = (return (true && false)))`.
         if let _ = return true && false {};
         //~^ WARNING unreachable block in `if`
+        //~| WARNING unreachable pattern
     }
     assert!(!_f1());
 }

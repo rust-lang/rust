@@ -4,7 +4,6 @@ use std::fs::{Dir, File};
 use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
-use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
 
@@ -41,6 +40,7 @@ struct FdIdWith<T: ?Sized> {
 /// globally unique ID of this file description.
 #[repr(transparent)]
 #[derive(CoercePointee, Debug)]
+// Sadly `CoercePointee` does not let us keep the `FdId` *outside* the `Rc`.
 pub struct FileDescriptionRef<T: ?Sized>(Rc<FdIdWith<T>>);
 
 impl<T: ?Sized> Clone for FileDescriptionRef<T> {
@@ -90,13 +90,17 @@ impl<T: ?Sized> WeakFileDescriptionRef<T> {
     pub fn upgrade(&self) -> Option<FileDescriptionRef<T>> {
         self.0.upgrade().map(FileDescriptionRef)
     }
+
+    /// Returns whether the file description that this weak reference points to
+    /// has been closed, i.e., there are no more strong references.
+    pub fn is_closed(&self) -> bool {
+        self.0.strong_count() == 0
+    }
 }
 
-impl<T> VisitProvenance for WeakFileDescriptionRef<T> {
+impl<T> VisitProvenance for FileDescriptionRef<T> {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // A weak reference can never be the only reference to some pointer or place.
-        // Since the actual file description is tracked by strong ref somewhere,
-        // it is ok to make this a NOP operation.
+        // All our FileDescription instances do not have any provenance.
     }
 }
 
@@ -105,42 +109,16 @@ impl<T> VisitProvenance for WeakFileDescriptionRef<T> {
 /// but that does not allow upcasting.
 pub trait FileDescriptionExt: 'static {
     fn into_rc_any(self: FileDescriptionRef<Self>) -> Rc<dyn Any>;
-
-    /// We wrap the regular `close` function generically, so both handle `Rc::into_inner`
-    /// and epoll interest management.
-    fn close_ref<'tcx>(
-        self: FileDescriptionRef<Self>,
-        communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>>;
 }
 
 impl<T: FileDescription + 'static> FileDescriptionExt for T {
     fn into_rc_any(self: FileDescriptionRef<Self>) -> Rc<dyn Any> {
         self.0
     }
-
-    fn close_ref<'tcx>(
-        self: FileDescriptionRef<Self>,
-        communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        match Rc::into_inner(self.0) {
-            Some(fd) => {
-                // There might have been epolls interested in this FD. Remove that.
-                ecx.machine.epoll_interests.remove_epolls(fd.id);
-
-                fd.inner.destroy(fd.id, communicate_allowed, ecx)
-            }
-            None => {
-                // Not the last reference.
-                interp_ok(Ok(()))
-            }
-        }
-    }
 }
 
 pub type DynFileDescriptionRef = FileDescriptionRef<dyn FileDescription>;
+pub type WeakDynFileDescriptionRef = WeakFileDescriptionRef<dyn FileDescription>;
 
 impl FileDescriptionRef<dyn FileDescription> {
     pub fn downcast<T: FileDescription + 'static>(self) -> Option<FileDescriptionRef<T>> {
@@ -203,21 +181,6 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("cannot seek on {}", self.name());
     }
 
-    /// Destroys the file description. Only called when the last duplicate file descriptor is closed.
-    ///
-    /// `self_addr` is the address that this file description used to be stored at.
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>>
-    where
-        Self: Sized,
-    {
-        throw_unsup_format!("cannot close {}", self.name());
-    }
-
     /// Returns the metadata for this FD, if available.
     /// This is either host metadata, or a non-file-backed-FD type.
     /// The latter is for new represented as a string storing a `libc` name so we only
@@ -232,7 +195,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         false
     }
 
-    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         panic!("Not a unix file descriptor: {}", self.name());
     }
 
@@ -249,9 +215,31 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
     ) -> InterpResult<'tcx, Scalar> {
         throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
     }
+
+    /// Get the `ReadinessWatched` of the file description.
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        None
+    }
+
+    /// Get the current I/O readiness of the file description.
+    fn readiness(&self) -> Readiness {
+        panic!("FD type {} implements `readiness_watched` but not `readiness`", self.name());
+    }
 }
 
-impl FileDescription for io::Stdin {
+#[derive(Debug)]
+struct Stdin {
+    stdin: io::Stdin,
+    watched: ReadinessWatched,
+}
+
+impl Stdin {
+    fn new() -> Self {
+        Self { stdin: io::stdin(), watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for Stdin {
     fn name(&self) -> &'static str {
         "stdin"
     }
@@ -269,26 +257,42 @@ impl FileDescription for io::Stdin {
             helpers::isolation_abort_error("`read` from stdin")?;
         }
 
-        let mut stdin = &*self;
-        let result = ecx.read_from_host(|buf| stdin.read(buf), len, ptr)?;
+        // FIXME: this can block on the host, halting the entire interpreter.
+        let result = ecx.read_from_host(|buf| (&mut &self.stdin).read(buf), len, ptr)?;
         finish.call(ecx, result)
     }
 
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
+    fn is_tty(&self, communicate_allowed: bool) -> bool {
+        communicate_allowed && self.stdin.is_terminal()
     }
 
-    fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.is_terminal()
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // Stdin is readable (we never return EWOULDBLOCK above) and also writable (since that never
+        // blocks either). This matches what we see on Linux.
+        let mut readiness = Readiness::EMPTY;
+        readiness.readable = true;
+        readiness.writable = true;
+        readiness
     }
 }
 
-impl FileDescription for io::Stdout {
+#[derive(Debug)]
+struct Stdout {
+    stdout: io::Stdout,
+    watched: ReadinessWatched,
+}
+
+impl Stdout {
+    fn new() -> Self {
+        Self { stdout: io::stdout(), watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for Stdout {
     fn name(&self) -> &'static str {
         "stdout"
     }
@@ -302,7 +306,7 @@ impl FileDescription for io::Stdout {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         // We allow writing to stdout even with isolation enabled.
-        let result = ecx.write_to_host(&*self, len, ptr)?;
+        let result = ecx.write_to_host(&self.stdout, len, ptr)?;
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -313,32 +317,37 @@ impl FileDescription for io::Stdout {
         finish.call(ecx, result)
     }
 
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
+    fn is_tty(&self, communicate_allowed: bool) -> bool {
+        communicate_allowed && self.stdout.is_terminal()
     }
 
-    fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.is_terminal()
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // stdout can always be written (we never return EWOULDBLOCK there) and never be read.
+        let mut readiness = Readiness::EMPTY;
+        readiness.writable = true;
+        readiness
     }
 }
 
-impl FileDescription for io::Stderr {
+#[derive(Debug)]
+struct Stderr {
+    stderr: io::Stderr,
+    watched: ReadinessWatched,
+}
+
+impl Stderr {
+    fn new() -> Self {
+        Self { stderr: io::stderr(), watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for Stderr {
     fn name(&self) -> &'static str {
         "stderr"
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
     }
 
     fn write<'tcx>(
@@ -350,13 +359,65 @@ impl FileDescription for io::Stderr {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         // We allow writing to stderr even with isolation enabled.
-        let result = ecx.write_to_host(&*self, len, ptr)?;
+        let result = ecx.write_to_host(&self.stderr, len, ptr)?;
         // No need to flush, stderr is not buffered.
         finish.call(ecx, result)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.is_terminal()
+        communicate_allowed && self.stderr.is_terminal()
+    }
+
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // stderr can always be written (we never return EWOULDBLOCK there) and never be read.
+        let mut readiness = Readiness::EMPTY;
+        readiness.writable = true;
+        readiness
+    }
+}
+
+/// Like /dev/null
+#[derive(Debug)]
+pub struct NullOutput {
+    watched: ReadinessWatched,
+}
+
+impl NullOutput {
+    fn new() -> Self {
+        Self { watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for NullOutput {
+    fn name(&self) -> &'static str {
+        "null output"
+    }
+
+    fn write<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        // We just don't write anything, but report to the user that we did.
+        finish.call(ecx, Ok(len))
+    }
+
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // null output can always be written (we never return EWOULDBLOCK there) and never be read.
+        let mut readiness = Readiness::EMPTY;
+        readiness.writable = true;
+        readiness
     }
 }
 
@@ -423,33 +484,6 @@ impl FileDescription for FileHandle {
         interp_ok((&mut &self.file).seek(offset))
     }
 
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        // We sync the file if it was opened in a mode different than read-only.
-        if self.writable {
-            // `File::sync_all` does the checks that are done when closing a file. We do this to
-            // to handle possible errors correctly.
-            let result = self.file.sync_all();
-            // Now we actually close the file and return the result.
-            drop(self.file);
-            interp_ok(result)
-        } else {
-            // We drop the file, this closes it but ignores any errors
-            // produced when closing it. This is done because
-            // `File::sync_all` cannot be done over files like
-            // `/dev/urandom` which are read-only. Check
-            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
-            // for a deeper discussion.
-            drop(self.file);
-            interp_ok(Ok(()))
-        }
-    }
-
     fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
         interp_ok(Either::Left(self.file.metadata()))
     }
@@ -465,7 +499,10 @@ impl FileDescription for FileHandle {
         true
     }
 
-    fn as_unix<'tcx>(&self, ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         assert!(
             ecx.target_os_is_unix(),
             "unix file operations are only available for unix targets"
@@ -476,11 +513,7 @@ impl FileDescription for FileHandle {
 
 #[derive(Debug)]
 pub struct DirHandle {
-    #[cfg_attr(bootstrap, allow(unused))]
     pub(crate) dir: Dir,
-    /// Fallback used under `cfg(bootstrap)`.
-    #[cfg_attr(not(bootstrap), allow(unused))]
-    pub(crate) path: PathBuf,
 }
 
 impl FileDescription for DirHandle {
@@ -491,50 +524,7 @@ impl FileDescription for DirHandle {
     fn metadata<'tcx>(
         &self,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
-        #[cfg(not(bootstrap))]
-        return interp_ok(Either::Left(self.dir.metadata()));
-        #[cfg(bootstrap)]
-        return interp_ok(Either::Left(std::fs::metadata(&self.path)));
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
-    }
-}
-
-/// Like /dev/null
-#[derive(Debug)]
-pub struct NullOutput;
-
-impl FileDescription for NullOutput {
-    fn name(&self) -> &'static str {
-        "stderr and stdout"
-    }
-
-    fn write<'tcx>(
-        self: FileDescriptionRef<Self>,
-        _communicate_allowed: bool,
-        _ptr: Pointer,
-        len: usize,
-        ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-    ) -> InterpResult<'tcx> {
-        // We just don't write anything, but report to the user that we did.
-        finish.call(ecx, Ok(len))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
+        interp_ok(Either::Left(self.dir.metadata()))
     }
 }
 
@@ -544,14 +534,14 @@ pub type FdNum = i32;
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    pub fds: BTreeMap<FdNum, DynFileDescriptionRef>,
+    fds: BTreeMap<FdNum, DynFileDescriptionRef>,
     /// Unique identifier for file description, used to differentiate between various file description.
     next_file_description_id: FdId,
 }
 
 impl VisitProvenance for FdTable {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // All our FileDescription instances do not have any tags.
+        // All our FileDescription instances do not have any provenance.
     }
 }
 
@@ -561,13 +551,13 @@ impl FdTable {
     }
     pub(crate) fn init(mute_stdout_stderr: bool) -> FdTable {
         let mut fds = FdTable::new();
-        fds.insert_new(io::stdin());
+        fds.insert_new(Stdin::new());
         if mute_stdout_stderr {
-            assert_eq!(fds.insert_new(NullOutput), 1);
-            assert_eq!(fds.insert_new(NullOutput), 2);
+            assert_eq!(fds.insert_new(NullOutput::new()), 1);
+            assert_eq!(fds.insert_new(NullOutput::new()), 2);
         } else {
-            assert_eq!(fds.insert_new(io::stdout()), 1);
-            assert_eq!(fds.insert_new(io::stderr()), 2);
+            assert_eq!(fds.insert_new(Stdout::new()), 1);
+            assert_eq!(fds.insert_new(Stderr::new()), 2);
         }
         fds
     }
@@ -585,6 +575,7 @@ impl FdTable {
         self.insert(fd_ref)
     }
 
+    /// Insert an alias to an existing file description to the FdTable.
     pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> FdNum {
         self.insert_with_min_num(fd_ref, 0)
     }
@@ -595,29 +586,21 @@ impl FdTable {
         file_handle: DynFileDescriptionRef,
         min_fd_num: FdNum,
     ) -> FdNum {
-        // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
-        // between used FDs, the find_map combinator will return it. If the first such unused FD
-        // is after all other used FDs, the find_map combinator will return None, and we will use
-        // the FD following the greatest FD thus far.
-        let candidate_new_fd =
-            self.fds.range(min_fd_num..).zip(min_fd_num..).find_map(|((fd_num, _fd), counter)| {
-                if *fd_num != counter {
-                    // There was a gap in the fds stored, return the first unused one
-                    // (note that this relies on BTreeMap iterating in key order)
-                    Some(counter)
-                } else {
-                    // This fd is used, keep going
-                    None
-                }
-            });
-        let new_fd_num = candidate_new_fd.unwrap_or_else(|| {
-            // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
-            // maximum fd in the map
-            self.fds.last_key_value().map(|(fd_num, _)| fd_num.strict_add(1)).unwrap_or(min_fd_num)
-        });
+        let mut candidate = min_fd_num;
+        for (&fd_num, _) in self.fds.range(min_fd_num..) {
+            if fd_num == candidate {
+                // This one is taken. Try the next one.
+                candidate = candidate.strict_add(1);
+            } else {
+                // We found a gap! Use this candidate.
+                break;
+            }
+        }
+        // If we exhaust the loop, the table is a solid block starting at `min_fd_num` until the
+        // end, and `candidate` is now the first number after that block -- exactly what we need.
 
-        self.fds.try_insert(new_fd_num, file_handle).unwrap();
-        new_fd_num
+        self.fds.try_insert(candidate, file_handle).unwrap();
+        candidate
     }
 
     pub fn get(&self, fd_num: FdNum) -> Option<DynFileDescriptionRef> {

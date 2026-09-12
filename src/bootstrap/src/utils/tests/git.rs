@@ -8,7 +8,6 @@ use build_helper::git::{GitConfig, PathFreshness, check_path_modifications};
 
 pub struct GitCtx {
     dir: tempfile::TempDir,
-    pub git_repo: String,
     pub nightly_branch: String,
     pub merge_bot_email: String,
 }
@@ -18,7 +17,6 @@ impl GitCtx {
         let dir = tempfile::TempDir::new().unwrap();
         let ctx = Self {
             dir,
-            git_repo: "rust-lang/rust".to_string(),
             nightly_branch: "nightly".to_string(),
             merge_bot_email: "Merge bot <merge-bot@rust-lang.org>".to_string(),
         };

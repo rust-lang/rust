@@ -7,10 +7,11 @@ pub mod suggestions;
 
 use std::{fmt, iter};
 
+use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
@@ -21,8 +22,9 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_session::cstore::{ExternCrate, ExternCrateSource};
+use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
+use thin_vec::ThinVec;
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -75,20 +77,18 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        ensure_sufficient_stack(|| {
-            if self.span == ex.span {
+        if self.span == ex.span {
+            self.result = Some(ex);
+        } else {
+            if let hir::ExprKind::Closure(..) = ex.kind
+                && self.include_closures
+                && let closure_header_sp = self.span.with_hi(ex.span.hi())
+                && closure_header_sp == ex.span
+            {
                 self.result = Some(ex);
-            } else {
-                if let hir::ExprKind::Closure(..) = ex.kind
-                    && self.include_closures
-                    && let closure_header_sp = self.span.with_hi(ex.span.hi())
-                    && closure_header_sp == ex.span
-                {
-                    self.result = Some(ex);
-                }
-                hir::intravisit::walk_expr(self, ex);
             }
-        });
+            hir::intravisit::walk_expr(self, ex);
+        }
     }
 
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
@@ -140,7 +140,7 @@ pub enum DefIdOrName {
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,
-        mut errors: Vec<FulfillmentError<'tcx>>,
+        mut errors: ThinVec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
@@ -224,6 +224,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // We do this in 2 passes because we want to display errors in order, though
         // maybe it *is* better to sort errors by span or something.
         let mut is_suppressed = vec![false; errors.len()];
+        // A failing trait goal also fails every projection goal resting on it. Ambiguity
+        // errors are exempt: they get merged into a single diagnostic whose notes list all
+        // the constraints the annotation has to satisfy, so their projections still say
+        // something the trait error doesn't.
+        let covered_by_trait_error =
+            |cond: &ErrorDescriptor<'tcx>, error: &ErrorDescriptor<'tcx>| {
+                let is_definite = |error: &ErrorDescriptor<'tcx>| {
+                    error.index.is_some_and(|index| {
+                        !matches!(errors[index].code, FulfillmentErrorCode::Ambiguity { .. })
+                    })
+                };
+                is_definite(cond)
+                    && is_definite(error)
+                    && self.trait_error_implies_projection_error(cond.goal, error.goal)
+            };
         for (_, error_set) in error_map.iter() {
             // We want to suppress "duplicate" errors with the same span.
             for error in error_set {
@@ -239,9 +254,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             continue;
                         }
 
-                        if self.error_implies(error2.goal, error.goal)
+                        if (self.error_implies(error2.goal, error.goal)
                             && !(error2.index >= error.index
-                                && self.error_implies(error.goal, error2.goal))
+                                && self.error_implies(error.goal, error2.goal)))
+                            || covered_by_trait_error(error2, error)
                         {
                             info!("skipping {:?} (implied by {:?})", error, error2);
                             is_suppressed[index] = true;
@@ -252,12 +268,99 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        // Ambiguity errors blaming the same inference variable describe a single problem:
+        // annotating that one variable has to satisfy all of them at once. Reporting them
+        // separately loses all but the first, as the rest get canceled as duplicates once
+        // the `infcx` is tainted (see `maybe_report_ambiguity`), hiding their requirements
+        // from the user. Instead, report the first one (the sort above placed the most
+        // informative obligation first) and mention the requirements of the others in it.
+        //
+        // Type variables that are only related through a pending `Coerce` or `Subtype`
+        // obligation still concern the same annotation, so compare their sub-unification
+        // roots, like `need_type_info` does when looking for the annotation source.
+        let ambiguity_infer_var = |error: &FulfillmentError<'tcx>| match error.code {
+            FulfillmentErrorCode::Ambiguity { overflow: None } => self
+                .ambiguity_term(self.deeply_resolve_ignoring_regions(error.obligation.predicate))
+                .and_then(|term| {
+                    ty::GenericArg::from(term)
+                        .walk()
+                        .find_map(TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>)
+                })
+                .map(|var| match var {
+                    TyOrConstInferVar::Ty(vid) => {
+                        TyOrConstInferVar::Ty(self.sub_unification_table_root_var(vid))
+                    }
+                    other => other,
+                }),
+            _ => None,
+        };
+        let infer_vars: Vec<_> = errors.iter().map(ambiguity_infer_var).collect();
+
         let mut reported = None;
+        let mut merged = vec![None; errors.len()];
+        let mut reported_as_primary = vec![false; errors.len()];
         for from_expansion in [false, true] {
-            for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
+            for (index, (error, suppressed)) in iter::zip(&errors, &is_suppressed).enumerate() {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     if !error.references_error() {
-                        let guar = self.report_fulfillment_error(error);
+                        let guar = if let Some(guar) = merged[index] {
+                            guar
+                        } else {
+                            let group: Vec<usize> = match infer_vars[index] {
+                                Some(var) => (0..errors.len())
+                                    .filter(|&other| {
+                                        other != index && infer_vars[other] == Some(var)
+                                    })
+                                    .collect(),
+                                None => vec![],
+                            };
+                            // Only merge errors that a note on this diagnostic can fully
+                            // represent. An error blaming a different expression labels that
+                            // expression and suggests how to annotate it, and one whose
+                            // predicate we can't phrase as a note (e.g. const evaluatability)
+                            // says nothing here, so both keep their own error.
+                            let merges = |other: usize| {
+                                errors[other].obligation.cause.span == error.obligation.cause.span
+                                    && match errors[other].obligation.predicate.kind().skip_binder()
+                                    {
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                                            !matches!(
+                                                self.tcx.as_lang_item(data.def_id()),
+                                                Some(
+                                                    LangItem::Sized
+                                                        | LangItem::MetaSized
+                                                        | LangItem::PointeeSized
+                                                )
+                                            )
+                                        }
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                                            _,
+                                        )) => true,
+                                        _ => false,
+                                    }
+                            };
+                            let related: Vec<_> = group
+                                .iter()
+                                .filter(|&&other| {
+                                    // Exclude already-reported primaries: they were their own
+                                    // canonical error and adding them as notes here would
+                                    // produce duplicate information.
+                                    merges(other)
+                                        && !is_suppressed[other]
+                                        && !errors[other].references_error()
+                                        && !reported_as_primary[other]
+                                })
+                                .map(|&other| &errors[other])
+                                .collect();
+                            let guar = self.report_fulfillment_error(error, &related);
+                            for &other in &group {
+                                if merges(other) {
+                                    merged[other] = Some(guar);
+                                }
+                            }
+                            reported_as_primary[index] = true;
+                            guar
+                        };
                         self.infcx.set_tainted_by_errors(guar);
                         reported = Some(guar);
                         // We want to ignore desugarings here: spans are equivalent even
@@ -288,7 +391,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed {
+    fn report_fulfillment_error(
+        &self,
+        error: &FulfillmentError<'tcx>,
+        related: &[&FulfillmentError<'tcx>],
+    ) -> ErrorGuaranteed {
         let mut error = FulfillmentError {
             obligation: error.obligation.clone(),
             code: error.code.clone(),
@@ -312,8 +419,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::Project(ref e) => {
                 self.report_projection_error(&error.obligation, e)
             }
+            FulfillmentErrorCode::Outlives => self
+                .dcx()
+                .struct_span_err(
+                    error.obligation.cause.span,
+                    "higher-ranked lifetime bound could not be satisfied",
+                )
+                .emit(),
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
-                self.maybe_report_ambiguity(&error.obligation)
+                self.maybe_report_ambiguity(&error.obligation, related)
             }
             FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
                 self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)
@@ -340,7 +454,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 | ObligationCauseCode::WhereClauseInExpr(..) = code
                 {
                     self.note_obligation_cause_code(
-                        error.obligation.cause.body_id,
+                        error.obligation.cause.body_def_id,
                         &mut diag,
                         error.obligation.predicate,
                         error.obligation.param_env,
@@ -489,15 +603,15 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     )
     .unwrap();
 
-    let predicates = tcx.predicates_of(impl_def_id).predicates;
-    let mut pretty_predicates = Vec::with_capacity(predicates.len());
+    let clauses = tcx.clauses_of(impl_def_id).clauses;
+    let mut pretty_clauses = Vec::with_capacity(clauses.len());
 
     let sized_trait = tcx.lang_items().sized_trait();
     let meta_sized_trait = tcx.lang_items().meta_sized_trait();
 
-    for (p, _) in predicates {
+    for (c, _) in clauses {
         // Accumulate the sizedness bounds for each self ty.
-        if let Some(trait_clause) = p.as_trait_clause() {
+        if let Some(trait_clause) = c.as_trait_clause() {
             let self_ty = trait_clause.self_ty().skip_binder();
             let sizedness_of = types_with_sizedness_bounds.entry(self_ty).or_default();
             if Some(trait_clause.def_id()) == sized_trait {
@@ -509,7 +623,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             }
         }
 
-        pretty_predicates.push(p.to_string());
+        pretty_clauses.push(c.to_string());
     }
 
     for (ty, sizedness) in types_with_sizedness_bounds {
@@ -517,22 +631,22 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             if sizedness.sized {
                 // Maybe a default bound, don't write anything.
             } else {
-                pretty_predicates.push(format!("{ty}: ?Sized"));
+                pretty_clauses.push(format!("{ty}: ?Sized"));
             }
         } else {
             if sizedness.sized {
                 // Maybe a default bound, don't write anything.
-                pretty_predicates.push(format!("{ty}: Sized"));
+                pretty_clauses.push(format!("{ty}: Sized"));
             } else if sizedness.meta_sized {
-                pretty_predicates.push(format!("{ty}: MetaSized"));
+                pretty_clauses.push(format!("{ty}: MetaSized"));
             } else {
-                pretty_predicates.push(format!("{ty}: PointeeSized"));
+                pretty_clauses.push(format!("{ty}: PointeeSized"));
             }
         }
     }
 
-    if !pretty_predicates.is_empty() {
-        write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
+    if !pretty_clauses.is_empty() {
+        write!(w, "\n  where {}", pretty_clauses.join(", ")).unwrap();
     }
 
     w.push(';');

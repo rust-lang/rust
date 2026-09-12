@@ -12,6 +12,14 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
    = note: late-bound region is '?1
    = note: late-bound region is '?2
 
+note: no external requirements
+  --> $DIR/return-wrong-bound-region.rs:10:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+   = note: defining type: test
+
 error: lifetime may not live long enough
   --> $DIR/return-wrong-bound-region.rs:11:23
    |
@@ -20,14 +28,6 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
    |                 |  |
    |                 |  has type `&'1 i32`
    |                 has type `&'2 i32`
-
-note: no external requirements
-  --> $DIR/return-wrong-bound-region.rs:10:1
-   |
-LL | fn test() {
-   | ^^^^^^^^^
-   |
-   = note: defining type: test
 
 error: aborting due to 1 previous error
 

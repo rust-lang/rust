@@ -308,6 +308,19 @@ fn panic_null_pointer_dereference() -> ! {
 #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
+#[lang = "panic_null_reference_constructed"] // needed by codegen for panic on null reference formation
+#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+fn panic_null_reference_constructed() -> ! {
+    if cfg!(panic = "immediate-abort") {
+        super::intrinsics::abort()
+    }
+
+    panic_nounwind_fmt(format_args!("null reference produced"), /* force_no_backtrace */ false)
+}
+
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
+#[track_caller]
 #[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
 #[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
 fn panic_invalid_enum_construction(source: u128) -> ! {
@@ -432,14 +445,14 @@ fn assert_failed_inner(
 
     match args {
         Some(args) => panic!(
-            r#"assertion `left {op} right` failed: {args}
+            r"assertion `left {op} right` failed: {args}
   left: {left:?}
- right: {right:?}"#
+ right: {right:?}"
         ),
         None => panic!(
-            r#"assertion `left {op} right` failed
+            r"assertion `left {op} right` failed
   left: {left:?}
- right: {right:?}"#
+ right: {right:?}"
         ),
     }
 }

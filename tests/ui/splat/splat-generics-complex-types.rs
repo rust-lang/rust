@@ -1,17 +1,17 @@
 //@ run-pass
-//! Test using `#[splat]` on tuples with complex generic types inside the splatted tuple.
+//! Test using `#[rustc_splat]` on tuples with complex generic types inside the splatted tuple.
 
 #![allow(incomplete_features)]
 #![feature(splat)]
 
 // Vec<T> and Option<U> inside splatted tuple
-fn nested_generic<T, U>(#[splat] _: (Vec<T>, Option<U>)) {}
+fn nested_generic<T, U>(#[rustc_splat] _: (Vec<T>, Option<U>)) {}
 
 // Box<T> inside splatted tuple
-fn box_generic<T>(#[splat] _: (Box<T>, u32)) {}
+fn box_generic<T>(#[rustc_splat] _: (Box<T>, u32)) {}
 
 // Multiple complex generics
-fn multi_generic<T, U, V>(#[splat] _: (Vec<T>, Option<U>, Box<V>)) {}
+fn multi_generic<T, U, V>(#[rustc_splat] _: (Vec<T>, Option<U>, Box<V>)) {}
 
 fn main() {
     nested_generic(vec![1u32, 2u32], Some(2i8));

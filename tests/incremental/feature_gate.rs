@@ -3,11 +3,9 @@
 //@ revisions: rpass1 bfail2
 //@ compile-flags: -Z query-dep-graph
 
-#![feature(rustc_attrs)]
-#![cfg_attr(rpass1, feature(abi_unadjusted))]
+#![cfg_attr(rpass1, feature(decl_macro))]
 
-fn main() {
-}
+fn main() {}
 
-extern "unadjusted" fn foo() {}
-//[bfail2]~^ ERROR: "unadjusted" ABI is an implementation detail and perma-unstable
+macro foo() {}
+//[bfail2]~^ ERROR `macro` is experimental [E0658]

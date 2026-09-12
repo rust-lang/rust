@@ -16,11 +16,11 @@ mod proc_macros;
 
 use std::{any::TypeId, iter, ops::Range, sync};
 
+use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir_expand::{
-    AstId, ExpansionInfo, InFile, MacroCallId, MacroCallKind, MacroKind,
+    AstId, ExpansionInfo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroKind,
     builtin::quote::quote,
-    db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMap,
 };
@@ -43,7 +43,6 @@ use tt::{TextRange, TextSize};
 
 use crate::{
     AdtId, Lookup, ModuleDefId,
-    db::DefDatabase,
     expr_store::Body,
     nameres::{DefMap, ModuleSource, crate_def_map},
     src::HasSource,
@@ -62,7 +61,7 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
         .modules()
         .flat_map(|module| module.1.scope.all_macro_calls())
         .filter_map(|macro_call| {
-            let errors = db.parse_macro_expansion_error(macro_call)?;
+            let errors = macro_call.parse_macro_expansion_error(&db)?;
             let errors = errors.err.as_ref()?.render_to_string(&db);
             let macro_loc = macro_call.loc(&db);
             let ast_id = match macro_loc.kind {
@@ -75,7 +74,7 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
                 ast_id.file_id.file_id().expect("macros inside macros are not supported");
 
             let ast = editioned_file_id.parse(&db).syntax_node();
-            let ast_id_map = db.ast_id_map(ast_id.file_id);
+            let ast_id_map = ast_id.file_id.ast_id_map(&db);
             let node = ast_id_map.get_erased(ast_id.value).to_node(&ast);
             Some((node.text_range(), errors))
         })
@@ -120,12 +119,12 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     let mut expansions = Vec::new();
 
     for macro_call_node in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
-        let ast_id = db.ast_id_map(source.file_id).ast_id(&macro_call_node);
+        let ast_id = source.file_id.ast_id_map(&db).ast_id(&macro_call_node);
         let ast_id = InFile::new(source.file_id, ast_id);
         let ptr = InFile::new(source.file_id, AstPtr::new(&macro_call_node));
         let macro_call_id = resolve_macro_call_id(&db, def_map, ast_id, ptr)
             .unwrap_or_else(|| panic!("unable to find semantic macro call {macro_call_node}"));
-        let expansion_result = db.parse_macro_expansion(macro_call_id);
+        let expansion_result = macro_call_id.parse_macro_expansion(&db);
         expansions.push((macro_call_node.clone(), expansion_result));
     }
 
@@ -215,7 +214,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             }
             let pp = pretty_print_macro_expansion(
                 src.value,
-                db.span_map(src.file_id),
+                src.file_id.span_map(&db),
                 show_spans,
                 show_ctxt,
             );
@@ -230,7 +229,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         if let Some(macro_file) = src.file_id.macro_file() {
             let pp = pretty_print_macro_expansion(
                 src.value.syntax().clone(),
-                db.span_map(macro_file.into()),
+                HirFileId::from(macro_file).span_map(&db),
                 false,
                 false,
             );
@@ -245,7 +244,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         {
             let pp = pretty_print_macro_expansion(
                 src.value.syntax().clone(),
-                db.span_map(macro_file.into()),
+                HirFileId::from(macro_file).span_map(&db),
                 false,
                 false,
             );
@@ -260,7 +259,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 }
 
 fn resolve_macro_call_id(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: &DefMap,
     ast_id: AstId<ast::MacroCall>,
     ast_ptr: InFile<AstPtr<ast::MacroCall>>,
@@ -387,7 +386,7 @@ struct IdentityWhenValidProcMacroExpander;
 impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &base_db::Env,
@@ -465,18 +464,19 @@ m!(g);
         ModuleSource::SourceFile(it) => it,
         ModuleSource::Module(_) | ModuleSource::BlockExpr(_) => panic!(),
     };
+    let span_map = HirFileId::from(file_id).span_map(&db);
     let no_downmap_spans: Vec<_> = source_file
         .syntax()
         .descendants()
         .map(|node| {
-            let mut span = db.real_span_map(file_id).span_for_range(node.text_range());
+            let mut span = span_map.span_for_range(node.text_range());
             span.anchor.ast_id = NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER;
             span
         })
         .collect();
 
     for macro_call_node in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
-        let ast_id = db.ast_id_map(source.file_id).ast_id(&macro_call_node);
+        let ast_id = source.file_id.ast_id_map(&db).ast_id(&macro_call_node);
         let ast_id = InFile::new(source.file_id, ast_id);
         let ptr = InFile::new(source.file_id, AstPtr::new(&macro_call_node));
         let macro_call_id = resolve_macro_call_id(&db, def_map, ast_id, ptr)

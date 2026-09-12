@@ -1,7 +1,7 @@
 //@ build-pass
 //@ compile-flags: -Copt-level=3
 //@ only-x86_64
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 // regression test for https://github.com/rust-lang/rust/issues/110707
 // in --release we were optimizing to invalid bitcasts, due to a combination of MIR inlining and

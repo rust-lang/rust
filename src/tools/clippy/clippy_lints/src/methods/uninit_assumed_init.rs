@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::ty::is_uninit_value_valid_for_ty;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

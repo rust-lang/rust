@@ -185,6 +185,15 @@ pub fn par_for_each_in<I: DynSend, T: IntoIterator<Item = I>>(
     });
 }
 
+// FIXME: actually make parallel and `T: DynSend`
+pub fn par_for_each_slice<T>(items: &mut [T], for_each: impl Fn(&mut T)) {
+    parallel_guard(|guard| {
+        items.iter_mut().for_each(|i| {
+            guard.run(|| for_each(i));
+        });
+    });
+}
+
 /// This runs `for_each` in parallel for each iterator item. If one or more of the
 /// `for_each` calls returns `Err`, the function will also return `Err`. The error returned
 /// will be non-deterministic, but this is expected to be used with `ErrorGuaranteed` which

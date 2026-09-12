@@ -2,8 +2,6 @@
 // outside of slice (+ ident patterns within those), tuple,
 // and tuple struct patterns and that duplicates are caught in these contexts.
 
-#![feature(box_patterns)]
-
 fn main() {}
 
 macro_rules! mk_pat {
@@ -16,9 +14,6 @@ fn rest_patterns() {
     // Top level:
     fn foo(..: u8) {} //~ ERROR `..` patterns are not allowed here
     let ..;  //~ ERROR `..` patterns are not allowed here
-
-    // Box patterns:
-    let box ..;  //~ ERROR `..` patterns are not allowed here
 
     // In or-patterns:
     match 1 {

@@ -12,15 +12,15 @@ fn main() {
     let xe1 = XEmpty1 {};
 
     match e1 {
-        Empty1() => () //~ ERROR expected tuple struct or tuple variant, found struct `Empty1`
+        Empty1() => () //~ ERROR cannot find tuple struct or tuple variant `Empty1` in this scope
     }
     match xe1 {
-        XEmpty1() => () //~ ERROR expected tuple struct or tuple variant, found struct `XEmpty1`
+        XEmpty1() => () //~ ERROR cannot find tuple struct or tuple variant `XEmpty1` in this scope
     }
     match e1 {
-        Empty1(..) => () //~ ERROR expected tuple struct or tuple variant, found struct `Empty1`
+        Empty1(..) => () //~ ERROR cannot find tuple struct or tuple variant `Empty1` in this scope
     }
     match xe1 {
-        XEmpty1(..) => () //~ ERROR expected tuple struct or tuple variant, found struct `XEmpty1`
+        XEmpty1(..) => () //~ ERROR cannot find tuple struct or tuple variant `XEmpty1` in this scope
     }
 }

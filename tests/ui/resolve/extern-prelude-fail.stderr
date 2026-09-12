@@ -4,7 +4,8 @@ error[E0432]: unresolved import `extern_prelude`
 LL |     use extern_prelude::S;
    |         ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`
    |
-help: you might be missing a crate named `extern_prelude`, add it to your project and import it in your code
+   = help: if you're trying to use a dependency named `extern_prelude`, upgrade your edition to be able to reference it with a `use` declaration
+help: on Rust 2015, `extern crate` is required to specify a dependency on an external crate
    |
 LL + extern crate extern_prelude;
    |
@@ -15,7 +16,8 @@ error[E0433]: cannot find module or crate `extern_prelude` in the crate root
 LL |     let s = ::extern_prelude::S;
    |               ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`
    |
-help: you might be missing a crate named `extern_prelude`, add it to your project and import it in your code
+   = help: if you're trying to use a dependency named `extern_prelude`, upgrade your edition to be able to reference it with a `use` declaration
+help: on Rust 2015, `extern crate` is required to specify a dependency on an external crate
    |
 LL + extern crate extern_prelude;
    |

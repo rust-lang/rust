@@ -72,7 +72,7 @@ fn run_fuzzer(sh: &Shell) -> anyhow::Result<()> {
     let _d = sh.push_dir("./crates/syntax");
     let _e = sh.push_env("RUSTUP_TOOLCHAIN", "nightly");
     if cmd!(sh, "cargo fuzz --help").read().is_err() {
-        cmd!(sh, "cargo install cargo-fuzz").run()?;
+        cmd!(sh, "cargo install --locked cargo-fuzz").run()?;
     };
 
     // Expecting nightly rustc
@@ -91,5 +91,8 @@ fn date_iso(sh: &Shell) -> anyhow::Result<String> {
 }
 
 fn is_release_tag(tag: &str) -> bool {
-    tag.len() == "2020-02-24".len() && tag.starts_with(|c: char| c.is_ascii_digit())
+    tag.len() >= 10
+        && tag.starts_with(|c: char| c.is_ascii_digit())
+        && tag.as_bytes()[4] == b'-'
+        && tag.as_bytes()[7] == b'-'
 }

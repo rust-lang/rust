@@ -1,0 +1,8 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_tuple_field_fragment.rs:4
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_tuple_field_fragment.rs:4
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: <none>, Id: _1, Ty: (u8, u16), Value: <uninit>
+Name: t.0, Id: _2, Ty: u8, Value: <dead>
+Name: t.1, Id: _3, Ty: u16, Value: <dead>
+(priroda) quitting

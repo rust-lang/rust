@@ -3,15 +3,14 @@ use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanExt;
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -93,7 +92,7 @@ pub struct ManualFloatMethods {
 
 impl ManualFloatMethods {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -119,15 +118,15 @@ fn is_not_const(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | DefKind::Impl { .. }
         | DefKind::OpaqueTy
         | DefKind::SyntheticCoroutineBody
-        | DefKind::TyParam => true,
+        | DefKind::TyParam
+        | DefKind::TestBinderConstraints => true,
 
         DefKind::AnonConst
-        | DefKind::InlineConst
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::ConstParam
         | DefKind::Static { .. }
         | DefKind::Ctor(..)
-        | DefKind::AssocConst { .. } => false,
+        | DefKind::AssocConst => false,
 
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure => tcx.constness(def_id) == Constness::NotConst,
     }

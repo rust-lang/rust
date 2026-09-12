@@ -1,4 +1,4 @@
-error: Undefined Behavior: incorrect number of arguments for `malloc`: got 2, expected 1
+error: Undefined Behavior: ABI mismatch: calling `malloc` which takes 1 argument, but 2 arguments were given
   --> tests/fail/function_calls/check_arg_count_too_many_args.rs:LL:CC
    |
 LL |         let _ = malloc(1, 2);

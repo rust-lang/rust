@@ -1,10 +1,7 @@
 //@aux-build:non-exhaustive-enum.rs
-#![allow(
-    clippy::manual_unwrap_or_default,
-    clippy::manual_unwrap_or,
-    clippy::redundant_pattern_matching
-)]
 #![warn(clippy::unneeded_struct_pattern)]
+#![allow(clippy::redundant_pattern_matching)]
+#![expect(clippy::manual_unwrap_or_default)]
 
 extern crate non_exhaustive_enum;
 use non_exhaustive_enum::*;

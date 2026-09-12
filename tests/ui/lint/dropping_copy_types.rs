@@ -51,6 +51,26 @@ fn main() {
     drop(a3);
     drop(a4); //~ WARN calls to `std::mem::drop`
     drop(a5);
+
+    unsafe {
+        let mut s6 = SomeStruct {};
+        std::ptr::drop_in_place(&raw mut s6); //~ WARN calls to `std::ptr::drop_in_place`
+
+        let mut s7 = SomeStruct {};
+        let ptr = &raw mut s7;
+        std::ptr::drop_in_place(ptr); //~ WARN calls to `std::ptr::drop_in_place`
+
+        std::ptr::drop_in_place(&mut SomeStruct {} as *mut _); //~ WARN calls to `std::ptr::drop_in_place`
+    }
+
+    unsafe {
+        let mut s8 = SomeStruct {};
+        (&raw mut s8).drop_in_place(); //~ WARN calls to `drop_in_place`
+
+        let mut s9 = SomeStruct {};
+        let ptr = &raw mut s9;
+        ptr.drop_in_place(); //~ WARN calls to `drop_in_place`
+    }
 }
 
 #[allow(unused)]

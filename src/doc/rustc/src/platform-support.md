@@ -15,11 +15,19 @@ the compiler what kind of output should be produced.
 
 Component availability is tracked [here](https://rust-lang.github.io/rustup-components-history/).
 
+Support for targets can vary during their lifespan (a target con be promoted because the support
+improves or can be demoted because lack of resources). Procedures for promoting and demoting targets
+are documented at our [Forge documentation site][forge].
+
+[forge]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#targets
+
 ## Tier 1 with Host Tools
 
 Tier 1 targets can be thought of as "guaranteed to work". The Rust project
 builds official binary releases for each tier 1 target, and automated testing
-ensures that each tier 1 target builds and passes tests after each change.
+ensures that each tier 1 target builds and passes tests after each change. For
+the full requirements, see [Tier 1 target
+policy](target-tier-policy.md#tier-1-target-policy) in the Target Tier Policy.
 
 Tier 1 targets with host tools additionally support running tools like `rustc`
 and `cargo` natively on the target, and automated testing ensures that tests
@@ -28,19 +36,17 @@ development platform, not just a compilation target. For the full requirements,
 see [Tier 1 with Host Tools](target-tier-policy.md#tier-1-with-host-tools) in
 the Target Tier Policy.
 
-All tier 1 targets with host tools support the full standard library.
+All tier 1 (with host tools) targets support the full standard library.
 
 target | notes
 -------|-------
 [`aarch64-apple-darwin`](platform-support/apple-darwin.md) | ARM64 macOS (11.0+, Big Sur+)
 [`aarch64-pc-windows-msvc`](platform-support/windows-msvc.md) | ARM64 Windows MSVC
 [`aarch64-unknown-linux-gnu`](platform-support/aarch64-unknown-linux-gnu.md) | ARM64 Linux (kernel 4.1+, glibc 2.17+)
-[`i686-pc-windows-msvc`](platform-support/windows-msvc.md) | 32-bit MSVC (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+, Pentium 4) [^x86_32-floats-return-ABI]
 [`x86_64-pc-windows-gnu`](platform-support/windows-gnu.md) | 64-bit MinGW (Windows 10+, Windows Server 2016+)
 [`x86_64-pc-windows-msvc`](platform-support/windows-msvc.md) | 64-bit MSVC (Windows 10+, Windows Server 2016+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
-
 [^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. Functions with the default Rust ABI are not affected. See [issue #115567][x86-32-float-return-issue].
 
 [^win32-msvc-alignment]: Due to non-standard behavior of MSVC, native C code on this target can cause types with an alignment of more than 4 bytes to be incorrectly aligned to only 4 bytes (this affects, e.g., `u64` and `i64`). Rust applies some mitigations to reduce the impact of this issue, but this can still cause unsoundness due to unsafe code that (correctly) assumes that references are always properly aligned. See [issue #112480](https://github.com/rust-lang/rust/issues/112480).
@@ -48,16 +54,13 @@ target | notes
 [77071]: https://github.com/rust-lang/rust/issues/77071
 [x86-32-float-return-issue]: https://github.com/rust-lang/rust/issues/115567
 
-## Tier 1
+## Tier 1 without Host Tools
 
-Tier 1 targets can be thought of as "guaranteed to work". The Rust project
-builds official binary releases for each tier 1 target, and automated testing
-ensures that each tier 1 target builds and passes tests after each change. For
-the full requirements, see [Tier 1 target
-policy](target-tier-policy.md#tier-1-target-policy) in the Target Tier Policy.
+target | notes
+-------|-------
+[`i686-pc-windows-msvc`](platform-support/windows-msvc.md) | 32-bit MSVC (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 
-At this time, all Tier 1 targets are [Tier 1 with Host
-Tools](#tier-1-with-host-tools).
+All tier 1 (without host tools) targets support the full standard library.
 
 ## Tier 2 with Host Tools
 
@@ -98,13 +101,13 @@ target | notes
 [`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | Armv7-A OpenHarmony
 [`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19+, glibc 2.36), LSX required
 [`loongarch64-unknown-linux-musl`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19+, musl 1.2.5), LSX required
-[`i686-pc-windows-gnu`](platform-support/windows-gnu.md) | 32-bit MinGW (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 `powerpc-unknown-linux-gnu` | PowerPC Linux (kernel 3.2+, glibc 2.17)
 `powerpc64-unknown-linux-gnu` | PPC64 Linux (kernel 3.2+, glibc 2.17)
 [`powerpc64-unknown-linux-musl`](platform-support/powerpc64-unknown-linux-musl.md) | PPC64 Linux (kernel 4.19+, musl 1.2.5)
 [`powerpc64le-unknown-linux-gnu`](platform-support/powerpc64le-unknown-linux-gnu.md) | PPC64LE Linux (kernel 3.10+, glibc 2.17)
 [`powerpc64le-unknown-linux-musl`](platform-support/powerpc64le-unknown-linux-musl.md) | PPC64LE Linux (kernel 4.19+, musl 1.2.5)
 [`riscv64gc-unknown-linux-gnu`](platform-support/riscv64gc-unknown-linux-gnu.md) | RISC-V Linux (kernel 4.20+, glibc 2.29)
+[`riscv64gc-unknown-linux-musl`](platform-support/riscv64gc-unknown-linux-musl.md) | RISC-V Linux (kernel 4.20+, musl 1.2.5)
 [`s390x-unknown-linux-gnu`](platform-support/s390x-unknown-linux-gnu.md) | S390x Linux (kernel 3.2+, glibc 2.17)
 [`x86_64-apple-darwin`](platform-support/apple-darwin.md) | 64-bit macOS (10.12+, Sierra+)
 [`x86_64-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | 64-bit x86 MinGW (Windows 10+), LLVM ABI
@@ -183,10 +186,13 @@ target | std | notes
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux (kernel 3.2+, glibc 2.17, original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux (musl 1.2.5, original Pentium) [^x86_32-floats-x87]
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
+[`i686-pc-windows-gnu`](platform-support/windows-gnu.md) | ✓ | 32-bit MinGW (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 [`i686-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ✓ | 32-bit x86 MinGW (Windows 10+, Pentium 4), LLVM ABI [^x86_32-floats-return-ABI]
 [`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit x86 FreeBSD (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with musl 1.2.5 (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 32-bit UEFI (Pentium 4, softfloat) [^win32-msvc-alignment]
+[`loongarch32-unknown-none`](platform-support/loongarch-none.md) | * | LoongArch32 Bare-metal (ILP32D ABI)
+[`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * | LoongArch32 Bare-metal (ILP32S ABI)
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * | LoongArch64 Bare-metal (LP64S ABI)
 [`nvptx64-nvidia-cuda`](platform-support/nvptx64-nvidia-cuda.md) | * | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
@@ -196,9 +202,7 @@ target | std | notes
 [`riscv32imafc-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * | Bare RISC-V (RV32IMAFC ISA)
 [`riscv32imc-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * | Bare RISC-V (RV32IMC ISA)
 [`riscv64a23-unknown-linux-gnu`](platform-support/riscv64a23-unknown-linux-gnu.md) | ✓ | RISC-V Linux (kernel 6.8.0+, glibc 2.39)
-[`riscv64gc-unknown-linux-musl`](platform-support/riscv64gc-unknown-linux-musl.md) | ✓ |RISC-V Linux (kernel 4.20+, musl 1.2.5)
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
-[`riscv64im-unknown-none-elf`](platform-support/riscv64im-unknown-none-elf.md) | * | Bare RISC-V (RV64IM ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4+, glibc 2.23)
 [`s390x-unknown-none-softfloat`](platform-support/s390x-unknown-none-softfloat.md) | * | Bare S390x (softfloat ABI)
@@ -216,6 +220,7 @@ target | std | notes
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASIp1
 [`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ | WebAssembly with WASI Preview 1 and threads
 [`wasm32-wasip2`](platform-support/wasm32-wasip2.md) | ✓ | WebAssembly with WASIp2
+[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ | WebAssembly with WASIp3
 [`wasm32v1-none`](platform-support/wasm32v1-none.md) | * | WebAssembly limited to 1.0 features and no imports
 [`x86_64-apple-ios`](platform-support/apple-ios.md) | ✓ | 64-bit x86 iOS
 [`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ | Mac Catalyst on x86_64
@@ -271,13 +276,14 @@ target | std | host | notes
 [`aarch64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | ARM64 HelenOS
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
+[`aarch64-unknown-l4re-uclibc`](platform-support/l4re.md) | ✓ |  | ARM64 L4Re with uclibc
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-linux-pauthtest`](platform-support/aarch64-unknown-linux-pauthtest.md) | ✓ | ✓ | ARM64 PAC ELF ABI
 [`aarch64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | ARM64 Managarm
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
-[`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX Neutrino 7.0 RTOS |
-[`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
-[`aarch64-unknown-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
+[`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX SDP 7.0 |
+[`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 7.1 with default network stack (io-pkt) |
+[`aarch64-unknown-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 7.1 with new network stack (io-sock) |
 [`aarch64-unknown-qnx`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX SDP 8.0+ |
 [`aarch64-unknown-nuttx`](platform-support/nuttx.md) | ✓ |  | ARM64 with NuttX
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
@@ -322,16 +328,15 @@ target | std | host | notes
 [`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ✓ |  | Armv7-A for VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
-[`armv7a-vex-v5`](platform-support/armv7a-vex-v5.md) | ? |  | Armv7-A Cortex-A9 VEX V5 Brain, VEXos
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Armv7-A Apple WatchOS
 [`armv7s-apple-ios`](platform-support/apple-ios.md) | ✓ |  | Armv7-A Apple-A6 Apple iOS
 [`armv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
 [`armv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
 [`avr-none`](platform-support/avr-none.md) | * |  | AVR; requires `-Zbuild-std=core` and `-Ctarget-cpu=...`
-`bpfeb-unknown-none` | * |  | BPF (big endian)
-`bpfel-unknown-none` | * |  | BPF (little endian)
-`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
-`csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
+[`bpfeb-unknown-none`](platform-support/bpf-unknown-none.md) | * |  | BPF (big endian)
+[`bpfel-unknown-none`](platform-support/bpf-unknown-none.md) | * |  | BPF (little endian)
+[`csky-unknown-linux-gnuabiv2`](platform-support/csky-unknown-linux-gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux (little endian)
+[`csky-unknown-linux-gnuabiv2hf`](platform-support/csky-unknown-linux-gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 [`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ |  | Hexagon Linux with musl 1.2.5
 [`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * |  | Bare Hexagon (v60+, HVX)
 [`hexagon-unknown-qurt`](platform-support/hexagon-unknown-qurt.md)| * |  | Hexagon QuRT
@@ -340,7 +345,7 @@ target | std | host | notes
 [`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (PentiumPro) [^x86_32-floats-x87]
 [`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+, Penryn) [^x86_32-floats-return-ABI]
 [`i686-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | 32-bit x86 OpenEmbedded/Yocto Linux (GNU)
-[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS (Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX SDP 7.0 (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-helenos`](platform-support/helenos.md) | ✓ |  | HelenOS IA-32 (see docs for pending issues)
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4) [^x86_32-floats-return-ABI]
@@ -352,8 +357,6 @@ target | std | host | notes
 [`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |  | 32-bit Windows 7 support [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 [`i686-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | [^x86_32-floats-return-ABI]
 [`loongarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | LoongArch64 OpenHarmony
-[`loongarch32-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch32 Bare-metal (ILP32D ABI)
-[`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch32 Bare-metal (ILP32S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 [`m68k-unknown-none-elf`](platform-support/m68k-unknown-none-elf.md) |  |  | Motorola 680x0
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23) [^snan-inverted]
@@ -388,6 +391,7 @@ target | std | host | notes
 [`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
+[`powerpc64-sony-ps3`](platform-support/powerpc64-sony-ps3.md) | * |  | PowerPC64 (BE) Sony PlayStation 3 (PS3)
 [`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv2)
 [`powerpc64-unknown-linux-gnuelfv2`](platform-support/powerpc64-unknown-linux-gnuelfv2.md) | ✓ | ✓ | PPC64 Linux (ELFv2 ABI, kernel 3.2, glibc 2.17)
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
@@ -401,6 +405,7 @@ target | std | host | notes
 `riscv32gc-unknown-linux-musl` | ? |  | RISC-V Linux (kernel 5.4, musl 1.2.5)
 [`riscv32im-risc0-zkvm-elf`](platform-support/riscv32im-risc0-zkvm-elf.md) | ? |  | RISC Zero's zero-knowledge Virtual Machine (RV32IM ISA)
 [`riscv32ima-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMA ISA)
+[`riscv32imfc-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMFC ISA, hardware single-float, no atomics)
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 32bit with NuttX
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
@@ -412,13 +417,14 @@ target | std | host | notes
 [`riscv64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | RISC-V OpenEmbedded/Yocto Linux (GNU)
 [`riscv64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 `riscv64gc-unknown-freebsd` | ? |  | RISC-V FreeBSD
-`riscv64gc-unknown-fuchsia` | ? |  | RISC-V Fuchsia
+[`riscv64gc-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ |  | RISC-V Fuchsia
 [`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |  | RISC-V Hermit
 [`riscv64gc-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | RISC-V Managarm
 [`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
 [`riscv64gc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 64bit with NuttX
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 [`riscv64gc-unknown-redox`](platform-support/redox.md) | ✓ |  | RISC-V 64bit Redox OS
+[`riscv64im-unknown-none-elf`](platform-support/riscv64im-unknown-none-elf.md) | * |  | Bare RISC-V (RV64IM ISA)
 [`riscv64imac-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 64bit with NuttX
 [`s390x-unknown-linux-musl`](platform-support/s390x-unknown-linux-musl.md) | ✓ |  | S390x Linux (kernel 3.2, musl 1.2.5)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
@@ -434,6 +440,7 @@ target | std | host | notes
 [`thumbv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
 `thumbv7a-pc-windows-msvc` |  |  |
 [`thumbv7a-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) |  |  |
+[`thumbv7a-vex-v5`](platform-support/thumbv7a-vex-v5.md) | ✓ |  | Armv7-A Cortex-A9 VEX V5 Brain, VEXos
 [`thumbv7em-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX
 [`thumbv7em-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX, hardfloat
 [`thumbv7m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7M with NuttX
@@ -443,14 +450,13 @@ target | std | host | notes
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
-[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ |  | WebAssembly with WASIp3
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |  |  | x86_64 LynxOS-178
 [`x86_64-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | x86 64-bit OpenEmbedded/Yocto Linux (GNU)
 [`x86_64-pc-cygwin`](platform-support/x86_64-pc-cygwin.md) | ✓ |  | 64-bit x86 Cygwin |
-[`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
-[`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
+[`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 7.1 with default network stack (io-pkt) |
+[`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 7.1 with new network stack (io-sock) |
 [`x86_64-pc-qnx`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX SDP 8.0+ |
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |  | 64-bit Unikraft with musl 1.2.5
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
@@ -458,7 +464,7 @@ target | std | host | notes
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
 [`x86_64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | x86_64 (amd64) HelenOS
 [`x86_64-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 64-bit GNU/Hurd
-`x86_64-unknown-l4re-uclibc` | ? |  |
+[`x86_64-unknown-l4re-uclibc`](platform-support/l4re.md) | ✓ |  | x86_64 L4Re with uclibc
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
 [`x86_64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | x86_64 Managarm
 [`x86_64-unknown-motor`](platform-support/motor.md) | ✓ |  | x86_64 Motor OS

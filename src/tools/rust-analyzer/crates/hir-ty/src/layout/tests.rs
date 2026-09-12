@@ -30,6 +30,7 @@ fn current_machine_target_data() -> TargetData {
         QueryConfig::Rustc(&Sysroot::empty(), &std::env::current_dir().unwrap()),
         None,
         &FxHashMap::default(),
+        None,
     )
     .unwrap()
 }
@@ -274,12 +275,31 @@ fn recursive() {
         struct BoxLike<T: ?Sized>(*mut T);
         struct Goal(BoxLike<Goal>);
     }
+    size_and_align! {
+        struct Foo<T> {
+            x: *const Foo<[T; 1]>,
+            y: *const T,
+        }
+        struct Goal(Foo<Goal>);
+    }
     check_fail(r#"struct Goal(Goal);"#, LayoutError::RecursiveTypeWithoutIndirection);
     check_fail(
         r#"
         struct Foo<T>(Foo<T>);
         struct Goal(Foo<i32>);
         "#,
+        LayoutError::RecursiveTypeWithoutIndirection,
+    );
+    check_fail(
+        r#"
+struct Foo<T> {
+    x: Foo<[T; 1]>,
+    y: T,
+}
+struct Goal {
+    x: Foo<Goal>,
+}
+"#,
         LayoutError::RecursiveTypeWithoutIndirection,
     );
 }
@@ -608,6 +628,13 @@ fn enums_with_discriminants() {
     size_and_align! {
         enum Goal {
             A = 1, // This one is (perhaps surprisingly) zero sized.
+        }
+    }
+    size_and_align! {
+        #[allow(overflowing_literals, clippy::enum_clike_unportable_variant)]
+        enum Goal {
+            A = 0,
+            B = 0x8000_0000_0000_0001, // Wraps around to a negative discriminant.
         }
     }
 }

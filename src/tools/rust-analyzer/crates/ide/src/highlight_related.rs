@@ -1,8 +1,9 @@
 use std::iter;
 
-use hir::{EditionedFileId, FilePosition, FileRange, HirFileId, InFile, Semantics, db};
+use hir::{EditionedFileId, FilePosition, FileRange, HirFileId, InFile, Semantics};
 use ide_db::{
     FxHashMap, FxHashSet, RootDatabase,
+    base_db::SourceDatabase,
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -667,7 +668,10 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
     }
 }
 
-fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
+fn find_defs<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    token: SyntaxToken,
+) -> FxHashSet<Definition<'db>> {
     sema.descend_into_macros_exact(token)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))
@@ -676,7 +680,7 @@ fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSe
 }
 
 fn original_frange(
-    db: &dyn db::ExpandDatabase,
+    db: &dyn SourceDatabase,
     file_id: HirFileId,
     text_range: Option<TextRange>,
 ) -> Option<FileRange> {
@@ -2545,6 +2549,28 @@ fn main() {
     };
     unsafe { *(1 as *const u8) };
     unsafe { *(2 as *const u8) };
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn async_fn_param() {
+        check(
+            r#"
+async fn get_double_async(num$0: u32) -> u32 {
+                       // ^^^
+    num
+ // ^^^ read
+}
+        "#,
+        );
+        check(
+            r#"
+async fn get_double_async((num$0,): (u32,)) -> u32 {
+                        // ^^^
+    num
+ // ^^^ read
 }
         "#,
         );

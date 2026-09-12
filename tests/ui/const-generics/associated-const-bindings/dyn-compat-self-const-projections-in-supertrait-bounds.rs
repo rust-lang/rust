@@ -4,12 +4,13 @@
 
 //@ dont-require-annotations: NOTE
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
 trait Trait: SuperTrait<{ Self::N }> {
-//~^ NOTE it uses `Self` as a type parameter
-    type const N: usize;
+    //~^ NOTE it uses `Self` as a type parameter
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 trait SuperTrait<const N: usize> {}

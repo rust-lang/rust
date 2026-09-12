@@ -1,5 +1,5 @@
 error: cannot find macro `bla` in this scope
-  --> $DIR/issue-88228.rs:20:5
+  --> $DIR/issue-88228.rs:22:5
    |
 LL |     bla!();
    |     ^^^
@@ -10,7 +10,7 @@ LL + use crate::hey::bla;
    |
 
 error: cannot find derive macro `println` in this scope
-  --> $DIR/issue-88228.rs:14:10
+  --> $DIR/issue-88228.rs:16:10
    |
 LL | #[derive(println)]
    |          ^^^^^^^
@@ -23,6 +23,9 @@ error: cannot find derive macro `Bla` in this scope
 LL | #[derive(Bla)]
    |          ^^^
    |
+note: `Bla` is a trait, not a derive macro
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   = help: consider implementing `Bla` for your type manually
 help: consider importing this derive macro through its public re-export
    |
 LL + use crate::hey::Bla;

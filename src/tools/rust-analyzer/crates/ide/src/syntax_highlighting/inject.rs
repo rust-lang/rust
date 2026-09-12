@@ -211,7 +211,7 @@ pub(super) fn doc_comment(
     }
 }
 
-fn module_def_to_hl_tag(db: &dyn HirDatabase, def: Definition) -> HlTag {
+fn module_def_to_hl_tag(db: &dyn HirDatabase, def: Definition<'_>) -> HlTag {
     let symbol = match def {
         Definition::Crate(_) | Definition::ExternCrateDecl(_) => SymbolKind::CrateRoot,
         Definition::Module(m) if m.is_crate_root(db) => SymbolKind::CrateRoot,

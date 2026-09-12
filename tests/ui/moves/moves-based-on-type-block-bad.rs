@@ -1,5 +1,5 @@
 //@ run-rustfix
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![allow(dead_code)]
 
 
@@ -22,9 +22,9 @@ fn main() {
     loop {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
-                box E::Foo(_) => {}
-                box E::Bar(x) => println!("{}", x.to_string()),
-                box E::Baz => {}
+                deref!(E::Foo(_)) => {}
+                deref!(E::Bar(x)) => println!("{}", x.to_string()),
+                E::Baz => {}
             }
         })
     }

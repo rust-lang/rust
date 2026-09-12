@@ -14,3 +14,5 @@ LL |     unsafe { increment_int(&mut x) };
            1: main
                at tests/native-lib/pass/ptr_write_access.rs:LL:CC
 
+warning: 1 warning emitted
+

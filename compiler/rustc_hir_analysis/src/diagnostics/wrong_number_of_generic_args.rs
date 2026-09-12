@@ -489,7 +489,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             items
                 .in_definition_order()
                 .filter(|item| {
-                    (item.is_type() || item.is_type_const())
+                    item.can_have_equality_constraint(self.tcx)
                         && !item.is_impl_trait_in_trait()
                         && !self
                             .gen_args
@@ -625,6 +625,14 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```
     fn suggest_adding_args(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         if self.gen_args.parenthesized != hir::GenericArgsParentheses::No {
+            return;
+        }
+
+        // Do not suggest angle-bracketed arguments that require the unstable feature.
+        if !self.tcx.features().unboxed_closures()
+            && self.tcx.is_trait(self.def_id)
+            && self.tcx.trait_def(self.def_id).paren_sugar
+        {
             return;
         }
 
@@ -1016,8 +1024,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             // that would result in invalid syntax (fixes #116464)
             if !self.is_in_trait_impl() {
                 let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
-                let mut unbound_assoc_consts =
-                    unbound_assoc_items.iter().filter(|item| item.is_type_const());
+                let mut unbound_assoc_consts = unbound_assoc_items
+                    .iter()
+                    .filter(|item| matches!(item.kind, ty::AssocKind::Const { .. }));
                 let mut unbound_assoc_types =
                     unbound_assoc_items.iter().filter(|item| item.is_type());
                 let suggestions = unused_generics

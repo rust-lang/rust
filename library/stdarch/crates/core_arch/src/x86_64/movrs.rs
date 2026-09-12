@@ -3,7 +3,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.movrsqi"]
     fn movrsqi(src: *const i8) -> i8;
     #[link_name = "llvm.x86.movrshi"]

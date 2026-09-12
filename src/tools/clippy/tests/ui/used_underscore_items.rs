@@ -1,82 +1,149 @@
 //@aux-build:external_item.rs
-#![allow(unused)]
+//@aux-build:proc_macros.rs
+
 #![warn(clippy::used_underscore_items)]
+#![allow(clippy::no_effect)]
 
 extern crate external_item;
+extern crate proc_macros;
 
-// should not lint macro
-macro_rules! macro_wrap_func {
-    () => {
-        fn _marco_foo() {}
-    };
-}
+use proc_macros::{external, inline_macros};
 
-macro_wrap_func!();
+#[inline_macros]
+fn main() {
+    {
+        fn _f() {}
+        const _C: u32 = 0;
+        static _S: u32 = 0;
+        struct _X;
+        enum Z {
+            _A,
+        }
 
-struct _FooStruct {}
+        struct X;
+        impl X {
+            fn _m(self) {}
+        }
 
-impl _FooStruct {
-    fn _method_call(self) {}
-}
+        _f; //~ used_underscore_items
+        _f(); //~ used_underscore_items
+        _C; //~ used_underscore_items
+        _S; //~ used_underscore_items
+        _X; //~ used_underscore_items
+        _X {}; //~ used_underscore_items
+        Z::_A; //~ used_underscore_items
+        X::_m; //~ used_underscore_items
+        X._m(); //~ used_underscore_items
+    }
+    // Non-underscore names.
+    {
+        fn f1() {}
+        const C1: u32 = 0;
+        static S1: u32 = 0;
+        struct X1;
+        enum Z1 {
+            A1,
+        }
 
-fn _foo1() {}
+        struct X;
+        impl X {
+            fn m1(self) {}
+        }
 
-fn _foo2() -> i32 {
-    0
-}
+        f1;
+        f1();
+        C1;
+        S1;
+        X1;
+        X1 {};
+        Z1::A1;
+        X::m1;
+        X.m1();
+    }
+    // Don't lint external items. The names may not be changeable.
+    {
+        let x = external_item::_ExternalStruct {};
+        x._foo();
+        external_item::_external_foo();
+    }
+    // Don't lint foreign functions. The names may not be changeable.
+    {
+        unsafe extern "C" {
+            pub fn _exit(code: i32) -> !;
+        }
+        unsafe { _exit(1) }
+    }
+    // Don't lint in macros.
+    {
+        fn _f() {}
+        const _C: u32 = 0;
+        static _S: u32 = 0;
+        struct _X;
+        enum Z {
+            _A,
+        }
 
-mod a {
-    pub mod b {
-        pub mod c {
-            pub fn _foo3() {}
+        inline! {
+            _f();
+            _C;
+            _S;
+            _X;
+            _X;
+            Z::_A;
+        }
+    }
+    // Make sure expect works on the item.
+    {
+        #[expect(clippy::used_underscore_items)]
+        fn _f() {}
+        #[expect(clippy::used_underscore_items)]
+        const _C: u32 = 0;
+        #[expect(clippy::used_underscore_items)]
+        static _S: u32 = 0;
+        #[expect(clippy::used_underscore_items)]
+        struct _X;
+        enum Z {
+            #[expect(clippy::used_underscore_items)]
+            _A,
+        }
 
-            pub struct _FooStruct2 {}
+        struct X;
+        impl X {
+            #[expect(clippy::used_underscore_items)]
+            fn _m(self) {}
+        }
 
-            impl _FooStruct2 {
-                pub fn _method_call(self) {}
+        _f;
+        _f();
+        _C;
+        _S;
+        _X;
+        _X {};
+        Z::_A;
+        X::_m;
+        X._m();
+    }
+    // Ignore anything automatically derived.
+    {
+        struct S;
+        #[automatically_derived]
+        impl S {
+            fn f() {
+                fn _f() {}
+                const _C: u32 = 0;
+                static _S: u32 = 0;
+                struct _X;
+                enum Z {
+                    _A,
+                }
+
+                _f();
+                _C;
+                _S;
+                _X;
+                _X {};
+                Z::_A;
             }
         }
     }
-}
-
-fn main() {
-    _foo1();
-    //~^ used_underscore_items
-    let _ = _foo2();
-    //~^ used_underscore_items
-    a::b::c::_foo3();
-    //~^ used_underscore_items
-    let _ = &_FooStruct {};
-    //~^ used_underscore_items
-    let _ = _FooStruct {};
-    //~^ used_underscore_items
-
-    let foo_struct = _FooStruct {};
-    //~^ used_underscore_items
-    foo_struct._method_call();
-    //~^ used_underscore_items
-
-    let foo_struct2 = a::b::c::_FooStruct2 {};
-    //~^ used_underscore_items
-    foo_struct2._method_call();
-    //~^ used_underscore_items
-}
-
-// should not lint external crate.
-// user cannot control how others name their items
-fn external_item_call() {
-    let foo_struct3 = external_item::_ExternalStruct {};
-    foo_struct3._foo();
-
-    external_item::_external_foo();
-}
-
-// should not lint foreign functions.
-// issue #14156
-unsafe extern "C" {
-    pub fn _exit(code: i32) -> !;
-}
-
-fn _f() {
-    unsafe { _exit(1) }
 }

@@ -3,9 +3,9 @@ mod free_alias;
 mod inherent;
 mod opaque_types;
 
-use rustc_type_ir::search_graph::IncreaseDepthForNested;
+use rustc_type_ir::search_graph::LowerAvailableDepth;
 use rustc_type_ir::solve::QueryResultOrRerunNonErased;
-use rustc_type_ir::{self as ty, Interner, ProjectionPredicate};
+use rustc_type_ir::{self as ty, Interner, ProjectionClause};
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -21,13 +21,15 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_projection_goal(
         &mut self,
-        goal: Goal<I, ProjectionPredicate<I>>,
+        goal: Goal<I, ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         match goal.predicate.projection_term.kind {
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 self.normalize_associated_term(goal)
             }
-            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+            ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. } => {
                 self.normalize_inherent_associated_term(goal)
             }
             ty::AliasTermKind::OpaqueTy { .. } => self.normalize_opaque_type(goal),
@@ -42,9 +44,9 @@ where
 
     fn normalize_associated_term(
         &mut self,
-        goal: Goal<I, ProjectionPredicate<I>>,
+        goal: Goal<I, ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let ty::ProjectionPredicate { projection_term: alias, term } = goal.predicate;
+        let ty::ProjectionClause { projection_term: alias, term } = goal.predicate;
         let unconstrained_term = self.next_term_infer_of_alias_kind(alias);
         let normalizes_to =
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
@@ -71,15 +73,12 @@ where
         ) = self.evaluate_goal_raw(
             GoalSource::TypeRelating,
             normalizes_to,
-            None,
-            // We don't increase depth for nested goals for this `NormalizesTo` goal, as
-            // evaluating `NormalizesTo` is an extra step only exists in the new solver
-            // that behaves like a function call rather than an independent nested goal
-            // evaluation, so increasing the depth may end up regressions which hit the
-            // recursion limits for crates compiled well with the old solver. Furthermore,
-            // those nested goals from `NormalizesTo` will be evaluated again as the
-            // caller's nested goals with increased depths anyway.
-            IncreaseDepthForNested::No,
+            // We don't lower thr available depth for this `NormalizesTo` goal, as evaluating
+            // it is an extra step only exists in the new solver that behaves like a function
+            // call rather than an independent nested goal evaluation. So, decreasing the
+            // available depth may end up regressions which hit the recursion limits for crates
+            // compiled well with the old solver.
+            LowerAvailableDepth::No,
         )?;
 
         trace!(?nested_goals);

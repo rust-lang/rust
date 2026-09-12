@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
@@ -15,8 +15,8 @@ use syntax::{AstNode, Parse, ast};
 use tt::TextRange;
 
 use crate::{
-    MacroId, UnresolvedMacro, attrs::AttrFlags, db::DefDatabase, expr_store::HygieneId,
-    macro_call_as_call_id, nameres::DefMap,
+    MacroId, UnresolvedMacro, attrs::AttrFlags, expr_store::HygieneId, macro_call_as_call_id,
+    nameres::DefMap,
 };
 
 #[derive(Debug)]
@@ -24,18 +24,18 @@ pub(super) struct Expander<'db> {
     span_map: SpanMap<'db>,
     current_file_id: HirFileId,
     ast_id_map: &'db AstIdMap,
-    /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
-    recursion_depth: u32,
-    recursion_limit: usize,
+    /// `recursion_depth == u32::MAX` indicates that the recursion limit has been reached.
+    macro_depth: u32,
+    recursion_limit: u32,
 }
 
 impl<'db> Expander<'db> {
     pub(super) fn new(
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         current_file_id: HirFileId,
         def_map: &'db DefMap,
     ) -> Expander<'db> {
-        let recursion_limit = def_map.recursion_limit() as usize;
+        let recursion_limit = def_map.recursion_limit();
         let recursion_limit = if cfg!(test) {
             // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
             std::cmp::min(32, recursion_limit)
@@ -44,10 +44,10 @@ impl<'db> Expander<'db> {
         };
         Expander {
             current_file_id,
-            recursion_depth: 0,
+            macro_depth: current_file_id.macro_expansion_depth(db),
             recursion_limit,
-            span_map: db.span_map(current_file_id),
-            ast_id_map: db.ast_id_map(current_file_id),
+            span_map: current_file_id.span_map(db),
+            ast_id_map: current_file_id.ast_id_map(db),
         }
     }
 
@@ -55,7 +55,7 @@ impl<'db> Expander<'db> {
         self.span_map.span_for_range(range).ctx
     }
 
-    pub(super) fn hygiene_for_range(&self, db: &dyn DefDatabase, range: TextRange) -> HygieneId {
+    pub(super) fn hygiene_for_range(&self, db: &dyn SourceDatabase, range: TextRange) -> HygieneId {
         match self.span_map {
             SpanMap::ExpansionSpanMap(span_map) => {
                 HygieneId::new(span_map.span_at(range.start()).ctx.opaque_and_semiopaque(db))
@@ -74,7 +74,7 @@ impl<'db> Expander<'db> {
 
     pub(super) fn enter_expand<T: ast::AstNode>(
         &mut self,
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         macro_call: ast::MacroCall,
         krate: Crate,
         resolver: impl Fn(&ModPath) -> Option<MacroId>,
@@ -111,7 +111,8 @@ impl<'db> Expander<'db> {
                 call_site.ctx,
                 expands_to,
                 krate,
-                |path| resolver(path).map(|it| db.macro_def(it)),
+                this.macro_depth,
+                |path| resolver(path).map(|it| it.definition(db)),
                 eager_callback,
             ) {
                 Ok(call_id) => call_id,
@@ -127,7 +128,7 @@ impl<'db> Expander<'db> {
 
     pub(super) fn enter_expand_id<T: ast::AstNode>(
         &mut self,
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         call_id: MacroCallId,
     ) -> ExpandResult<Option<(Mark<'db>, Option<Parse<T>>)>> {
         self.within_limit(db, |_this| ExpandResult::ok(Some(call_id)))
@@ -137,14 +138,14 @@ impl<'db> Expander<'db> {
         self.span_map = span_map;
         self.current_file_id = file_id;
         self.ast_id_map = ast_id_map;
-        if self.recursion_depth == u32::MAX {
+        if self.macro_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
             // depth only when we get out of the tree.
             if !self.current_file_id.is_macro() {
-                self.recursion_depth = 0;
+                self.macro_depth = 0;
             }
         } else {
-            self.recursion_depth -= 1;
+            self.macro_depth -= 1;
         }
         bomb.defuse();
     }
@@ -159,13 +160,13 @@ impl<'db> Expander<'db> {
 
     fn within_limit<F, T: ast::AstNode>(
         &mut self,
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         op: F,
     ) -> ExpandResult<Option<(Mark<'db>, Option<Parse<T>>)>>
     where
         F: FnOnce(&mut Self) -> ExpandResult<Option<MacroCallId>>,
     {
-        if self.recursion_depth == u32::MAX {
+        if self.macro_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. We should
             // stop expanding other macro calls in this tree, or else this may result in
             // exponential number of macro expansions, leading to a hang.
@@ -180,28 +181,28 @@ impl<'db> Expander<'db> {
         let Some(call_id) = value else {
             return ExpandResult { value: None, err };
         };
-        if self.recursion_depth as usize > self.recursion_limit {
-            self.recursion_depth = u32::MAX;
+        if self.macro_depth > self.recursion_limit {
+            self.macro_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::only_err(ExpandError::new(
-                db.macro_arg_considering_derives(call_id, &call_id.lookup(db).kind).2,
+                call_id.macro_arg_considering_derives(db, &call_id.lookup(db).kind).2,
                 ExpandErrorKind::RecursionOverflow,
             ));
         }
 
-        let res = db.parse_macro_expansion(call_id);
+        let res = call_id.parse_macro_expansion(db);
 
         let err = err.or_else(|| res.err.clone());
         ExpandResult {
             value: {
                 let parse = res.value.0.clone().cast::<T>();
 
-                self.recursion_depth += 1;
+                self.macro_depth += 1;
                 let old_file_id = std::mem::replace(&mut self.current_file_id, call_id.into());
                 let old_span_map =
                     std::mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(&res.value.1));
                 let prev_ast_id_map =
-                    mem::replace(&mut self.ast_id_map, db.ast_id_map(self.current_file_id));
+                    mem::replace(&mut self.ast_id_map, self.current_file_id.ast_id_map(db));
                 let mark = Mark {
                     file_id: old_file_id,
                     span_map: old_span_map,

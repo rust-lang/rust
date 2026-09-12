@@ -1,41 +1,41 @@
 error: invalid register `$r0`: constant zero cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:28:18
+  --> $DIR/bad-reg.rs:29:18
    |
 LL |         asm!("", out("$r0") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$tp`: reserved for TLS
-  --> $DIR/bad-reg.rs:30:18
+  --> $DIR/bad-reg.rs:31:18
    |
 LL |         asm!("", out("$tp") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$sp`: the stack pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:32:18
+  --> $DIR/bad-reg.rs:33:18
    |
 LL |         asm!("", out("$sp") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$r21`: reserved by the ABI
-  --> $DIR/bad-reg.rs:34:18
+  --> $DIR/bad-reg.rs:35:18
    |
 LL |         asm!("", out("$r21") _);
    |                  ^^^^^^^^^^^^^
 
 error: invalid register `$fp`: the frame pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:36:18
+  --> $DIR/bad-reg.rs:37:18
    |
 LL |         asm!("", out("$fp") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `$r31`: $r31 is used internally by LLVM and cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:38:18
+  --> $DIR/bad-reg.rs:39:18
    |
 LL |         asm!("", out("$r31") _);
    |                  ^^^^^^^^^^^^^
 
 error: register `$vr0` conflicts with register `$f0`
-  --> $DIR/bad-reg.rs:77:31
+  --> $DIR/bad-reg.rs:84:31
    |
 LL |         asm!("", in("$f0") f, in("$vr0") d);
    |                  -----------  ^^^^^^^^^^^^ register `$vr0`
@@ -43,7 +43,7 @@ LL |         asm!("", in("$f0") f, in("$vr0") d);
    |                  register `$f0`
 
 error: register `$xr0` conflicts with register `$f0`
-  --> $DIR/bad-reg.rs:82:31
+  --> $DIR/bad-reg.rs:89:31
    |
 LL |         asm!("", in("$f0") f, in("$xr0") d);
    |                  -----------  ^^^^^^^^^^^^ register `$xr0`
@@ -51,7 +51,7 @@ LL |         asm!("", in("$f0") f, in("$xr0") d);
    |                  register `$f0`
 
 error: register `$xr0` conflicts with register `$vr0`
-  --> $DIR/bad-reg.rs:87:32
+  --> $DIR/bad-reg.rs:94:32
    |
 LL |         asm!("", in("$vr0") f, in("$xr0") d);
    |                  ------------  ^^^^^^^^^^^^ register `$xr0`

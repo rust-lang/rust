@@ -51,7 +51,7 @@ Directives can generally be found by browsing the
 
 ### Auxiliary builds
 
-See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
+See [Building auxiliary crates](compiletest.md#building-auxiliary-crates)
 
 | Directive             | Explanation                                                                                           | Supported test suites                  | Possible values                                                    |
 |-----------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------|--------------------------------------------------------------------|
@@ -62,7 +62,7 @@ See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
 | `proc-macro`          | Similar to `aux-build`, but for aux forces host and don't use `-Cprefer-dynamic`[^pm].                | All except `run-make`/`run-make-cargo` | Path to auxiliary proc-macro `.rs` file                            |
 | `build-aux-docs`      | Build docs for auxiliaries as well.  Note that this only works with `aux-build`, not `aux-crate`.     | All except `run-make`/`run-make-cargo` | N/A                                                                |
 
-[^pm]: please see the [Auxiliary proc-macro section](compiletest.html#auxiliary-proc-macro) in the compiletest chapter for specifics.
+[^pm]: please see the [Auxiliary proc-macro section](compiletest.md#auxiliary-proc-macro) in the compiletest chapter for specifics.
 
 ### Controlling outcome expectations
 
@@ -231,8 +231,8 @@ The following directives will check LLVM support:
   `COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS` is set) if the component does not exist.
 - `needs-forced-clang-based-tests` — test is ignored unless the environment
   variable `RUSTBUILD_FORCE_CLANG_BASED_TESTS` is set, which enables building clang alongside LLVM
-  - This is only set in two CI jobs ([`x86_64-gnu-debug`] and
-    [`aarch64-gnu-debug`]), which only runs a subset of `run-make` tests.
+  - This is only set in two CI jobs ([`test-x86_64-gnu-debug`] and
+    [`test-aarch64-gnu-debug`]), which only runs a subset of `run-make` tests.
     Other tests with this directive will not run at all, which is usually not what you want.
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ignoring debuggers.
@@ -240,8 +240,8 @@ See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ig
 [remote testing]: running.md#running-tests-on-a-remote-machine
 [parallel frontend]: compiletest.md#parallel-frontend
 [compare modes]: ui.md#compare-modes
-[`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
-[`aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/20c909ff9cdd88d33768a4ddb8952927a675b0ad/src/ci/docker/host-aarch64/aarch64-gnu-debug/Dockerfile#L32
+[`test-x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/32d94cc9be3f6e6c3fa1deaea9e0ab93c4980dba/src/ci/docker/host-x86_64/test-x86_64-gnu-debug/Dockerfile#L32
+[`test-aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/32d94cc9be3f6e6c3fa1deaea9e0ab93c4980dba/src/ci/docker/host-aarch64/test-aarch64-gnu-debug/Dockerfile#L32
 
 ### Affecting how tests are built
 
@@ -309,7 +309,7 @@ separate tools.
 For more information, please read their respective chapters as linked above.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
-[rustdoc-js-tests]: ../rustdoc-internals/search.html#testing-the-search-engine
+[rustdoc-js-tests]: ../rustdoc-internals/search.md#testing-the-search-engine
 [rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 
 ### Pretty printing

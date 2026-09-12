@@ -130,8 +130,7 @@ fn contains_label(asm: &InlineAsm<'_>) -> bool {
 ///
 /// * Has any (reachable) code path hit a `continue` of the main loop?
 /// * Is the current code path diverging (that is, the next expression is not reachable)
-/// * For each block label `'a` inside the main loop, has any (reachable) code path encountered a
-///   `break 'a`?
+/// * For each block label `'a` inside the main loop, has any (reachable) code path encountered a `break 'a`?
 ///
 /// The first two bits of information are in this enum, and the last part is in the
 /// `local_labels` variable, which contains a list of `(block_id, reachable)` pairs ordered by

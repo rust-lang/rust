@@ -151,6 +151,7 @@ impl str {
     #[rustc_no_implicit_autorefs]
     #[must_use]
     #[inline]
+    #[allow(clippy::needless_as_bytes)]
     pub const fn len(&self) -> usize {
         self.as_bytes().len()
     }
@@ -823,13 +824,13 @@ impl str {
         unsafe { &mut *(begin..end).get_unchecked_mut(self) }
     }
 
-    /// Divides one string slice into two at an index.
+    /// Divides one string slice into two at a byte offset.
     ///
     /// The argument, `mid`, should be a byte offset from the start of the
     /// string. It must also be on the boundary of a UTF-8 code point.
     ///
-    /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// The first returned slice contains exactly the first `mid` bytes, and the
+    /// second contains all remaining bytes.
     ///
     /// To get mutable string slices instead, see the [`split_at_mut`]
     /// method.
@@ -863,13 +864,13 @@ impl str {
         }
     }
 
-    /// Divides one mutable string slice into two at an index.
+    /// Divides one mutable string slice into two at a byte offset.
     ///
     /// The argument, `mid`, should be a byte offset from the start of the
     /// string. It must also be on the boundary of a UTF-8 code point.
     ///
-    /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// The first returned slice contains exactly the first `mid` bytes, and the
+    /// second contains all remaining bytes.
     ///
     /// To get immutable string slices instead, see the [`split_at`] method.
     ///
@@ -907,14 +908,14 @@ impl str {
         }
     }
 
-    /// Divides one string slice into two at an index.
+    /// Divides one string slice into two at a byte offset.
     ///
     /// The argument, `mid`, should be a valid byte offset from the start of the
     /// string. It must also be on the boundary of a UTF-8 code point. The
     /// method returns `None` if that’s not the case.
     ///
-    /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// The first returned slice contains exactly the first `mid` bytes, and the
+    /// second contains all remaining bytes.
     ///
     /// To get mutable string slices instead, see the [`split_at_mut_checked`]
     /// method.
@@ -947,14 +948,14 @@ impl str {
         }
     }
 
-    /// Divides one mutable string slice into two at an index.
+    /// Divides one mutable string slice into two at a byte offset.
     ///
     /// The argument, `mid`, should be a valid byte offset from the start of the
     /// string. It must also be on the boundary of a UTF-8 code point. The
     /// method returns `None` if that’s not the case.
     ///
-    /// The two slices returned go from the start of the string slice to `mid`,
-    /// and from `mid` to the end of the string slice.
+    /// The first returned slice contains exactly the first `mid` bytes, and the
+    /// second contains all remaining bytes.
     ///
     /// To get immutable string slices instead, see the [`split_at_checked`] method.
     ///
@@ -988,7 +989,7 @@ impl str {
         }
     }
 
-    /// Divides one string slice into two at an index.
+    /// Divides one string slice into two at a byte offset.
     ///
     /// # Safety
     ///
@@ -1007,7 +1008,7 @@ impl str {
         }
     }
 
-    /// Divides one string slice into two at an index.
+    /// Divides one mutable string slice into two at a byte offset.
     ///
     /// # Safety
     ///
@@ -1262,8 +1263,7 @@ impl str {
     #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
     #[inline]
     pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
-        let inner =
-            self.as_bytes().split(IsAsciiWhitespace).filter(BytesIsNotEmpty).map(UnsafeBytesToStr);
+        let inner = self.as_bytes().split_ascii_whitespace().inner.map(UnsafeBytesToStr);
         SplitAsciiWhitespace { inner }
     }
 
@@ -2519,7 +2519,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[stable(feature = "strip_circumfix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strip_circumfix", since = "1.98.0")]
     pub fn strip_circumfix<P: Pattern, S: Pattern>(&self, prefix: P, suffix: S) -> Option<&str>
     where
         for<'a> S::Searcher<'a>: ReverseSearcher<'a>,
@@ -2904,7 +2904,7 @@ impl str {
     /// ```
     ///
     /// [normalization]: https://www.unicode.org/faq/normalization.html
-    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "157000")]
     #[must_use]
     #[inline]
     pub fn eq_ignore_case_unnormalized(&self, other: &str) -> bool {
@@ -2967,6 +2967,69 @@ impl str {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
+    }
+
+    /// Copies the string from `src` into `self`, using a memcpy.
+    ///
+    /// The length of `src` must be the same as `self`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two strings have different lengths.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_copy_from_str)]
+    /// let src = "Saludos";
+    /// let mut dst = String::from("Grüße, Jürgen");
+    ///
+    /// // Because the strings have to be the same length,
+    /// // we slice the destination slice from sixteen bytes
+    /// // to seven. It will panic if we don't do this.
+    /// dst[..7].copy_from_str(src);
+    ///
+    /// assert_eq!(src, "Saludos");
+    /// assert_eq!(dst, "Saludos, Jürgen");
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `copy_from_str` on a
+    /// single string will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// #![feature(str_copy_from_str)]
+    /// let mut string = String::from("Abcde");
+    ///
+    /// string[..2].copy_from_str(&string[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a string:
+    ///
+    /// ```
+    /// #![feature(str_copy_from_str)]
+    /// let mut string = String::from("Abcde");
+    ///
+    /// {
+    ///     let (left, right) = string.split_at_mut(2);
+    ///     left.copy_from_str(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(string, "decde");
+    /// ```
+    ///
+    /// [`split_at_mut`]: str::split_at_mut
+    #[doc(alias = "memcpy")]
+    #[inline]
+    #[unstable(feature = "str_copy_from_str", issue = "159841")]
+    #[track_caller]
+    pub fn copy_from_str(&mut self, src: &str) {
+        // SAFETY: `copy_from_slice` panics unless the lengths are equal, and copying same-length
+        // UTF-8 into a `str` keeps it valid UTF-8.
+        let me = unsafe { self.as_bytes_mut() };
+        me.copy_from_slice(src.as_bytes());
     }
 
     /// Returns a string slice with leading ASCII whitespace removed.
@@ -3056,9 +3119,6 @@ impl str {
 
     /// Returns an iterator that escapes each char in `self` with [`char::escape_debug`].
     ///
-    /// Note: only extended grapheme codepoints that begin the string will be
-    /// escaped.
-    ///
     /// # Examples
     ///
     /// As an iterator:
@@ -3092,15 +3152,7 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_debug(&self) -> EscapeDebug<'_> {
-        let mut chars = self.chars();
-        EscapeDebug {
-            inner: chars
-                .next()
-                .map(|first| first.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL))
-                .into_iter()
-                .flatten()
-                .chain(chars.flat_map(CharEscapeDebugContinue)),
-        }
+        EscapeDebug { inner: self.chars().flat_map(CharEscapeDebug) }
     }
 
     /// Returns an iterator that escapes each char in `self` with [`char::escape_default`].
@@ -3207,7 +3259,7 @@ impl str {
     /// assert_eq!(iter.next(), Some(Range { start: 9, end: 10 }));
     /// ```
     #[must_use]
-    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "substr_range", since = "1.98.0")]
     pub fn substr_range(&self, substr: &str) -> Option<Range<usize>> {
         self.as_bytes().subslice_range(substr.as_bytes())
     }
@@ -3264,12 +3316,8 @@ impl_fn_for_zst! {
     };
 
     #[derive(Clone)]
-    struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
-        c.escape_debug_ext(EscapeDebugExtArgs {
-            escape_grapheme_extender: false,
-            escape_single_quote: true,
-            escape_double_quote: true
-        })
+    struct CharEscapeDebug impl Fn = |c: char| -> char::EscapeDebug {
+        c.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL)
     };
 
     #[derive(Clone)]
@@ -3287,7 +3335,7 @@ impl_fn_for_zst! {
     };
 
     #[derive(Clone)]
-    struct IsAsciiWhitespace impl Fn = |byte: &u8| -> bool {
+    pub(crate) struct IsAsciiWhitespace impl Fn = |byte: &u8| -> bool {
         byte.is_ascii_whitespace()
     };
 
@@ -3297,7 +3345,7 @@ impl_fn_for_zst! {
     };
 
     #[derive(Clone)]
-    struct BytesIsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b [u8]| -> bool {
+    pub(crate) struct BytesIsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b [u8]| -> bool {
         !s.is_empty()
     };
 

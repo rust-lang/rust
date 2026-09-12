@@ -1,8 +1,8 @@
 use rustc_hir as hir;
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::kw;
 
-use crate::{LateContext, LateLintPass, LintContext, lints};
+use crate::{LateContext, LateLintPass, LintContext, diagnostics};
 
 declare_lint! {
     /// The `unqualified_local_imports` lint checks for `use` items that import a local item using a
@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for UnqualifiedLocalImports {
         cx.emit_span_lint(
             UNQUALIFIED_LOCAL_IMPORTS,
             first_seg.ident.span,
-            lints::UnqualifiedLocalImportsDiag,
+            diagnostics::UnqualifiedLocalImportsDiag,
         );
     }
 }

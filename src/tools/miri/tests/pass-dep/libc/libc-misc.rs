@@ -3,11 +3,11 @@
 
 use std::mem::transmute;
 
-/// Tests whether each thread has its own `__errno_location`.
-fn test_thread_local_errno() {
+/// Ensure errno can be written and read.
+fn test_errno() {
     #[cfg(any(target_os = "illumos", target_os = "solaris"))]
     use libc::___errno as __errno_location;
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "android", target_os = "netbsd"))]
     use libc::__errno as __errno_location;
     #[cfg(target_os = "linux")]
     use libc::__errno_location;
@@ -16,13 +16,6 @@ fn test_thread_local_errno() {
 
     unsafe {
         *__errno_location() = 0xBEEF;
-        std::thread::spawn(|| {
-            assert_eq!(*__errno_location(), 0);
-            *__errno_location() = 0xBAD1DEA;
-            assert_eq!(*__errno_location(), 0xBAD1DEA);
-        })
-        .join()
-        .unwrap();
         assert_eq!(*__errno_location(), 0xBEEF);
     }
 }
@@ -86,7 +79,7 @@ fn test_geteuid() {
 }
 
 fn main() {
-    test_thread_local_errno();
+    test_errno();
     test_environ();
     test_dlsym();
     test_getuid();

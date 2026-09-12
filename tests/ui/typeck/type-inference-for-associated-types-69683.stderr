@@ -5,18 +5,6 @@ LL |     0u16.foo(b);
    |          ^^^
    |
    = note: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     0u16.foo(b);
-LL +     <u16 as Foo<I>>::foo(0u16, b);
-   |
-
-error[E0283]: type annotations needed
-  --> $DIR/type-inference-for-associated-types-69683.rs:31:10
-   |
-LL |     0u16.foo(b);
-   |          ^^^
-   |
 note: multiple `impl`s satisfying `u8: Element<_>` found
   --> $DIR/type-inference-for-associated-types-69683.rs:6:1
    |
@@ -39,7 +27,6 @@ LL -     0u16.foo(b);
 LL +     <u16 as Foo<I>>::foo(0u16, b);
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0283, E0284.
-For more information about an error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0284`.

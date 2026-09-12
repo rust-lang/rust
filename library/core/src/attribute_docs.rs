@@ -8,10 +8,10 @@
 ///
 /// This is most common on types that represent an important state or outcome. For example,
 /// [`Result`] is marked `#[must_use]` because ignoring an error value can hide a failed operation.
-/// In the following example, the returned `Result` is the only sign that writing the message
+/// In the following example, the returned [`Result`] is the only sign that writing the message
 /// might have failed:
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// fn write_message() -> std::io::Result<()> {
 ///     // Write the message...
@@ -21,7 +21,7 @@
 /// write_message();
 /// ```
 ///
-/// Ignoring that `Result` triggers this warning:
+/// Ignoring that [`Result`] triggers this warning:
 ///
 /// ```text
 /// warning: unused `Result` that must be used
@@ -36,7 +36,7 @@
 /// You can also place `#[must_use]` on a function, method, or trait declaration. On a function or
 /// method, the warning is tied to ignoring that call's return value:
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// #[must_use]
 /// fn make_token() -> String {
@@ -53,7 +53,7 @@
 ///
 /// The attribute can include a message explaining what the caller should do with the value:
 ///
-/// ```rust
+/// ```
 /// # #![allow(dead_code)]
 /// #[must_use = "call `.finish()` to complete the operation"]
 /// fn start_operation() -> Operation {
@@ -65,7 +65,7 @@
 ///
 /// If intentionally ignoring the value is correct, bind it to `_` or call [`drop`]:
 ///
-/// ```rust
+/// ```
 /// # #[must_use]
 /// # fn make_token() -> String {
 /// #     String::from("token")
@@ -80,19 +80,17 @@
 ///
 /// For more information, see the Reference on [the `must_use` attribute].
 ///
-/// [`Result`]: result::Result
-/// [`Future`]: future::Future
 /// [`unused_must_use`]: ../rustc/lints/listing/warn-by-default.html#unused-must-use
 /// [the `must_use` attribute]: ../reference/attributes/diagnostics.html#the-must_use-attribute
-mod must_use_attribute {}
+const _: () = ();
 
 #[doc(attribute = "allow")]
 //
 /// The `allow` attribute suppresses lint diagnostics that would otherwise produce
 /// warnings or errors. It can be used on any lint or lint group (except those
-/// set to `forbid`).
+/// set to [`forbid`]).
 ///
-/// ```rust
+/// ```
 /// #[allow(dead_code)]
 /// fn unused_function() {
 ///     // ...
@@ -119,7 +117,7 @@ mod must_use_attribute {}
 ///
 /// Multiple lints can be set to `allow` at once with commas:
 ///
-/// ```rust
+/// ```
 /// #[allow(unused_variables, unused_mut)]
 /// fn main() {
 ///     let mut x: u32 = 42;
@@ -128,12 +126,12 @@ mod must_use_attribute {}
 ///
 /// This is mostly used to prevent lint warnings or errors while still under development.
 ///
-/// It cannot override a lint that has been set to `forbid`.
+/// It cannot override a lint that has been set to [`forbid`].
 ///
 /// It's also important to consider that overusing `allow` could make code harder to maintain
 /// and possibly hide issues. To mitigate this issue, using the `expect` attribute is preferred.
 ///
-/// `allow` can be overridden by `warn`, `deny`, and `forbid`.
+/// `allow` can be overridden by [`warn`], [`deny`], and [`forbid`].
 ///
 /// The lint checks supported by rustc can be found via `rustc -W help`,
 /// along with their default settings and are documented in [the `rustc` book].
@@ -143,7 +141,10 @@ mod must_use_attribute {}
 /// For more information, see the Reference on [the `allow` attribute].
 ///
 /// [the `allow` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
-mod allow_attribute {}
+/// [`forbid`]: ./attribute.forbid.html
+/// [`warn`]: ./attribute.warn.html
+/// [`deny`]: ./attribute.deny.html
+const _: () = ();
 
 #[doc(attribute = "cfg")]
 //
@@ -152,7 +153,7 @@ mod allow_attribute {}
 /// The `cfg` attribute allows compiling an item under specific conditions, otherwise it
 /// will be ignored.
 ///
-/// ```rust
+/// ```
 /// // Only compiles this function for Linux.
 /// #[cfg(target_os = "linux")]
 /// fn platform_specific() {
@@ -169,19 +170,20 @@ mod allow_attribute {}
 /// Depending on the platform you're targeting, only one of these two functions will be considered
 /// during the compilation.
 ///
-/// Conditions can also be combined with `all(...)`, `any(...)`, and `not(...)`.
+/// Conditions can also be combined with `all(...)`, `any(...)`, and `not(...)`:
 ///
 /// * `all`: True if all given predicates are true.
 /// * `any`: True if at least one of the given predicates is true.
 /// * `not`: True if the predicate is false and false if the predicate is true.
 ///
-/// ```rust
+/// ```
 /// #[cfg(all(unix, target_pointer_width = "64"))]
 /// fn unix_64bit() {
+///     // ...
 /// }
 /// ```
 ///
-/// If you want to use this mechanism in an `if` condition in your code, you
+/// If you want to use this mechanism in an [`if`] condition in your code, you
 /// can use the [`cfg!`] macro. To conditionally apply an attribute,
 /// see [`cfg_attr`].
 ///
@@ -189,23 +191,24 @@ mod allow_attribute {}
 ///
 /// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
-mod cfg_attribute {}
+/// [`if`]: ./keyword.if.html
+const _: () = ();
 
 #[doc(attribute = "deny")]
 //
 /// Emits an error, preventing the compilation from finishing, when a lint check has failed.
 /// This is useful for enforcing rules or preventing certain patterns:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #[deny(unused)]
 /// fn foo() {
 ///     let x = 42; // Emits an error because x is unused.
 /// }
 /// ```
 ///
-/// `deny` can be overridden by `allow`, `warn`, and `forbid`:
+/// `deny` can be overridden by [`allow`], [`warn`], and [`forbid`]:
 ///
-/// ```rust
+/// ```
 /// #![deny(unused)]
 ///
 /// #[allow(unused)] // We override the `deny` for this function.
@@ -216,7 +219,7 @@ mod cfg_attribute {}
 ///
 /// Multiple lints can also be set to `deny` at once:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #![deny(unused_imports, unused_variables)]
 /// use std::collections::*;
 ///
@@ -233,20 +236,24 @@ mod cfg_attribute {}
 /// For more information, see the Reference on [the `deny` attribute].
 ///
 /// [the `deny` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
-mod deny_attribute {}
+/// [`forbid`]: ./attribute.forbid.html
+/// [`allow`]: ./attribute.allow.html
+/// [`warn`]: ./attribute.warn.html
+/// [`deny`]: ./attribute.deny.html
+const _: () = ();
 
 #[doc(attribute = "forbid")]
 //
 /// Emits an error, preventing the compilation from finishing, when a lint check has failed.
 ///
-/// A lint set to `forbid` cannot be overridden by `allow` or `warn`.
+/// A lint set to `forbid` cannot be overridden by [`allow`] or [`warn`].
 /// Attempting either will result in a compilation error. Writing `#[deny(...)]` on the same lint inside a
 /// `forbid` scope is permitted, but has no effect; the lint remains at the `forbid` level.
 ///
 /// This is useful for enforcing strict policies that should not be relaxed
 /// anywhere in the codebase. Example:
 ///
-/// ```rust
+/// ```
 /// #![forbid(unsafe_code)]
 ///
 /// // This would cause a compilation error if uncommented:
@@ -255,7 +262,7 @@ mod deny_attribute {}
 ///
 /// Multiple lints can be set to `forbid` at once:
 ///
-/// ```rust
+/// ```
 /// #![forbid(unsafe_code, unused)]
 /// ```
 ///
@@ -267,7 +274,9 @@ mod deny_attribute {}
 /// For more information, see the Reference on [the `forbid` attribute].
 ///
 /// [the `forbid` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
-mod forbid_attribute {}
+/// [`allow`]: ./attribute.allow.html
+/// [`warn`]: ./attribute.warn.html
+const _: () = ();
 
 #[doc(attribute = "deprecated")]
 //
@@ -279,31 +288,33 @@ mod forbid_attribute {}
 ///
 /// Example:
 ///
-/// ```rust
+/// ```
 /// #[deprecated(since = "1.0.0", note = "Use bar instead")]
 /// struct Foo;
 /// struct Bar;
 /// ```
 ///
-/// `deprecated` attribute helps developers transition away from old code by providing warnings when
-/// deprecated items are used. Note that during `Cargo` builds, warnings on dependencies get silenced
-/// by default, so you may not see a deprecation warning unless you build that dependency directly.
+/// The `deprecated` attribute helps developers transition away from old code by providing warnings
+/// when deprecated items are used. Note that during `Cargo` builds, warnings on dependencies get
+/// silenced by default, so you may not see a deprecation warning unless you build that dependency
+/// directly.
 ///
 /// For more information, see the Reference on [the `deprecated` attribute].
 ///
 /// [the `deprecated` attribute]: ../reference/attributes/diagnostics.html#the-deprecated-attribute
-mod deprecated_attribute {}
+const _: () = ();
 
 #[doc(attribute = "warn")]
 //
 /// Emits a warning during compilation when a lint check failed.
 ///
-/// Unlike `deny` or `forbid`, `warn` does not produce a hard error: the compilation continues, but
-/// the compiler emits a warning message. `warn` can be overridden by `allow`, `deny`, and `forbid`.
+/// Unlike [`deny`] or [`forbid`], `warn` does not produce a hard error: the compilation
+/// continues, but the compiler emits a warning message. `warn` can be overridden by [`allow`],
+/// [`deny`], and [`forbid`].
 ///
 /// Example:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #![allow(unused)]
 ///
 /// #[warn(unused)] // We override the allowed `unused` lint.
@@ -315,11 +326,11 @@ mod deprecated_attribute {}
 ///
 ///
 /// Many lints, including `unused`, are already set to `warn` by default so this attribute is
-/// mainly useful for lints that are normally `allow` by default.
+/// mainly useful for lints that are normally [`allow`] by default.
 ///
 /// Multiple lints can be set to `warn` at once:
 ///
-/// ```rust,compile_fail
+/// ```compile_fail
 /// #[warn(unused_mut, unused_variables)]
 /// fn main() {
 ///     let mut x = 42;
@@ -334,4 +345,291 @@ mod deprecated_attribute {}
 /// For more information, see the Reference on [the `warn` attribute].
 ///
 /// [the `warn` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
-mod warn_attribute {}
+/// [`allow`]: ./attribute.allow.html
+/// [`deny`]: ./attribute.deny.html
+/// [`forbid`]: ./attribute.forbid.html
+const _: () = ();
+
+#[doc(attribute = "no_std")]
+//
+/// Prevents automatically linking the standard library.
+///
+/// Written as an inner attribute at the top of the crate root, the `no_std` attribute stops
+/// the compiler from linking [`std`] into the crate, and only links [`core`].
+///
+/// The attribute also swaps which prelude gets inserted, with the [`core`] prelude replacing
+/// the [`std`] prelude. Items like [`Option`], [`Result`], and the primitive types remain
+/// available from [`core`] without any imports needed:
+///
+/// ```rust,ignore (no_std)
+/// #![no_std]
+///
+/// fn halve(x: u32) -> Option<u32> {
+///     if x % 2 == 0 { Some(x / 2) } else { None }
+/// }
+/// ```
+///
+/// Anything that requires heap memory allocations is not part of [`core`]. Linking the [`alloc`]
+/// crate explicitly can be used to include these types:
+///
+/// ```rust,ignore (no_std + needs a global allocator to link)
+/// #![no_std]
+///
+/// extern crate alloc;
+///
+/// use alloc::vec::Vec;
+/// ```
+///
+/// A `no_std` binary also removes the startup routine and default panic handler `std`
+/// normally provides. It must define its own `#[panic_handler]`, and typically its own
+/// entry point by additionally using `#![no_main]`:
+///
+/// ```rust,ignore (no_std + needs more than no_main alone to link)
+/// #![no_std]
+/// #![no_main]
+///
+/// use core::panic::PanicInfo;
+///
+/// #[panic_handler]
+/// fn on_panic(_info: &PanicInfo) -> ! {
+///     loop {}
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `no_std` attribute].
+///
+/// [`std`]: ../std/index.html
+/// [`core`]: ../core/index.html
+/// [`alloc`]: ../alloc/index.html
+/// [`Option`]: option::Option
+/// [`Result`]: result::Result
+/// [the `no_std` attribute]: ../reference/names/preludes.html#the-no_std-attribute
+const _: () = ();
+
+#[doc(attribute = "inline")]
+//
+/// Suggest that the compiler inline a function at its call sites.
+///
+/// Inlining replaces a call with a copy of the called function's body, which can remove the
+/// overhead of the call. The `inline` attribute is only a hint: the compiler may ignore it, and
+/// it already inlines functions on its own when that looks worthwhile. Poor choices about what to
+/// inline can make a program larger or slower.
+///
+/// Where it does matter is inlining across crate boundaries. A non-generic function is not
+/// normally inlined into another crate, since the calling crate compiles against only its
+/// signature. Marking it `#[inline]` makes the body available to other crates so they can inline
+/// it too:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// #[inline]
+/// pub fn square(x: i32) -> i32 {
+///     x * x
+/// }
+/// ```
+///
+/// Generic functions do not need this. They are instantiated in each crate that uses them, so
+/// their bodies are already available to inline.
+///
+/// The attribute applies to functions and has three forms:
+///
+/// - `#[inline]` suggests inlining the function.
+/// - `#[inline(always)]` suggests inlining it at every call site.
+/// - `#[inline(never)]` suggests never inlining it.
+///
+/// You should almost never need `#[inline(always)]`: prefer to let the compiler decide unless
+/// profiling shows a small, hot function that benefits from it. `#[inline(never)]` is useful to
+/// keep a rarely used path, such as a function that only reports an error, out of its caller.
+///
+/// For more information, see the Reference on [the `inline` attribute].
+///
+/// [the `inline` attribute]: ../reference/attributes/codegen.html#the-inline-attribute
+const _: () = ();
+
+#[doc(attribute = "cold")]
+//
+/// Hint to the compiler that a function is unlikely to be called.
+///
+/// Marking a function `#[cold]` tells the compiler that calls to it are rare, so it can
+/// optimize for the common case where the function is not called. It is only a hint: the
+/// compiler may ignore it, and it does not change the function's behavior.
+///
+/// It is typically used on functions that handle uncommon cases, such as error or panic paths:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// fn check(value: i32) {
+///     if value < 0 {
+///         report_error("value must be non-negative");
+///     }
+///     // ... the common case continues here ...
+/// }
+///
+/// #[cold]
+/// fn report_error(message: &str) {
+///     eprintln!("error: {message}");
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `cold` attribute].
+///
+/// [the `cold` attribute]: ../reference/attributes/codegen.html#the-cold-attribute
+const _: () = ();
+
+#[doc(attribute = "track_caller")]
+//
+/// Make a function report the location of its caller instead of its own.
+///
+/// When a function panics, the panic message normally points at the line inside that function
+/// where the panic happened. `#[track_caller]` changes that: it lets the function see the
+/// [`Location`] it was called from, so the panic (and any direct use of [`Location::caller`])
+/// points at the call site instead. The standard library uses this on methods like
+/// [`Option::unwrap`], so a failed `unwrap` blames the line that called it rather than a line
+/// inside the standard library.
+///
+/// ```rust,should_panic
+/// #[track_caller]
+/// fn assert_even(n: i32) {
+///     assert!(n % 2 == 0, "{n} is not even");
+/// }
+///
+/// // The panic blames this line, not the `assert!` inside `assert_even`.
+/// assert_even(3);
+/// ```
+///
+/// The attribute applies to functions with the default `"Rust"` ABI, other than `fn main`.
+///
+/// For more information, see the Reference on [the `track_caller` attribute].
+///
+/// [`Location`]: panic::Location
+/// [`Location::caller`]: panic::Location::caller
+/// [`Option::unwrap`]: Option::unwrap
+/// [the `track_caller` attribute]: ../reference/attributes/codegen.html#the-track_caller-attribute
+const _: () = ();
+
+#[doc(attribute = "proc_macro")]
+//
+/// Defines a function-like procedural macro.
+///
+/// Applied to a `pub` function at the root of a proc-macro crate, `proc_macro` makes that function usable as a macro invoked as
+/// `foo!(...)` in other crates. The function receives the tokens written inside the invocation as a [`TokenStream`] and returns
+/// the [`TokenStream`] that replaces the invocation:
+///
+/// ```rust, ignore (requires depending on the proc-macro crate)
+/// # extern crate proc_macro;
+/// use proc_macro::TokenStream;
+///
+/// #[proc_macro]
+/// pub fn foo(input: TokenStream) -> TokenStream {
+///    "fn answer() -> u32 { 67 }".parse().unwrap()
+/// }
+/// ```
+///
+/// The macro can only be invoked from other crates, not from the crate where it is defined:
+///
+/// ```rust,ignore (requires depending on the proc-macro crate)
+/// use my_macro_crate::foo;
+///
+/// // Expands to `fn answer() -> u32 { 67 }`.
+/// foo!();
+///
+/// fn main() {
+///    println!("{}", answer()); // Prints 67
+/// }
+/// ```
+///
+/// The attribute is only usable with crates of the `proc-macro` crate type, which is set in the crate's `Cargo.toml`
+/// with `proc-macro = true` in the `[lib]` section. Using it anywhere else is a compilation error:
+///
+/// ```text
+///error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
+/// --> src/lib.rs:4:1
+///  |
+/// 4| #[proc_macro]
+///  | ^^^^^^^^^^^^
+/// ```
+///
+/// For more information, see the Reference on [function-like procedural macros] and the [`proc_macro`] crate documentation.
+///
+/// [`TokenStream`]: ../proc_macro/struct.TokenStream.html
+/// [function-like procedural macros]: ../reference/procedural-macros.html#the-proc_macro-attribute
+/// [`proc_macro`]: ../proc_macro/index.html
+const _: () = ();
+
+#[doc(attribute = "link_section")]
+//
+/// Places a function or static in a specific object-file section.
+///
+/// The `link_section` attribute specifies the section of the generated object file where a
+/// function or static is placed. Section names and their meaning are target-specific.
+///
+/// ```rust,no_run
+/// # #[cfg(target_os = "linux")] {
+/// #[unsafe(link_section = ".example_section")]
+/// pub static VALUE: u32 = 42;
+/// # }
+/// ```
+///
+/// Incorrectly placing code or data in a section can violate requirements imposed by the target,
+/// linker, or runtime. For example, placing mutable data in a read-only section may result in
+/// undefined behavior. For this reason, `link_section` is an unsafe attribute.
+///
+/// Starting with the 2024 edition, the attribute must be written using the `unsafe(...)` syntax.
+/// Earlier editions also permit `#[link_section = "..."]`.
+///
+/// For more information, see the Reference on [the `link_section` attribute].
+///
+/// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
+const _: () = ();
+
+#[doc(attribute = "non_exhaustive")]
+//
+/// Indicates that a type might have more fields or variants added in the future.
+///
+/// Placing `#[non_exhaustive]` on a struct or enum tells code in other crates not to assume
+/// the definition is complete. This lets a library add new fields or variants without breaking
+/// existing code.
+///
+/// On an enum, code outside the defining crate must include a wildcard arm when matching:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `errors`:
+/// #[non_exhaustive]
+/// pub enum ConnectionError {
+///     Refused,
+///     Timeout,
+/// }
+///
+/// // in another crate:
+/// use errors::ConnectionError;
+///
+/// match error {
+///     ConnectionError::Refused => println!("connection refused"),
+///     ConnectionError::Timeout => println!("timed out"),
+///     _ => println!("other error"), // required because of #[non_exhaustive]
+/// }
+/// ```
+///
+/// On a struct, code outside the defining crate cannot construct instances using struct literal
+/// syntax:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `config`:
+/// #[non_exhaustive]
+/// pub struct Config {
+///     pub width: u32,
+///     pub height: u32,
+/// }
+///
+/// // in another crate:
+/// use config::Config;
+///
+/// let c = Config { width: 800, height: 600 }; // ERROR: cannot construct
+/// ```
+///
+/// Inside the defining crate, exhaustive matching and direct construction are still allowed.
+///
+/// For more information, see the Reference on [the `non_exhaustive` attribute].
+///
+/// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
+const _: () = ();

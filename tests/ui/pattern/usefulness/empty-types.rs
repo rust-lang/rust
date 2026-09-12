@@ -1,7 +1,6 @@
 //@ revisions: normal exhaustive_patterns never_pats
 //@ edition: 2024
 
-#![feature(never_type)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![cfg_attr(never_pats, feature(never_patterns))]
 #![allow(dead_code, unreachable_code)]

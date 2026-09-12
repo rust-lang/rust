@@ -1,17 +1,17 @@
-warning: error reading Clippy's configuration file: deprecated field `cyclomatic-complexity-threshold`. Please use `cognitive-complexity-threshold` instead
+warning: use of a deprecated field
   --> $DIR/tests/ui-toml/conf_deprecated_key/clippy.toml:2:1
    |
 LL | cyclomatic-complexity-threshold = 2
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use new name: `cognitive-complexity-threshold`
 
-warning: error reading Clippy's configuration file: deprecated field `blacklisted-names`. Please use `disallowed-names` instead
+warning: use of a deprecated field
   --> $DIR/tests/ui-toml/conf_deprecated_key/clippy.toml:3:1
    |
 LL | blacklisted-names = [ "..", "wibble" ]
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^ help: use new name: `disallowed-names`
 
 error: the function has a cognitive complexity of (3/2)
-  --> tests/ui-toml/conf_deprecated_key/conf_deprecated_key.rs:4:4
+  --> tests/ui-toml/conf_deprecated_key/conf_deprecated_key.rs:8:4
    |
 LL | fn cognitive_complexity() {
    |    ^^^^^^^^^^^^^^^^^^^^

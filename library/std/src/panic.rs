@@ -285,7 +285,7 @@ where
 }
 
 #[unstable(feature = "abort_unwind", issue = "130338")]
-pub use core::panic::abort_unwind;
+pub use core::panic::abort_on_unwind;
 
 /// Invokes a closure, capturing the cause of an unwinding panic if one occurs.
 ///
@@ -313,7 +313,7 @@ pub use core::panic::abort_unwind;
 /// it becomes a problem the [`AssertUnwindSafe`] wrapper struct can be used to
 /// quickly assert that the usage here is indeed unwind safe.
 ///
-/// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
+/// [rfc]: https://rust-lang.github.io/rfcs/1236-stabilize-catch-panic.html
 ///
 /// # Notes
 ///

@@ -49,7 +49,9 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
                 let types = || crate::next_solver::default_types(db);
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
                     return types().one_invariant.store();
-                } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
+                } else if flags.intersects(
+                    StructFlags::IS_PHANTOM_DATA | StructFlags::IS_COVARIANT_UNSAFE_CELL,
+                ) {
                     return types().one_covariant.store();
                 }
             }
@@ -58,7 +60,7 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
     }
 
     let generics = generics(db, def);
-    let count = generics.len();
+    let count = generics.len(true);
     if count == 0 {
         return VariancesOf::empty(DbInterner::new_no_crate(db)).store();
     }
@@ -106,7 +108,7 @@ pub(crate) fn variances_of_cycle_initial(
 ) -> StoredVariancesOf {
     let interner = DbInterner::new_no_crate(db);
     let generics = generics(db, def);
-    let count = generics.len();
+    let count = generics.len(true);
 
     VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Bivariant, count)).store()
 }
@@ -152,7 +154,7 @@ impl<'db> Context<'db> {
 
         // Const parameters are always invariant.
         // Make all const parameters invariant.
-        for (idx, param) in self.generics.iter_id().enumerate() {
+        for (idx, param) in self.generics.iter_id(false).enumerate() {
             if let GenericParamId::ConstParamId(_) = param {
                 variances[idx] = Variance::Invariant;
             }
@@ -433,6 +435,7 @@ struct Covariant<A> {
         check(
             r#"
 //- minicore: cell
+#![feature(lang_items)]
 
 use core::cell::UnsafeCell;
 
@@ -461,6 +464,10 @@ enum Enum<A,B,C> { //~ ERROR [A: +, B: -, C: o]
     Bar(Contravariant<B>),`
     Zed(Covariant<C>,Contravariant<C>)
 }
+
+#[repr(transparent)]
+#[lang = "covariant_unsafe_cell"]
+pub struct CovariantUnsafeCell<T: ?Sized>(UnsafeCell<T>); //~ ERROR [T: +]
 "#,
             expect![[r#"
                 InvariantMut['a: covariant, A: invariant, B: invariant]
@@ -469,6 +476,7 @@ enum Enum<A,B,C> { //~ ERROR [A: +, B: -, C: o]
                 Covariant[A: covariant]
                 Contravariant[A: contravariant]
                 Enum[A: covariant, B: contravariant, C: invariant]
+                CovariantUnsafeCell[T: covariant]
             "#]],
         );
     }
@@ -940,7 +948,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                     res,
                     "{name}[{}]\n",
                     generics(&db, def)
-                        .iter()
+                        .iter(false)
                         .map(|(_, param)| match param {
                             GenericParamDataRef::TypeParamData(type_param_data) => {
                                 type_param_data.name.as_ref().unwrap()

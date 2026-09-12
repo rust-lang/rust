@@ -225,7 +225,7 @@ pub trait PointeeSized {
 ///
 /// [`ops::CoerceUnsized`]: crate::ops::CoerceUnsized
 /// [`Rc`]: ../../std/rc/struct.Rc.html
-/// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+/// [RFC982]: https://rust-lang.github.io/rfcs/0982-dst-coercion.html
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 /// [^1]: Formerly known as *object safe*.
 #[unstable(feature = "unsize", issue = "18598")]
@@ -480,7 +480,7 @@ marker_impls! {
 
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 impl Copy for ! {}
 
 /// Shared references can be copied, but mutable references *cannot*!
@@ -1069,9 +1069,24 @@ pub const trait Destruct: PointeeSized {}
 #[unstable(feature = "tuple_trait", issue = "157987")]
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
+#[fundamental]
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
 pub trait Tuple {}
+
+/// Creates a new style directly represented const argument.
+/// ```ignore (cannot test this from within core yet)
+/// const BAR<const N: usize>: usize = direct_const_arg!(N);
+/// const FOO<const N: usize>: usize = direct_const_arg!(BAR::<N>);
+/// ```
+#[rustc_builtin_macro(direct_const_arg)]
+#[unstable(feature = "min_generic_const_args", issue = "132980")]
+#[macro_export]
+macro_rules! direct_const_arg {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}
 
 /// A marker for types which can be used as types of `const` generic parameters.
 ///
@@ -1119,24 +1134,6 @@ marker_impls! {
         str,
         {T: ConstParamTy_} [T],
         {T: ConstParamTy_ + ?Sized} &T,
-}
-
-/// A common trait implemented by all function pointers.
-//
-// Note that while the trait is internal and unstable it is nevertheless
-// exposed as a public bound of the stable `core::ptr::fn_addr_eq` function.
-#[unstable(
-    feature = "fn_ptr_trait",
-    issue = "none",
-    reason = "internal trait for implementing various traits for all function pointers"
-)]
-#[lang = "fn_ptr_trait"]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
-pub trait FnPtr: Copy + Clone {
-    /// Returns the address of the function pointer.
-    #[lang = "fn_ptr_addr"]
-    fn addr(self) -> *const ();
 }
 
 /// Derive macro that makes a smart pointer usable with trait objects.
@@ -1357,10 +1354,28 @@ pub trait Reborrow {
     /* compiler built-in */
 }
 
+/// Derive macro generating an impl of the trait `Reborrow`.
+#[rustc_builtin_macro(Reborrow)]
+#[allow_internal_unstable(reborrow)]
+#[unstable(feature = "reborrow", issue = "145612")]
+pub macro Reborrow($item:item) {
+    /* compiler built-in */
+}
+
 /// Allows reborrowable value to be reborrowed as shared, creating a copy
 /// that disables the source for writes for the lifetime of the copy.
 #[lang = "coerce_shared"]
 #[unstable(feature = "reborrow", issue = "145612")]
 pub trait CoerceShared<Target: Copy>: Reborrow {
+    /* compiler built-in */
+}
+
+/// Derive macro generating an impl of the trait `CoerceShared`.
+///
+/// The shared target type must be specified with `#[coerce_shared(Target)]`.
+#[rustc_builtin_macro(CoerceShared, attributes(coerce_shared))]
+#[allow_internal_unstable(reborrow)]
+#[unstable(feature = "reborrow", issue = "145612")]
+pub macro CoerceShared($item:item) {
     /* compiler built-in */
 }

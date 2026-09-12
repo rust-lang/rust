@@ -3,6 +3,7 @@
 use rustc_abi::{BackendRepr, CanonAbi, ExternAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
+use rustc_middle::ty::layout::{FnAbiRequest, codegen_handle_fn_abi_err};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -24,7 +25,7 @@ enum UsesVectorRegisters {
 fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorRegisters {
     match mode {
         PassMode::Ignore | PassMode::Indirect { .. } => UsesVectorRegisters::No,
-        PassMode::Cast { pad_i32: _, cast }
+        PassMode::Cast { pad_i32_count: _, cast }
             if cast.prefix.iter().any(|x| matches!(x.kind, RegKind::Vector { .. }))
                 || matches!(cast.rest.unit.kind, RegKind::Vector { .. }) =>
         {
@@ -57,7 +58,7 @@ fn do_check_simd_vector_abi<'tcx>(
 ) {
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     let have_feature = |feat: Symbol| {
-        let target_feats = tcx.sess.unstable_target_features.contains(&feat);
+        let target_feats = tcx.sess.internal_target_features.contains(&feat);
         let fn_feats = codegen_attrs.target_features.iter().any(|x| x.name == feat);
         target_feats || fn_feats
     };
@@ -65,9 +66,17 @@ fn do_check_simd_vector_abi<'tcx>(
         let size = arg_abi.layout.size;
         match passes_vectors_by_value(&arg_abi.mode, &arg_abi.layout.backend_repr) {
             UsesVectorRegisters::FixedVector => {
+                // Some targets use homogeneous aggregates, where the unit size counts.
+                let unit_size = match &arg_abi.mode {
+                    PassMode::Cast { pad_i32_count: _, cast } if cast.prefix.is_empty() => {
+                        cast.rest.unit.size
+                    }
+                    _ => size,
+                };
+
                 let feature_def = tcx.sess.target.features_for_correct_fixed_length_vector_abi();
                 // Find the first feature that provides at least this vector size.
-                let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
+                let feature = match feature_def.iter().find(|(bits, _)| unit_size.bits() <= *bits) {
                     Some((_, feature)) => feature,
                     None => {
                         let (span, _hir_id) = loc();
@@ -84,6 +93,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature: feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: false,
@@ -101,6 +111,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: true,
@@ -158,24 +169,27 @@ fn do_check_unsized_params<'tcx>(
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let ty = instance.ty(tcx, typing_env);
-    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::Unadjusted {
-        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
-        // intrinsics
+    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::LlvmIntrinsic {
+        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
+        // LLVM intrinsics
         return;
     }
-    let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
-    else {
-        // An error will be reported during codegen if we cannot determine the ABI of this
-        // function.
-        tcx.dcx().delayed_bug("ABI computation failure should lead to compilation failure");
-        return;
+    let abi = match tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
+    {
+        Ok(abi) => abi,
+        Err(err) => {
+            codegen_handle_fn_abi_err(
+                tcx,
+                *err,
+                tcx.def_span(instance.def_id()),
+                FnAbiRequest::OfInstance { instance, extra_args: ty::List::empty() },
+            );
+            // ABI failed to compute; this will not get through codegen.
+            return;
+        }
     };
-    // Unlike the call-site check, we do also check "Rust" ABI functions here.
-    // This should never trigger, *except* if we start making use of vector registers
-    // for the "Rust" ABI and the user disables those vector registers (which should trigger a
-    // warning as that's clearly disabling a "required" target feature for this target).
-    // Using such a function is where disabling the vector register actually can start leading
-    // to soundness issues, so erroring here seems good.
+    // Unlike the call-site check, we do also check "Rust" ABI functions here. This can actually
+    // trigger due to scalable vectors being require for the "Rust" ABI for some types.
     let loc = || {
         let def_id = instance.def_id();
         (
@@ -198,35 +212,66 @@ fn check_call_site_abi<'tcx>(
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
     let extern_abi = callee.fn_sig(tcx).abi();
-    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::Unadjusted {
+    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::LlvmIntrinsic {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
-        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
-        // intrinsics
+        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
+        // LLVM intrinsics
         return;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let callee_abi = match *callee.kind() {
         ty::FnPtr(..) => {
-            tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((callee.fn_sig(tcx), ty::List::empty())))
+            let sig = callee.fn_sig(tcx);
+            match tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((sig, ty::List::empty()))) {
+                Ok(callee_abi) => callee_abi,
+                Err(err) => {
+                    codegen_handle_fn_abi_err(
+                        tcx,
+                        *err,
+                        loc().0,
+                        FnAbiRequest::OfFnPtr { sig, extra_args: ty::List::empty() },
+                    );
+                    // ABI failed to compute; this will not get through codegen.
+                    return;
+                }
+            }
         }
         ty::FnDef(def_id, args) => {
             // Intrinsics are handled separately by the compiler.
             if tcx.intrinsic(def_id).is_some() {
                 return;
             }
-            let instance = ty::Instance::expect_resolve(tcx, typing_env, def_id, args, DUMMY_SP);
-            tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
+            let instance = ty::Instance::expect_resolve(
+                tcx,
+                typing_env,
+                def_id,
+                args.no_bound_vars().unwrap(),
+                DUMMY_SP,
+            );
+            if let InstanceKind::LlvmIntrinsic(..) = instance.def {
+                // LLVM intrinsics don't have an ABI, so there is nothing to check.
+                return;
+            }
+            match tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty()))) {
+                Ok(callee_abi) => callee_abi,
+                Err(err) => {
+                    codegen_handle_fn_abi_err(
+                        tcx,
+                        *err,
+                        loc().0,
+                        FnAbiRequest::OfInstance { instance, extra_args: ty::List::empty() },
+                    );
+                    // ABI failed to compute; this will not get through codegen.
+                    return;
+                }
+            }
         }
         _ => {
             panic!("Invalid function call");
         }
     };
 
-    let Ok(callee_abi) = callee_abi else {
-        // ABI failed to compute; this will not get through codegen.
-        return;
-    };
     do_check_unsized_params(tcx, callee_abi, /*is_call*/ true, loc);
     do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, loc);
 }

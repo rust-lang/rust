@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use hir::{ExpandResult, InFile, Semantics};
 use ide_db::{
     FileId, RootDatabase, base_db::Crate, helpers::pick_best_token,
@@ -67,7 +66,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             .count();
         let ExpandResult { err, value: expansion } = expansions.get(idx)?.clone()?;
         let expansion_file_id = sema.hir_file_for(&expansion).macro_file()?;
-        let expansion_span_map = db.expansion_span_map(expansion_file_id);
+        let expansion_span_map = expansion_file_id.expansion_span_map(db);
         let mut expansion = format(
             db,
             SyntaxKind::MACRO_ITEMS,
@@ -159,7 +158,7 @@ fn expand_macro_recur(
     }
     let file_id =
         sema.hir_file_for(&expanded).macro_file().expect("expansion must produce a macro file");
-    let expansion_span_map = sema.db.expansion_span_map(file_id);
+    let expansion_span_map = file_id.expansion_span_map(sema.db);
     result_span_map.merge(
         TextRange::at(offset_in_original_node, macro_call.syntax().text_range().len()),
         expanded.text_range().len(),

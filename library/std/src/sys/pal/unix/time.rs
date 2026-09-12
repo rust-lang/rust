@@ -177,9 +177,9 @@ impl Timespec {
         })
     }
 
-    // On QNX Neutrino, the maximum timespec for e.g. pthread_cond_timedwait
+    // On QNX, the maximum timespec for e.g. pthread_cond_timedwait
     // is 2^64 nanoseconds
-    #[cfg(target_os = "nto")]
+    #[cfg(any(target_os = "nto", target_os = "qnx"))]
     pub(in crate::sys) fn to_timespec_capped(&self) -> Option<libc::timespec> {
         // Check if timeout in nanoseconds would fit into an u64
         if (self.tv_nsec.as_inner() as u64)

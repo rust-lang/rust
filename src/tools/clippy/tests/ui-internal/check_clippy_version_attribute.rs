@@ -4,7 +4,6 @@
 #[macro_use]
 extern crate rustc_middle;
 #[macro_use]
-extern crate rustc_session;
 extern crate rustc_lint;
 
 ///////////////////////

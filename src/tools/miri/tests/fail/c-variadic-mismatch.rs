@@ -1,5 +1,3 @@
-#![feature(c_variadic)]
-
 unsafe extern "C" fn helper(_: i32, _: ...) {}
 
 fn main() {

@@ -1,5 +1,3 @@
-#![feature(async_fn_traits)]
-
 use std::future::Future;
 use std::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 use std::pin::pin;

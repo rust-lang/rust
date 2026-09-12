@@ -9,8 +9,6 @@
       let mut _4: fn() -> AlwaysSome<T>;
       let _5: T;
       let mut _6: T;
-      let mut _7: isize;
-      let mut _8: isize;
       scope 1 {
           debug v => _2;
       }
@@ -34,12 +32,11 @@
 -         _5 = move ((_3 as Some).0: T);
 -         _2 = move _5;
 -         StorageDead(_5);
+-         StorageDead(_3);
 +         nop;
 +         _5 = copy ((_3 as Some).0: T);
 +         _2 = copy _5;
 +         nop;
-          _7 = discriminant(_3);
--         StorageDead(_3);
 +         nop;
           StorageLive(_6);
 -         _6 = move _2;

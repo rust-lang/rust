@@ -1,7 +1,7 @@
 // Check that only `-C linker-features=-lld` is stable on x64 linux. Any other value or target,
 // needs `-Z unstable-options`.
 
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 //@ revisions: unstable_target_positive unstable_target_negative unstable_positive
 //@ [unstable_target_negative] compile-flags: --target=x86_64-unknown-linux-musl -C linker-features=-lld --crate-type=rlib

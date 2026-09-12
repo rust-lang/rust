@@ -25,22 +25,30 @@ use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use crate::core::config::TargetSelection;
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{CompressDebuginfo, TargetSelection};
+use crate::core::session::{CLang, Session};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::{Build, CLang, GitRepo};
-
 /// Creates and configures a new [`cc::Build`] instance for the given target.
-fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
+fn new_cc_build(sess: &Session, target: TargetSelection) -> cc::Build {
     let mut cfg = cc::Build::new();
     cfg.cargo_metadata(false)
         .opt_level(2)
         .warnings(false)
         .debug(false)
-        // Compress debuginfo
-        .flag_if_supported("-gz")
+        // We have to configure out_dir, otherwise flag_if_supported will not work
+        .out_dir(sess.tempdir().join("cc-rs-out-dir"))
         .target(&target.triple)
-        .host(&build.host_target.triple);
-    match build.crt_static(target) {
+        .host(&sess.host_target.triple);
+
+    match sess.config.compress_debuginfo(target) {
+        CompressDebuginfo::Zlib => {
+            cfg.flag_if_supported("-gz");
+        }
+        CompressDebuginfo::Off => {}
+    }
+
+    match sess.crt_static(target) {
         Some(a) => {
             cfg.static_crt(a);
         }
@@ -48,45 +56,48 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
             if target.is_msvc() {
                 cfg.static_crt(true);
             }
-            if target.contains("musl") {
-                cfg.static_flag(true);
-            }
         }
     }
     cfg
 }
 
-/// Probes for C and C++ compilers and configures the corresponding entries in the [`Build`]
+/// Probes for C and C++ compilers and configures the corresponding entries in the [`Session`]
 /// structure.
 ///
 /// This function determines which targets need a C compiler (and, if needed, a C++ compiler)
 /// by combining the primary build target, host targets, and any additional targets. For
 /// each target, it calls [`fill_target_compiler`] to configure the necessary compiler tools.
-pub fn fill_compilers(build: &mut Build) {
-    let targets: HashSet<_> = match build.config.cmd {
+pub(crate) fn fill_compilers(sess: &mut Session) {
+    let mut targets: HashSet<_> = match sess.config.cmd {
         // We don't need to check cross targets for these commands.
-        crate::Subcommand::Clean { .. }
-        | crate::Subcommand::Check { .. }
-        | crate::Subcommand::Format { .. }
-        | crate::Subcommand::Setup { .. } => {
-            build.hosts.iter().cloned().chain(iter::once(build.host_target)).collect()
+        Subcommand::Clean { .. }
+        | Subcommand::Check { .. }
+        | Subcommand::Format { .. }
+        | Subcommand::Setup { .. } => {
+            sess.hosts.iter().cloned().chain(iter::once(sess.host_target)).collect()
         }
 
         _ => {
             // For all targets we're going to need a C compiler for building some shims
             // and such as well as for being a linker for Rust code.
-            build
-                .targets
+            sess.targets
                 .iter()
-                .chain(&build.hosts)
+                .chain(&sess.hosts)
                 .cloned()
-                .chain(iter::once(build.host_target))
+                .chain(iter::once(sess.host_target))
                 .collect()
         }
     };
 
-    for target in targets.into_iter() {
-        fill_target_compiler(build, target);
+    // When we intend to build wasm proc macros, we'll need to detect a toolchain for linking those
+    // as well. In the future it would be good to make this a no-op given that we shouldn't need to
+    // build any C/C++ code for wasm...
+    if sess.config.wasm_proc_macros {
+        targets.insert(TargetSelection::from_user("wasm32-wasip2"));
+    }
+
+    for target in targets {
+        fill_target_compiler(sess, target);
     }
 }
 
@@ -95,34 +106,32 @@ pub fn fill_compilers(build: &mut Build) {
 /// This function uses both user-specified configuration (from `bootstrap.toml`) and auto-detection
 /// logic to determine the correct C/C++ compilers for the target. It also determines the appropriate
 /// archiver (`ar`) and sets up additional compilation flags (both handled and unhandled).
-pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
-    let mut cfg = new_cc_build(build, target);
-    let config = build.config.target_config.get(&target);
+fn fill_target_compiler(sess: &mut Session, target: TargetSelection) {
+    let mut cfg = new_cc_build(sess, target);
+    let config = sess.config.target_config.get(&target);
     if let Some(cc) = config
         .and_then(|c| c.cc.clone())
-        .or_else(|| default_compiler(&mut cfg, Language::C, target, build))
+        .or_else(|| default_compiler(&cfg, Language::C, target, sess))
     {
         cfg.compiler(cc);
     }
 
     let compiler = cfg.get_compiler();
-    let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
-        ar
-    } else {
-        cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok()
-    };
+    let ar = config
+        .and_then(|c| c.ar.clone())
+        .or_else(|| cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok());
 
-    build.cc.insert(target, compiler.clone());
-    let mut cflags = build.cc_handled_clags(target, CLang::C);
-    cflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
+    sess.cc.insert(target, compiler.clone());
+    let mut cflags = sess.cc_handled_cflags(target, CLang::C);
+    cflags.extend(sess.cc_unhandled_cflags(target, CLang::C));
 
     // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
     // We'll need one anyways if the target triple is also a host triple
-    let mut cfg = new_cc_build(build, target);
+    let mut cfg = new_cc_build(sess, target);
     cfg.cpp(true);
     let cxx_configured = if let Some(cxx) = config
         .and_then(|c| c.cxx.clone())
-        .or_else(|| default_compiler(&mut cfg, Language::CPlusPlus, target, build))
+        .or_else(|| default_compiler(&cfg, Language::CPlusPlus, target, sess))
     {
         cfg.compiler(cxx);
         true
@@ -134,41 +143,41 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     // for VxWorks, record CXX compiler which will be used in lib.rs:linker()
     if cxx_configured || target.contains("vxworks") {
         let compiler = cfg.get_compiler();
-        build.cxx.insert(target, compiler);
+        sess.cxx.insert(target, compiler);
     }
 
-    build.do_if_verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
-    build.do_if_verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
-    if let Ok(cxx) = build.cxx(target) {
-        let mut cxxflags = build.cc_handled_clags(target, CLang::Cxx);
-        cxxflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
-        build.do_if_verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
-        build.do_if_verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
+    sess.do_if_verbose(|| println!("CC_{} = {:?}", target.triple, sess.cc(target)));
+    sess.do_if_verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
+    if let Ok(cxx) = sess.cxx(target) {
+        let mut cxxflags = sess.cc_handled_cflags(target, CLang::Cxx);
+        cxxflags.extend(sess.cc_unhandled_cflags(target, CLang::Cxx));
+        sess.do_if_verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
+        sess.do_if_verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }
     if let Some(ar) = ar {
-        build.do_if_verbose(|| println!("AR_{} = {ar:?}", target.triple));
-        build.ar.insert(target, ar);
+        sess.do_if_verbose(|| println!("AR_{} = {ar:?}", target.triple));
+        sess.ar.insert(target, ar);
     }
 
     if let Some(ranlib) = config.and_then(|c| c.ranlib.clone()) {
-        build.ranlib.insert(target, ranlib);
+        sess.ranlib.insert(target, ranlib);
     }
 }
 
 /// Determines the default compiler for a given target and language when not explicitly
 /// configured in `bootstrap.toml`.
 fn default_compiler(
-    cfg: &mut cc::Build,
+    cfg: &cc::Build,
     compiler: Language,
     target: TargetSelection,
-    build: &Build,
+    sess: &Session,
 ) -> Option<PathBuf> {
     match &*target.triple {
         // When compiling for android we may have the NDK configured in the
         // bootstrap.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
-            build.config.android_ndk.as_ref().map(|ndk| ndk_compiler(compiler, &target.triple, ndk))
+            sess.config.android_ndk.as_ref().map(|ndk| ndk_compiler(compiler, &target.triple, ndk))
         }
 
         // The default gcc version from OpenBSD may be too old, try using egcc,
@@ -181,14 +190,14 @@ fn default_compiler(
             }
 
             let mut cmd = BootstrapCommand::from(c.to_command());
-            let output = cmd.arg("--version").run_capture_stdout(build).stdout();
+            let output = cmd.arg("--version").run_capture_stdout(sess).stdout();
             let i = output.find(" 4.")?;
             match output[i + 3..].chars().next().unwrap() {
                 '0'..='6' => {}
                 _ => return None,
             }
             let alternative = format!("e{gnu_compiler}");
-            if command(&alternative).run_capture(build).is_success() {
+            if command(&alternative).run_capture(sess).is_success() {
                 Some(PathBuf::from(alternative))
             } else {
                 None
@@ -211,7 +220,7 @@ fn default_compiler(
         }
 
         t if t.contains("musl") && compiler == Language::C => {
-            if let Some(root) = build.musl_root(target) {
+            if let Some(root) = sess.musl_root(target) {
                 let guess = root.join("bin/musl-gcc");
                 if guess.exists() { Some(guess) } else { None }
             } else {
@@ -220,10 +229,10 @@ fn default_compiler(
         }
 
         t if t.contains("-wasi") => {
-            let root = if let Some(path) = build.wasi_sdk_path.as_ref() {
+            let root = if let Some(path) = sess.wasi_sdk_path.as_ref() {
                 path
             } else {
-                if build.config.is_running_on_ci() {
+                if sess.config.is_running_on_ci() {
                     panic!("ERROR: WASI_SDK_PATH must be configured for a -wasi target on CI");
                 }
                 println!("WARNING: WASI_SDK_PATH not set, using default cc/cxx compiler");

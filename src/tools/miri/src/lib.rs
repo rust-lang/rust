@@ -14,10 +14,12 @@
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]
+#![feature(io_error_input_output_error)]
+#![feature(io_error_too_many_open_files)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(pointer_is_aligned_to)]
@@ -28,12 +30,8 @@
 #![feature(uint_carryless_mul)]
 // Configure clippy and other lints
 #![allow(
-    clippy::collapsible_else_if,
     clippy::collapsible_if,
-    clippy::if_same_then_else,
-    clippy::comparison_chain,
     clippy::enum_variant_names,
-    clippy::field_reassign_with_default,
     clippy::manual_map,
     clippy::neg_cmp_op_on_partial_ord,
     clippy::new_without_default,
@@ -48,7 +46,6 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
-    clippy::collapsible_match,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]
@@ -76,6 +73,7 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 // Linking `rustc_driver` pulls in the required  object code as the rest of the rustc crates are
@@ -108,7 +106,7 @@ pub use rustc_const_eval::interpret::*;
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 pub use rustc_data_structures::either::Either;
-pub use rustc_log::tracing::{self, info, trace};
+pub use rustc_log::tracing::{self, info, trace, warn};
 pub use rustc_middle::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
@@ -137,14 +135,14 @@ pub use crate::borrow_tracker::{
 };
 pub use crate::clock::{Deadline, Instant, MonotonicClock, TimeoutClock, TimeoutStyle};
 pub use crate::concurrency::blocking_io::{
-    BlockingIoInterest, BlockingIoManager, BlockingIoSourceReadiness, EvalContextExt as _,
-    SourceFileDescription,
+    BlockingIoInterest, BlockingIoManager, EvalContextExt as _, SourceFileDescription,
 };
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
+pub use crate::concurrency::scheduler::EvalContextExt as _;
 pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
@@ -173,6 +171,10 @@ pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::EvalContextExt as _;
+pub use crate::shims::readiness::{
+    EvalContextExt as _, Readiness, ReadinessInterest, ReadinessUpdateFlags, ReadinessWatched,
+    ReadinessWatcher,
+};
 pub use crate::shims::sig::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;

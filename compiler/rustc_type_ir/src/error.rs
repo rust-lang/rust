@@ -3,7 +3,7 @@ use rustc_abi::ExternAbi;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::solve::{NoSolution, NoSolutionOrRerunNonErased};
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[derive(TypeFoldable_Generic, TypeVisitable_Generic, GenericTypeVisitable)]
@@ -24,7 +24,7 @@ impl<T> ExpectedFound<T> {
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum TypeError<I: Interner> {
     Mismatch,
-    PolarityMismatch(#[type_visitable(ignore)] ExpectedFound<ty::PredicatePolarity>),
+    PolarityMismatch(#[type_visitable(ignore)] ExpectedFound<ty::ClausePolarity>),
     SafetyMismatch(#[type_visitable(ignore)] ExpectedFound<I::Safety>),
     AbiMismatch(#[type_visitable(ignore)] ExpectedFound<ExternAbi>),
     Mutability,
@@ -33,8 +33,8 @@ pub enum TypeError<I: Interner> {
     ArraySize(ExpectedFound<I::Const>),
     ArgCount,
 
-    RegionsDoesNotOutlive(I::Region, I::Region),
-    RegionsInsufficientlyPolymorphic(ty::BoundRegion<I>, I::Region),
+    RegionsDoesNotOutlive(Region<I>, Region<I>),
+    RegionsInsufficientlyPolymorphic(ty::BoundRegion<I>, Region<I>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<I::Ty>),

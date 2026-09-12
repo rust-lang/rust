@@ -1,7 +1,7 @@
 // Test for #109537: ensure that column numbers are correctly generated when using hard tabs.
 //@ aux-build:tab_column_numbers.rs
 
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 
 extern crate tab_column_numbers;
 

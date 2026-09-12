@@ -21,17 +21,17 @@ use crate::{fmt, mem, sys};
 
 cfg_select! {
     any(target_os = "nto", target_os = "qnx") => {
-        use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
-        use crate::time::Duration;
+
         use crate::sync::LazyLock;
+        use crate::thread;
+        use crate::time::Duration;
         // Get smallest amount of time we can sleep.
         // Return a common value if it cannot be determined.
         fn get_clock_resolution() -> Duration {
             static MIN_DELAY: LazyLock<Duration, fn() -> Duration> = LazyLock::new(|| {
                 let mut mindelay = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0
-                {
+                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0 {
                     Duration::from_nanos(mindelay.tv_nsec as u64)
                 } else {
                     Duration::from_millis(1)
@@ -193,10 +193,10 @@ impl Command {
         cvt(libc::fork())
     }
 
-    // On QNX Neutrino, fork can fail with EBADF in case "another thread might have opened
+    // On QNX SDP, fork can fail with EBADF in case "another thread might have opened
     // or closed a file descriptor while the fork() was occurring".
     // Documentation says "... or try calling fork() again". This is what we do here.
-    // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
+    // See also https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
     #[cfg(any(target_os = "nto", target_os = "qnx"))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::io::errno;
@@ -462,6 +462,8 @@ impl Command {
         use core::sync::atomic::{Atomic, AtomicU8, Ordering};
 
         use crate::mem::MaybeUninit;
+        use crate::pin::{Pin, pin};
+        use crate::sys::helpers::COpaque;
         use crate::sys::{self, cvt_nz, on_broken_pipe_used};
 
         if self.get_gid().is_some()
@@ -512,15 +514,22 @@ impl Command {
                                 support = FORK_EXEC;
                                 // but for the fast path we need both spawnp and the
                                 // pidfd -> pid conversion to work.
-                                if pidfd_spawnp.get().is_some() && let Ok(pid) = pidfd.pid() {
+                                if pidfd_spawnp.get().is_some()
+                                    && let Ok(pid) = pidfd.pid()
+                                {
                                     assert_eq!(pid, crate::process::id(), "sanity check");
                                     support = SPAWN;
                                 }
                             }
-                            Err(e) if matches!(e.raw_os_error(), Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM)) => {
+                            Err(e)
+                                if matches!(
+                                    e.raw_os_error(),
+                                    Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM)
+                                ) =>
+                            {
                                 // We're temporarily(?) out of file descriptors or memory. In this case pidfd_spawnp would also fail
                                 // Don't update the support flag so we can probe again later.
-                                return Err(e)
+                                return Err(e);
                             }
                             _ => {
                                 // pidfd_open not available? likely an old kernel without pidfd support.
@@ -553,10 +562,10 @@ impl Command {
             }
         }
 
-        // On QNX Neutrino, posix_spawnp can fail with EBADF in case "another thread might have opened
+        // On QNX SDP, posix_spawnp can fail with EBADF in case "another thread might have opened
         // or closed a file descriptor while the posix_spawn() was occurring".
         // Documentation says "... or try calling posix_spawn() again". This is what we do here.
-        // See also http://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
+        // See also https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
         #[cfg(any(target_os = "nto", target_os = "qnx"))]
         unsafe fn retrying_libc_posix_spawnp(
             pid: *mut pid_t,
@@ -670,65 +679,68 @@ impl Command {
 
         let pgroup = self.get_pgroup();
 
-        struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
+        struct PosixSpawnFileActions<'a>(Pin<&'a COpaque<libc::posix_spawn_file_actions_t>>);
 
         impl Drop for PosixSpawnFileActions<'_> {
             fn drop(&mut self) {
                 unsafe {
-                    libc::posix_spawn_file_actions_destroy(self.0.as_mut_ptr());
+                    libc::posix_spawn_file_actions_destroy(self.0.get());
                 }
             }
         }
 
-        struct PosixSpawnattr<'a>(&'a mut MaybeUninit<libc::posix_spawnattr_t>);
+        struct PosixSpawnattr<'a>(Pin<&'a COpaque<libc::posix_spawnattr_t>>);
 
         impl Drop for PosixSpawnattr<'_> {
             fn drop(&mut self) {
                 unsafe {
-                    libc::posix_spawnattr_destroy(self.0.as_mut_ptr());
+                    libc::posix_spawnattr_destroy(self.0.get());
                 }
             }
         }
 
         unsafe {
-            let mut attrs = MaybeUninit::uninit();
-            cvt_nz(libc::posix_spawnattr_init(attrs.as_mut_ptr()))?;
-            let attrs = PosixSpawnattr(&mut attrs);
+            let attrs = pin!(COpaque::uninit());
+            // FIXME(pin-ergonomics): remove the next line.
+            let attrs = attrs.into_ref();
+            cvt_nz(libc::posix_spawnattr_init(attrs.get()))?;
+            let attrs = PosixSpawnattr(attrs);
 
             let mut flags = 0;
 
-            let mut file_actions = MaybeUninit::uninit();
-            cvt_nz(libc::posix_spawn_file_actions_init(file_actions.as_mut_ptr()))?;
-            let file_actions = PosixSpawnFileActions(&mut file_actions);
+            let file_actions = pin!(COpaque::uninit());
+            let file_actions = file_actions.into_ref();
+            cvt_nz(libc::posix_spawn_file_actions_init(file_actions.get()))?;
+            let file_actions = PosixSpawnFileActions(file_actions);
 
             if let Some(fd) = stdio.stdin.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.0.get(),
                     fd,
                     libc::STDIN_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stdout.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.0.get(),
                     fd,
                     libc::STDOUT_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stderr.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.0.get(),
                     fd,
                     libc::STDERR_FILENO,
                 ))?;
             }
             if let Some((f, cwd)) = addchdir {
-                cvt_nz(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
+                cvt_nz(f(file_actions.0.get(), cwd.as_ptr()))?;
             }
 
             if let Some(pgroup) = pgroup {
                 flags |= libc::POSIX_SPAWN_SETPGROUP;
-                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
+                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.get(), pgroup))?;
             }
 
             // Inherit the signal mask from this process rather than resetting it (i.e. do not call
@@ -746,17 +758,14 @@ impl Command {
                 {
                     cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGLOST))?;
                 }
-                cvt_nz(libc::posix_spawnattr_setsigdefault(
-                    attrs.0.as_mut_ptr(),
-                    default_set.as_ptr(),
-                ))?;
+                cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.get(), default_set.as_ptr()))?;
                 flags |= libc::POSIX_SPAWN_SETSIGDEF;
             }
 
             if self.get_setsid() {
                 cfg_select! {
                     all(target_os = "linux", target_env = "gnu") => {
-                        flags |= libc::POSIX_SPAWN_SETSID;
+                        flags |= libc::POSIX_SPAWN_SETSID as i32;
                     }
                     _ => {
                         return Ok(None);
@@ -764,7 +773,7 @@ impl Command {
                 }
             }
 
-            cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
+            cvt_nz(libc::posix_spawnattr_setflags(attrs.0.get(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
             let _env_lock = sys::env::env_read_lock();
@@ -781,8 +790,8 @@ impl Command {
                 let spawn_res = pidfd_spawnp.get().unwrap()(
                     &mut pidfd,
                     self.get_program_cstr().as_ptr(),
-                    file_actions.0.as_ptr(),
-                    attrs.0.as_ptr(),
+                    file_actions.0.get(),
+                    attrs.0.get(),
                     self.get_argv().as_ptr() as *const _,
                     envp as *const _,
                 );
@@ -823,8 +832,8 @@ impl Command {
             let spawn_res = spawn_fn(
                 &mut p.pid,
                 self.get_program_cstr().as_ptr(),
-                file_actions.0.as_ptr(),
-                attrs.0.as_ptr(),
+                file_actions.0.get(),
+                attrs.0.get(),
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
             );
@@ -921,9 +930,8 @@ impl Command {
             msg.msg_controllen = size_of::<Cmsg>() as _;
             msg.msg_control = (&raw mut cmsg) as *mut _;
 
-            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
-                Err(_) => return -1,
-                Ok(_) => {}
+            if cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)).is_err() {
+                return -1;
             }
 
             let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
@@ -1101,7 +1109,7 @@ impl ExitStatus {
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
         // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0. This is
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
-        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
+        // https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
         // unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
         match NonZero::try_from(self.0) {
@@ -1310,7 +1318,7 @@ mod linux_child_ext {
             self.handle
                 .pidfd
                 .take()
-                .map(|fd| <os::PidFd as FromInner<imp::PidFd>>::from_inner(fd))
+                .map(<os::PidFd as FromInner<imp::PidFd>>::from_inner)
                 .ok_or_else(|| self)
         }
     }

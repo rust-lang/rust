@@ -7,8 +7,8 @@ type C = (B, B, B, B);
 type D = (C, C, C, C);
 
 fn foo(x: D) {
-    let [] = x; //~ ERROR expected an array or slice, found `(...
-    //~^ NOTE pattern cannot match with input type `(...
+    let [] = x; //~ ERROR expected an array or slice, found `((_
+    //~^ NOTE pattern cannot match with input type `((_
 }
 
 fn main() {}

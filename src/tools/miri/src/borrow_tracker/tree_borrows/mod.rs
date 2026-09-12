@@ -244,7 +244,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::Dereferenceable)?;
+        this.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::Dereferenceable("pointer"))?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'tcx>,
@@ -479,23 +479,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let new_perm = match *ty.kind() {
+            _ if ty.is_box_global(*this.tcx) => {
+                // The `None` marks this as a Box.
+                NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
+            }
             ty::Ref(_, pointee, mutability) =>
                 NewPermission::new(pointee, Some(mutability), mode, this),
-            _ if ty.is_box() => {
-                let box_custom_allocator_unique =
-                    this.get_tree_borrows_params().box_custom_allocator_unique;
-                if box_custom_allocator_unique || ty.is_box_global(*this.tcx) {
-                    // The `None` marks this as a Box.
-                    NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
-                } else {
-                    // No retagging for boxes with custom allocators.
-                    None
-                }
-            }
 
             ty::RawPtr(..) => {
                 assert!(mode == RetagMode::Raw);
                 // We don't give new tags to raw pointers.
+                None
+            }
+            _ if ty.is_box() => {
+                // No retagging for boxes with custom allocators.
                 None
             }
             _ => panic!("tb_retag_ptr_value: invalid type {ty}"),

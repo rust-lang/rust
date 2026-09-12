@@ -1,0 +1,113 @@
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:42:7
+   |
+LL |     x.method();
+   |       ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:46:17
+   |
+LL |     { loop {} }.method();
+   |                 ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:51:16
+   |
+LL |         y => y.method(),
+   |                ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:57:27
+   |
+LL |         error => (&error).anyhow_kind().new(error),
+   |                           ^^^^^^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:63:9
+   |
+LL |     res.method();
+   |         ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+
+warning: 5 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:42:7
+   |
+LL |     x.method();
+   |       ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:46:17
+   |
+LL |     { loop {} }.method();
+   |                 ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:51:16
+   |
+LL |         y => y.method(),
+   |                ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:57:27
+   |
+LL |         error => (&error).anyhow_kind().new(error),
+   |                           ^^^^^^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+warning: method call on a diverging inference variable
+  --> $DIR/method-on-never.rs:63:9
+   |
+LL |     res.method();
+   |         ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+

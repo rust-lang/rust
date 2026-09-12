@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVid, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefIdMap;
-use rustc_trait_selection::traits::{self, FulfillmentError, TraitEngine, TraitEngineExt as _};
+use rustc_trait_selection::traits::{self, FulfillmentEngine, FulfillmentError, TraitEngine};
 use tracing::instrument;
 
 use super::callee::DeferredCallResolution;
@@ -31,7 +31,7 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) locals: RefCell<HirIdMap<Ty<'tcx>>>,
 
-    pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx, FulfillmentError<'tcx>>>>,
+    pub(super) fulfillment_cx: RefCell<FulfillmentEngine<'tcx, FulfillmentError<'tcx>>>,
 
     // Used to detect opaque types uses added after we've already checked them.
     //
@@ -56,6 +56,8 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     pub(super) deferred_cast_checks: RefCell<Vec<super::cast::CastCheck<'tcx>>>,
 
     pub(super) deferred_transmute_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>>,
+
+    pub(super) deferred_offload_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, Ty<'tcx>, HirId)>>,
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, HirId)>>,
 
@@ -85,7 +87,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             .in_hir_typeck()
             .build(TypingMode::typeck_for_body(tcx, def_id));
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
-        let fulfillment_cx = RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx));
+        let fulfillment_cx = RefCell::new(FulfillmentEngine::new(&infcx));
 
         TypeckRootCtxt {
             infcx,
@@ -97,6 +99,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_transmute_checks: RefCell::new(Vec::new()),
+            deferred_offload_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),

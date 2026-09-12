@@ -1,0 +1,146 @@
+error: symbol-name(_RMNvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFwThmEEuE)
+  --> $DIR/splat-mangling.rs:22:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<fn(#[splat] (u8, u32))>>)
+  --> $DIR/splat-mangling.rs:22:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<fn(#[splat] (u8, u32))>>)
+  --> $DIR/splat-mangling.rs:22:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFThmEEuE)
+  --> $DIR/splat-mangling.rs:32:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<fn((u8, u32))>>)
+  --> $DIR/splat-mangling.rs:32:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<fn((u8, u32))>>)
+  --> $DIR/splat-mangling.rs:32:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs0_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFwTThmEEEuE)
+  --> $DIR/splat-mangling.rs:42:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<fn(#[splat] ((u8, u32),))>>)
+  --> $DIR/splat-mangling.rs:42:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<fn(#[splat] ((u8, u32),))>>)
+  --> $DIR/splat-mangling.rs:42:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs1_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFTThmEEEuE)
+  --> $DIR/splat-mangling.rs:52:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<fn(((u8, u32),))>>)
+  --> $DIR/splat-mangling.rs:52:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<fn(((u8, u32),))>>)
+  --> $DIR/splat-mangling.rs:52:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs2_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypePFwTmaEEuE)
+  --> $DIR/splat-mangling.rs:62:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<*const fn(#[splat] (u32, i8))>>)
+  --> $DIR/splat-mangling.rs:62:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<*const fn(#[splat] (u32, i8))>>)
+  --> $DIR/splat-mangling.rs:62:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs3_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypePFTmaEEuE)
+  --> $DIR/splat-mangling.rs:72:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<*const fn((u32, i8))>>)
+  --> $DIR/splat-mangling.rs:72:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<*const fn((u32, i8))>>)
+  --> $DIR/splat-mangling.rs:72:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs4_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFwTmaEdEuE)
+  --> $DIR/splat-mangling.rs:82:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<fn(#[splat] (u32, i8), f64)>>)
+  --> $DIR/splat-mangling.rs:82:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<fn(#[splat] (u32, i8), f64)>>)
+  --> $DIR/splat-mangling.rs:82:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RMs5_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFTmaEdEuE)
+  --> $DIR/splat-mangling.rs:92:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<splat_mangling[CRATE_HASH]::main::Type<fn((u32, i8), f64)>>)
+  --> $DIR/splat-mangling.rs:92:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<splat_mangling::main::Type<fn((u32, i8), f64)>>)
+  --> $DIR/splat-mangling.rs:92:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 24 previous errors
+

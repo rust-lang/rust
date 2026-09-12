@@ -1,5 +1,5 @@
 error: the constant `'a'` is not of type `usize`
-  --> $DIR/non-local-const.rs:11:14
+  --> $DIR/non-local-const.rs:10:14
    |
 LL | impl Foo for [u8; non_local_type_const::NON_LOCAL_CONST] {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `char`

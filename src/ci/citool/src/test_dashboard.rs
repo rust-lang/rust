@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
@@ -17,12 +17,14 @@ pub fn generate_test_dashboard(
     output_dir: &Path,
 ) -> anyhow::Result<()> {
     let metrics = download_auto_job_metrics(&db, None, current)?;
-    let suites = gather_test_suites(&metrics);
+    let mut suites = gather_test_suites(&metrics);
 
     std::fs::create_dir_all(output_dir)?;
 
+    let jobsets = assign_jobsets(&mut suites);
+
     let test_count = suites.test_count();
-    write_page(output_dir, "index.html", &TestSuitesPage { suites, test_count })?;
+    write_page(output_dir, "index.html", &TestSuitesPage { suites, test_count, jobsets })?;
 
     Ok(())
 }
@@ -31,6 +33,45 @@ fn write_page<T: Template>(dir: &Path, name: &str, template: &T) -> anyhow::Resu
     let mut file = BufWriter::new(File::create(dir.join(name))?);
     Template::write_into(template, &mut file)?;
     Ok(())
+}
+
+struct JobSets {
+    sets: Vec<(u32, Vec<String>)>,
+}
+
+fn assign_jobsets(suites: &mut TestSuites) -> JobSets {
+    let mut jobsets: HashMap<Vec<String>, u32> = HashMap::new();
+
+    fn visit(jobsets: &mut HashMap<Vec<String>, u32>, group: &mut TestGroup) {
+        for (_, test) in &mut group.root_tests {
+            for (_, results) in &mut test.revisions {
+                let mut jobset: HashSet<String> = HashSet::new();
+                for test in &results.passed {
+                    jobset.insert(test.job.to_string());
+                }
+                let mut jobset: Vec<String> = jobset.into_iter().collect();
+                jobset.sort();
+
+                let jobset_count = jobsets.len() as u32;
+                let jobset_id = jobsets.entry(jobset).or_insert_with(|| jobset_count);
+                results.passed_jobset = Some(*jobset_id);
+            }
+        }
+        for (_, group) in &mut group.groups {
+            visit(jobsets, group);
+        }
+    }
+    for suite in &mut suites.suites {
+        visit(&mut jobsets, &mut suite.group);
+    }
+
+    let mut jobsets: Vec<(u32, Vec<String>)> = jobsets.into_iter().map(|(k, v)| (v, k)).collect();
+    jobsets.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    for (_, set) in &mut jobsets {
+        set.sort_unstable();
+    }
+
+    JobSets { sets: jobsets }
 }
 
 fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites<'_> {
@@ -68,10 +109,9 @@ fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites<
                     .tests
                     .entry(test_name.clone())
                     .or_insert_with(|| Test { revisions: Default::default() });
-                let variant_entry = test_entry
-                    .revisions
-                    .entry(variant_name)
-                    .or_insert_with(|| TestResults { passed: vec![], ignored: vec![] });
+                let variant_entry = test_entry.revisions.entry(variant_name).or_insert_with(|| {
+                    TestResults { passed: vec![], passed_jobset: None, ignored: vec![] }
+                });
 
                 match test.outcome {
                     TestOutcome::Passed => {
@@ -161,6 +201,8 @@ struct TestSuite<'a> {
 
 struct TestResults<'a> {
     passed: Vec<TestMetadata<'a>>,
+    /// An id representing a set of jobs on which this test has passed.
+    passed_jobset: Option<u32>,
     ignored: Vec<TestMetadata<'a>>,
 }
 
@@ -213,4 +255,5 @@ impl<'a> TestGroup<'a> {
 struct TestSuitesPage<'a> {
     suites: TestSuites<'a>,
     test_count: u64,
+    jobsets: JobSets,
 }

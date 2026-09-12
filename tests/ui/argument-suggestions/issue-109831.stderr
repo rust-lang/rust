@@ -1,12 +1,14 @@
 error[E0425]: cannot find type `C` in this scope
   --> $DIR/issue-109831.rs:4:24
    |
-LL | struct A;
-   | --------- similarly named struct `A` defined here
-...
 LL | fn f(b1: B, b2: B, a2: C) {}
-   |                        ^
+   |                        ^ not found in this scope
    |
+note: similarly named struct `A` defined here
+  --> $DIR/issue-109831.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL - fn f(b1: B, b2: B, a2: C) {}
@@ -20,12 +22,14 @@ LL | fn f<C>(b1: B, b2: B, a2: C) {}
 error[E0425]: cannot find value `C` in this scope
   --> $DIR/issue-109831.rs:7:16
    |
-LL | struct A;
-   | --------- similarly named unit struct `A` defined here
-...
 LL |     f(A, A, B, C);
-   |                ^
+   |                ^ not found in this scope
    |
+note: similarly named unit struct `A` defined here
+  --> $DIR/issue-109831.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     f(A, A, B, C);

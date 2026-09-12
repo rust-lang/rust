@@ -1,4 +1,6 @@
 #!/bin/sh
+# ignore-tidy-file-tab
+# ignore-tidy-file-linelength
 set -ex
 
 hide_output() {
@@ -41,8 +43,6 @@ if [ ! -d $MUSL ]; then
   # - https://www.openwall.com/lists/musl/2025/02/13/1/1
   # - https://www.openwall.com/lists/musl/2025/02/13/1/2
   #
-  # ignore-tidy-tab
-  # ignore-tidy-linelength
   patch -p1 -d $MUSL <<EOF
 --- a/src/locale/iconv.c
 +++ b/src/locale/iconv.c

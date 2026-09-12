@@ -5,10 +5,10 @@ LL | #[doc(alias)]
    |       ^^^^^
 
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/check-doc-alias-attr.rs:8:1
+  --> $DIR/check-doc-alias-attr.rs:8:3
    |
 LL | #[doc(alias = 0)]
-   | ^^^^^^^^^^^^^^-^^
+   |   ^^^^^^^^^^^^-^
    |               |
    |               expected a string literal here
 
@@ -57,10 +57,10 @@ LL | #[doc(alias = "")]
    |               ^^
 
 error[E0539]: malformed `doc` attribute input
-  --> $DIR/check-doc-alias-attr.rs:19:1
+  --> $DIR/check-doc-alias-attr.rs:19:3
    |
 LL | #[doc(alias(0))]
-   | ^^^^^^^^^^^^-^^^
+   |   ^^^^^^^^^^-^^
    |             |
    |             expected a string literal here
 

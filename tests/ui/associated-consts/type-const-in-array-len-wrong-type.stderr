@@ -1,5 +1,5 @@
 error: the constant `2` is not of type `usize`
-  --> $DIR/type-const-in-array-len-wrong-type.rs:10:26
+  --> $DIR/type-const-in-array-len-wrong-type.rs:13:26
    |
 LL |     fn lfn_contents() -> [char; Self::LFN_FRAGMENT_LEN] {
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i64`

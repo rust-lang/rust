@@ -42,7 +42,7 @@ enum CollectionMode {
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
         let mode = match tcx.def_kind(item) {
-            DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => {
                 CollectionMode::ImplTraitInAssocTypes
             }
             DefKind::TyAlias => CollectionMode::Taits,
@@ -186,7 +186,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             trace!(?define);
             let mode = std::mem::replace(&mut self.mode, CollectionMode::Taits);
             let n = self.opaques.len();
-            super::sig_types::walk_types(self.tcx, define, self);
+            rustc_ty_walk::walk_types(self.tcx, define, self);
             if n == self.opaques.len() {
                 self.tcx.dcx().span_err(span, "item does not contain any opaque types");
             }
@@ -198,7 +198,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     }
 }
 
-impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
+impl<'tcx> rustc_ty_walk::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
         self.visit_spanned(span, value);
@@ -328,18 +328,20 @@ fn opaque_types_defined_by<'tcx>(
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
     collector.collect_taits_from_defines_attr();
-    super::sig_types::walk_types(tcx, item, &mut collector);
+    rustc_ty_walk::walk_types(tcx, item, &mut collector);
 
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. }
-        | DefKind::AnonConst
-        | DefKind::InlineConst => {
+        | DefKind::Const
+        | DefKind::AssocConst
+        | DefKind::AnonConst => {
             // Non-type-system inline consts should be caught by `if tcx.is_typeck_child` above
-            debug_assert!(kind != DefKind::InlineConst || tcx.is_type_system_inline_const(item));
+            debug_assert!(
+                kind != DefKind::AnonConst
+                    || tcx.anon_const_kind(item) != ty::AnonConstKind::NonTypeSystemInline
+            );
 
             collector.collect_taits_declared_in_body();
         }
@@ -364,7 +366,8 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::ForeignMod
         | DefKind::Field
         | DefKind::LifetimeParam
-        | DefKind::Impl { .. } => {
+        | DefKind::Impl { .. }
+        | DefKind::TestBinderConstraints => {
             span_bug!(
                 tcx.def_span(item),
                 "`opaque_types_defined_by` not defined for {} `{item:?}`",

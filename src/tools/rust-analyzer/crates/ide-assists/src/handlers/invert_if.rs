@@ -115,6 +115,15 @@ mod tests {
     }
 
     #[test]
+    fn invert_if_general_case_needs_paren() {
+        check_assist(
+            invert_if,
+            "fn f() { i$0f cond as bool { 3 * 2 } else { 1 } }",
+            "fn f() { if !(cond as bool) { 1 } else { 3 * 2 } }",
+        )
+    }
+
+    #[test]
     fn invert_if_on_else_keyword() {
         check_assist(
             invert_if,

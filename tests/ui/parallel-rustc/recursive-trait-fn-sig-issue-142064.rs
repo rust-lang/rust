@@ -1,7 +1,4 @@
 // Test for #142064, internal error: entered unreachable code
-//
-//@ compile-flags: -Zthreads=2
-//@ compare-output-by-lines
 
 #![crate_type = "rlib"]
 trait A { fn foo() -> A; }

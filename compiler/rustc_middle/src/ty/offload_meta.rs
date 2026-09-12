@@ -76,7 +76,7 @@ impl OffloadMetadata {
         Ty<'tcx>: TyAbiInterface<'tcx, C>,
     {
         match arg_abi.layout.backend_repr {
-            BackendRepr::ScalarPair(_, _) => (0..2)
+            BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } => (0..2)
                 .map(|i| {
                     let ty = arg_abi.layout.field(cx, i).ty;
                     (OffloadMetadata::from_ty(tcx, ty), ty)

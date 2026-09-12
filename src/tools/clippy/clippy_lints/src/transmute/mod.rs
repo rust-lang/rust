@@ -21,9 +21,8 @@ use clippy_utils::msrvs::Msrv;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
@@ -493,7 +492,7 @@ pub struct Transmute {
 }
 impl Transmute {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 
     /// When transmuting, a struct containing a single field works like the field.

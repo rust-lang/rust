@@ -115,7 +115,7 @@ impl<'tcx> LoanKillsGenerator<'_, 'tcx> {
                     local, location
                 );
 
-                if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
+                if let Some(borrow_indices) = self.borrow_set.borrows_on_local(local) {
                     for &borrow_index in borrow_indices {
                         let places_conflict = places_conflict::places_conflict(
                             self.tcx,
@@ -137,7 +137,7 @@ impl<'tcx> LoanKillsGenerator<'_, 'tcx> {
 
     /// Records the borrows on the specified local as `killed`.
     fn record_killed_borrows_for_local(&mut self, local: Local, location: Location) {
-        if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
+        if let Some(borrow_indices) = self.borrow_set.borrows_on_local(local) {
             let location_index = self.location_table.mid_index(location);
             self.facts.loan_killed_at.reserve(borrow_indices.len());
             for &borrow_index in borrow_indices {

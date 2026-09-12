@@ -334,6 +334,15 @@ fn sleep_ms_smoke() {
 }
 
 #[test]
+fn sleep_until_elapsed() {
+    // UNIX's `clock_nanosleep` doesn't like timeouts that are too far back.
+    // Test that `sleep_until` returns immediately instead of panicking.
+    // Going 10 years back should be enough to trigger any errors.
+    let earlier = Instant::now() - Duration::from_secs(10 * 365 * 24 * 3600);
+    thread::sleep_until(earlier);
+}
+
+#[test]
 fn test_size_of_option_thread_id() {
     assert_eq!(size_of::<Option<ThreadId>>(), size_of::<ThreadId>());
 }
@@ -354,6 +363,19 @@ fn test_thread_os_id_not_equal() {
     let spawned_id = thread::spawn(|| thread::current_os_id()).join().unwrap();
     let current_id = thread::current_os_id();
     assert!(current_id != spawned_id);
+}
+
+#[test]
+fn test_thread_os_id_matches_current() {
+    assert_eq!(thread::current().os_id(), crate::sys::thread::current_os_id());
+}
+
+#[test]
+fn test_thread_os_id_of_spawned_thread() {
+    let spawned = thread::spawn(|| thread::current().os_id());
+    let handle = spawned.thread().clone();
+    let spawned_id = spawned.join().unwrap();
+    assert_eq!(handle.os_id(), spawned_id);
 }
 
 #[test]

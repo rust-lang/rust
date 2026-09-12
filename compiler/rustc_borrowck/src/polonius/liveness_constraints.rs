@@ -1,30 +1,27 @@
-use std::collections::BTreeMap;
-
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::relate::{
     self, Relate, RelateResult, TypeRelation, relate_args_with_variances,
 };
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 
-use super::{ConstraintDirection, PoloniusContext};
+use super::ConstraintDirection;
+use crate::polonius::LiveRegionVariances;
 use crate::universal_regions::UniversalRegions;
 
-impl PoloniusContext {
-    /// Record the variance of each region contained within the given value.
-    pub(crate) fn record_live_region_variance<'tcx>(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        universal_regions: &UniversalRegions<'tcx>,
-        value: impl TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
-    ) {
-        let mut extractor = VarianceExtractor {
-            tcx,
-            ambient_variance: ty::Variance::Covariant,
-            directions: &mut self.live_region_variances,
-            universal_regions,
-        };
-        extractor.relate(value, value).expect("Can't have a type error relating to itself");
-    }
+/// Record the variance of each region contained within the given value.
+pub(crate) fn record_live_region_variance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    live_region_variances: &mut LiveRegionVariances,
+    universal_regions: &UniversalRegions<'tcx>,
+    value: impl TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
+) {
+    let mut extractor = VarianceExtractor {
+        tcx,
+        ambient_variance: ty::Variance::Covariant,
+        directions: live_region_variances,
+        universal_regions,
+    };
+    extractor.relate(value, value).expect("Can't have a type error relating to itself");
 }
 
 /// Extracts variances for regions contained within types. Follows the same structure as
@@ -33,7 +30,7 @@ impl PoloniusContext {
 struct VarianceExtractor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     ambient_variance: ty::Variance,
-    directions: &'a mut BTreeMap<RegionVid, ConstraintDirection>,
+    directions: &'a mut LiveRegionVariances,
     universal_regions: &'a UniversalRegions<'tcx>,
 }
 
@@ -74,17 +71,14 @@ impl<'tcx> VarianceExtractor<'_, 'tcx> {
         };
 
         let region = self.universal_regions.to_region_vid(region);
-        self.directions
-            .entry(region)
-            .and_modify(|entry| {
-                // If there's already a recorded direction for this region, we combine the two:
-                // - combining the same direction is idempotent
-                // - combining different directions is trivially bidirectional
-                if entry != &direction {
-                    *entry = ConstraintDirection::Bidirectional;
-                }
-            })
-            .or_insert(direction);
+        let entry = self.directions.ensure_contains_elem(region, || None);
+        *entry = match *entry {
+            // If there's already a recorded direction for this region, we combine the two:
+            // - combining the same direction is idempotent
+            // - combining different directions is trivially bidirectional
+            Some(existing) if existing != direction => Some(ConstraintDirection::Bidirectional),
+            _ => Some(direction),
+        };
     }
 }
 

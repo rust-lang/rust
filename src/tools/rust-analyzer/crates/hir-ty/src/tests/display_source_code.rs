@@ -69,7 +69,7 @@ fn test<'a>(
     _: &(dyn A<Assoc = ()> + Send),
   //^ &(dyn A<Assoc = ()> + Send + 'static)
     _: &'a (dyn Send + A<Assoc = ()>),
-  //^ &'a (dyn A<Assoc = ()> + Send + 'static)
+  //^ &(dyn A<Assoc = ()> + Send + 'static)
     _: &dyn B<Assoc = ()>,
   //^ &(dyn B<Assoc = ()> + 'static)
 ) {}
@@ -85,7 +85,20 @@ fn render_dyn_for_ty() {
 trait Foo<'a> {}
 
 fn foo(foo: &dyn for<'a> Foo<'a>) {}
-    // ^^^ &(dyn Foo<'?> + 'static)
+    // ^^^ &(dyn Foo<'?0.0> + 'static)
+"#,
+    );
+}
+
+#[test]
+fn render_dyn_ty_under_enclosing_binder() {
+    check_types_source_code(
+        r#"
+//- minicore: fn
+fn test(f: impl for<'b> Fn(&dyn Fn() -> &'b u8)) {
+    f;
+  //^ impl Fn(&(dyn Fn() -> &u8 + 'static))
+}
 "#,
     );
 }

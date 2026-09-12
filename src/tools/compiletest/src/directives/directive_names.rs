@@ -43,6 +43,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "force-host",
     "gdb-check",
     "gdb-command",
+    "gdb-repr",
     "ignore-16bit",
     "ignore-32bit",
     "ignore-64bit",
@@ -104,11 +105,13 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-nto",
     "ignore-nvptx64",
     "ignore-nvptx64-nvidia-cuda",
+    "ignore-ohos",
     "ignore-openbsd",
     "ignore-parallel-frontend",
     "ignore-pauthtest",
     "ignore-powerpc",
     "ignore-powerpc64",
+    "ignore-qnx",
     "ignore-remote",
     "ignore-riscv32",
     "ignore-riscv64",
@@ -135,6 +138,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-vxworks",
     "ignore-wasi",
     "ignore-wasm",
+    "ignore-wasm-proc-macros",
     "ignore-wasm32",
     "ignore-wasm32-unknown-unknown",
     "ignore-wasm64",
@@ -153,11 +157,13 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "known-bug",
     "lldb-check",
     "lldb-command",
+    "lldb-repr",
     "llvm-cov-flags",
     "max-llvm-major-version",
+    "min-apple-lldb-version",
     "min-cdb-version",
     "min-gdb-version",
-    "min-lldb-version",
+    "min-llvm-lldb-version",
     "min-llvm-version",
     "min-system-llvm-version",
     "minicore-compile-flags",
@@ -263,6 +269,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-uefi",
     "only-unix",
     "only-visionos",
+    "only-wasm-proc-macros",
     "only-wasm32",
     "only-wasm32-unknown-emscripten",
     "only-wasm32-unknown-unknown",
@@ -304,6 +311,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "unset-rustc-env",
     // Used by the tidy check `unknown_revision`.
     "unused-revision-names",
+    "use-rustdoc-cci-doc-meta-merge",
     // tidy-alphabetical-end
 ];
 
@@ -326,5 +334,23 @@ pub(crate) const KNOWN_HTMLDOCCK_DIRECTIVE_NAMES: &[&str] = &[
     "!snapshot",
 ];
 
-pub(crate) const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
-    &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
+pub(crate) const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] = &[
+    "count",
+    "!count",
+    "has",
+    "!has",
+    "is",
+    "!is",
+    "ismany",
+    "!ismany",
+    "set",
+    "jq_count",
+    "!jq_count",
+    "jq_has",
+    "!jq_has",
+    "jq_is",
+    "!jq_is",
+    "jq_ismany",
+    "!jq_ismany",
+    "jq_set",
+];

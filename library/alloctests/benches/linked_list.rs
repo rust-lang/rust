@@ -1,6 +1,6 @@
 use std::collections::LinkedList;
 
-use test::Bencher;
+use test::{Bencher, black_box};
 
 #[bench]
 fn bench_collect_into(b: &mut Bencher) {
@@ -45,34 +45,39 @@ fn bench_push_front_pop_front(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_iter(b: &mut Bencher) {
-    let v = &[0; 128];
-    let m: LinkedList<_> = v.iter().cloned().collect();
+fn bench_iter_count(b: &mut Bencher) {
+    let m: LinkedList<_> = (0..128).collect();
     b.iter(|| {
-        assert!(m.iter().count() == 128);
+        assert!(black_box(&m).iter().count() == 128);
     })
 }
+
+#[bench]
+fn bench_iter(b: &mut Bencher) {
+    let m: LinkedList<usize> = (0..128).collect();
+    b.iter(|| {
+        assert!((0..128).sum::<usize>() == black_box(&m).iter().sum());
+    })
+}
+
 #[bench]
 fn bench_iter_mut(b: &mut Bencher) {
-    let v = &[0; 128];
-    let mut m: LinkedList<_> = v.iter().cloned().collect();
+    let mut m: LinkedList<usize> = (0..128).collect();
     b.iter(|| {
-        assert!(m.iter_mut().count() == 128);
+        black_box(&mut m).iter_mut().for_each(|x| *x += 1);
     })
 }
 #[bench]
 fn bench_iter_rev(b: &mut Bencher) {
-    let v = &[0; 128];
-    let m: LinkedList<_> = v.iter().cloned().collect();
+    let m: LinkedList<usize> = (0..128).collect();
     b.iter(|| {
-        assert!(m.iter().rev().count() == 128);
+        assert!((0..128).sum::<usize>() == black_box(&m).iter().rev().sum());
     })
 }
 #[bench]
 fn bench_iter_mut_rev(b: &mut Bencher) {
-    let v = &[0; 128];
-    let mut m: LinkedList<_> = v.iter().cloned().collect();
+    let mut m: LinkedList<usize> = (0..128).collect();
     b.iter(|| {
-        assert!(m.iter_mut().rev().count() == 128);
+        black_box(&mut m).iter_mut().rev().for_each(|x| *x += 1);
     })
 }

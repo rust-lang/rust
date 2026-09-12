@@ -1,17 +1,17 @@
 use std::num::NonZero;
 
+use rustc_attr_ir::target::{AssocCtxt, GenericParamKind, MethodKind, Target};
+use rustc_attr_ir::{
+    DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
+    UnstableReason, UnstableRemovedFeature, VERSION_PLACEHOLDER,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{ACCEPTED_LANG_FEATURES, AttributeStability};
-use rustc_hir::attrs::UnstableRemovedFeature;
-use rustc_hir::target::GenericParamKind;
-use rustc_hir::{
-    DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
-    StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
-};
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics;
+use crate::context::ExpectNameValue;
+use crate::diagnostics;
 
 const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Fn),
@@ -29,8 +29,12 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Mod),
     Allow(Target::Use), // FIXME I don't think this does anything?
     Allow(Target::Const),
-    Allow(Target::AssocConst),
-    Allow(Target::AssocTy),
+    Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+    Allow(Target::AssocConst(AssocCtxt::Trait)),
+    Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+    Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+    Allow(Target::AssocTy(AssocCtxt::Trait)),
+    Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
     Allow(Target::Trait),
     Allow(Target::TraitAlias),
     Allow(Target::TyAlias),
@@ -46,7 +50,7 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
 
 #[derive(Default)]
 pub(crate) struct StabilityParser {
-    allowed_through_unstable_modules: Option<Symbol>,
+    allowed_through_unstable_modules: Option<(Symbol, Symbol)>,
     stability: Option<(Stability, Span)>,
 }
 
@@ -54,7 +58,7 @@ impl StabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
     fn check_duplicate(&self, cx: &AcceptContext<'_, '_>) -> bool {
         if let Some((_, _)) = self.stability {
-            cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
+            cx.emit_err(diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
         } else {
             false
@@ -90,16 +94,51 @@ impl AttributeParser for StabilityParser {
         ),
         (
             &[sym::rustc_allowed_through_unstable_modules],
-            template!(NameValueStr: "deprecation message"),
+            template!(List: &[r#"message = "...", module = "..."#]),
             unstable!(staged_api),
             |this, cx, args| {
-                let Some(nv) = cx.expect_name_value(args, cx.attr_span, None) else {
-                    return;
-                };
-                let Some(value_str) = cx.expect_string_literal(nv) else {
-                    return;
-                };
-                this.allowed_through_unstable_modules = Some(value_str);
+                let Some(list) = cx.expect_list(args, cx.attr_span) else { return };
+                let mut message = None;
+                let mut module = None;
+
+                for item in list.mixed() {
+                    let Some((name, value)) = item.expect_name_value(cx, item.span(), None) else {
+                        return;
+                    };
+                    let Some(value) = cx.expect_string_literal(value) else {
+                        return;
+                    };
+
+                    match name.name {
+                        sym::message => {
+                            if message.is_some() {
+                                cx.adcx().duplicate_key(name.span, name.name);
+                            } else {
+                                message = Some(value)
+                            }
+                        }
+                        sym::module => {
+                            if module.is_some() {
+                                cx.adcx().duplicate_key(name.span, name.name);
+                            } else {
+                                module = Some(value)
+                            }
+                        }
+                        _ => {
+                            cx.adcx().expected_specific_argument(
+                                name.span,
+                                &[sym::message, sym::module],
+                            );
+                        }
+                    }
+                }
+
+                let allowed_through_unstable_modules = try { (message?, module?) };
+                if allowed_through_unstable_modules.is_none() {
+                    cx.emit_err(diagnostics::RustcAtumMissingParams { span: cx.attr_span });
+                }
+
+                this.allowed_through_unstable_modules = allowed_through_unstable_modules;
             },
         ),
     ];
@@ -117,16 +156,15 @@ impl AttributeParser for StabilityParser {
             {
                 *allowed_through_unstable_modules = Some(atum);
             } else {
-                cx.dcx().emit_err(session_diagnostics::RustcAllowedUnstablePairing {
-                    span: cx.target_span,
-                });
+                cx.dcx()
+                    .emit_err(diagnostics::RustcAllowedUnstablePairing { span: cx.target_span });
             }
         }
 
         if let Some((Stability { level: StabilityLevel::Stable { .. }, .. }, _)) = self.stability {
             for other_attr in cx.all_attrs {
                 if other_attr.word_is(sym::unstable_feature_bound) {
-                    cx.emit_err(session_diagnostics::UnstableFeatureBoundIncompatibleStability {
+                    cx.emit_err(diagnostics::UnstableFeatureBoundIncompatibleStability {
                         span: cx.target_span,
                     });
                 }
@@ -152,8 +190,7 @@ impl AttributeParser for BodyStabilityParser {
         unstable!(staged_api),
         |this, cx, args| {
             if this.stability.is_some() {
-                cx.dcx()
-                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
+                cx.dcx().emit_err(diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             } else if let Some((feature, level)) = parse_unstability(cx, args) {
                 this.stability = Some((DefaultBodyStability { level, feature }, cx.attr_span));
             }
@@ -190,7 +227,7 @@ impl ConstStabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
     fn check_duplicate(&self, cx: &AcceptContext<'_, '_>) -> bool {
         if let Some((_, _)) = self.stability {
-            cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
+            cx.emit_err(diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
         } else {
             false
@@ -210,7 +247,7 @@ impl AttributeParser for ConstStabilityParser {
                 {
                     this.stability = Some((
                         PartialConstStability { level, feature, promotable: false },
-                        cx.attr_span,
+                        cx.attr_path.span,
                     ));
                 }
             },
@@ -225,7 +262,7 @@ impl AttributeParser for ConstStabilityParser {
                 {
                     this.stability = Some((
                         PartialConstStability { level, feature, promotable: false },
-                        cx.attr_span,
+                        cx.attr_path.span,
                     ));
                 }
             },
@@ -243,7 +280,9 @@ impl AttributeParser for ConstStabilityParser {
         Allow(Target::Impl { of_trait: true }),
         Allow(Target::Use), // FIXME I don't think this does anything?
         Allow(Target::Const),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Trait),
         Allow(Target::Static),
         Allow(Target::Crate),
@@ -254,8 +293,7 @@ impl AttributeParser for ConstStabilityParser {
             if let Some((ref mut stab, _)) = self.stability {
                 stab.promotable = true;
             } else {
-                cx.dcx()
-                    .emit_err(session_diagnostics::RustcPromotablePairing { span: cx.target_span });
+                cx.dcx().emit_err(diagnostics::RustcPromotablePairing { span: cx.target_span });
             }
         }
 
@@ -309,10 +347,10 @@ pub(crate) fn parse_stability(
         let word = param.path().word();
         match word.map(|i| i.name) {
             Some(sym::feature) => {
-                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut feature, word.unwrap())?
             }
             Some(sym::since) => {
-                insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut since, word.unwrap())?
             }
             _ => {
                 cx.adcx().expected_specific_argument(param_span, &[sym::feature, sym::since]);
@@ -323,10 +361,8 @@ pub(crate) fn parse_stability(
 
     let feature = match feature {
         Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
-        Some(_bad_feature) => {
-            Err(cx.emit_err(session_diagnostics::NonIdentFeature { span: cx.attr_span }))
-        }
-        None => Err(cx.emit_err(session_diagnostics::MissingFeature { span: cx.attr_span })),
+        Some(_bad_feature) => Err(cx.emit_err(diagnostics::NonIdentFeature { span: cx.attr_span })),
+        None => Err(cx.emit_err(diagnostics::MissingFeature { span: cx.attr_span })),
     };
 
     let since = if let Some(since) = since {
@@ -335,11 +371,11 @@ pub(crate) fn parse_stability(
         } else if let Some(version) = parse_version(since) {
             StableSince::Version(version)
         } else {
-            let err = cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            let err = cx.emit_err(diagnostics::InvalidSince { span: cx.attr_span });
             StableSince::Err(err)
         }
     } else {
-        let err = cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+        let err = cx.emit_err(diagnostics::MissingSince { span: cx.attr_span });
         StableSince::Err(err)
     };
 
@@ -376,13 +412,13 @@ pub(crate) fn parse_unstability(
         let word = param.path().word();
         match word.map(|i| i.name) {
             Some(sym::feature) => {
-                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut feature, word.unwrap())?
             }
             Some(sym::reason) => {
-                insert_value_into_option_or_error(cx, &param, &mut reason, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut reason, word.unwrap())?
             }
             Some(sym::issue) => {
-                insert_value_into_option_or_error(cx, &param, &mut issue, word.unwrap())?;
+                insert_value_into_option_or_error(cx, param, &mut issue, word.unwrap())?;
 
                 // These unwraps are safe because `insert_value_into_option_or_error` ensures the meta item
                 // is a name/value pair string literal.
@@ -391,25 +427,23 @@ pub(crate) fn parse_unstability(
                     issue_str => match issue_str.parse::<NonZero<u32>>() {
                         Ok(num) => Some(num),
                         Err(err) => {
-                            cx.emit_err(
-                                session_diagnostics::InvalidIssueString {
-                                    span: param.span(),
-                                    cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
-                                        param.args().as_name_value().unwrap().value_span,
-                                        err.kind(),
-                                    ),
-                                },
-                            );
+                            cx.emit_err(diagnostics::InvalidIssueString {
+                                span: param.span(),
+                                cause: diagnostics::InvalidIssueStringCause::from_int_error_kind(
+                                    param.args().as_name_value().unwrap().value_span,
+                                    err.kind(),
+                                ),
+                            });
                             return None;
                         }
                     },
                 };
             }
             Some(sym::implied_by) => {
-                insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut implied_by, word.unwrap())?
             }
             Some(sym::old_name) => {
-                insert_value_into_option_or_error(cx, &param, &mut old_name, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut old_name, word.unwrap())?
             }
             _ => {
                 cx.adcx().expected_specific_argument(
@@ -423,21 +457,18 @@ pub(crate) fn parse_unstability(
 
     let feature = match feature {
         Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
-        Some(_bad_feature) => {
-            Err(cx.emit_err(session_diagnostics::NonIdentFeature { span: cx.attr_span }))
-        }
-        None => Err(cx.emit_err(session_diagnostics::MissingFeature { span: cx.attr_span })),
+        Some(_bad_feature) => Err(cx.emit_err(diagnostics::NonIdentFeature { span: cx.attr_span })),
+        None => Err(cx.emit_err(diagnostics::MissingFeature { span: cx.attr_span })),
     };
 
-    let issue =
-        issue.ok_or_else(|| cx.emit_err(session_diagnostics::MissingIssue { span: cx.attr_span }));
+    let issue = issue.ok_or_else(|| cx.emit_err(diagnostics::MissingIssue { span: cx.attr_span }));
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
             // Stable *language* features shouldn't be used as unstable library features.
             // (Not doing this for stable library features is checked by tidy.)
             if ACCEPTED_LANG_FEATURES.iter().any(|f| f.name == feature) {
-                cx.emit_err(session_diagnostics::UnstableAttrForAlreadyStableFeature {
+                cx.emit_err(diagnostics::UnstableAttrForAlreadyStableFeature {
                     attr_span: cx.attr_span,
                     item_span: cx.target_span,
                 });
@@ -493,10 +524,10 @@ impl CombineAttributeParser for UnstableRemovedParser {
                 return None;
             };
             match word.name {
-                sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature, word)?,
-                sym::since => insert_value_into_option_or_error(cx, &param, &mut since, word)?,
-                sym::reason => insert_value_into_option_or_error(cx, &param, &mut reason, word)?,
-                sym::link => insert_value_into_option_or_error(cx, &param, &mut link, word)?,
+                sym::feature => insert_value_into_option_or_error(cx, param, &mut feature, word)?,
+                sym::since => insert_value_into_option_or_error(cx, param, &mut since, word)?,
+                sym::reason => insert_value_into_option_or_error(cx, param, &mut reason, word)?,
+                sym::link => insert_value_into_option_or_error(cx, param, &mut link, word)?,
                 _ => {
                     cx.adcx().expected_specific_argument(
                         param.span(),
@@ -526,7 +557,7 @@ impl CombineAttributeParser for UnstableRemovedParser {
         };
 
         let Some(version) = parse_version(since) else {
-            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            cx.emit_err(diagnostics::InvalidSince { span: cx.attr_span });
             return None;
         };
 

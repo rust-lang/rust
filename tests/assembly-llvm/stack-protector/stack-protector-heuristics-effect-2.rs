@@ -8,6 +8,7 @@
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [none] compile-flags: -Z stack-protector=none
 //@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
+//@ min-llvm-version: 23
 
 #![crate_type = "lib"]
 #![allow(internal_features)]

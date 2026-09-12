@@ -1,11 +1,12 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_hir::attrs::{InstructionSetAttr, Linkage};
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
+use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};
 use rustc_middle::mono::{MonoItemData, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{Arch, BinaryFormat, Env, Os};
@@ -53,7 +54,9 @@ pub fn codegen_naked_asm<
     template_vec.extend(template.iter().cloned());
     template_vec.push(rustc_ast::ast::InlineAsmTemplatePiece::String(end.into()));
 
-    cx.codegen_global_asm(&template_vec, &operands, options, line_spans);
+    let target_features: Vec<_> =
+        cx.tcx().asm_target_features(instance.def_id()).iter().map(|s| s.to_string()).collect();
+    cx.codegen_global_asm(&template_vec, &operands, options, line_spans, &target_features);
 }
 
 fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>>(
@@ -77,15 +80,18 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 cx.typing_env(),
                 ty::EarlyBinder::bind(cx.tcx(), value.ty()),
             );
+            let mir::ConstValue::Scalar(scalar) = const_value else {
+                span_bug!(
+                    value.span,
+                    "expected Scalar for promoted asm const, but got {:#?}",
+                    const_value
+                )
+            };
 
-            let string = common::asm_const_to_str(
-                cx.tcx(),
-                value.span,
-                const_value,
-                cx.layout_of(mono_type),
-            );
-
-            GlobalAsmOperandRef::Const { string }
+            GlobalAsmOperandRef::Const {
+                value: common::asm_const_ptr_clean(cx.tcx(), scalar),
+                ty: mono_type,
+            }
         }
         InlineAsmOperand::SymFn { value } => {
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -95,16 +101,36 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             );
 
             let instance = match mono_type.kind() {
-                &ty::FnDef(def_id, args) => {
-                    Instance::expect_resolve(cx.tcx(), cx.typing_env(), def_id, args, value.span)
-                }
+                &ty::FnDef(def_id, args) => Instance::expect_resolve(
+                    cx.tcx(),
+                    cx.typing_env(),
+                    def_id,
+                    args.no_bound_vars().unwrap(),
+                    value.span,
+                ),
                 _ => bug!("asm sym is not a function"),
             };
 
-            GlobalAsmOperandRef::SymFn { instance }
+            GlobalAsmOperandRef::Const {
+                value: Scalar::from_pointer(
+                    cx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                    cx,
+                ),
+                ty: Ty::new_fn_ptr(cx.tcx(), mono_type.fn_sig(cx.tcx())),
+            }
         }
         InlineAsmOperand::SymStatic { def_id } => {
-            GlobalAsmOperandRef::SymStatic { def_id: *def_id }
+            if cx.tcx().is_thread_local_static(*def_id) {
+                GlobalAsmOperandRef::SymThreadLocalStatic { def_id: *def_id }
+            } else {
+                GlobalAsmOperandRef::Const {
+                    value: Scalar::from_pointer(
+                        cx.tcx().reserve_and_set_static_alloc(*def_id).into(),
+                        cx,
+                    ),
+                    ty: cx.tcx().static_ptr_ty(*def_id, cx.typing_env()),
+                }
+            }
         }
         InlineAsmOperand::In { .. }
         | InlineAsmOperand::Out { .. }
@@ -127,7 +153,7 @@ fn prefix_and_suffix<'tcx>(
     let asm_binary_format = &tcx.sess.target.binary_format;
 
     let is_arm = tcx.sess.target.arch == Arch::Arm;
-    let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
+    let is_thumb = tcx.sess.internal_target_features.contains(&sym::thumb_mode);
     let function_sections =
         tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections);
 
@@ -441,16 +467,16 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
             signature.push_str(direct_type);
         }
         PassMode::Pair(_, _) => match arg_abi.layout.backend_repr {
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                 signature.push_str(wasm_primitive(a.primitive(), ptr_type));
                 signature.push_str(", ");
                 signature.push_str(wasm_primitive(b.primitive(), ptr_type));
             }
             other => unreachable!("{other:?}"),
         },
-        PassMode::Cast { pad_i32, ref cast } => {
+        PassMode::Cast { pad_i32_count, ref cast } => {
             // For wasm, Cast is used for single-field primitive wrappers like `struct Wrapper(i64);`
-            assert!(!pad_i32, "not currently used by wasm calling convention");
+            assert_eq!(pad_i32_count, 0, "not currently used by wasm calling convention");
             assert!(cast.prefix.is_empty(), "no prefix");
             assert_eq!(cast.rest.total, arg_abi.layout.size, "single item");
 

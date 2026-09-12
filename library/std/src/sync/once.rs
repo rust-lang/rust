@@ -72,6 +72,7 @@ pub(crate) enum OnceExclusiveState {
     note = "the `Once::new()` function is now preferred",
     suggestion = "Once::new()"
 )]
+#[expect(clippy::declare_interior_mutable_const, reason = "legacy Once initializer")]
 pub const ONCE_INIT: Once = Once::new();
 
 impl Once {
@@ -296,6 +297,7 @@ impl Once {
     /// If this [`Once`] has been poisoned because an initialization closure has
     /// panicked, this method will also panic. Use [`wait_force`](Self::wait_force)
     /// if this behavior is not desired.
+    #[inline]
     #[stable(feature = "once_wait", since = "1.86.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn wait(&self) {
@@ -309,6 +311,7 @@ impl Once {
     ///
     /// If this [`Once`] has been poisoned, this function blocks until it
     /// becomes completed, unlike [`Once::wait()`], which panics in this case.
+    #[inline]
     #[stable(feature = "once_wait", since = "1.86.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn wait_force(&self) {
@@ -342,6 +345,16 @@ impl Once {
 impl fmt::Debug for Once {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Once").finish_non_exhaustive()
+    }
+}
+
+#[stable(feature = "once_default", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+const impl Default for Once {
+    /// Creates a new `Once` value, same as [`Once::new`].
+    #[inline]
+    fn default() -> Once {
+        Once::new()
     }
 }
 

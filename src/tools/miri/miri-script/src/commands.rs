@@ -55,7 +55,7 @@ impl MiriEnv {
             .cargo_cmd("cargo-miri", "run", &[])
             .arg("--quiet")
             .arg("--")
-            .args(&["miri", "setup", "--print-sysroot"])
+            .args(["miri", "setup", "--print-sysroot"])
             .args(target_flag);
         if quiet {
             cmd = cmd.arg("--quiet");
@@ -158,7 +158,7 @@ impl Command {
 
         cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
             .run()
-            .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install rustup-toolchain-install-master'.")?;
+            .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install --locked rustup-toolchain-install-master'.")?;
         cmd!(sh, "rustup override set miri").run()?;
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
@@ -511,7 +511,7 @@ impl Command {
             // We invoke the test suite as that has all the logic for running with dependencies.
             let mut cmd = e
                 .cargo_cmd(".", "test", &features)
-                .args(&["--test", "ui"])
+                .args(["--test", "ui"])
                 // This does not show anything useful so we always hide it.
                 .arg("--quiet")
                 .arg("--")

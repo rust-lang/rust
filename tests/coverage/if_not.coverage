@@ -6,25 +6,25 @@
    LL|       |    if
    LL|     12|        !
    LL|     12|        cond
-   LL|      4|    {
+   LL|       |    {
    LL|      4|        println!("cond was false");
    LL|      8|    }
    LL|       |
    LL|       |    if
    LL|     12|        !
    LL|     12|        cond
-   LL|      4|    {
+   LL|       |    {
    LL|      4|        println!("cond was false");
    LL|      8|    }
    LL|       |
    LL|       |    if
    LL|     12|        !
    LL|     12|        cond
-   LL|      4|    {
+   LL|       |    {
    LL|      4|        println!("cond was false");
-   LL|      8|    } else {
+   LL|       |    } else {
    LL|      8|        println!("cond was true");
-   LL|      8|    }
+   LL|       |    }
    LL|     12|}
    LL|       |
    LL|       |#[coverage(off)]

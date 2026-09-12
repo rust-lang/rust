@@ -1,9 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::relate::{
-    PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
-};
+use rustc_infer::infer::relate::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_infer::traits::Obligation;
 use rustc_infer::traits::solve::Goal;
@@ -146,7 +144,31 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                 variance,
                 ty,
             )?;
-            Ok(infcx.resolve_vars_if_possible(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid))))
+            let new_var =
+                infcx.deeply_resolve_ignoring_regions(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid)));
+
+            // Any regions in this new type must be live everywhere, so we mark them as such.
+            // (It may be that it only needs to be live where the opaque type itself is - which
+            // includes defining use sites, but we'll be conservative and mark all points as live).
+            // This is needed for Polonius, which doesn't propagate constraints
+            // through dead regions. See issue #160669.
+            //
+            // We only do this in the root universe. Inside a binder these regions live in a higher
+            // universe and their values contain placeholders; marking them live at every point
+            // leaks those placeholders, turning the higher-ranked check into an error which then
+            // suppresses the deferred opaque type diagnostics.
+            if infcx.universe() == ty::UniverseIndex::ROOT {
+                let tcx = infcx.tcx;
+                let liveness = &mut self.type_checker.constraints.liveness_constraints;
+                ty::fold_regions(tcx, new_var, |r, _| {
+                    if let ty::ReVar(vid) = r.kind() {
+                        liveness.add_all_points(vid);
+                    }
+                    r
+                });
+            }
+
+            Ok(new_var)
         };
 
         let (a, b) = match (a.kind(), b.kind()) {
@@ -381,6 +403,19 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 );
             }
 
+            (&ty::Alias(ty::IsRigid::No, _), _) | (_, &ty::Alias(ty::IsRigid::No, _))
+                if infcx.next_trait_solver() =>
+            {
+                // NOTE(khyperia): If this turns out to be possible, either the caller should
+                // normalize the alias, or we should normalize the alias here. See the PR that
+                // introduced this comment for how to do so, which normalizes aliases in other
+                // relations.
+                span_bug!(
+                    self.span(),
+                    "it should not be possible to encounter unnormalized aliases in borrowck"
+                );
+            }
+
             (&ty::Infer(ty::TyVar(a_vid)), _) => {
                 infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?
             }
@@ -552,10 +587,6 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
         self.locations.span(self.type_checker.body)
     }
 
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        StructurallyRelateAliases::No
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.type_checker.infcx.param_env
     }
@@ -595,29 +626,5 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
                 region_constraints: None,
             },
         );
-    }
-
-    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
-            ty::Covariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            // a :> b is b <: a
-            ty::Contravariant => ty::PredicateKind::AliasRelate(
-                b.into(),
-                a.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            ty::Invariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Equate,
-            ),
-            ty::Bivariant => {
-                unreachable!("cannot defer an alias-relate goal with Bivariant variance (yet?)")
-            }
-        })]);
     }
 }

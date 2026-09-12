@@ -48,6 +48,12 @@ impl<K: Hash + Eq, V> DelayedMap<K, V> {
     fn cold_get(&self, key: &K) -> Option<&V> {
         self.cache.get(key)
     }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.cache.clear();
+        self.count = 0;
+    }
 }
 
 #[derive(Debug)]
@@ -88,5 +94,11 @@ impl<T: Hash + Eq> DelayedSet<T> {
     #[inline(never)]
     fn cold_contains(&self, value: &T) -> bool {
         self.cache.contains(value)
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.cache.clear();
+        self.count = 0;
     }
 }

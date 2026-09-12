@@ -245,6 +245,32 @@ function preLoadCss(cssUrl) {
     window.searchState = {
         rustdocToolbar: document.querySelector("rustdoc-toolbar"),
         loadingText: "Loading search results...",
+        searchLoaded: false,
+        loadSearch() {
+            // If you're browsing the nightly docs, the page might need to be refreshed for
+            // the search to work because the hash of the JS scripts might have changed.
+            function sendSearchForm() {
+                // @ts-expect-error
+                document.getElementsByClassName("search-form")[0].submit();
+            }
+            if (!window.searchState.searchLoaded) {
+                window.searchState.searchLoaded = true;
+                window.rr_ = data => {
+                    window.searchIndex = data;
+                };
+                if (!window.StringdexOnload) {
+                    window.StringdexOnload = [];
+                }
+                window.StringdexOnload.push(() => {
+                    loadScript(
+                        getVar("static-root-path") + getVar("search-js"),
+                        sendSearchForm,
+                    );
+                });
+                loadScript(getVar("static-root-path") + getVar("stringdex-js"), sendSearchForm);
+                loadScript(resourcePath("search.index/root", ".js"), sendSearchForm);
+            }
+        },
         inputElement: () => {
             let el = document.getElementsByClassName("search-input")[0];
             if (!el) {
@@ -269,6 +295,10 @@ function preLoadCss(cssUrl) {
                 </nav><div class="search-switcher"></div>`;
                 out.insertBefore(hdr, window.searchState.outputElement());
                 el = document.getElementsByClassName("search-input")[0];
+
+                el.addEventListener("focus", () => {
+                    window.searchState.loadSearch();
+                });
             }
             if (el instanceof HTMLInputElement) {
                 return el;
@@ -391,41 +421,6 @@ function preLoadCss(cssUrl) {
             return params;
         },
         setup: () => {
-            let searchLoaded = false;
-            const search_input = window.searchState.inputElement();
-            if (!search_input) {
-                return;
-            }
-            // If you're browsing the nightly docs, the page might need to be refreshed for the
-            // search to work because the hash of the JS scripts might have changed.
-            function sendSearchForm() {
-                // @ts-expect-error
-                document.getElementsByClassName("search-form")[0].submit();
-            }
-            function loadSearch() {
-                if (!searchLoaded) {
-                    searchLoaded = true;
-                    window.rr_ = data => {
-                        window.searchIndex = data;
-                    };
-                    if (!window.StringdexOnload) {
-                        window.StringdexOnload = [];
-                    }
-                    window.StringdexOnload.push(() => {
-                        loadScript(
-                            getVar("static-root-path") + getVar("search-js"),
-                            sendSearchForm,
-                        );
-                    });
-                    loadScript(getVar("static-root-path") + getVar("stringdex-js"), sendSearchForm);
-                    loadScript(resourcePath("search.index/root", ".js"), sendSearchForm);
-                }
-            }
-
-            search_input.addEventListener("focus", () => {
-                loadSearch();
-            });
-
             const btn = document.getElementById("search-button");
             if (btn) {
                 btn.onclick = event => {
@@ -434,7 +429,7 @@ function preLoadCss(cssUrl) {
                     }
                     event.preventDefault();
                     window.searchState.toggle();
-                    loadSearch();
+                    window.searchState.loadSearch();
                 };
             }
 
@@ -455,7 +450,7 @@ function preLoadCss(cssUrl) {
                     // previous state with nothing in the bar.
                     const inputElement = window.searchState.inputElement();
                     if (params.search !== undefined && inputElement !== null) {
-                        loadSearch();
+                        window.searchState.loadSearch();
                         inputElement.value = params.search;
                         // Some browsers fire "onpopstate" for every page load
                         // (Chrome), while others fire the event only when actually
@@ -482,29 +477,32 @@ function preLoadCss(cssUrl) {
             // that try to sync state between the URL and the search input. To work around it,
             // do a small amount of re-init on page show.
             window.onpageshow = () => {
-                const inputElement = window.searchState.inputElement();
                 const qSearch = window.searchState.getQueryStringParams().search;
-                if (qSearch !== undefined && inputElement !== null) {
-                    if (inputElement.value === "") {
-                        inputElement.value = qSearch;
+                if (qSearch !== undefined) {
+                    const inputElement = window.searchState.inputElement();
+                    if (inputElement !== null) {
+                        if (inputElement.value === "") {
+                            inputElement.value = qSearch;
+                        }
+                        window.searchState.showResults();
+                        if (qSearch === "") {
+                            window.searchState.loadSearch();
+                            window.searchState.focus();
+                        }
                     }
-                    window.searchState.showResults();
-                    if (qSearch === "") {
-                        loadSearch();
-                        window.searchState.focus();
-                    }
-                } else {
-                    window.searchState.hideResults();
                 }
             };
 
             const params = window.searchState.getQueryStringParams();
             if (params.search !== undefined) {
                 window.searchState.setLoadingSearch();
-                loadSearch();
+                window.searchState.loadSearch();
             }
         },
         setLoadingSearch: () => {
+            // We set up the search input before adding the other search elements (like
+            // "search loading") in case it's not already there yet.
+            window.searchState.inputElement();
             const search = window.searchState.outputElement();
             nonnull(search).innerHTML = "<h3 class=\"search-loading\">" +
                 window.searchState.loadingText + "</h3>";

@@ -1,0 +1,21 @@
+error: multiple definitions of symbol `FOO`
+  --> tests/fail/extern_static/clashing.rs:LL:CC
+   |
+LL |     let _val = &raw const FOO;
+   |                           ^^^ error occurred here
+   |
+help: it's first defined here, in crate `clashing`
+  --> tests/fail/extern_static/clashing.rs:LL:CC
+   |
+LL | static FOO: u8 = 1;
+   | ^^^^^^^^^^^^^^
+help: then it's defined here again, in crate `clashing`
+  --> tests/fail/extern_static/clashing.rs:LL:CC
+   |
+LL | static BAR: u8 = 2;
+   | ^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

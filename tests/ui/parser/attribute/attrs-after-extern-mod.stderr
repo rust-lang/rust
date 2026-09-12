@@ -4,7 +4,7 @@ error: expected item after attributes
 LL | extern "C" {
    |            - while parsing this item list starting here
 LL |     #[cfg(stage37)]
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ expected an item after this
 LL | }
    | - the item list ends here
 

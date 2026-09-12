@@ -8,7 +8,10 @@ use hir_def::{
     AdtId, CallableDefId, DefWithBodyId, ExpressionStoreOwnerId, FieldId, FunctionId, GenericDefId,
     VariantId,
     expr_store::{Body, ExpressionStore, path::Path},
-    hir::{AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp},
+    hir::{
+        AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp,
+        Unsafe,
+    },
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     signatures::{FunctionSignature, StaticFlags, StaticSignature},
     type_ref::Rawness,
@@ -63,8 +66,8 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
         // Unsafety in function parameter patterns (that can only be union destructuring)
         // cannot be inserted into an unsafe block, so even with `unsafe_op_in_unsafe_fn`
         // it is turned off for unsafe functions.
-        for &param in &body.params {
-            visitor.walk_pat(param);
+        for param in &body.params {
+            visitor.walk_pat(param.formal);
         }
     }
 
@@ -100,7 +103,7 @@ enum UnsafeDiagnostic {
 
 pub fn unsafe_operations_for_body(
     db: &dyn HirDatabase,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'_>,
     def: DefWithBodyId,
     body: &Body,
     callback: &mut dyn FnMut(ExprOrPatId),
@@ -112,14 +115,14 @@ pub fn unsafe_operations_for_body(
     };
     let mut visitor = UnsafeVisitor::new(db, infer, body, def.into(), &mut visitor_callback);
     visitor.walk_expr(body.root_expr());
-    for &param in &body.params {
-        visitor.walk_pat(param);
+    for param in &body.params {
+        visitor.walk_pat(param.formal);
     }
 }
 
 pub fn unsafe_operations(
     db: &dyn HirDatabase,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'_>,
     def: ExpressionStoreOwnerId,
     body: &ExpressionStore,
     current: ExprId,
@@ -137,7 +140,7 @@ pub fn unsafe_operations(
 
 struct UnsafeVisitor<'db> {
     db: &'db dyn HirDatabase,
-    infer: &'db InferenceResult,
+    infer: &'db InferenceResult<'db>,
     body: &'db ExpressionStore,
     resolver: Resolver<'db>,
     def: ExpressionStoreOwnerId,
@@ -156,7 +159,7 @@ struct UnsafeVisitor<'db> {
 impl<'db> UnsafeVisitor<'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        infer: &'db InferenceResult,
+        infer: &'db InferenceResult<'db>,
         body: &'db ExpressionStore,
         def: ExpressionStoreOwnerId,
         unsafe_expr_cb: &'db mut dyn FnMut(UnsafeDiagnostic),
@@ -315,9 +318,7 @@ impl<'db> UnsafeVisitor<'db> {
                     // https://github.com/rust-lang/rust/pull/129248
                     // Taking a raw ref to a deref place expr is always safe.
                     Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                        self.body
-                            .walk_child_exprs_without_pats(expr, |child| self.walk_expr(child));
-
+                        self.walk_expr(expr);
                         return;
                     }
                     _ => (),
@@ -393,7 +394,7 @@ impl<'db> UnsafeVisitor<'db> {
                     self.on_unsafe_op(current.into(), UnsafetyReason::UnionField);
                 }
             }
-            Expr::Unsafe { statements, .. } => {
+            Expr::Block { unsafe_: Unsafe::Yes, statements, .. } => {
                 self.with_inside_unsafe_block(InsideUnsafeBlock::Yes, |this| {
                     this.walk_pats_top(
                         statements.iter().filter_map(|statement| match statement {
@@ -406,7 +407,7 @@ impl<'db> UnsafeVisitor<'db> {
                 });
                 return;
             }
-            Expr::Block { statements, .. } => {
+            Expr::Block { unsafe_: Unsafe::No, statements, .. } => {
                 self.walk_pats_top(
                     statements.iter().filter_map(|statement| match statement {
                         &Statement::Let { pat, .. } => Some(pat),

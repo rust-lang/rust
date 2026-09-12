@@ -8,17 +8,17 @@
 
 fn main() {
     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
-    //~^ error: expected method or associated constant, found associated type
-    //~| error: expected tuple struct or tuple variant, found associated type
+    //~^ error: cannot find method or associated constant `Assoc` in trait `Trait`
+    //~| error: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
-    //~^ error: expected method or associated constant, found associated type
-    //~| error: expected tuple struct or tuple variant, found associated type
+    //~^ error: cannot find method or associated constant `Assoc` in trait `Trait`
+    //~| error: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
-    //~^ error: expected method or associated constant, found associated type
-    //~| error: expected tuple struct or tuple variant, found associated type
+    //~^ error: cannot find method or associated constant `Assoc` in trait `Trait`
+    //~| error: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
-    //~^ error: expected method or associated constant, found associated type
-    //~| error: expected tuple struct or tuple variant, found associated type
+    //~^ error: cannot find method or associated constant `Assoc` in trait `Trait`
+    //~| error: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
 }
 
 

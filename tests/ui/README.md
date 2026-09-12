@@ -88,7 +88,7 @@ These tests exercise associated constants in traits and impls, on aspects such a
 
 These tests cover associated types defined directly within inherent impls (not in traits).
 
-See [RFC 0195 Associated items - Inherent associated items](https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md#inherent-associated-items).
+See [RFC 0195 Associated items - Inherent associated items](https://rust-lang.github.io/rfcs/0195-associated-items.html#inherent-associated-items).
 
 ## `tests/ui/associated-item`: Associated Items
 
@@ -179,12 +179,11 @@ Tests for borrow checking. E.g. lifetime analysis, borrowing rules, and diagnost
 
 ## `tests/ui/box/`: Box Behavior
 
-Tests for `Box<T>` smart pointer and `#![feature(box_patterns)]`. E.g. allocation, deref coercion, and edge cases in box pattern matching and placement.
+Tests for the `Box<T>` smart pointer. E.g. allocation, deref coercion, and edge cases in box pattern matching and placement.
 
 See:
 
 - [`std::box::Boxed`](https://doc.rust-lang.org/std/boxed/struct.Box.html)
-- [Tracking issue for `box_patterns` feature #29641](https://github.com/rust-lang/rust/issues/29641)
 
 ## `tests/ui/builtin-superkinds/`: Built-in Trait Hierarchy Tests
 
@@ -215,6 +214,10 @@ See [Conditional compilation | Reference](https://doc.rust-lang.org/reference/co
 Tests for the `--check-cfg` compiler mechanism  for checking cfg configurations, for `#[cfg(..)]` and `cfg!(..)`.
 
 See [Checking conditional configurations | The rustc book](https://doc.rust-lang.org/rustc/check-cfg.html).
+
+## `tests/ui/checked-type-alias/`
+
+Tests for `#![feature(checked_type_aliases)]`. See [Tracking issue for checked type aliases](https://github.com/rust-lang/rust/issues/112792).
 
 ## `tests/ui/closure-expected-type/`: Closure type inference
 
@@ -426,7 +429,7 @@ Tests for built-in derive macros (`Debug`, `Clone`, etc.) when used in conjuncti
 
 ## `tests/ui/destructuring-assignment/`
 
-Exercises destructuring assignments. See [RFC 2909 Destructuring assignment](https://github.com/rust-lang/rfcs/blob/master/text/2909-destructuring-assignment.md).
+Exercises destructuring assignments. See [RFC 2909 Destructuring assignment](https://rust-lang.github.io/rfcs/2909-destructuring-assignment.html).
 
 ## `tests/ui/diagnostic-flags/`
 
@@ -440,7 +443,7 @@ Everything to do with `--diagnostic-width`.
 
 ## `tests/ui/diagnostic_namespace/`
 
-Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
+Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://rust-lang.github.io/rfcs/3368-diagnostic-attribute-namespace.html).
 
 ## `tests/ui/did_you_mean/`
 
@@ -650,7 +653,7 @@ See:
 
 Functional Struct Update is the name for the idiom by which one can write `..<expr>` at the end of a struct literal expression to fill in all remaining fields of the struct literal by using `<expr>` as the source for them.
 
-See [RFC 0736 Privacy-respecting Functional Struct Update](https://github.com/rust-lang/rfcs/blob/master/text/0736-privacy-respecting-fru.md).
+See [RFC 0736 Privacy-respecting Functional Struct Update](https://rust-lang.github.io/rfcs/0736-privacy-respecting-fru.html).
 
 ## `tests/ui/functions-closures/`
 
@@ -766,10 +769,6 @@ Tests for the `{std,core}::intrinsics`, internal implementation detail.
 
 Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
 
-## `tests/ui/issues/`: Tests directly related to GitHub issues
-
-**FIXME (#133895)**: Random collection of regression tests and tests for issues, tests in this directory should be audited and rehomed.
-
 ## `tests/ui/iterators/`
 
 These tests revolve around anything to do with iterators, e.g. mismatched types.
@@ -799,10 +798,6 @@ See [Early vs Late bound parameters | rustc-dev-guide](https://rustc-dev-guide.r
 ## `tests/ui/layout/`
 
 See [Type Layout | Reference](https://doc.rust-lang.org/reference/type-layout.html).
-
-## `tests/ui/lazy-type-alias/`
-
-Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792](https://github.com/rust-lang/rust/issues/112792).
 
 ## `tests/ui/lazy-type-alias-impl-trait/`
 
@@ -964,7 +959,7 @@ See [Tracking issue for promoting `!` to a type (RFC 1216) #35121](https://githu
 
 ## `tests/ui/new-range/`
 
-See [RFC 3550 New Range](https://github.com/rust-lang/rfcs/blob/master/text/3550-new-range.md).
+See [RFC 3550 New Range](https://rust-lang.github.io/rfcs/3550-new-range.html).
 
 ## `tests/ui/nll/`: Non-lexical lifetimes
 
@@ -1043,7 +1038,7 @@ See [panic handler | Nomicon](https://doc.rust-lang.org/nomicon/panic-handler.ht
 
 Exercises `#![panic_runtime]`, `-C panic`, panic runtimes and panic unwind strategy.
 
-See [RFC 1513 Less unwinding](https://github.com/rust-lang/rfcs/blob/master/text/1513-less-unwinding.md).
+See [RFC 1513 Less unwinding](https://rust-lang.github.io/rfcs/1513-less-unwinding.html).
 
 ## `tests/ui/panics/`
 
@@ -1051,7 +1046,7 @@ Broad category of tests about panics in general, often but not necessarily using
 
 ## `tests/ui/parallel-rustc/`
 
-Efforts towards a [Parallel Rustc Front-end](https://github.com/rust-lang/rust/issues/113349). Includes `-Zthreads=`.
+Regression tests for [Parallel Rustc Front-end](https://github.com/rust-lang/rust/issues/113349).
 
 ## `tests/ui/parser/`
 
@@ -1082,6 +1077,10 @@ See [Tracking issue for pin ergonomics #130494](https://github.com/rust-lang/rus
 ## `tests/ui/pin-macro/`
 
 See [`std::pin`](https://doc.rust-lang.org/std/pin/).
+
+## `tests/ui/pointer_authentication/`
+
+Tests for `-Zpointer-authentication` compiler flag.
 
 ## `tests/ui/precondition-checks/`
 
@@ -1135,7 +1134,7 @@ Broad category of tests ranges, both in their `..` or `..=` form, as well as the
 
 ## `tests/ui/raw-ref-op/`: Using operators on `&raw` values
 
-Exercises `&raw mut <place>` and `&raw const <place>`. See [RFC 2582 Raw reference MIR operator](https://github.com/rust-lang/rfcs/blob/master/text/2582-raw-reference-mir-operator.md).
+Exercises `&raw mut <place>` and `&raw const <place>`. See [RFC 2582 Raw reference MIR operator](https://rust-lang.github.io/rfcs/2582-raw-reference-mir-operator.html).
 
 ## `tests/ui/reachable`
 
@@ -1445,7 +1444,7 @@ Tests for the `#[doc(hidden)]` items.
 
 ## `tests/ui/trivial-bounds/`
 
-`#![feature(trivial_bounds)]`. See [RFC 2056 Allow trivial where clause constraints](https://github.com/rust-lang/rfcs/blob/master/text/2056-allow-trivial-where-clause-constraints.md).
+`#![feature(trivial_bounds)]`. See [RFC 2056 Allow trivial where clause constraints](https://rust-lang.github.io/rfcs/2056-allow-trivial-where-clause-constraints.html).
 
 ## `tests/ui/try-block/`
 
@@ -1453,7 +1452,7 @@ Tests for the `#[doc(hidden)]` items.
 
 ## `tests/ui/try-trait/`
 
-`#![feature(try_trait_v2)]`. See [RFC 3058 Try Trait v2](https://github.com/rust-lang/rfcs/blob/master/text/3058-try-trait-v2.md).
+`#![feature(try_trait_v2)]`. See [RFC 3058 Try Trait v2](https://rust-lang.github.io/rfcs/3058-try-trait-v2.html).
 
 ## `tests/ui/tuple/`
 
@@ -1487,7 +1486,7 @@ General collection of type checking related tests.
 
 ## `tests/ui/ufcs/`
 
-See [RFC 0132 Unified Function Call Syntax](https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md).
+See [RFC 0132 Unified Function Call Syntax](https://rust-lang.github.io/rfcs/0132-ufcs.html).
 
 ## `tests/ui/unboxed-closures/`
 
@@ -1551,7 +1550,7 @@ See [Tracking issue for RFC 3458: Unsafe fields #132922](https://github.com/rust
 
 See:
 
-- [RFC 1909 Unsized rvalues](https://github.com/rust-lang/rfcs/blob/master/text/1909-unsized-rvalues.md)
+- [RFC 1909 Unsized rvalues](https://rust-lang.github.io/rfcs/1909-unsized-rvalues.html)
 - [de-RFC 3829: Remove unsized_locals](https://github.com/rust-lang/rfcs/pull/3829)
 - [Tracking issue for RFC #1909: Unsized Rvalues (`unsized_locals`, `unsized_fn_params`)](https://github.com/rust-lang/rust/issues/48055)
 
@@ -1582,6 +1581,13 @@ See [Variance | Reference](https://doc.rust-lang.org/reference/subtyping.html#va
 Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
+
+## `tests/ui/view-types`
+
+Anything related to view types.
+
+See
+[Tracking Issue for view types](https://github.com/rust-lang/rust/issues/155938).
 
 ## `tests/ui/wasm/`
 

@@ -7,11 +7,14 @@ LL |     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
 error[E0425]: cannot find type `U` in this scope
   --> $DIR/generics.rs:15:50
    |
-LL | struct Test<T: Copy> {
-   |             - similarly named type parameter `T` defined here
 LL |     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
-   |                                                  ^
+   |                                                  ^ not found in this scope
    |
+note: similarly named type parameter `T` defined here
+  --> $DIR/generics.rs:14:13
+   |
+LL | struct Test<T: Copy> {
+   |             ^
 help: a type parameter with a similar name exists
    |
 LL -     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,

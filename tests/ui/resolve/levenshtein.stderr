@@ -2,7 +2,7 @@ error[E0425]: cannot find type `esize` in this scope
   --> $DIR/levenshtein.rs:5:11
    |
 LL | fn foo(c: esize) {} // Misspelled primitive type name.
-   |           ^^^^^
+   |           ^^^^^ not found in this scope
    |
 help: a builtin type with a similar name exists
    |
@@ -13,12 +13,14 @@ LL + fn foo(c: isize) {} // Misspelled primitive type name.
 error[E0425]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:10:10
    |
-LL | enum Bar { }
-   | -------- similarly named enum `Bar` defined here
-LL |
 LL | type A = Baz; // Misspelled type name.
-   |          ^^^
+   |          ^^^ not found in this scope
    |
+note: similarly named enum `Bar` defined here
+  --> $DIR/levenshtein.rs:8:1
+   |
+LL | enum Bar { }
+   | ^^^^^^^^
 help: an enum with a similar name exists
    |
 LL - type A = Baz; // Misspelled type name.
@@ -29,11 +31,10 @@ error[E0425]: cannot find type `Opiton` in this scope
   --> $DIR/levenshtein.rs:12:10
    |
 LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
-   |          ^^^^^^
+   |          ^^^^^^ not found in this scope
    |
+note: similarly named enum `Option` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-   = note: similarly named enum `Option` defined here
 help: an enum with a similar name exists
    |
 LL - type B = Opiton<u8>; // Misspelled type name from the prelude.
@@ -49,12 +50,14 @@ LL |     type A = Baz; // No suggestion here, Bar is not visible
 error[E0425]: cannot find value `MAXITEM` in this scope
   --> $DIR/levenshtein.rs:24:20
    |
-LL | const MAX_ITEM: usize = 10;
-   | --------------------------- similarly named constant `MAX_ITEM` defined here
-...
 LL |     let v = [0u32; MAXITEM]; // Misspelled constant name.
-   |                    ^^^^^^^
+   |                    ^^^^^^^ not found in this scope
    |
+note: similarly named constant `MAX_ITEM` defined here
+  --> $DIR/levenshtein.rs:1:1
+   |
+LL | const MAX_ITEM: usize = 10;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL |     let v = [0u32; MAX_ITEM]; // Misspelled constant name.
@@ -63,12 +66,14 @@ LL |     let v = [0u32; MAX_ITEM]; // Misspelled constant name.
 error[E0425]: cannot find type `first` in module `m`
   --> $DIR/levenshtein.rs:28:15
    |
-LL |     pub struct First;
-   |     ----------------- similarly named struct `First` defined here
-...
 LL |     let b: m::first = m::second; // Misspelled item in module.
-   |               ^^^^^
+   |               ^^^^^ not found in `m`
    |
+note: similarly named struct `First` defined here
+  --> $DIR/levenshtein.rs:19:5
+   |
+LL |     pub struct First;
+   |     ^^^^^^^^^^^^^^^^^
 help: a struct with a similar name exists (notice the capitalization)
    |
 LL -     let b: m::first = m::second; // Misspelled item in module.
@@ -78,12 +83,14 @@ LL +     let b: m::First = m::second; // Misspelled item in module.
 error[E0425]: cannot find value `second` in module `m`
   --> $DIR/levenshtein.rs:28:26
    |
-LL |     pub struct Second;
-   |     ------------------ similarly named unit struct `Second` defined here
-...
 LL |     let b: m::first = m::second; // Misspelled item in module.
-   |                          ^^^^^^
+   |                          ^^^^^^ not found in `m`
    |
+note: similarly named unit struct `Second` defined here
+  --> $DIR/levenshtein.rs:20:5
+   |
+LL |     pub struct Second;
+   |     ^^^^^^^^^^^^^^^^^^
 help: a unit struct with a similar name exists (notice the capitalization)
    |
 LL -     let b: m::first = m::second; // Misspelled item in module.
@@ -93,12 +100,14 @@ LL +     let b: m::first = m::Second; // Misspelled item in module.
 error[E0425]: cannot find function `foobar` in this scope
   --> $DIR/levenshtein.rs:26:5
    |
-LL | fn foo_bar() {}
-   | ------------ similarly named function `foo_bar` defined here
-...
 LL |     foobar(); // Misspelled function name.
-   |     ^^^^^^
+   |     ^^^^^^ not found in this scope
    |
+note: similarly named function `foo_bar` defined here
+  --> $DIR/levenshtein.rs:3:1
+   |
+LL | fn foo_bar() {}
+   | ^^^^^^^^^^^^
 help: a function with a similar name exists
    |
 LL |     foo_bar(); // Misspelled function name.

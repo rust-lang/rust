@@ -31,20 +31,20 @@ fn main() {
     // is used rather than a variant.
 
     A.foo();
-    //~^ ERROR expected value, found enum `A`
+    //~^ ERROR cannot find value `A` in this scope
     B.foo();
-    //~^ ERROR expected value, found enum `B`
+    //~^ ERROR cannot find value `B` in this scope
     C.foo();
-    //~^ ERROR expected value, found enum `C`
+    //~^ ERROR cannot find value `C` in this scope
     D.foo();
-    //~^ ERROR expected value, found enum `D`
+    //~^ ERROR cannot find value `D` in this scope
     E.foo();
-    //~^ ERROR expected value, found enum `E`
+    //~^ ERROR cannot find value `E` in this scope
 
     // Only tuple variants are suggested in calls or tuple struct pattern matching.
 
     let x = A(3);
-    //~^ ERROR expected function, tuple struct or tuple variant, found enum `A`
+    //~^ ERROR cannot find function, tuple struct or tuple variant `A` in this scope
     if let A(3) = x { }
-    //~^ ERROR expected tuple struct or tuple variant, found enum `A`
+    //~^ ERROR cannot find tuple struct or tuple variant `A` in this scope
 }

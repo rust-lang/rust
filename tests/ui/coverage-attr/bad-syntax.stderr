@@ -23,10 +23,10 @@ LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:17:1
+  --> $DIR/bad-syntax.rs:17:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -36,10 +36,10 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:20:1
+  --> $DIR/bad-syntax.rs:20:3
    |
 LL | #[coverage = true]
-   | ^^^^^^^^^^^------^
+   |   ^^^^^^^^^------
    |            |
    |            expected this to be a list
    |
@@ -53,10 +53,10 @@ LL + #[coverage(on)]
    |
 
 error[E0805]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:23:1
+  --> $DIR/bad-syntax.rs:23:3
    |
 LL | #[coverage()]
-   | ^^^^^^^^^^--^
+   |   ^^^^^^^^--
    |           |
    |           expected an argument here
    |
@@ -68,10 +68,10 @@ LL | #[coverage(on)]
    |            ++
 
 error[E0805]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:26:1
+  --> $DIR/bad-syntax.rs:26:3
    |
 LL | #[coverage(off, off)]
-   | ^^^^^^^^^^----------^
+   |   ^^^^^^^^----------
    |           |
    |           expected a single argument here
    |
@@ -85,10 +85,10 @@ LL + #[coverage(on)]
    |
 
 error[E0805]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:29:1
+  --> $DIR/bad-syntax.rs:29:3
    |
 LL | #[coverage(off, on)]
-   | ^^^^^^^^^^---------^
+   |   ^^^^^^^^---------
    |           |
    |           expected a single argument here
    |
@@ -102,10 +102,10 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:32:1
+  --> $DIR/bad-syntax.rs:32:3
    |
 LL | #[coverage(bogus)]
-   | ^^^^^^^^^^^-----^^
+   |   ^^^^^^^^^-----^
    |            |
    |            valid arguments are `on` or `off`
    |
@@ -119,10 +119,10 @@ LL + #[coverage(on)]
    |
 
 error[E0805]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:35:1
+  --> $DIR/bad-syntax.rs:35:3
    |
 LL | #[coverage(bogus, off)]
-   | ^^^^^^^^^^------------^
+   |   ^^^^^^^^------------
    |           |
    |           expected a single argument here
    |
@@ -136,10 +136,10 @@ LL + #[coverage(on)]
    |
 
 error[E0805]: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:38:1
+  --> $DIR/bad-syntax.rs:38:3
    |
 LL | #[coverage(off, bogus)]
-   | ^^^^^^^^^^------------^
+   |   ^^^^^^^^------------
    |           |
    |           expected a single argument here
    |

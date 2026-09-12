@@ -155,10 +155,10 @@ fn find_path_type(
 }
 
 /// Returns all usage references for the given type parameter definition.
-fn find_usages(
-    sema: &Semantics<'_, RootDatabase>,
+fn find_usages<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     fn_: &ast::Fn,
-    type_param_def: Definition,
+    type_param_def: Definition<'db>,
     file_id: EditionedFileId,
 ) -> UsageSearchResult {
     let file_range = FileRange { file_id, range: fn_.syntax().text_range() };

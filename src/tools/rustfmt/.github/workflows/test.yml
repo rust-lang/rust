@@ -1,0 +1,102 @@
+name: test
+on:
+  merge_group:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
+    env:
+      CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [linux, macos, win32-gnu, win32-msvc, win64-gnu, win64-msvc]
+        cfg_release_channel: [nightly, stable]
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - build: macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - build: win32-gnu
+            os: windows-latest
+            target: i686-pc-windows-gnu
+          - build: win32-msvc
+            os: windows-latest
+            target: i686-pc-windows-msvc
+          - build: win64-gnu
+            os: windows-latest
+            target: x86_64-pc-windows-gnu
+          - build: win64-msvc
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+    - name: disable git eol translation
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: git config --global core.autocrlf false
+    - name: checkout
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Install Rustup using win.rustup.rs
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: |
+        # Disable the download progress bar which can cause perf issues
+        $ProgressPreference = "SilentlyContinue"
+        Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
+        .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --default-toolchain=none
+        del rustup-init.exe
+        rustup target add ${{ matrix.target }}
+      shell: powershell
+
+    - name: Add mingw32 to path for i686-gnu
+      run: |
+        echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
+      if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
+      shell: bash
+
+    - name: Add mingw64 to path for x86_64-gnu
+      run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+      if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
+      shell: bash
+
+    - name: install rustup
+      if: ${{ matrix.os != 'windows-latest' }}
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+        sh rustup-init.sh -y --default-toolchain none
+        rustup target add ${{ matrix.target }}
+
+    # Run build
+    - name: Build and Test
+      env:
+        RUSTFLAGS: -D warnings
+        CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT: true
+      run: cargo run --manifest-path ci/Cargo.toml build-and-test
+
+  test-conclusion:
+    name: "test conclusion"
+    needs:
+      - test
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    #
+    # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful (or have been skipped).
+          jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'

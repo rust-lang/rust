@@ -17,12 +17,14 @@ LL |     if let x = 1 && i == 2 {}
 error[E0425]: cannot find value `i` in this scope
   --> $DIR/bad-if-let-suggestion.rs:7:9
    |
-LL | fn a() {
-   | ------ similarly named function `a` defined here
-...
 LL |     if (i + j) = i {}
-   |         ^
+   |         ^ not found in this scope
    |
+note: similarly named function `a` defined here
+  --> $DIR/bad-if-let-suggestion.rs:1:1
+   |
+LL | fn a() {
+   | ^^^^^^
 help: a function with a similar name exists
    |
 LL -     if (i + j) = i {}
@@ -32,12 +34,14 @@ LL +     if (a + j) = i {}
 error[E0425]: cannot find value `j` in this scope
   --> $DIR/bad-if-let-suggestion.rs:7:13
    |
-LL | fn a() {
-   | ------ similarly named function `a` defined here
-...
 LL |     if (i + j) = i {}
-   |             ^
+   |             ^ not found in this scope
    |
+note: similarly named function `a` defined here
+  --> $DIR/bad-if-let-suggestion.rs:1:1
+   |
+LL | fn a() {
+   | ^^^^^^
 help: a function with a similar name exists
    |
 LL -     if (i + j) = i {}
@@ -47,12 +51,14 @@ LL +     if (i + a) = i {}
 error[E0425]: cannot find value `i` in this scope
   --> $DIR/bad-if-let-suggestion.rs:7:18
    |
-LL | fn a() {
-   | ------ similarly named function `a` defined here
-...
 LL |     if (i + j) = i {}
-   |                  ^
+   |                  ^ not found in this scope
    |
+note: similarly named function `a` defined here
+  --> $DIR/bad-if-let-suggestion.rs:1:1
+   |
+LL | fn a() {
+   | ^^^^^^
 help: a function with a similar name exists
    |
 LL -     if (i + j) = i {}
@@ -62,12 +68,14 @@ LL +     if (i + j) = a {}
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/bad-if-let-suggestion.rs:14:8
    |
-LL | fn a() {
-   | ------ similarly named function `a` defined here
-...
 LL |     if x[0] = 1 {}
-   |        ^
+   |        ^ not found in this scope
    |
+note: similarly named function `a` defined here
+  --> $DIR/bad-if-let-suggestion.rs:1:1
+   |
+LL | fn a() {
+   | ^^^^^^
 help: a function with a similar name exists
    |
 LL -     if x[0] = 1 {}

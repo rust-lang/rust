@@ -12,7 +12,7 @@ use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
-        match self.config.debugger.unwrap() {
+        match self.variant.debugger.as_ref().unwrap() {
             Debugger::Cdb => self.run_debuginfo_cdb_test(),
             Debugger::Gdb => self.run_debuginfo_gdb_test(),
             Debugger::Lldb => self.run_debuginfo_lldb_test(),
@@ -46,8 +46,9 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "cdb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "cdb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
         let mut script_str = String::with_capacity(2048);
@@ -105,8 +106,9 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_gdb_test(&self) {
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "gdb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "gdb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the directive)
@@ -129,6 +131,7 @@ impl TestCx<'_> {
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
+            script_str.push_str("py import debugger_tester\n");
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
             script_str.push_str(&format!("set sysroot {android_cross_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file));
@@ -232,6 +235,7 @@ impl TestCx<'_> {
             let rust_pp_module_abs_path = self.config.src_root.join("src").join("etc");
             // write debugger script
             let mut script_str = String::with_capacity(2048);
+            script_str.push_str("py import debugger_tester\n");
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
             script_str.push_str("show version\n");
 
@@ -310,6 +314,9 @@ impl TestCx<'_> {
             }
 
             script_str.push_str(&cmds);
+            // The `repr-finalize` call must happen last, just before GDB quits
+            script_str.push_str("\nrepr_finalize\n");
+
             script_str.push_str("\nquit\n");
 
             debug!("script_str = {}", script_str);
@@ -323,8 +330,19 @@ impl TestCx<'_> {
 
             let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
 
+            let gdb_input_data_path = self.config.src_root.join(format!(
+                "{}/gdb_input/{}.json",
+                self.testpaths.file.parent().unwrap(),
+                get_target_file_name(&self.config.target)
+            ));
+
             let pythonpath = with_pythonpath_prepended(&rust_pp_module_abs_path);
-            gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
+            gdb.args(debugger_opts)
+                .env("PYTHONPATH", pythonpath)
+                .env("DEBUGGER_TESTER_DEBUGGER", "gdb")
+                .env("DEBUGGER_TESTER_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
+                .env("DEBUGGER_TESTER_TARGET_TRIPLE", &self.config.target)
+                .env("DEBUGGER_TESTER_INPUT_DATA_PATH", gdb_input_data_path);
 
             debugger_run_result =
                 self.compose_and_run(gdb, self.config.target_run_lib_path.as_path(), None, None);
@@ -360,7 +378,7 @@ impl TestCx<'_> {
             Some(ref version) => {
                 writeln!(
                     self.stdout,
-                    "NOTE: compiletest thinks it is using LLDB version {}",
+                    "NOTE: compiletest thinks it is using LLDB version: {:?}",
                     version
                 );
             }
@@ -374,8 +392,9 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "lldb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "lldb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running
@@ -445,7 +464,7 @@ impl TestCx<'_> {
         self.dump_output_file(&script_str, "debugger.script");
         let debugger_script = self.make_out_name("debugger.script");
 
-        // Let LLDB execute the script via lldb_batchmode.py
+        // Let LLDB execute the script via `debugger_tester`
         let debugger_run_result = self.run_lldb(lldb, &exe_file, &debugger_script);
 
         if !debugger_run_result.status.success() {
@@ -463,17 +482,29 @@ impl TestCx<'_> {
         test_executable: &Utf8Path,
         debugger_script: &Utf8Path,
     ) -> ProcRes {
-        // Path containing `lldb_batchmode.py`, so that the `script` command can import it.
+        // Path containing `debugger_tester`, so that the `script` command can import it.
         let rust_pp_module_abs_path = self.config.src_root.join("src/etc");
         let pythonpath = with_pythonpath_prepended(&rust_pp_module_abs_path);
         // make sure `PATH` points to all the dlls necessary to run the debugee
         let path = prepend_to_path(&self.config.target_run_lib_path);
 
+        // Output the file path of the input data for `lldb-repr` commands
+        let lldb_input_data_path = self.config.src_root.join(format!(
+            "{}/lldb_input/{}.json",
+            self.testpaths.file.parent().unwrap(),
+            get_target_file_name(&self.config.target)
+        ));
+
         let mut cmd = ArgFileCommand::new(lldb);
-        cmd.arg("--one-line")
-            .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
-            .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
-            .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
+        cmd.arg("--batch") // --batch executes our script from --one-line and kills lldb afterwards
+            .arg("--one-line")
+            .arg("script --language python -- import debugger_tester; debugger_tester.main()")
+            .env("DEBUGGER_TESTER_TARGET_PATH", test_executable)
+            .env("DEBUGGER_TESTER_SCRIPT_PATH", debugger_script)
+            .env("DEBUGGER_TESTER_INPUT_DATA_PATH", lldb_input_data_path)
+            .env("DEBUGGER_TESTER_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
+            .env("DEBUGGER_TESTER_TARGET_TRIPLE", &self.config.target)
+            .env("DEBUGGER_TESTER_DEBUGGER", "lldb")
             .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
             .env("PYTHONPATH", pythonpath)
             .env("PATH", path);
@@ -510,5 +541,17 @@ fn prepend_to_path(some_path: &Utf8Path) -> String {
         }
     } else {
         some_path.to_string()
+    }
+}
+
+/// Converts the given target name into the appropriate input file name based on the
+/// targets defined in `debugger_tester.common.Target`
+fn get_target_file_name(target_name: &str) -> &'static str {
+    if target_name.ends_with("windows-msvc") {
+        "windows_msvc"
+    } else if target_name.ends_with("windows-gnu") || target_name.ends_with("windows-gnullvm") {
+        "windows_gnu"
+    } else {
+        "non_windows"
     }
 }

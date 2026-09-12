@@ -1,4 +1,5 @@
-//@ min-lldb-version: 310
+//@ min-apple-lldb-version: 310
+//@ min-llvm-lldb-version: 3.1.0
 
 //@ compile-flags:-g
 // FIXME: Investigate why test fails without SimplifyComparisonIntegral pass.

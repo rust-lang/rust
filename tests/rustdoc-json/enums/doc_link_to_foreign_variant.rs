@@ -5,7 +5,5 @@
 extern crate color;
 use color::Color::Red;
 
-//@ set red = "$.index[?(@.inner.module.is_crate)].links.Red"
-
-//@ !has "$.index[?(@.name == 'Red')]"
-//@ !has "$.index[?(@.name == 'Color')]"
+//@ jq_is '.index["\(.root)"].links | has("Red")' true
+//@ jq_count '[.index[] | select(.name == "Red" or .name == "Color")][]' 0

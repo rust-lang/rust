@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(never_type, exhaustive_patterns)]
+#![feature(exhaustive_patterns)]
 
 trait Tag {
     type TagType;

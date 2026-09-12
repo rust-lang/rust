@@ -88,7 +88,9 @@ impl Socket {
                 // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
                 // flag to disable `SIGPIPE` emission on socket.
                 #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
-                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
+                unsafe {
+                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?
+                };
 
                 Ok(socket)
             }
@@ -101,7 +103,9 @@ impl Socket {
                 // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
                 // flag to disable `SIGPIPE` emission on socket.
                 #[cfg(target_vendor = "apple")]
-                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
+                unsafe {
+                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?
+                };
 
                 Ok(socket)
             }
@@ -129,7 +133,10 @@ impl Socket {
                 ) => {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
-                    Ok((Socket(FileDesc::from_raw_fd(fds[0])), Socket(FileDesc::from_raw_fd(fds[1]))))
+                    Ok((
+                        Socket(FileDesc::from_raw_fd(fds[0])),
+                        Socket(FileDesc::from_raw_fd(fds[1])),
+                    ))
                 }
                 _ => {
                     cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
@@ -256,20 +263,17 @@ impl Socket {
                 target_os = "netbsd",
                 target_os = "openbsd",
                 target_os = "cygwin",
-            ) => {
-                unsafe {
-                    let fd = cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
-                    Ok(Socket(FileDesc::from_raw_fd(fd)))
-                }
-            }
-            _ => {
-                unsafe {
-                    let fd = cvt_r(|| libc::accept(self.as_raw_fd(), storage, len))?;
-                    let fd = FileDesc::from_raw_fd(fd);
-                    fd.set_cloexec()?;
-                    Ok(Socket(fd))
-                }
-            }
+            ) => unsafe {
+                let fd =
+                    cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
+                Ok(Socket(FileDesc::from_raw_fd(fd)))
+            },
+            _ => unsafe {
+                let fd = cvt_r(|| libc::accept(self.as_raw_fd(), storage, len))?;
+                let fd = FileDesc::from_raw_fd(fd);
+                fd.set_cloexec()?;
+                Ok(Socket(fd))
+            },
         }
     }
 
@@ -279,7 +283,7 @@ impl Socket {
 
     #[cfg(not(target_os = "wasi"))]
     pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
         })?;
@@ -396,10 +400,7 @@ impl Socket {
                 } else {
                     dur.as_secs() as libc::time_t
                 };
-                let mut timeout = libc::timeval {
-                    tv_sec: secs,
-                    tv_usec: dur.subsec_micros() as libc::suseconds_t,
-                };
+                let mut timeout = libc::timeval { tv_sec: secs, tv_usec: dur.subsec_micros() as _ };
                 if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
                     timeout.tv_usec = 1;
                 }

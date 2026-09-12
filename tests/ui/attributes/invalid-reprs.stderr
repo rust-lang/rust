@@ -20,10 +20,10 @@ LL + use std::process::id;
    |
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/invalid-reprs.rs:2:13
+  --> $DIR/invalid-reprs.rs:2:15
    |
 LL |     let y = #[repr(uwu(4))]
-   |             ^^^^^^^------^^
+   |               ^^^^^------^
    |                    |
    |                    valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |

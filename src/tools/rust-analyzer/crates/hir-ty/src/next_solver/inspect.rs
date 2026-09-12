@@ -131,7 +131,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
     /// Certainty passed into `evaluate_added_goals_and_make_canonical_response`.
     ///
     /// If this certainty is `Yes`, then we must be confident that the candidate
-    /// must hold iff it's nested goals hold. This is not true if the certainty is
+    /// must hold iff its nested goals hold. This is not true if the certainty is
     /// `Maybe(..)`, which suggests we forced ambiguity instead.
     ///
     /// This is *not* the certainty of the candidate's full nested evaluation, which

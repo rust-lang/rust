@@ -7,5 +7,5 @@ fn main() {
 
 fn test_file_open_missing_needed_mode() {
     let name = c"missing_arg.txt".as_ptr();
-    let _fd = unsafe { libc::open(name, libc::O_CREAT) }; //~ ERROR: Undefined Behavior: not enough variadic arguments
+    let _fd = unsafe { libc::open(name, libc::O_CREAT) }; //~ ERROR: /Undefined Behavior: not enough arguments.*: got 2/
 }

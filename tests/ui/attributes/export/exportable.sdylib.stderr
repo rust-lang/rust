@@ -1,18 +1,18 @@
-error: `#[export_stable]` attribute cannot be used on traits
-  --> $DIR/exportable.rs:135:5
+error: the `export_stable` attribute cannot be used on traits
+  --> $DIR/exportable.rs:135:7
    |
 LL |     #[export_stable]
-   |     ^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^
    |
-   = help: `#[export_stable]` can be applied to associated types, data types, functions, inherent impl blocks, modules, type aliases, and use statements
+   = help: the `export_stable` attribute can be applied to associated types, data types, functions, inherent impl blocks, modules, type aliases, and use statements
 
-error: `#[export_stable]` attribute cannot be used on constants
-  --> $DIR/exportable.rs:139:5
+error: the `export_stable` attribute cannot be used on constants
+  --> $DIR/exportable.rs:139:7
    |
 LL |     #[export_stable]
-   |     ^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^
    |
-   = help: `#[export_stable]` can be applied to associated types, data types, functions, inherent impl blocks, modules, type aliases, and use statements
+   = help: the `export_stable` attribute can be applied to associated types, data types, functions, inherent impl blocks, modules, type aliases, and use statements
 
 error: private items are not exportable
   --> $DIR/exportable.rs:15:5

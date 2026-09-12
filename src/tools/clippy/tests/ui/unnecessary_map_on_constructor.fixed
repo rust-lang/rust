@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::unnecessary_map_on_constructor)]
 
 use std::ffi::OsStr;

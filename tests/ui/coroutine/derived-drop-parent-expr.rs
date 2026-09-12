@@ -1,6 +1,6 @@
 //@ build-pass
 
-//! Like drop-tracking-parent-expression, but also tests that this doesn't ICE when building MIR
+//! Like parent-expression, but also tests that this doesn't ICE when building MIR
 #![feature(coroutines, stmt_expr_attributes)]
 
 fn assert_send<T: Send>(_thing: T) {}

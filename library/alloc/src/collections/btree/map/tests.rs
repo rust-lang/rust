@@ -2428,6 +2428,31 @@ fn test_split_off_large_random_sorted() {
     assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
 }
 
+// Regression test for #158165: a comparator that panics partway through
+// `split_off`, after a suffix has already been moved into the new right-hand
+// tree, used to leave `self` with a tree structure inconsistent with its own
+// recorded length. Iterating or dropping the map afterwards could then double
+// free values that had already been moved into the right-hand tree.
+// `split_off` now aborts the process instead of unwinding out of that
+// inconsistent state; the abort can't be observed from within a single
+// process, so this test only checks that ordinary multi-level splits remain
+// correct. See the reproducer on the issue for the double free.
+#[test]
+fn test_split_off_multi_level_panic_guard_happy_path() {
+    // MIN_INSERTS_HEIGHT_2 consecutive keys guarantee a 3-level tree, so
+    // `split_off` walks down and moves a suffix at more than one level for
+    // most of these split points.
+    let n = MIN_INSERTS_HEIGHT_2;
+    for split_at in [0, 1, 2, n / 2, n - 2, n - 1, n] {
+        let mut map = BTreeMap::from_iter((0..n).map(|i| (i, i)));
+        let right = map.split_off(&split_at);
+        map.check();
+        right.check();
+        assert!(map.keys().copied().eq(0..split_at));
+        assert!(right.keys().copied().eq(split_at..n));
+    }
+}
+
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_iter_drop_leak_height_0() {

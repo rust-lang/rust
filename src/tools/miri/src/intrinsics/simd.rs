@@ -14,7 +14,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         intrinsic_name: &str,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match intrinsic_name {

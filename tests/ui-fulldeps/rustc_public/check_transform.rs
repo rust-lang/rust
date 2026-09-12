@@ -95,7 +95,7 @@ fn change_panic_msg(mut body: Body, new_msg: &str) -> Body {
                 let new_const = MirConst::from_str(new_msg);
                 args[0] = Operand::Constant(ConstOperand {
                     const_: new_const,
-                    span: bb.terminator.span,
+                    span: bb.terminator.source_info.span,
                     user_ty: None,
                 });
             }

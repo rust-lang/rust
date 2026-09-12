@@ -1,5 +1,5 @@
 use crate::utils::{FileUpdater, UpdateStatus, Version, parse_cargo_package};
-use std::fmt::Write;
+use std::fmt::Write as _;
 
 static CARGO_TOML_FILES: &[&str] = &[
     "clippy_config/Cargo.toml",

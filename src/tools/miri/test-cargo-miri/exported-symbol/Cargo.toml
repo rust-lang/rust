@@ -3,6 +3,9 @@ name = "exported_symbol"
 version = "0.1.0"
 edition = "2018"
 
+[lib]
+test = false
+
 [dependencies]
 # This will become a transitive dependency of doctests in `test-cargo-miri/src/lib.rs`,
 # and the purpose of the test is to make sure Miri can find a `#[no_mangle]` function in a

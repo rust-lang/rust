@@ -149,6 +149,7 @@ impl<T: PointeeSized> *const T {
     #[doc = include_str!("./docs/addr.md")]
     #[must_use]
     #[inline(always)]
+    #[expect(clippy::transmutes_expressible_as_ptr_casts, reason = "implements pointer cast")]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn addr(self) -> usize {
         // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
@@ -567,9 +568,8 @@ impl<T: PointeeSized> *const T {
     /// needed for `const`-compatibility: the distance between pointers into *different* allocated
     /// objects is not known at compile-time. However, the requirement also exists at
     /// runtime and may be exploited by optimizations. If you wish to compute the difference between
-    /// pointers that are not guaranteed to be from the same allocation, use `(self as isize -
-    /// origin as isize) / size_of::<T>()`.
-    // FIXME: recommend `addr()` instead of `as usize` once that is stable.
+    /// pointers that are not guaranteed to be from the same allocation, use
+    /// `(self.addr() as isize - origin.addr() as isize) / size_of::<T>()`.
     ///
     /// [`add`]: #method.add
     /// [allocation]: crate::ptr#allocation
@@ -612,7 +612,7 @@ impl<T: PointeeSized> *const T {
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
     #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
-    #[inline]
+    #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
@@ -1031,6 +1031,7 @@ impl<T: PointeeSized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[allow(clippy::ptr_offset_with_cast)]
     #[inline(always)]
     pub const fn wrapping_add(self, count: usize) -> Self
     where
@@ -1143,7 +1144,7 @@ impl<T: PointeeSized> *const T {
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     pub const unsafe fn read(self) -> T
     where
@@ -1164,9 +1165,10 @@ impl<T: PointeeSized> *const T {
     ///
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
+    #[inline(always)]
     #[track_caller]
-    pub unsafe fn read_volatile(self) -> T
+    pub const unsafe fn read_volatile(self) -> T
     where
         T: Sized,
     {
@@ -1184,7 +1186,7 @@ impl<T: PointeeSized> *const T {
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     pub const unsafe fn read_unaligned(self) -> T
     where
@@ -1204,7 +1206,7 @@ impl<T: PointeeSized> *const T {
     /// [`ptr::copy`]: crate::ptr::copy()
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
@@ -1224,7 +1226,7 @@ impl<T: PointeeSized> *const T {
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
@@ -1435,7 +1437,7 @@ impl<T> *const [T] {
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "slice_ptr_len", since = "1.79.0")]
     #[rustc_const_stable(feature = "const_slice_ptr_len", since = "1.79.0")]
     pub const fn len(self) -> usize {
@@ -1472,7 +1474,7 @@ impl<T> *const [T] {
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
     /// assert_eq!(slice.as_ptr(), ptr::null());
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_ptr(self) -> *const T {
         self as *const T
@@ -1497,9 +1499,10 @@ impl<T> *const [T] {
     /// Returns a raw pointer to an element or subslice, without doing bounds
     /// checking.
     ///
-    /// Calling this method with an out-of-bounds index or when `self` is not dereferenceable
+    /// Calling this method with an [out-of-bounds index] or when `self` is not dereferenceable
     /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
+    /// [out-of-bounds index]: #method.add
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
@@ -1515,7 +1518,7 @@ impl<T> *const [T] {
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where
         I: [const] SliceIndex<[T]>,
@@ -1560,7 +1563,7 @@ impl<T, const N: usize> *const [T; N] {
     /// let arr: *const [i8; 3] = ptr::null();
     /// assert_eq!(arr.as_ptr(), ptr::null());
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "array_ptr_get", issue = "119834")]
     pub const fn as_ptr(self) -> *const T {
         self as *const T
@@ -1591,7 +1594,7 @@ impl<T, const N: usize> *const [T; N] {
     note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
 )]
 impl<T: PointeeSized> PartialEq for *const T {
-    #[inline]
+    #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*const T) -> bool {
         *self == *other
@@ -1606,7 +1609,7 @@ impl<T: PointeeSized> PartialEq for *const T {
 )]
 impl<T: PointeeSized> Eq for *const T {}
 
-/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
+/// Pointer comparison is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -1626,38 +1629,38 @@ impl<T: PointeeSized> Ord for *const T {
     }
 }
 
-/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
+/// Pointer comparison is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
     note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
 )]
 impl<T: PointeeSized> PartialOrd for *const T {
-    #[inline]
+    #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn lt(&self, other: &*const T) -> bool {
         *self < *other
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn le(&self, other: &*const T) -> bool {
         *self <= *other
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn gt(&self, other: &*const T) -> bool {
         *self > *other
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn ge(&self, other: &*const T) -> bool {
         *self >= *other

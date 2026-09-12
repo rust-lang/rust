@@ -3,7 +3,6 @@
 //! See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for an
 //! overview of how lints are implemented.
 
-use std::cell::Cell;
 use std::slice;
 
 use rustc_abi as abi;
@@ -19,6 +18,10 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
+use rustc_lint_defs::{
+    FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
+    UnstableLintExpectationId,
+};
 use rustc_middle::bug;
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -26,10 +29,6 @@ use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode, Unnormalized,
-};
-use rustc_session::lint::{
-    FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
-    UnstableLintExpectationId,
 };
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
@@ -346,13 +345,13 @@ impl LintStore {
         &self,
         lint_name: &str,
         tool_name: Option<Symbol>,
-        registered_tools: &RegisteredTools,
+        registered_lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
         if let Some(tool_name) = tool_name {
             // FIXME: rustc and rustdoc are considered tools for lints, but not for attributes.
             if tool_name != sym::rustc
                 && tool_name != sym::rustdoc
-                && !registered_tools.contains(&Ident::with_dummy_span(tool_name))
+                && !registered_lint_tools.contains(&Ident::with_dummy_span(tool_name))
             {
                 return CheckLintNameResult::NoTool;
             }
@@ -484,11 +483,8 @@ pub struct LateContext<'tcx> {
     /// Current body, or `None` if outside a body.
     pub enclosing_body: Option<hir::BodyId>,
 
-    /// Type-checking results for the current body. Access using the `typeck_results`
-    /// and `maybe_typeck_results` methods, which handle querying the typeck results on demand.
-    // FIXME(eddyb) move all the code accessing internal fields like this,
-    // to this module, to avoid exposing it to lint logic.
-    pub(super) cached_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
+    /// Type-checking results for the current body.
+    pub typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
 
     /// Parameter environment for the item we are in.
     pub param_env: ty::ParamEnv<'tcx>,
@@ -572,7 +568,7 @@ impl<'a> EarlyContext<'a> {
         features: &'a Features,
         lint_added_lints: bool,
         lint_store: &'a LintStore,
-        registered_tools: &'a RegisteredTools,
+        registered_lint_tools: &'a RegisteredTools,
         buffered: LintBuffer,
     ) -> EarlyContext<'a> {
         EarlyContext {
@@ -581,7 +577,7 @@ impl<'a> EarlyContext<'a> {
                 features,
                 lint_added_lints,
                 lint_store,
-                registered_tools,
+                registered_lint_tools,
             ),
             buffered,
         }
@@ -645,7 +641,7 @@ impl<'tcx> LateContext<'tcx> {
             && self.tcx.use_typing_mode_post_typeck_until_borrowck()
         {
             let def_id = self.tcx.hir_enclosing_body_owner(body_id.hir_id);
-            TypingMode::borrowck(self.tcx, def_id)
+            TypingMode::post_borrowck_analysis(self.tcx, def_id)
         } else {
             TypingMode::non_body_analysis()
         }
@@ -663,24 +659,13 @@ impl<'tcx> LateContext<'tcx> {
         self.tcx.type_is_use_cloned_modulo_regions(self.typing_env(), ty)
     }
 
-    /// Gets the type-checking results for the current body,
-    /// or `None` if outside a body.
-    pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
-        self.cached_typeck_results.get().or_else(|| {
-            self.enclosing_body.map(|body| {
-                let typeck_results = self.tcx.typeck_body(body);
-                self.cached_typeck_results.set(Some(typeck_results));
-                typeck_results
-            })
-        })
-    }
-
     /// Gets the type-checking results for the current body.
     /// As this will ICE if called outside bodies, only call when working with
     /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[inline]
     #[track_caller]
     pub fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
-        self.maybe_typeck_results().expect("`LateContext::typeck_results` called outside of body")
+        self.typeck_results.expect("`LateContext::typeck_results` called outside of body")
     }
 
     /// Returns the final resolution of a `QPath`, or `Res::Err` if unavailable.
@@ -690,7 +675,7 @@ impl<'tcx> LateContext<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) => self
-                .maybe_typeck_results()
+                .typeck_results
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     self.tcx

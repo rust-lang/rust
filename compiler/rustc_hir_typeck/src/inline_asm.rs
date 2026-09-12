@@ -2,22 +2,24 @@ use rustc_abi::FieldIdx;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_lint_defs::builtin::ASM_SUB_REGISTER;
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy, Unnormalized,
 };
-use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::asm::{
-    InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
+    InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmSize, InlineAsmType,
+    ModifierInfo,
 };
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::FnCtxt;
-use crate::diagnostics::RegisterTypeUnstable;
+use crate::diagnostics::{AsmConstPtrUnstable, RegisterTypeUnstable};
 
 pub(crate) struct InlineAsmCtxt<'a, 'tcx> {
     target_features: &'tcx FxIndexSet<Symbol>,
@@ -44,7 +46,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
     fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted(expr);
-        let ty = self.fcx.resolve_vars_with_obligations(ty);
+        let ty = self.fcx.deeply_resolve_ignoring_regions_with_obligations(ty);
         if ty.has_non_region_infer() {
             Ty::new_misc_error(self.tcx())
         } else {
@@ -59,7 +61,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if self.fcx.type_is_sized_modulo_regions(self.fcx.param_env, ty) {
             return true;
         }
-        if let ty::Foreign(..) = self.fcx.resolve_vars_with_obligations(ty).kind() {
+        if let ty::Foreign(..) =
+            self.fcx.deeply_resolve_ignoring_regions_with_obligations(ty).kind()
+        {
             return true;
         }
         false
@@ -157,6 +161,28 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     _ => Err(NonAsmTypeReason::InvalidElement(field.did, ty)),
                 }
             }
+            ty::Adt(adt, _args) if adt.repr().scalable() => {
+                let (_element_count, elem_ty, _number_of_vectors) =
+                    ty.scalable_vector_parts(self.tcx()).unwrap();
+
+                match elem_ty.kind() {
+                    ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Ok(InlineAsmType::SveVecI8),
+                    ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Ok(InlineAsmType::SveVecI16),
+                    ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Ok(InlineAsmType::SveVecI32),
+                    ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Ok(InlineAsmType::SveVecI64),
+                    ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Ok(InlineAsmType::SveVecI128),
+                    ty::Float(FloatTy::F16) => Ok(InlineAsmType::SveVecF16),
+                    ty::Float(FloatTy::F32) => Ok(InlineAsmType::SveVecF32),
+                    ty::Float(FloatTy::F64) => Ok(InlineAsmType::SveVecF64),
+                    ty::Float(FloatTy::F128) => Ok(InlineAsmType::SveVecF128),
+                    ty::Bool => Ok(InlineAsmType::SveVecBool),
+                    _ => {
+                        let fields = &adt.non_enum_variant().fields;
+                        let field = &fields[FieldIdx::ZERO];
+                        Err(NonAsmTypeReason::InvalidElement(field.did, ty))
+                    }
+                }
+            }
             ty::Infer(_) => bug!("unexpected infer ty in asm operand"),
             _ => Err(NonAsmTypeReason::Invalid(ty)),
         }
@@ -176,10 +202,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             idx: usize,
             suggested_modifier: char,
             suggested_result: &'a str,
-            suggested_size: u16,
+            suggested_size: InlineAsmSize,
             default_modifier: char,
             default_result: &'a str,
-            default_size: u16,
+            default_size: InlineAsmSize,
         }
 
         impl<'a, 'b> Diagnostic<'a, ()> for FormattingSubRegisterArg<'b> {
@@ -194,13 +220,24 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     default_result,
                     default_size,
                 } = self;
+
+                fn format_size(size: InlineAsmSize) -> String {
+                    match size {
+                        InlineAsmSize::FixedBytes(size) => format!("{size}-byte values"),
+                        InlineAsmSize::Scalable => "scalable values".to_string(),
+                    }
+                }
                 Diag::new(dcx, level, "formatting may not be suitable for sub-register argument")
                     .with_span_label(expr_span, "for this argument")
                     .with_help(format!(
-                        "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}` (for {suggested_size}-bit values)",
+                        "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as \
+                        `{suggested_result}` (for {})",
+                        format_size(suggested_size)
                     ))
                     .with_help(format!(
-                        "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}` (for {default_size}-bit values)",
+                        "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of \
+                        `{default_result}` (for {})",
+                        format_size(default_size)
                     ))
             }
         }
@@ -238,8 +275,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     NonAsmTypeReason::Invalid(ty) => {
                         let msg = format!("cannot use value of type `{ty}` for inline assembly");
                         self.fcx.dcx().struct_span_err(expr.span, msg).with_note(
-                            "only integers, floats, SIMD vectors, pointers and function pointers \
-                            can be used as arguments for inline assembly",
+                            "only integers, floats, SIMD vectors, scalable vectors, pointers and function \
+                            pointers can be used as arguments for inline assembly",
                         ).emit();
                     }
                     NonAsmTypeReason::NotSizedPtr(ty) => {
@@ -400,7 +437,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     size: default_size,
                 } = reg_class.default_modifier(asm_arch).unwrap();
                 self.tcx().emit_node_span_lint(
-                    lint::builtin::ASM_SUB_REGISTER,
+                    ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
                     FormattingSubRegisterArg {
@@ -548,7 +585,36 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     match ty.kind() {
                         ty::Error(_) => {}
                         _ if ty.is_integral() => {}
+                        ty::FnPtr(..) => {
+                            if !self.tcx().features().asm_const_ptr() {
+                                self.tcx()
+                                    .sess
+                                    .create_feature_err(
+                                        AsmConstPtrUnstable { span: op_sp },
+                                        sym::asm_const_ptr,
+                                    )
+                                    .emit();
+                            }
+                        }
+                        ty::RawPtr(pointee, _) | ty::Ref(_, pointee, _)
+                            if self.is_thin_ptr_ty(*pointee) =>
+                        {
+                            if !self.tcx().features().asm_const_ptr() {
+                                self.tcx()
+                                    .sess
+                                    .create_feature_err(
+                                        AsmConstPtrUnstable { span: op_sp },
+                                        sym::asm_const_ptr,
+                                    )
+                                    .emit();
+                            }
+                        }
                         _ => {
+                            let const_possible_ty = if !self.tcx().features().asm_const_ptr() {
+                                "integer"
+                            } else {
+                                "integer or thin pointer"
+                            };
                             self.fcx
                                 .dcx()
                                 .struct_span_err(op_sp, "invalid type for `const` operand")
@@ -556,7 +622,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     self.tcx().def_span(anon_const.def_id),
                                     format!("is {} `{}`", ty.kind().article(), ty),
                                 )
-                                .with_help("`const` operands must be of an integer type")
+                                .with_help(format!(
+                                    "`const` operands must be of an {const_possible_ty} type"
+                                ))
                                 .emit();
                         }
                     }

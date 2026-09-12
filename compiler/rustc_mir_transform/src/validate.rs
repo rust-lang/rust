@@ -2,25 +2,24 @@
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::LangItem;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
-    Upcast, Variance,
+    self, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, Variance,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
+use crate::PassPolicy;
 use crate::util::{self, most_packed_projection};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -98,8 +97,8 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
     }
 }
 
@@ -317,7 +316,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             }
             StatementKind::Coverage(kind) => {
                 if self.body.phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup)
-                    && let CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. } = kind
+                    && kind.is_removed_after_analysis()
                 {
                     self.fail(
                         location,
@@ -430,6 +429,26 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                                     terminator.kind,
                                 ),
                             );
+                        }
+
+                        // Call arguments are moved by reference, so they must be plain locals
+                        // or the contents of a box; other moved places violate MIR invariants.
+                        if self.tcx.sess.opts.unstable_opts.validate_mir
+                            && self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
+                        {
+                            let is_plain_local = place.projection.is_empty();
+                            let is_box_deref =
+                                matches!(place.projection.as_ref(), [ProjectionElem::Deref])
+                                    && self.body.local_decls[place.local].ty.is_box();
+                            if !is_plain_local && !is_box_deref {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "encountered `Move` of a non-local, non-box place in `Call` terminator: {:?}",
+                                        terminator.kind,
+                                    ),
+                                );
+                            }
                         }
                     }
                 }
@@ -622,7 +641,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 }
 
@@ -707,7 +726,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
 
-                        if adt_def.repr().simd() {
+                        if adt_def.repr().simd() || adt_def.repr().scalable() {
                             self.fail(
                                 location,
                                 format!(
@@ -786,14 +805,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::EarlyBinder::bind(self.tcx, f_ty.ty)
                                 .instantiate(self.tcx, args)
                                 .skip_norm_wip()
-                        } else {
-                            let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
-                            else {
-                                fail_out_of_bounds(self, location);
-                                return;
-                            };
-
+                        } else if let Some(&f_ty) = args.as_coroutine().upvar_tys().get(f.index()) {
                             f_ty
+                        } else {
+                            fail_out_of_bounds(self, location);
+                            return;
                         };
 
                         check_equal(self, location, f_ty);
@@ -1389,7 +1405,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    CastKind::Transmute => {
+                    CastKind::Transmute | CastKind::BoxDerefTransmute => {
                         // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                         // for any two `Sized` types, just potentially UB to run.
 
@@ -1418,6 +1434,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                             );
+                        }
+
+                        if matches!(kind, CastKind::BoxDerefTransmute) {
+                            if !target_type.is_raw_ptr() {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "Cannot BoxDerefTransmute to non-pointer type {target_type}"
+                                    ),
+                                );
+                            }
                         }
                     }
                     CastKind::Subtype => {

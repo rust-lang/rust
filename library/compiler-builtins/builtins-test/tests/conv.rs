@@ -259,7 +259,7 @@ macro_rules! f_to_f {
     ) => {$(
         #[test]
         fn $fn() {
-            use compiler_builtins::float::$mod::$fn;
+            use imp::$fn;
             use compiler_builtins::support::Float;
             use rustc_apfloat::ieee::{$from_ap_ty, $to_ap_ty};
 
@@ -294,41 +294,101 @@ macro_rules! f_to_f {
 }
 
 mod extend {
+    mod imp {
+        #[cfg(f128_enabled)]
+        cfg_select! {
+            any(target_arch = "powerpc", target_arch = "powerpc64") => {
+                #[cfg(f16_enabled)]
+                pub use compiler_builtins::float::extend::__extendhfkf2 as __extendhftf2;
+                pub use compiler_builtins::float::extend::{
+                    __extenddfkf2 as __extenddftf2, __extendsfkf2 as __extendsftf2,
+                };
+            }
+            _ => {
+                #[cfg(f16_enabled)]
+                pub use compiler_builtins::float::extend::__extendhftf2;
+                pub use compiler_builtins::float::extend::{__extenddftf2, __extendsftf2};
+            }
+        }
+
+        pub use compiler_builtins::float::extend::__extendsfdf2;
+        #[cfg(f16_enabled)]
+        pub use compiler_builtins::float::extend::{__extendhfdf2, __extendhfsf2, __gnu_h2f_ieee};
+
+        #[cfg(f16_enabled)]
+        pub fn check_gnu_h2f_ieee(x: f16) -> f32 {
+            f32::from_bits(compiler_builtins::float::extend::__gnu_h2f_ieee(
+                x.to_bits(),
+            ))
+        }
+    }
+
     use super::*;
+
+    #[cfg(f16_enabled)]
+    f_to_f! {
+        extend,
+        f16 => f32, Half => Single, __extendhfsf2, not(no_sys_f16);
+        f16 => f32, Half => Single, check_gnu_h2f_ieee, not(no_sys_f16);
+        f16 => f64, Half => Double, __extendhfdf2, not(no_sys_f16_f64_convert);
+    }
+
+    #[cfg(all(f16_enabled, f128_enabled))]
+    f_to_f! {
+        extend,
+        f16 => f128, Half => Quad, __extendhftf2, not(no_sys_f16_f128_convert);
+    }
 
     f_to_f! {
         extend,
         f32 => f64, Single => Double, __extendsfdf2, all();
     }
 
-    #[cfg(all(f16_enabled, f128_enabled))]
-    #[cfg(not(any(
-        target_arch = "powerpc",
-        target_arch = "powerpc64",
-        target_arch = "loongarch64"
-    )))]
+    #[cfg(f128_enabled)]
     f_to_f! {
         extend,
-        f16 => f32, Half => Single, __extendhfsf2, not(no_sys_f16);
-        f16 => f32, Half => Single, __gnu_h2f_ieee, not(no_sys_f16);
-        f16 => f64, Half => Double, __extendhfdf2, not(no_sys_f16_f64_convert);
-        f16 => f128, Half => Quad, __extendhftf2, not(no_sys_f16_f128_convert);
         f32 => f128, Single => Quad, __extendsftf2, not(no_sys_f128);
         f64 => f128, Double => Quad, __extenddftf2, not(no_sys_f128);
-    }
-
-    #[cfg(f128_enabled)]
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    f_to_f! {
-        extend,
-        // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
-        f32 => f128, Single => Quad, __extendsfkf2, not(no_sys_f128);
-        f64 => f128, Double => Quad, __extenddfkf2, not(no_sys_f128);
     }
 }
 
 mod trunc {
+    mod imp {
+        #[cfg(f128_enabled)]
+        cfg_select! {
+            any(target_arch = "powerpc", target_arch = "powerpc64") => {
+                #[cfg(f16_enabled)]
+                pub use compiler_builtins::float::trunc::__trunckfhf2 as __trunctfhf2;
+                pub use compiler_builtins::float::trunc::{
+                    __trunckfdf2 as __trunctfdf2, __trunckfsf2 as __trunctfsf2,
+                };
+            }
+            _ => {
+                #[cfg(f16_enabled)]
+                pub use compiler_builtins::float::trunc::__trunctfhf2;
+                pub use compiler_builtins::float::trunc::{__trunctfdf2, __trunctfsf2};
+            }
+        }
+
+        pub use compiler_builtins::float::trunc::__truncdfsf2;
+        #[cfg(f16_enabled)]
+        pub use compiler_builtins::float::trunc::{__gnu_f2h_ieee, __truncdfhf2, __truncsfhf2};
+
+        #[cfg(f16_enabled)]
+        pub fn check_gnu_f2h_ieee(x: f32) -> f16 {
+            f16::from_bits(compiler_builtins::float::trunc::__gnu_f2h_ieee(x.to_bits()))
+        }
+    }
+
     use super::*;
+
+    #[cfg(f16_enabled)]
+    f_to_f! {
+        trunc,
+        f32 => f16, Single => Half, __truncsfhf2, not(no_sys_f16);
+        f32 => f16, Single => Half, check_gnu_f2h_ieee, not(no_sys_f16);
+        f64 => f16, Double => Half, __truncdfhf2, not(no_sys_f16_f64_convert);
+    }
 
     f_to_f! {
         trunc,
@@ -336,27 +396,15 @@ mod trunc {
     }
 
     #[cfg(all(f16_enabled, f128_enabled))]
-    #[cfg(not(any(
-        target_arch = "powerpc",
-        target_arch = "powerpc64",
-        target_arch = "loongarch64"
-    )))]
     f_to_f! {
         trunc,
-        f32 => f16, Single => Half, __truncsfhf2, not(no_sys_f16);
-        f32 => f16, Single => Half, __gnu_f2h_ieee, not(no_sys_f16);
-        f64 => f16, Double => Half, __truncdfhf2, not(no_sys_f16_f64_convert);
         f128 => f16, Quad => Half, __trunctfhf2, not(no_sys_f16_f128_convert);
-        f128 => f32, Quad => Single, __trunctfsf2, not(no_sys_f128);
-        f128 => f64, Quad => Double, __trunctfdf2, not(no_sys_f128);
     }
 
     #[cfg(f128_enabled)]
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
     f_to_f! {
         trunc,
-        // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
-        f128 => f32, Quad => Single, __trunckfsf2, not(no_sys_f128);
-        f128 => f64, Quad => Double, __trunckfdf2, not(no_sys_f128);
+        f128 => f32, Quad => Single, __trunctfsf2, not(no_sys_f128);
+        f128 => f64, Quad => Double, __trunctfdf2, not(no_sys_f128);
     }
 }

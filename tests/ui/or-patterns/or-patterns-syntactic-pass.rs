@@ -67,9 +67,6 @@ fn or_patterns() {
     let [A | B, .. | ..];
 
     // These bind as `(prefix p) | q` as opposed to `prefix (p | q)`:
-    let (box 0 | 1); // Unstable; we *can* change the precedence if we want.
-                     //~^ WARN box pattern syntax is experimental
-                     //~| WARN unstable syntax
     let (&0 | 1);
     let (&mut 0 | 1);
     let (x @ 0 | 1);

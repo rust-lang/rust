@@ -4,28 +4,23 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
+use rustc_attr_ir::{
+    ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability, StabilityLevel,
+};
 use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, LintBuffer, msg};
 use rustc_feature::GateIssue;
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
+use rustc_hir::{self as hir, HirId};
+use rustc_lint_defs::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
+use rustc_lint_defs::{DeprecatedSinceKind, Lint};
 use rustc_macros::{Decodable, Encodable, StableHash, Subdiagnostic};
 use rustc_session::Session;
-use rustc_session::errors::feature_err_issue;
-use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
-use rustc_session::lint::{DeprecatedSinceKind, Lint};
+use rustc_session::diagnostics::feature_err_issue;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
-pub use self::StabilityLevel::*;
 use crate::ty::TyCtxt;
 use crate::ty::print::with_no_trimmed_paths;
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum StabilityLevel {
-    Unstable,
-    Stable,
-}
 
 #[derive(Copy, Clone)]
 pub enum UnstableKind {
@@ -102,7 +97,7 @@ fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
     style = "verbose",
     applicability = "machine-applicable"
 )]
-pub struct DeprecationSuggestion {
+pub(crate) struct DeprecationSuggestion {
     #[primary_span]
     pub span: Span,
 
@@ -110,7 +105,7 @@ pub struct DeprecationSuggestion {
     pub suggestion: Symbol,
 }
 
-pub struct Deprecated {
+pub(crate) struct Deprecated {
     pub sub: Option<DeprecationSuggestion>,
 
     pub kind: String,
@@ -389,7 +384,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: hir::StabilityLevel::Unstable { reason, issue, implied_by, .. },
+                level: StabilityLevel::Unstable { reason, issue, implied_by, .. },
                 feature,
                 ..
             }) => {
@@ -466,7 +461,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: hir::StabilityLevel::Unstable { reason, issue, .. },
+                level: StabilityLevel::Unstable { reason, issue, .. },
                 feature,
             }) => {
                 if span.allows_unstable(feature) {
@@ -607,7 +602,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(ConstStability {
-                level: hir::StabilityLevel::Unstable { reason, issue, implied_by, .. },
+                level: StabilityLevel::Unstable { reason, issue, implied_by, .. },
                 feature,
                 ..
             }) => {

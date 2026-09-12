@@ -6,7 +6,7 @@
       debug thin => _2;
       let mut _0: ();
       let _3: MyId;
-      let mut _4: (u16) is 0..=55554;
+      let mut _4: pattern_type!(u16 is 0..=55554);
       let mut _5: u16;
       let _6: ();
       let mut _7: u16;
@@ -24,7 +24,7 @@
       let _22: ();
       let mut _23: u32;
       let mut _24: std::option::Option<u16>;
-      let mut _26: (u16) is 0..=55554;
+      let mut _26: pattern_type!(u16 is 0..=55554);
       let mut _27: u16;
       let _28: ();
       let mut _29: i16;
@@ -98,8 +98,8 @@
 +         nop;
           StorageLive(_5);
           _5 = copy _1;
--         _4 = move _5 as (u16) is 0..=55554 (Transmute);
-+         _4 = copy _1 as (u16) is 0..=55554 (Transmute);
+-         _4 = move _5 as pattern_type!(u16 is 0..=55554) (Transmute);
++         _4 = copy _1 as pattern_type!(u16 is 0..=55554) (Transmute);
           StorageDead(_5);
 -         _3 = MyId(move _4);
 -         StorageDead(_4);
@@ -188,7 +188,7 @@
           StorageLive(_26);
           StorageLive(_27);
           _27 = copy _1;
--         _26 = move _27 as (u16) is 0..=55554 (Transmute);
+-         _26 = move _27 as pattern_type!(u16 is 0..=55554) (Transmute);
 +         _26 = copy _4;
           StorageDead(_27);
 -         _25 = MyId(move _26);

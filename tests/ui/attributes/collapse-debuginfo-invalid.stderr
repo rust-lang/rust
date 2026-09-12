@@ -1,178 +1,178 @@
-error: `#[collapse_debuginfo]` attribute cannot be used on extern crates
-  --> $DIR/collapse-debuginfo-invalid.rs:7:1
+error: the `collapse_debuginfo` attribute cannot be used on extern crates
+  --> $DIR/collapse-debuginfo-invalid.rs:7:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on use statements
-  --> $DIR/collapse-debuginfo-invalid.rs:11:1
+error: the `collapse_debuginfo` attribute cannot be used on use statements
+  --> $DIR/collapse-debuginfo-invalid.rs:11:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on statics
-  --> $DIR/collapse-debuginfo-invalid.rs:15:1
+error: the `collapse_debuginfo` attribute cannot be used on statics
+  --> $DIR/collapse-debuginfo-invalid.rs:15:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on constants
-  --> $DIR/collapse-debuginfo-invalid.rs:19:1
+error: the `collapse_debuginfo` attribute cannot be used on constants
+  --> $DIR/collapse-debuginfo-invalid.rs:19:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on functions
-  --> $DIR/collapse-debuginfo-invalid.rs:23:1
+error: the `collapse_debuginfo` attribute cannot be used on functions
+  --> $DIR/collapse-debuginfo-invalid.rs:23:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on closures
-  --> $DIR/collapse-debuginfo-invalid.rs:26:13
+error: the `collapse_debuginfo` attribute cannot be used on closures
+  --> $DIR/collapse-debuginfo-invalid.rs:26:15
    |
 LL |     let _ = #[collapse_debuginfo(yes)] || { };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on statements
-  --> $DIR/collapse-debuginfo-invalid.rs:28:5
+error: the `collapse_debuginfo` attribute cannot be used on statements
+  --> $DIR/collapse-debuginfo-invalid.rs:28:7
    |
 LL |     #[collapse_debuginfo(yes)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on expressions
-  --> $DIR/collapse-debuginfo-invalid.rs:31:13
+error: the `collapse_debuginfo` attribute cannot be used on expressions
+  --> $DIR/collapse-debuginfo-invalid.rs:31:15
    |
 LL |     let _ = #[collapse_debuginfo(yes)] 3;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on match arms
-  --> $DIR/collapse-debuginfo-invalid.rs:34:9
+error: the `collapse_debuginfo` attribute cannot be used on match arms
+  --> $DIR/collapse-debuginfo-invalid.rs:34:11
    |
 LL |         #[collapse_debuginfo(yes)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on modules
-  --> $DIR/collapse-debuginfo-invalid.rs:40:1
+error: the `collapse_debuginfo` attribute cannot be used on modules
+  --> $DIR/collapse-debuginfo-invalid.rs:40:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on type aliases
-  --> $DIR/collapse-debuginfo-invalid.rs:45:1
+error: the `collapse_debuginfo` attribute cannot be used on type aliases
+  --> $DIR/collapse-debuginfo-invalid.rs:45:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on enums
-  --> $DIR/collapse-debuginfo-invalid.rs:49:1
+error: the `collapse_debuginfo` attribute cannot be used on enums
+  --> $DIR/collapse-debuginfo-invalid.rs:49:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on enum variants
-  --> $DIR/collapse-debuginfo-invalid.rs:52:5
+error: the `collapse_debuginfo` attribute cannot be used on enum variants
+  --> $DIR/collapse-debuginfo-invalid.rs:52:7
    |
 LL |     #[collapse_debuginfo(yes)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on structs
-  --> $DIR/collapse-debuginfo-invalid.rs:57:1
+error: the `collapse_debuginfo` attribute cannot be used on structs
+  --> $DIR/collapse-debuginfo-invalid.rs:57:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on struct fields
-  --> $DIR/collapse-debuginfo-invalid.rs:60:5
+error: the `collapse_debuginfo` attribute cannot be used on struct fields
+  --> $DIR/collapse-debuginfo-invalid.rs:60:7
    |
 LL |     #[collapse_debuginfo(yes)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on unions
-  --> $DIR/collapse-debuginfo-invalid.rs:65:1
+error: the `collapse_debuginfo` attribute cannot be used on unions
+  --> $DIR/collapse-debuginfo-invalid.rs:65:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on traits
-  --> $DIR/collapse-debuginfo-invalid.rs:72:1
+error: the `collapse_debuginfo` attribute cannot be used on traits
+  --> $DIR/collapse-debuginfo-invalid.rs:72:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on associated types
-  --> $DIR/collapse-debuginfo-invalid.rs:75:5
+error: the `collapse_debuginfo` attribute cannot be used on associated types
+  --> $DIR/collapse-debuginfo-invalid.rs:75:7
    |
 LL |     #[collapse_debuginfo(yes)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on type aliases
-  --> $DIR/collapse-debuginfo-invalid.rs:80:1
+error: the `collapse_debuginfo` attribute cannot be used on type aliases
+  --> $DIR/collapse-debuginfo-invalid.rs:80:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on inherent impl blocks
-  --> $DIR/collapse-debuginfo-invalid.rs:93:1
+error: the `collapse_debuginfo` attribute cannot be used on inherent impl blocks
+  --> $DIR/collapse-debuginfo-invalid.rs:93:3
    |
 LL | #[collapse_debuginfo(yes)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on associated consts
-  --> $DIR/collapse-debuginfo-invalid.rs:96:5
+error: the `collapse_debuginfo` attribute cannot be used on associated consts
+  --> $DIR/collapse-debuginfo-invalid.rs:96:7
    |
 LL |     #[collapse_debuginfo(yes)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
-error: `#[collapse_debuginfo]` attribute cannot be used on inherent methods
-  --> $DIR/collapse-debuginfo-invalid.rs:100:5
+error: the `collapse_debuginfo` attribute cannot be used on inherent methods
+  --> $DIR/collapse-debuginfo-invalid.rs:100:7
    |
 LL |     #[collapse_debuginfo(yes)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[collapse_debuginfo]` can only be applied to macro defs
+   = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
 error: aborting due to 22 previous errors
 

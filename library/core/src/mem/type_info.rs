@@ -20,7 +20,6 @@ pub struct Type {
 /// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
 #[derive(Debug, PartialEq, Eq)]
 #[unstable(feature = "type_info", issue = "146922")]
-#[non_exhaustive]
 pub struct TraitImpl<T: PointeeSized> {
     pub(crate) vtable: DynMetadata<T>,
 }
@@ -37,7 +36,8 @@ impl TypeId {
     /// It can only be called at compile time.
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    pub const fn info(self) -> Type {
+    #[rustc_comptime]
+    pub fn info(self) -> Type {
         type_of(self)
     }
 }
@@ -58,85 +58,57 @@ impl Type {
     }
 }
 
+// FIXME(reflection): get rid of the static lifetime bound on TypeId and remove this function.
+/// Returns the [TypeId] of the generic type parameter.
+///
+/// This is identical to [TypeId::of] but without the static lifetime bound. It will be removed
+/// in the future.
+#[must_use]
+#[unstable(feature = "type_info", issue = "146922")]
+#[rustc_const_unstable(feature = "type_info", issue = "146922")]
+pub const fn of<T: ?Sized>() -> TypeId {
+    const { intrinsics::type_id::<T>() }
+}
+
 /// Compile-time type information.
 #[derive(Debug)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
 pub enum TypeKind {
     /// Tuples.
-    Tuple(Tuple),
+    Tuple,
     /// Arrays.
-    Array(Array),
+    Array,
     /// Slices.
-    Slice(Slice),
+    Slice,
     /// Dynamic Traits.
     DynTrait(DynTrait),
     /// Structs.
-    Struct(Struct),
+    Struct,
     /// Enums.
-    Enum(Enum),
+    Enum,
     /// Unions.
-    Union(Union),
+    Union,
     /// Primitive boolean type.
-    Bool(Bool),
+    Bool,
     /// Primitive character type.
-    Char(Char),
+    Char,
     /// Primitive signed and unsigned integer type.
-    Int(Int),
+    Int,
     /// Primitive floating-point type.
-    Float(Float),
+    Float,
     /// String slice type.
     Str(Str),
     /// References.
-    Reference(Reference),
+    Reference,
     /// Pointers.
-    Pointer(Pointer),
+    Pointer,
     /// Function pointers.
-    FnPtr(FnPtr),
+    FnPtr,
     /// FIXME(#146922): add all the common types
+    /// non exhaustive list:
+    /// - Never
     Other,
-}
-
-/// Compile-time type information about tuples.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Tuple {
-    /// All fields of a tuple.
-    pub fields: &'static [Field],
-}
-
-/// Compile-time type information about fields of tuples, structs and enum variants.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Field {
-    /// The name of the field.
-    pub name: &'static str,
-    /// The field's type.
-    pub ty: TypeId,
-    /// Offset in bytes from the parent type
-    pub offset: usize,
-}
-
-/// Compile-time type information about arrays.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Array {
-    /// The type of each element in the array.
-    pub element_ty: TypeId,
-    /// The length of the array.
-    pub len: usize,
-}
-
-/// Compile-time type information about slices.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Slice {
-    /// The type of each element in the slice.
-    pub element_ty: TypeId,
 }
 
 /// Compile-time type information about dynamic traits.
@@ -169,60 +141,11 @@ pub struct Trait {
     pub is_auto: bool,
 }
 
-/// Compile-time type information about structs.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Struct {
-    /// Instantiated generics of the struct.
-    pub generics: &'static [Generic],
-    /// All fields of the struct.
-    pub fields: &'static [Field],
-    /// Whether the struct field list is non-exhaustive.
-    pub non_exhaustive: bool,
-}
-
-/// Compile-time type information about unions.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Union {
-    /// Instantiated generics of the union.
-    pub generics: &'static [Generic],
-    /// All fields of the union.
-    pub fields: &'static [Field],
-}
-
-/// Compile-time type information about enums.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Enum {
-    /// Instantiated generics of the enum.
-    pub generics: &'static [Generic],
-    /// All variants of the enum.
-    pub variants: &'static [Variant],
-    /// Whether the enum variant list is non-exhaustive.
-    pub non_exhaustive: bool,
-}
-
-/// Compile-time type information about variants of enums.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Variant {
-    /// The name of the variant.
-    pub name: &'static str,
-    /// All fields of the variant.
-    pub fields: &'static [Field],
-    /// Whether the enum variant fields are non-exhaustive.
-    pub non_exhaustive: bool,
-}
-
 /// Compile-time type information about instantiated generics of structs, enum and union variants.
 #[derive(Debug)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
+#[lang = "type_info_generic"]
 pub enum Generic {
     /// Lifetimes.
     Lifetime(Lifetime),
@@ -258,42 +181,6 @@ pub struct Const {
     pub ty: TypeId,
 }
 
-/// Compile-time type information about `bool`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Bool {
-    // No additional information to provide for now.
-}
-
-/// Compile-time type information about `char`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Char {
-    // No additional information to provide for now.
-}
-
-/// Compile-time type information about signed and unsigned integer types.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Int {
-    /// The bit width of the signed integer type.
-    pub bits: u32,
-    /// Whether the integer type is signed.
-    pub signed: bool,
-}
-
-/// Compile-time type information about floating-point types.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Float {
-    /// The bit width of the floating-point type.
-    pub bits: u32,
-}
-
 /// Compile-time type information about string slice types.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -302,65 +189,55 @@ pub struct Str {
     // No additional information to provide for now.
 }
 
-/// Compile-time type information about references.
 #[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Reference {
-    /// The type of the value being referred to.
-    pub pointee: TypeId,
-    /// Whether this reference is mutable or not.
-    pub mutable: bool,
-}
-
-/// Compile-time type information about pointers.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Pointer {
-    /// The type of the value being pointed to.
-    pub pointee: TypeId,
-    /// Whether this pointer is mutable or not.
-    pub mutable: bool,
-}
-
-#[derive(Debug)]
+#[lang = "FnPtr"]
 #[unstable(feature = "type_info", issue = "146922")]
 /// Function pointer, e.g. fn(u8),
 pub struct FnPtr {
-    /// Unsafety, true is unsafe
-    pub unsafety: bool,
-
-    /// Abi, e.g. extern "C"
-    pub abi: Abi,
-
-    /// Function inputs
-    pub inputs: &'static [TypeId],
-
-    /// Function return type, default is TypeId::of::<()>
-    pub output: TypeId,
-
-    /// Vardiadic function, e.g. extern "C" fn add(n: usize, mut args: ...);
-    pub variadic: bool,
-
+    is_unsafe: bool,
+    abi: Abi,
+    inputs: &'static [TypeId],
+    output: TypeId,
+    variadic: bool,
     // FIXME(splat): should these fields be private, or merged into an Option<u8/u16>?
     /// Is any function argument splatted?
-    pub is_splatted: bool,
+    is_splatted: bool,
 
-    /// The index of the splatted function argument in `inputs`, only valid if `is_splatted` is true.
-    /// e.g. in `fn overload(a: u8, #[splat] b: (f32, usize))` the index is 1, and it can be called
-    /// as `overload(a, 1.0, 2)`.
-    pub splatted_index: u8,
+    splatted_index: u8,
 }
 
 impl FnPtr {
     /// Returns the splatted function argument index, or `None` if no argument is splatted.
+    ///
+    /// e.g. in `fn overload(a: u8, #[rustc_splat] b: (f32, usize))` the index is 1,
+    /// and it can be called as `overload(a, 1.0, 2)`.
     pub const fn splatted(&self) -> Option<u8> {
         if self.is_splatted { Some(self.splatted_index) } else { None }
     }
+    /// Whether this function is variadic, e.g. extern "C" fn add(n: usize, mut args: ...);
+    pub const fn is_variadic(&self) -> bool {
+        self.variadic
+    }
+    /// whether this refers to an unsafe function.
+    pub const fn is_unsafe(&self) -> bool {
+        self.is_unsafe
+    }
+    /// Returns the application binary interface. For example extern "C".
+    pub const fn abi(&self) -> Abi {
+        self.abi
+    }
+    /// The types of the functions parameters
+    pub const fn inputs(&self) -> &'static [TypeId] {
+        self.inputs
+    }
+    /// List of the types returned by the function. For a function with no output
+    /// specified this returns `TypeId::of<()>`.
+    pub const fn output(&self) -> TypeId {
+        self.output
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
 /// Abi of [FnPtr]
@@ -377,6 +254,65 @@ pub enum Abi {
 }
 
 impl TypeId {
+    /// Returns `true` if the type represented by this `TypeId` is an signed integer.
+    ///
+    /// For everything else this returns false.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<i32>().is_signed() }, true);
+    /// assert_eq!(const { TypeId::of::<u8>().is_signed() }, false);
+    /// assert_eq!(const { TypeId::of::<bool>().is_signed() }, false);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn is_signed(self) -> bool {
+        intrinsics::type_id_is_signed(self)
+    }
+
+    /// When called on a `TypeId` representing an array or slice this returns the type of each
+    /// element otherwise this returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().element_ty() }, Some(TypeId::of::<u32>()));
+    /// assert_eq!(const { TypeId::of::<u8>().element_ty() }, None); // not an array or slice
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn element_ty(self) -> Option<TypeId> {
+        intrinsics::type_id_element_ty(self)
+    }
+
+    /// When called on a `TypeId` representing an array this returns the length of the array in
+    /// all other cases this returns zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().array_len() }, 16);
+    /// assert_eq!(const { TypeId::of::<u8>().array_len() }, 0); // not an array
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn array_len(self) -> usize {
+        intrinsics::type_id_array_len(self)
+    }
+
     /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
     ///
     /// # Examples
@@ -419,6 +355,69 @@ impl TypeId {
     #[rustc_comptime]
     pub fn variants(self) -> usize {
         intrinsics::type_id_variants(self)
+    }
+
+    // FIXME(reflection): make the errors nicer. This is a wider problem,
+    // TypeId::fields has nice errors in the docs but those are not the ones shown
+    // by rustc.
+    /// Returns the variant representing type at the given index of the type represented by this `TypeId`. Use it to
+    /// get the name of an enum variant or check whether it is non_exhaustive.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// enum Enum {
+    ///     Unit,
+    ///     Tuple(u32, u64),
+    ///     #[non_exhaustive]
+    ///     Struct { x: u32, y: u32, z: String },
+    /// }
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(1).name() }, "Tuple");
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(2).name() }, "Struct");
+    ///
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(1).non_exhaustive() }, false);
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(2).non_exhaustive() }, true);
+    /// ```
+    ///
+    /// The variant index refer to the source order index of a variant in a type.
+    ///
+    /// Variant indexes are always `0..variant_count`, regardless of any custom discriminants that may have been defined.
+    ///
+    /// ```
+    /// enum Enum {
+    ///     Foo,  // variant index == 0
+    ///     Bar,  // variant index == 1
+    /// }
+    /// ```
+    ///
+    /// Calling variant on the TypeId for a struct will be treated as a compile-time error. The same
+    /// is true for out-of-bounds indexing on an enum.
+    ///
+    /// ```compile_fail,E0080
+    /// # #![feature(type_info)]
+    /// # use std::any::TypeId;
+    /// #
+    /// # struct Point {
+    /// #     x: u32,
+    /// #     y: u32,
+    /// # }
+    /// # enum Enum {
+    /// #     Unit,
+    /// #     Tuple(u32, u64),
+    /// #     Struct { x: u32, y: u32, z: String },
+    /// # }
+    /// const {
+    ///     _ = TypeId::of::<Point>().variant(0); // error: cannot get the variant of a struct
+    ///     _ = TypeId::of::<Enum>().variant(10); // error: indexing out of bounds: the len is 3 but the index is 10
+    /// }
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn variant(self, variant_index: usize) -> VariantId {
+        intrinsics::type_id_fields(self, variant_index);
+        VariantId { base: self, variant: variant_index }
     }
 
     /// Returns the number of fields at the given `variant_index` of the type represented by this `TypeId`.
@@ -480,6 +479,10 @@ impl TypeId {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
+    // FIXME(type_info): Add enum variant pattern types and use them to represent individual variants
+    // Then add a `variant` method to get a wrapper around such a pattern type (similar to the FRT
+    // type we have) and add methods on that. It's the only way to really sensibly represent
+    // things like `non_exhaustive` which can be applied to variants as well.
     pub fn fields(self, variant_index: usize) -> usize {
         intrinsics::type_id_fields(self, variant_index)
     }
@@ -556,6 +559,153 @@ impl TypeId {
             ),
         }
     }
+
+    /// Returns whether a type is marked with `#[non_exhaustive]`.
+    /// Returns `false` for everything but adts.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn non_exhaustive(self) -> bool {
+        intrinsics::non_exhaustive(self)
+    }
+
+    /// Returns a list of generic parameters of the type.
+    /// Returns an empty slice for everything that doesn't have generics.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn generics(self) -> &'static [Generic] {
+        intrinsics::type_id_generics(self)
+    }
+
+    /// Given a `TypeId` that represents a pointer this returns the `TypeId`
+    /// which that pointer points to. When called on anything else this returns
+    /// None.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(
+    ///     const { TypeId::of::<&i32>().points_to() },
+    ///     const { Some(TypeId::of::<i32>()) },
+    /// );
+    ///
+    /// assert_eq!(
+    ///     const { TypeId::of::<*const i32>().points_to() },
+    ///     const { Some(TypeId::of::<i32>()) },
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn points_to(self) -> Option<TypeId> {
+        intrinsics::type_id_points_to(self)
+    }
+
+    /// Given a `TypeId` that represents a pointer returns whether that pointer is mutable.
+    /// When called on anything else this returns `false`.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert!(const { TypeId::of::<&mut i32>().points_mutably() });
+    /// assert!(const { !TypeId::of::<&i32>().points_mutably() });
+    ///
+    /// assert!(!const { TypeId::of::<*const i32>().points_mutably() });
+    /// assert!(const { TypeId::of::<*mut i32>().points_mutably() });
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn points_mutably(self) -> bool {
+        intrinsics::type_id_points_mutably(self)
+    }
+
+    /// Given a `TypeId` that represents a function pointer returns an
+    /// [`FnPtr`]. When called on something else this returns `None`.
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    /// use std::mem::type_info::{Abi, FnPtr};
+    ///
+    /// const F: FnPtr = TypeId::of::<fn(u8, u16) -> usize>()
+    ///     .function_ptr()
+    ///     .expect("TypeId of a function ptr");
+    ///
+    /// assert!(F.inputs() == [TypeId::of::<u8>(), TypeId::of::<u16>()]);
+    /// assert!(F.output() == TypeId::of::<usize>());
+    /// assert!(F.abi() == Abi::default());
+    /// ```
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    /// # use std::mem::type_info::{Abi, FnPtr};
+    /// #
+    /// const F: FnPtr = TypeId::of::<unsafe fn()>()
+    ///     .function_ptr()
+    ///     .expect("TypeId of a function ptr");
+    ///
+    /// assert!(F.inputs() == []);
+    /// assert!(F.output() == TypeId::of::<()>());
+    /// assert!(F.abi() == Abi::default());
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn function_ptr(self) -> Option<FnPtr> {
+        intrinsics::type_id_function_ptr(self)
+    }
+}
+
+/// Variant representing type ID. Representing a variant of an enum.
+#[derive(Copy, PartialOrd, Ord, Hash)]
+#[derive_const(Clone, PartialEq, Eq)]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct VariantId {
+    base: TypeId,
+    variant: usize,
+}
+
+#[unstable(feature = "type_info", issue = "146922")]
+impl fmt::Debug for VariantId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Variant({:#034x}-{})", self.base.as_u128(), self.variant)
+    }
+}
+
+impl VariantId {
+    /// Returns the name of the variant.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// enum Enum {
+    ///     Unit,
+    ///     Tuple(bool),
+    ///     Struct { a: bool },
+    /// }
+    /// assert_eq!(
+    ///     const { TypeId::of::<Enum>().variant(1).name() },
+    ///     "Tuple",
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn name(self) -> &'static str {
+        intrinsics::variant_name(self.base, self.variant)
+    }
+
+    /// Returns whether this variant is marked with `#[non_exhaustive]`.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn non_exhaustive(self) -> bool {
+        intrinsics::variant_non_exhaustive(self.base, self.variant)
+    }
 }
 
 /// Field representing type ID. Representing a field of a struct, tuple or enum variant.
@@ -594,5 +744,49 @@ impl FieldId {
     #[rustc_comptime]
     pub fn type_id(self) -> TypeId {
         intrinsics::field_representing_type_actual_type_id(self.frt_type_id)
+    }
+
+    /// Returns the name of the field.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// struct Point {
+    ///     x: u32,
+    ///     y: u32,
+    /// }
+    /// assert_eq!(
+    ///     const { TypeId::of::<Point>().field(0, 0).name() },
+    ///     "x",
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn name(self) -> &'static str {
+        intrinsics::field_representing_type_name(self.frt_type_id)
+    }
+    /// Returns the offset of the field wrt to its containing type.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// #[repr(C)]
+    /// struct Point {
+    ///     x: u32,
+    ///     y: u32,
+    /// }
+    /// assert_eq!(
+    ///     const { TypeId::of::<Point>().field(0, 1).offset() },
+    ///     4,
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn offset(self) -> usize {
+        intrinsics::field_representing_type_offset(self.frt_type_id)
     }
 }

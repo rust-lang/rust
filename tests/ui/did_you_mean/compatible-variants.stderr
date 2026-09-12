@@ -103,6 +103,8 @@ LL |     let _: Option<()> = Some(while false {});
 error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:46:9
    |
+LL |     let _: Option<()> = {
+   |            ---------- expected due to this
 LL |         while false {}
    |         ^^^^^^^^^^^^^^ expected `Option<()>`, found `()`
    |

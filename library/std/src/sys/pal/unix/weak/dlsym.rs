@@ -1,5 +1,6 @@
 use crate::ffi::{CStr, c_char, c_void};
-use crate::marker::{FnPtr, PhantomData};
+use crate::marker::PhantomData;
+use crate::ops::FnPtr;
 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use crate::{mem, ptr};
 

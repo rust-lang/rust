@@ -1,13 +1,13 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
 use rustc_middle::ty::Unnormalized;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::context::LintContext;
-use crate::lints::{
+use crate::diagnostics::{
     NoopMethodCallDiag, SuspiciousDoubleRefCloneDiag, SuspiciousDoubleRefDerefDiag,
 };
 use crate::{LateContext, LateLintPass};

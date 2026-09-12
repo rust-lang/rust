@@ -81,7 +81,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp(self) -> f128 {
-        intrinsics::expf128(self)
+        intrinsics::exp(self)
     }
 
     /// Returns `2^(self)`.
@@ -110,7 +110,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp2(self) -> f128 {
-        intrinsics::exp2f128(self)
+        intrinsics::exp2(self)
     }
 
     /// Returns the natural logarithm of the number.
@@ -153,7 +153,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln(self) -> f128 {
-        intrinsics::logf128(self)
+        intrinsics::log(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -239,7 +239,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log2(self) -> f128 {
-        intrinsics::log2f128(self)
+        intrinsics::log2(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -280,7 +280,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log10(self) -> f128 {
-        intrinsics::log10f128(self)
+        intrinsics::log10(self)
     }
 
     /// Returns the cube root of a number.
@@ -378,7 +378,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sin(self) -> f128 {
-        intrinsics::sinf128(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -406,7 +406,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cos(self) -> f128 {
-        intrinsics::cosf128(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).

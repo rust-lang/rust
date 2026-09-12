@@ -1,6 +1,6 @@
 use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
-use crate::source::{SpanExt, SpanRange, walk_span_to_context};
+use crate::source::{SpanExt as _, SpanRange, walk_span_to_context};
 use crate::{sym, tokenize_with_text};
 use core::mem;
 use rustc_ast::ast;
@@ -21,7 +21,7 @@ use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext};
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash as _, Hasher as _};
 use std::ops::Range;
 use std::slice;
 
@@ -69,7 +69,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_results: cx.maybe_typeck_results().map(|x| (x, x)),
+            maybe_typeck_results: cx.typeck_results.map(|x| (x, x)),
             allow_side_effects: true,
             expr_fallback: None,
             path_check: PathCheck::default(),
@@ -788,7 +788,6 @@ impl HirEqInterExpr<'_, '_, '_> {
     /// Checks whether two patterns are the same.
     fn eq_pat(&mut self, left: &Pat<'_>, right: &Pat<'_>) -> bool {
         match (&left.kind, &right.kind) {
-            (PatKind::Box(l), PatKind::Box(r)) => self.eq_pat(l, r),
             (PatKind::Struct(lp, la, ..), PatKind::Struct(rp, ra, ..)) => {
                 self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat_field(l, r))
             },
@@ -838,7 +837,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (Res::Local(_), _) | (_, Res::Local(_)) => false,
             (Res::Def(l_kind, l), Res::Def(r_kind, r))
                 if l_kind == r_kind
-                    && let DefKind::Const { .. }
+                    && let DefKind::Const
                     | DefKind::Static { .. }
                     | DefKind::Fn
                     | DefKind::TyAlias
@@ -1113,7 +1112,7 @@ pub fn eq_expr_value(cx: &LateContext<'_>, ctxt: SyntaxContext, left: &Expr<'_>,
 /// item, in which case it is the last two
 fn generic_path_segments<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<&'tcx [PathSegment<'tcx>]> {
     match segments.last()?.res {
-        Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, _) => {
+        Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => {
             // <Ty as module::Trait<T>>::assoc::<U>
             //        ^^^^^^^^^^^^^^^^   ^^^^^^^^^^ segments: [module, Trait<T>, assoc<U>]
             Some(&segments[segments.len().checked_sub(2)?..])
@@ -1140,7 +1139,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_results: cx.maybe_typeck_results(),
+            maybe_typeck_results: cx.typeck_results,
             s: FxHasher::default(),
             path_check: PathCheck::default(),
         }
@@ -1424,7 +1423,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_name(path.ident.name);
             },
         }
-        // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
 
     pub fn hash_pat_expr(&mut self, lit: &PatExpr<'_>) {
@@ -1469,7 +1467,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_pat(pat);
                 }
             },
-            PatKind::Box(pat) | PatKind::Deref(pat) => self.hash_pat(pat),
+            PatKind::Deref(pat) => self.hash_pat(pat),
             PatKind::Expr(expr) => self.hash_pat_expr(expr),
             PatKind::Or(pats) => {
                 for pat in *pats {
@@ -1649,6 +1647,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             TyKind::UnsafeBinder(binder) => {
                 self.hash_ty(binder.inner_ty);
+            },
+            TyKind::View(ty, _) => {
+                self.hash_ty(ty);
+                // FIXME(scrabsha): probably hash the fields as well?
             },
             TyKind::Err(_)
             | TyKind::Infer(())

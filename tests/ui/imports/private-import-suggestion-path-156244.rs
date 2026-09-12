@@ -39,4 +39,30 @@ mod bad {
     //~^ ERROR module import `inner` is private [E0603]
 }
 
+// Regression test for https://github.com/rust-lang/rust/issues/157455: no private ancestors.
+mod inaccessible_ancestor {
+    mod private {
+        pub mod public {
+            pub struct Hi;
+        }
+    }
+
+    pub mod testing {
+        use super::private::public::Hi;
+    }
+}
+
+use inaccessible_ancestor::testing::Hi;
+//~^ ERROR struct import `Hi` is private [E0603]
+
+// Regression test for https://github.com/rust-lang/rust/issues/157455: no external alias rewrite.
+use std as s;
+
+mod external_alias {
+    use super::s::mem;
+}
+
+use external_alias::mem;
+//~^ ERROR module import `mem` is private [E0603]
+
 fn main() {}

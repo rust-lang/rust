@@ -5,11 +5,12 @@ use crate::spec::{
 pub(crate) fn target() -> Target {
     let mut base = base::fuchsia::opts();
     base.cpu = "generic".into();
-    base.features = "+v8a,+crc,+aes,+sha2,+neon".into();
+    base.features = "+v8a,+crc,+aes,+sha2,+neon,+fix-cortex-a53-835769".into();
     base.max_atomic_width = Some(128);
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
+        | SanitizerSet::HWADDRESS
         | SanitizerSet::LEAK
         | SanitizerSet::SHADOWCALLSTACK;
     base.default_sanitizers = SanitizerSet::SHADOWCALLSTACK;

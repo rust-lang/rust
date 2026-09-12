@@ -24,6 +24,8 @@ pub(crate) fn target() -> Target {
             // There are many CPUs, one for each hardware generation.
             // Require to set one explicitly as there is no good default.
             need_explicit_cpu: true,
+            // crates with different `target-cpu`s are not link-compatible for amdgcn
+            requires_consistent_cpu: true,
 
             max_atomic_width: Some(64),
 

@@ -6,10 +6,10 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 rustc_abi = { path = "../rustc_abi" }
+rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_public_bridge = { path = "../rustc_public_bridge" }
-rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 scoped-tls = "1.0"

@@ -39,6 +39,7 @@ from lldb_providers import (
     MSVCTupleSyntheticProvider,
     ClangEncodedEnumSummaryProvider,
     StructSummaryProvider,
+    f16SummaryProvider,
     # re-exports
     get_template_args as get_template_args,
     resolve_msvc_template_arg as resolve_msvc_template_arg,
@@ -111,15 +112,6 @@ def __lldb_init_module(debugger: lldb.SBDebugger, _dict: LLDBOpaque):
 
     # RUST_CATEGORY.AddLanguage(lldb.eLanguageTypeRust)
 
-    global FEATURE_FLAGS
-    # Most feature checks should be possible via simple "does this API exist at all" checks.
-    if getattr(lldb.SBType, "GetStaticFieldWithName", None) is not None:
-        FEATURE_FLAGS |= LLDBFeature.StaticFields
-    if getattr(lldb, "eFormatterMatchCallback", None) is not None:
-        FEATURE_FLAGS |= LLDBFeature.TypeRecognizers
-    if getattr(lldb, "eBasicTypeFloat128", None) is not None:
-        FEATURE_FLAGS |= LLDBFeature.Float128
-
     register_providers_compatibility()
 
 
@@ -134,18 +126,39 @@ def register_providers_compatibility():
 
     global RUST_CATEGORY
 
-    if LLDBFeature.TypeRecognizers in FEATURE_FLAGS:
-        # FIXME: this can be removed once full support for type recognizers is added.
-        # This prevents a semi-unfixable regression for CodeLLDB
-        register_synth(
-            synthetic_lookup,
-            lldb.SBTypeNameSpecifier(
-                MOD_PREFIX + is_udt.__name__,
-                lldb.eFormatterMatchCallback,
-            ),
-            lldb.eTypeOptionCascade,
-        )
+    # Don't format 8-bit builtins as chars
+    unsigned_format = lldb.SBTypeFormat(
+        lldb.eFormatUnsigned,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
+    )
 
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("u8", False), unsigned_format)
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("unsigned char", False),
+        unsigned_format,
+    )
+
+    signed_format = lldb.SBTypeFormat(
+        lldb.eFormatDecimal,
+        lldb.eTypeOptionCascade
+        | lldb.eTypeOptionSkipPointers
+        | lldb.eTypeOptionSkipReferences,
+    )
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("i8", False), lldb.SBTypeFormat(lldb.eFormatDecimal)
+    )
+
+    # i8 translates to signed char on msvc
+    RUST_CATEGORY.AddTypeFormat(
+        lldb.SBTypeNameSpecifier("signed char", False),
+        signed_format,
+    )
+    # Does not conflict with rust char, which ends up with the type name `char32_t`
+    RUST_CATEGORY.AddTypeFormat(lldb.SBTypeNameSpecifier("char", False), signed_format)
+
+    if LLDBFeature.TypeRecognizers in FEATURE_FLAGS:
         # enforce uniform aggregate formatting
         register_summary(
             StructSummaryProvider,
@@ -156,6 +169,44 @@ def register_providers_compatibility():
             lldb.eTypeOptionCascade
             | lldb.eTypeOptionHideEmptyAggregates
             | lldb.eTypeOptionHideChildren,
+        )
+
+        # Force f16 summary on windows-msvc since PDB does not have a node for f16
+        register_summary(
+            f16SummaryProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_msvc_f16.__name__,
+                lldb.eFormatterMatchCallback,
+            ),
+            DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
+        )
+
+        # Tuple-structs
+        register_synth(
+            TupleSyntheticProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_tuple_type.__name__, lldb.eFormatterMatchCallback
+            ),
+            lldb.eTypeOptionCascade,
+        )
+
+        # Gnu Sum-type Enums
+        register_synth(
+            ClangEncodedEnumProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_gnu_enum.__name__,
+                lldb.eFormatterMatchCallback,
+            ),
+            lldb.eTypeOptionCascade,
+        )
+
+        register_summary(
+            ClangEncodedEnumSummaryProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_gnu_enum.__name__,
+                lldb.eFormatterMatchCallback,
+            ),
+            lldb.eTypeOptionCascade,
         )
     else:
         # Need to toss any remaining types through this so that GNU enums are caught
@@ -175,28 +226,56 @@ def register_providers_compatibility():
     register(
         StdSliceSyntheticProvider,
         StdStrSummaryProvider,
-        r"^&(mut )?str$",
+        r"^((&(mut )?)|(\*(const|mut) ))str$",
+    )
+
+    # Box<str> GNU
+    register(
+        StdSliceSyntheticProvider,
+        StdStrSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<str,.*>$",
     )
 
     # str MSVC
     register(
         MSVCStrSyntheticProvider,
         StdStrSummaryProvider,
-        r"^ref(_mut)?\$<str\$>$",
+        r"^((ref(_mut)?)|(ptr_(const|mut)))\$<str\$>$",
+    )
+
+    # Box<str> MSVC
+    register(
+        MSVCStrSyntheticProvider,
+        StdStrSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<str\$,.*>$",
     )
 
     # slice GNU
     register(
         StdSliceSyntheticProvider,
         SizeSummaryProvider,
-        r"^&(mut )?\[.+\]$",
+        r"^((&(mut )?)|(\*(const|mut) ))\[.+\]$",
+    )
+
+    # Box<[T]> GNU
+    register(
+        StdSliceSyntheticProvider,
+        SizeSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<\[.+\],.*>$",
     )
 
     # slice MSVC
     register(
         MSVCStdSliceSyntheticProvider,
         StdSliceSummaryProvider,
-        r"^ref(_mut)?\$<slice2\$<.+> >",
+        r"^((ref(_mut)?)|(ptr_(const|mut)))\$<slice2\$<.+> >$",
+    )
+
+    # Box<[T]> MSVC
+    register(
+        MSVCStdSliceSyntheticProvider,
+        StdSliceSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<slice2\$<.+>,.*>$",
     )
 
     # OsString
@@ -310,6 +389,7 @@ def register_providers_compatibility():
         MSVCTupleSyntheticProvider,
         TupleSummaryProvider,
         r"^tuple\$<.+>$",
+        type_options=DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
     )
 
 
@@ -402,6 +482,23 @@ def is_udt(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
         and not type.IsPointerType()
         and not type.IsArrayType()
     )
+
+
+def is_gnu_enum(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    return (
+        type.GetNumberOfFields() == 1
+        and type.GetFieldAtIndex(0).GetName() == "$variants$"
+    )
+
+
+def is_tuple_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    fields = type.fields
+    return len(fields) != 0 and is_tuple_fields(fields)
+
+
+def is_msvc_f16(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    # DWARF has a proper tag for f16, PDB does not.
+    return type.GetName() == "f16" and type.IsAggregateType()
 
 
 def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:

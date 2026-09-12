@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 #[allow(nonstandard_style)]
 pub struct never;
 

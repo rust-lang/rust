@@ -21,7 +21,7 @@ pub fn rdtimeh_w() -> (i32, isize) {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.loongarch.dbar"]
     fn __dbar(a: i32);
     #[link_name = "llvm.loongarch.ibar"]

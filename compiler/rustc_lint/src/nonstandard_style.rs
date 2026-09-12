@@ -8,14 +8,14 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind, find_attr};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty::AssocContainer;
-use rustc_session::config::CrateType;
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Ident, Span, sym};
+use rustc_structures::CrateType;
 
-use crate::lints::{
+use crate::diagnostics::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
     NonUpperCaseGlobal, NonUpperCaseGlobalSub, NonUpperCaseGlobalSubTool,
 };
@@ -160,7 +160,7 @@ impl NonCamelCaseTypes {
 impl EarlyLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         let has_repr_c = matches!(
-            AttributeParser::parse_limited(cx.sess(), &it.attrs, &[sym::repr]),
+            AttributeParser::parse_limited_sym(cx.sess(), &it.attrs, &[sym::repr]),
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, ..})) if reprs.iter().any(|(r, _)| r == &ReprAttr::ReprC)
         );
 
@@ -211,7 +211,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
 
 declare_lint! {
     /// The `non_snake_case` lint detects variables, methods, functions,
-    /// lifetime parameters and modules that don't have snake case names.
+    /// lifetime parameters, named fields and modules that don't have snake case names.
     ///
     /// ### Example
     ///
@@ -452,10 +452,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_struct_def(&mut self, cx: &LateContext<'_>, s: &hir::VariantData<'_>) {
-        for sf in s.fields() {
-            self.check_snake_case(cx, "structure field", &sf.ident);
-        }
+    fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
+        self.check_snake_case(cx, "structure field", &field.ident);
     }
 }
 
@@ -628,7 +626,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
             ..
         }) = p.kind
         {
-            if let Res::Def(DefKind::Const { .. }, _) = path.res
+            if let Res::Def(DefKind::Const, _) = path.res
                 && let [segment] = path.segments
             {
                 NonUpperCaseGlobals::check_upper_case(

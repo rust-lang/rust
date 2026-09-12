@@ -1,12 +1,14 @@
 error[E0425]: cannot find type `Stuct` in this scope
   --> $DIR/issue-88844.rs:6:6
    |
-LL | struct Struct { value: i32 }
-   | ------------- similarly named struct `Struct` defined here
-...
 LL | impl Stuct {
-   |      ^^^^^
+   |      ^^^^^ not found in this scope
    |
+note: similarly named struct `Struct` defined here
+  --> $DIR/issue-88844.rs:3:1
+   |
+LL | struct Struct { value: i32 }
+   | ^^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL | impl Struct {

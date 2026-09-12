@@ -9,7 +9,7 @@
 
 extern crate cross_crate_eii_declaration;
 
-#[unsafe(cross_crate_eii_declaration::foo)]
+#[cross_crate_eii_declaration::foo]
 fn other(x: u64) -> u64 {
     x
 }

@@ -9,9 +9,8 @@ use std::fmt::Debug;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_hir::find_attr;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, TraitErrors};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
@@ -44,7 +43,6 @@ use crate::traits::{
 /// bounds / where-clauses).
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct ImplHeader<'tcx> {
-    pub impl_def_id: DefId,
     pub impl_args: ty::GenericArgsRef<'tcx>,
     pub self_ty: Ty<'tcx>,
     pub trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -207,13 +205,12 @@ fn fresh_impl_header<'tcx>(
     let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
     ImplHeader {
-        impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip(),
         trait_ref: is_of_trait
             .then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip()),
         predicates: tcx
-            .predicates_of(impl_def_id)
+            .clauses_of(impl_def_id)
             .instantiate(tcx, impl_args)
             .iter()
             .map(|(c, _)| c.skip_norm_wip().as_predicate())
@@ -265,6 +262,7 @@ fn overlap<'tcx>(
         .infer_ctxt()
         .skip_leak_check(skip_leak_check.is_yes())
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
+        .enable_next_solver_overflow_fcw(false)
         .build(TypingMode::Coherence);
     let selcx = &mut SelectionContext::new(&infcx);
     if track_ambiguity_causes.is_yes() {
@@ -335,7 +333,7 @@ fn overlap<'tcx>(
         .iter()
         .any(|c| c.0.involves_placeholders());
 
-    let mut impl_header = infcx.resolve_vars_if_possible(impl1_header);
+    let mut impl_header = infcx.deeply_resolve_ignoring_regions(impl1_header);
 
     // Deeply normalize the impl header for diagnostics, ignoring any errors if this fails.
     if infcx.next_trait_solver() {
@@ -426,7 +424,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         let ocx = ObligationCtxt::new(infcx);
         ocx.register_obligations(obligations.iter().cloned());
         let hard_errors = ocx.try_evaluate_obligations();
-        if !hard_errors.is_empty() {
+        if let TraitErrors::HasErrors(hard_errors) = hard_errors {
             assert!(
                 hard_errors.iter().all(|e| e.is_true_error()),
                 "should not have detected ambiguity during first pass"
@@ -453,7 +451,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
                 .filter(|error| {
                     matches!(error.code, FulfillmentErrorCode::Ambiguity { overflow: Some(true) })
                 })
-                .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
+                .map(|e| infcx.deeply_resolve_ignoring_regions(e.obligation.predicate))
                 .collect(),
         }
     } else {
@@ -506,7 +504,11 @@ fn impl_intersection_has_negative_obligation(
 
     // N.B. We need to unify impl headers *with* `TypingMode::Coherence`,
     // even if proving negative predicates doesn't need `TypingMode::Coherence`.
-    let ref infcx = tcx.infer_ctxt().with_next_trait_solver(true).build(TypingMode::Coherence);
+    let ref infcx = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(true)
+        .enable_next_solver_overflow_fcw(false)
+        .build(TypingMode::Coherence);
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
@@ -538,8 +540,9 @@ fn impl_intersection_has_negative_obligation(
     // Right above we plug inference variables with placeholders,
     // this gets us new impl1_header_args with the inference variables actually resolved
     // to those placeholders.
-    let impl1_header_args = infcx.resolve_vars_if_possible(impl1_header.impl_args);
-    // So there are no infer variables left now, except regions which aren't resolved by `resolve_vars_if_possible`.
+    let impl1_header_args = infcx.deeply_resolve_ignoring_regions(impl1_header.impl_args);
+    // So there are no infer variables left now, except regions which aren't resolved by
+    // `deeply_resolve_ignoring_regions`.
     assert!(!impl1_header_args.has_non_region_infer());
 
     let param_env = ty::EarlyBinder::bind(tcx, tcx.param_env(impl1_def_id))
@@ -548,7 +551,7 @@ fn impl_intersection_has_negative_obligation(
 
     util::elaborate(
         tcx,
-        tcx.predicates_of(impl2_def_id)
+        tcx.clauses_of(impl2_def_id)
             .instantiate(tcx, impl2_header.impl_args)
             .into_iter()
             .map(|(c, s)| (c.skip_norm_wip(), s)),
@@ -635,7 +638,7 @@ fn plug_infer_with_placeholders<'tcx>(
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
-                    .opportunistic_resolve_var(self.infcx.tcx, vid);
+                    .shallow_resolve_region_var(self.infcx.tcx, vid);
                 if r.is_var() {
                     let Ok(InferOk { value: (), obligations }) =
                         self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
@@ -688,19 +691,14 @@ fn try_prove_negated_where_clause<'tcx>(
         param_env,
         negative_predicate,
     ));
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
         return false;
     }
 
     // FIXME: We could use the assumed_wf_types from both impls, I think,
     // if that wasn't implemented just for LocalDefId, and we'd need to do
     // the normalization ourselves since this is totally fallible...
-    let errors = ocx.resolve_regions(CRATE_DEF_ID, param_env, []);
-    if !errors.is_empty() {
-        return false;
-    }
-
-    true
+    ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty()
 }
 
 /// Compute the `intercrate_ambiguity_causes` for the new solver using
@@ -769,20 +767,6 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         }
 
         let mut candidates = goal.candidates();
-        for cand in goal.candidates() {
-            if let inspect::ProbeKind::TraitCandidate {
-                source: CandidateSource::Impl(def_id),
-                result: Ok(_),
-            } = cand.kind()
-                && let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id)
-            {
-                if let Some(message) =
-                    find_attr!(infcx.tcx, def_id, RustcReservationImpl(message) => *message)
-                {
-                    self.causes.insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                }
-            }
-        }
 
         // We also look for unknowable candidates. In case a goal is unknowable, there's
         // always exactly 1 candidate.
@@ -808,7 +792,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                         Unnormalized::new_wip(ty),
                     )
                     .map_err(|_| ())?;
-                if !ocx.try_evaluate_obligations().is_empty() {
+                if !ocx.try_evaluate_obligations().no_errors() {
                     return Err(());
                 }
             }

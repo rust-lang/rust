@@ -1,0 +1,2 @@
+error: `--jobs-linker` cannot be larger than `--jobs`
+

@@ -1,5 +1,5 @@
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{CoroutineKind, DUMMY_NODE_ID, Expr, ast, token};
+use rustc_ast::{CoroutineKind, CoroutineMarker, Expr, ast, token};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::Span;
@@ -26,19 +26,15 @@ fn parse_closure<'a>(
 ) -> PResult<'a, Box<Expr>> {
     let mut closure_parser = cx.new_parser_from_tts(stream);
 
-    let coroutine_kind = Some(CoroutineKind::Gen {
-        span,
-        closure_id: DUMMY_NODE_ID,
-        return_impl_trait_id: DUMMY_NODE_ID,
-    });
+    let coroutine_marker = Some(CoroutineMarker::new(CoroutineKind::Gen, span));
 
     let mut closure = closure_parser.parse_expr()?;
     match &mut closure.kind {
         ast::ExprKind::Closure(c) => {
-            if let Some(kind) = c.coroutine_kind {
-                cx.dcx().span_err(kind.span(), "only plain closures allowed in `iter!`");
+            if let Some(marker) = c.coroutine_marker {
+                cx.dcx().span_err(marker.span, "only plain closures allowed in `iter!`");
             }
-            c.coroutine_kind = coroutine_kind;
+            c.coroutine_marker = coroutine_marker;
             if closure_parser.token != token::Eof {
                 closure_parser.unexpected()?;
             }

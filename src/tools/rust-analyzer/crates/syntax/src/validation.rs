@@ -285,11 +285,11 @@ fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
 fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxError>) {
     let path = segment.parent_path();
     let is_path_start = segment.coloncolon_token().is_none() && path.qualifier().is_none();
-
     if let Some(token) = segment.self_token() {
-        if !is_path_start {
+        let is_last_segment = path.parent_path().is_none();
+        if !is_path_start && !is_last_segment {
             errors.push(SyntaxError::new(
-                "The `self` keyword is only allowed as the first segment of a path",
+                "The `self` keyword is only allowed at the start or at the end of a path",
                 token.text_range(),
             ));
         }

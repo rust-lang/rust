@@ -188,6 +188,8 @@ pub struct Verify<'tcx> {
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Placeholder(ty::PlaceholderType<'tcx>),
+    // FIXME: we expect this alias to be rigid in the next solver.
+    // But we can't assert that in construction since this enum is public.
     Alias(ty::AliasTy<'tcx>),
 }
 
@@ -670,7 +672,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     /// Resolves a region var to its value in the unification table, if it exists.
     /// Otherwise, it is resolved to the root `ReVar` in the table.
-    pub fn opportunistic_resolve_var(
+    pub fn shallow_resolve_region_var(
         &mut self,
         tcx: TyCtxt<'tcx>,
         vid: ty::RegionVid,
@@ -683,7 +685,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn probe_value(
+    pub fn try_resolve_region_var(
         &mut self,
         vid: ty::RegionVid,
     ) -> Result<ty::Region<'tcx>, ty::UniverseIndex> {
@@ -741,7 +743,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             | ty::ReEarlyParam(..)
             | ty::ReError(_) => ty::UniverseIndex::ROOT,
             ty::RePlaceholder(placeholder) => placeholder.universe,
-            ty::ReVar(vid) => match self.probe_value(vid) {
+            ty::ReVar(vid) => match self.try_resolve_region_var(vid) {
                 Ok(value) => self.universe(value),
                 Err(universe) => universe,
             },
@@ -805,11 +807,7 @@ impl<'tcx> GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Placeholder(ref p) => Ty::new_placeholder(tcx, *p),
-            // FIXME(#155345): Region handling should generally only
-            // deal with rigid aliases, making sure we do so correctly
-            // everywhere is effort, so we're just using `No` everywhere
-            // for now. This should change soon.
-            GenericKind::Alias(ref p) => p.to_ty(tcx, ty::IsRigid::No),
+            GenericKind::Alias(ref p) => p.to_ty(tcx, ty::IsRigid::yes_if_next_solver(tcx)),
         }
     }
 }

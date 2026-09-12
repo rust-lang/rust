@@ -7,7 +7,6 @@ use either::{Either, Left, Right};
 use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
-use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
@@ -84,7 +83,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     pub fn to_scalar(self) -> Scalar<Prov> {
         match self {
             Immediate::Scalar(val) => val,
-            Immediate::ScalarPair(..) => bug!("Got a scalar pair where a scalar was expected"),
+            Immediate::ScalarPair { .. } => bug!("Got a scalar pair where a scalar was expected"),
             Immediate::Uninit => bug!("Got uninit where a scalar was expected"),
         }
     }
@@ -129,7 +128,10 @@ impl<Prov: Provenance> Immediate<Prov> {
                     );
                 }
             }
-            (Immediate::ScalarPair(a_val, b_val), BackendRepr::ScalarPair(a, b)) => {
+            (
+                Immediate::ScalarPair(a_val, b_val),
+                BackendRepr::ScalarPair { a, b, b_offset: _ },
+            ) => {
                 assert_eq!(
                     a_val.size(),
                     a.size(cx),
@@ -263,7 +265,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_scalar_pair(a: Scalar<Prov>, b: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         debug_assert!(
-            matches!(layout.backend_repr, BackendRepr::ScalarPair(..)),
+            matches!(layout.backend_repr, BackendRepr::ScalarPair { .. }),
             "`ImmTy::from_scalar_pair` on non-scalar-pair layout"
         );
         let imm = Immediate::ScalarPair(a, b);
@@ -276,7 +278,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         debug_assert!(
             match (imm, layout.backend_repr) {
                 (Immediate::Scalar(..), BackendRepr::Scalar(..)) => true,
-                (Immediate::ScalarPair(..), BackendRepr::ScalarPair(..)) => true,
+                (Immediate::ScalarPair { .. }, BackendRepr::ScalarPair { .. }) => true,
                 (Immediate::Uninit, _) if layout.is_sized() => true,
                 _ => false,
             },
@@ -339,12 +341,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn to_scalar_int(&self) -> InterpResult<'tcx, ScalarInt> {
         let s = self.to_scalar().to_scalar_int()?;
-        if s.size() != self.layout.size {
-            throw_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
-                target_size: self.layout.size.bytes(),
-                data_size: s.size().bytes(),
-            }));
-        }
+        assert_eq!(s.size(), self.layout.size, "scalar immediate size does not match layout");
         interp_ok(s)
     }
 
@@ -415,14 +412,15 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                 **self
             }
             // extract fields from types with `ScalarPair` ABI
-            (Immediate::ScalarPair(a_val, b_val), BackendRepr::ScalarPair(a, b)) => {
-                Immediate::from(if offset.bytes() == 0 {
-                    a_val
-                } else {
-                    assert_eq!(offset, a.size(cx).align_to(b.default_align(cx).abi));
-                    b_val
-                })
-            }
+            (
+                Immediate::ScalarPair(a_val, b_val),
+                BackendRepr::ScalarPair { a: _, b: _, b_offset },
+            ) => Immediate::from(if offset.bytes() == 0 {
+                a_val
+            } else {
+                assert_eq!(offset, b_offset);
+                b_val
+            }),
             // everything else is a bug
             _ => bug!(
                 "invalid field access on immediate {} at offset {}, original layout {:#?}",
@@ -606,15 +604,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )?;
                 Some(ImmTy::from_scalar(scalar, mplace.layout))
             }
-            BackendRepr::ScalarPair(
-                abi::Scalar::Initialized { value: a, .. },
-                abi::Scalar::Initialized { value: b, .. },
-            ) => {
+            BackendRepr::ScalarPair {
+                a: abi::Scalar::Initialized { value: a, .. },
+                b: abi::Scalar::Initialized { value: b, .. },
+                b_offset,
+            } => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let (a_size, b_size) = (a.size(self), b.size(self));
-                let b_offset = a_size.align_to(b.default_align(self).abi);
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
                 let a_val = alloc.read_scalar(
                     alloc_range(Size::ZERO, a_size),
@@ -636,7 +634,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Try returning an immediate for the operand. If the layout does not permit loading this as an
     /// immediate, return where in memory we can find the data.
     /// Note that for a given layout, this operation will either always return Left or Right!
-    /// succeed!  Whether it returns Left depends on whether the layout can be represented
+    /// Whether it returns Left depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
     ///
     /// This is an internal function that should not usually be used; call `read_immediate` instead.
@@ -668,10 +666,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if !matches!(
             op.layout().backend_repr,
             BackendRepr::Scalar(abi::Scalar::Initialized { .. })
-                | BackendRepr::ScalarPair(
-                    abi::Scalar::Initialized { .. },
-                    abi::Scalar::Initialized { .. }
-                )
+                | BackendRepr::ScalarPair {
+                    a: abi::Scalar::Initialized { .. },
+                    b: abi::Scalar::Initialized { .. },
+                    b_offset: _,
+                }
         ) {
             span_bug!(self.cur_span(), "primitive read not possible for type: {}", op.layout().ty);
         }
@@ -698,7 +697,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        self.read_scalar(op)?.to_pointer(self)
+        interp_ok(self.read_scalar(op)?.to_pointer(self))
     }
     /// Read a pointer-sized unsigned integer from a place.
     pub fn read_target_usize(
@@ -723,32 +722,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(s)
     }
 
-    /// Read from a local of the current frame. Convenience method for [`InterpCx::local_at_frame_to_op`].
+    /// Read from a local of a current frame.
+    /// Will not access memory, instead an indirect `Operand` is returned.
     pub fn local_to_op(
         &self,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        self.local_at_frame_to_op(self.frame(), local, layout)
-    }
-
-    /// Read from a local of a given frame.
-    /// Will not access memory, instead an indirect `Operand` is returned.
-    ///
-    /// This is public because it is used by [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
-    /// to get an OpTy from a local.
-    pub fn local_at_frame_to_op(
-        &self,
-        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
-        local: mir::Local,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let frame = self.frame();
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
+            if !self.validation_in_progress() {
+                M::after_local_read(self, local)?;
+            }
         }
-        M::after_local_read(self, frame, local)?;
+        interp_ok(OpTy { op, layout })
+    }
+
+    /// Tools like Priroda and [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
+    /// need to access any local without triggering any access hook, since these are not actual
+    /// AM-level accesses. Do not call this from inside the interpreter!
+    ///
+    /// Remember to use `ghost_run` when accessing memory for such purposes, to suppress
+    /// the access hooks for that as well.
+    pub fn ghost_local_in_frame_to_op(
+        &self,
+        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let layout = self.layout_of_local(frame, local, None)?;
+        let op = *frame.locals[local].access()?;
         interp_ok(OpTy { op, layout })
     }
 

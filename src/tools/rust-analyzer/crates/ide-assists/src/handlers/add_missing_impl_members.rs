@@ -2117,7 +2117,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait { define_method!(); }
 impl AnotherTrait for () {
-    $0fn method(&mut self,params: <ty!()as SomeTrait>::Output) {
+    $0fn method(&mut self, params: <ty!()as SomeTrait>::Output) {
         todo!()
     }
 }
@@ -2154,7 +2154,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait<T: SomeTrait> { define_method!(T); }
 impl AnotherTrait<i32> for () {
-    $0fn method(&mut self,params: <ty!(T)as SomeTrait>::Output) {
+    $0fn method(&mut self, params: <ty!(T)as SomeTrait>::Output) {
         todo!()
     }
 }
@@ -2700,6 +2700,225 @@ impl Drop for Foo {
     fn drop(&mut self) {
         ${0:todo!()}
     }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn issue_10326() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait A<T: ?Sized> { fn a(&self) -> &T; }
+trait B {}
+impl<'a, T: B> A<dyn 'a + B> for T {$0}"#,
+            r#"
+trait A<T: ?Sized> { fn a(&self) -> &T; }
+trait B {}
+impl<'a, T: B> A<dyn 'a + B> for T {
+    fn a(&self) -> &(dyn 'a + B) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn rustc_must_implement_one_of() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0fn read_buf() {}
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0fn read() {}
+}
+        "#,
+        );
+
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read() {}
+    $0
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {}
+    $0
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {}$0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {}
+
+    $0fn read() {}
+}
+        "#,
+        );
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read() {}$0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read() {}
+
+    $0fn read_buf() {}
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0fn read() {}
+}
+        "#,
+        );
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#![feature(read_buf)]
+
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#![feature(read_buf)]
+
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0fn read_buf() {}
 }
         "#,
         );

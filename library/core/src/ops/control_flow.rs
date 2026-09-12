@@ -1,5 +1,5 @@
 use crate::marker::Destruct;
-use crate::{convert, ops};
+use crate::ops;
 
 /// Used to tell an operation whether it should exit early or go on as usual.
 ///
@@ -104,7 +104,7 @@ pub enum ControlFlow<B, C = ()> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<B, C> ops::Try for ControlFlow<B, C> {
     type Output = C;
-    type Residual = ControlFlow<B, convert::Infallible>;
+    type Residual = ControlFlow<B, !>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -124,9 +124,9 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-const impl<B, C> ops::FromResidual<ControlFlow<B, convert::Infallible>> for ControlFlow<B, C> {
+const impl<B, C> ops::FromResidual<ControlFlow<B, !>> for ControlFlow<B, C> {
     #[inline]
-    fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
+    fn from_residual(residual: ControlFlow<B, !>) -> Self {
         match residual {
             ControlFlow::Break(b) => ControlFlow::Break(b),
         }
@@ -135,7 +135,7 @@ const impl<B, C> ops::FromResidual<ControlFlow<B, convert::Infallible>> for Cont
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
-const impl<B, C> ops::Residual<C> for ControlFlow<B, convert::Infallible> {
+const impl<B, C> ops::Residual<C> for ControlFlow<B, !> {
     type TryType = ControlFlow<B, C>;
 }
 

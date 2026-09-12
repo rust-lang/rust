@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use std::num::{NonZero, NonZeroU32};
+use std::num::NonZero;
 
 use rustc_span::sym;
 
@@ -17,7 +17,7 @@ macro_rules! opt_nonzero_u32 {
         None
     };
     ($val:expr) => {
-        Some(NonZeroU32::new($val).unwrap())
+        Some(<NonZero<u32>>::new($val).unwrap())
     };
 }
 
@@ -34,7 +34,7 @@ macro_rules! declare_features {
                     issue: to_nonzero($issue),
                 },
                 reason: $reason,
-                pull:  opt_nonzero_u32!($($pull)?),
+                pull: opt_nonzero_u32!($($pull)?),
             }),+
         ];
     };
@@ -55,6 +55,7 @@ declare_features! (
     /// Allows using the `amdgpu-kernel` ABI.
     (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None, 120495),
     (removed, abi_c_cmse_nonsecure_call, "1.90.0", Some(81391), Some("renamed to abi_cmse_nonsecure_call"), 142146),
+    (removed, abi_unadjusted, "CURRENT_RUSTC_VERSION", None, Some("merged into link_llvm_intrinsics"), 161398),
     (removed, advanced_slice_patterns, "1.42.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`"), 67712),
     (removed, allocator, "1.0.0", None, None),
@@ -65,6 +66,8 @@ declare_features! (
      Some("merged into `min_generic_const_args`")),
     (removed, await_macro, "1.38.0", Some(50547),
      Some("subsumed by `.await` syntax"), 62293),
+    /// Allows using `box` in patterns (RFC 469).
+    (removed, box_patterns, "CURRENT_RUSTC_VERSION", Some(29641), Some("superseded by `deref_patterns`")),
     /// Allows using the `box $expr` syntax.
     (removed, box_syntax, "1.70.0", Some(49733), Some("replaced with `#[rustc_box]`"), 108471),
     /// Allows capturing disjoint fields in a closure/coroutine (RFC 2229).
@@ -95,7 +98,7 @@ declare_features! (
     (removed, crate_visibility_modifier, "1.63.0", Some(53120), Some("removed in favor of `pub(crate)`"), 97254),
     /// Allows using custom attributes (RFC 572).
     (removed, custom_attribute, "1.0.0", Some(29642),
-     Some("removed in favor of `#![register_tool]` and `#![register_attr]`"), 66070),
+     Some("removed in favor of `#![register_tool]`"), 66070),
     /// Allows the use of `#[derive(Anything)]` as sugar for `#[derive_Anything]`.
     (removed, custom_derive, "1.32.0", Some(29644),
      Some("subsumed by `#[proc_macro_derive]`")),
@@ -107,7 +110,7 @@ declare_features! (
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
     /// Allows macros to customize macro argument matcher diagnostics.
-    (removed, diagnostic_on_unmatch_args, "CURRENT_RUSTC_VERSION", Some(155642), Some("renamed to `diagnostic_on_unmatched_args`"), 157887),
+    (removed, diagnostic_on_unmatch_args, "1.98.0", Some(155642), Some("renamed to `diagnostic_on_unmatched_args`"), 157887),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (removed, doc_auto_cfg, "1.92.0", Some(43781), Some("merged into `doc_cfg`"), 138907),
     /// Allows `#[doc(cfg_hide(...))]`.
@@ -179,6 +182,8 @@ declare_features! (
     (removed, issue_5723_bootstrap, "1.95.0", None, None),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.56.0", Some(72219), Some("superseded by `generic_const_exprs`"), 88369),
+    /// Allow to have type alias types for inter-crate use.
+    (removed, lazy_type_alias, "1.72.0", Some(112792), Some("renamed to `checked_type_aliases`"), 158758),
     /// Changes `impl Trait` to capture all lifetimes in scope.
     (removed, lifetime_capture_rules_2024, "1.87.0", None, Some("unnecessary -- use edition 2024 instead"), 136787),
     /// Allows using the `#[link_args]` attribute.
@@ -206,7 +211,7 @@ declare_features! (
     (removed, no_coverage, "1.74.0", Some(84605), Some("renamed to `coverage_attribute`"), 114656),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), Some("removed due to lack of demand"), 69667),
-    // Allows the use of `no_sanitize` attribute.
+    /// Allows the use of `no_sanitize` attribute.
     /// The feature was renamed to `sanitize` and the attribute to `#[sanitize(xyz = "on|off")]`
     (removed, no_sanitize, "1.91.0", Some(39699), Some(r#"renamed to sanitize(xyz = "on|off")"#), 142681),
     /// Note: this feature was previously recorded in a separate
@@ -261,7 +266,7 @@ declare_features! (
     (removed, pushpop_unsafe, "1.2.0", None, None),
     (removed, quad_precision_float, "1.0.0", None, None),
     (removed, quote, "1.33.0", Some(29601), None),
-    (removed, ref_pat_everywhere, "1.80.0", Some(123076), Some("superseded by `ref_pat_eat_one_layer_2024"), 125168),
+    (removed, ref_pat_everywhere, "1.80.0", Some(123076), Some("superseded by `ref_pat_eat_one_layer_2024`"), 125168),
     (removed, reflect, "1.0.0", Some(27749), None),
     /// Allows using the `#[register_attr]` attribute.
     (removed, register_attr, "1.65.0", Some(66080),

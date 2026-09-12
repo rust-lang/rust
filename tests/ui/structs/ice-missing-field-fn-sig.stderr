@@ -1,0 +1,61 @@
+error[E0277]: the trait bound `(): Context` is not satisfied
+  --> $DIR/ice-missing-field-fn-sig.rs:7:14
+   |
+LL | fn foobar(_: Wrapper<()>) {
+   |              ^^^^^^^^^^^ the trait `Context` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ice-missing-field-fn-sig.rs:3:1
+   |
+LL | trait Context {}
+   | ^^^^^^^^^^^^^
+note: required by a bound in `Wrapper`
+  --> $DIR/ice-missing-field-fn-sig.rs:4:19
+   |
+LL | struct Wrapper<C: Context + 'static> {
+   |                   ^^^^^^^ required by this bound in `Wrapper`
+
+error[E0277]: the trait bound `(): Context` is not satisfied
+  --> $DIR/ice-missing-field-fn-sig.rs:8:12
+   |
+LL |     foobar(Wrapper { /* missing */ })
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Context` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ice-missing-field-fn-sig.rs:3:1
+   |
+LL | trait Context {}
+   | ^^^^^^^^^^^^^
+note: required by a bound in `Wrapper`
+  --> $DIR/ice-missing-field-fn-sig.rs:4:19
+   |
+LL | struct Wrapper<C: Context + 'static> {
+   |                   ^^^^^^^ required by this bound in `Wrapper`
+
+error[E0063]: missing field `container` in initializer of `Wrapper<_>`
+  --> $DIR/ice-missing-field-fn-sig.rs:8:12
+   |
+LL |     foobar(Wrapper { /* missing */ })
+   |            ^^^^^^^ missing `container`
+
+error[E0277]: the trait bound `(): Context` is not satisfied
+  --> $DIR/ice-missing-field-fn-sig.rs:8:12
+   |
+LL |     foobar(Wrapper { /* missing */ })
+   |            ^^^^^^^ the trait `Context` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ice-missing-field-fn-sig.rs:3:1
+   |
+LL | trait Context {}
+   | ^^^^^^^^^^^^^
+note: required by a bound in `Wrapper`
+  --> $DIR/ice-missing-field-fn-sig.rs:4:19
+   |
+LL | struct Wrapper<C: Context + 'static> {
+   |                   ^^^^^^^ required by this bound in `Wrapper`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0063, E0277.
+For more information about an error, try `rustc --explain E0063`.

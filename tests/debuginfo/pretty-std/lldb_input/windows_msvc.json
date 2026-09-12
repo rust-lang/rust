@@ -1,0 +1,550 @@
+{
+ "bless_metadata": {
+  "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "debugger_version": "lldb version 22.1.2 (https://github.com/llvm/llvm-project revision 1ab49a973e210e97d61e5db6557180dcb92c3e98)\n  clang revision 1ab49a973e210e97d61e5db6557180dcb92c3e98\n  llvm revision 1ab49a973e210e97d61e5db6557180dcb92c3e98",
+  "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
+ },
+ "breakpoints": [
+  {
+   "slice": {
+    "type": "ref$<slice2$<i32> >",
+    "pretty_type_name": "&[i32]",
+    "pretty_print": "[0, 1, 2, 3]",
+    "synthetic": "lldb_lookup.MSVCStdSliceSyntheticProvider",
+    "summary": "lldb_lookup.StdSliceSummaryProvider",
+    "children": {
+     "type": "int",
+     "vals": [
+      0,
+      1,
+      2,
+      3
+     ]
+    }
+   },
+   "vec": {
+    "type": "alloc::vec::Vec<u64,alloc::alloc::Global>",
+    "pretty_print": "size=4",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "unsigned long long",
+     "vals": [
+      4,
+      5,
+      6,
+      7
+     ]
+    }
+   },
+   "str_slice": {
+    "type": "ref$<str$>",
+    "pretty_type_name": "&str",
+    "pretty_print": "\"IAMA string slice!\"",
+    "synthetic": "lldb_lookup.MSVCStrSyntheticProvider",
+    "summary": "lldb_lookup.StdStrSummaryProvider",
+    "children": {
+     "type": "unsigned char",
+     "vals": [
+      73,
+      65,
+      77,
+      65,
+      32,
+      115,
+      116,
+      114,
+      105,
+      110,
+      103,
+      32,
+      115,
+      108,
+      105,
+      99,
+      101,
+      33
+     ]
+    }
+   },
+   "string": {
+    "type": "alloc::string::String",
+    "pretty_print": "\"IAMA string!\"",
+    "synthetic": "lldb_lookup.StdStringSyntheticProvider",
+    "summary": "lldb_lookup.StdStringSummaryProvider",
+    "children": {
+     "type": "unsigned char",
+     "vals": [
+      73,
+      65,
+      77,
+      65,
+      32,
+      115,
+      116,
+      114,
+      105,
+      110,
+      103,
+      33
+     ]
+    }
+   },
+   "some": {
+    "type": "enum2$<core::option::Option<i16> >",
+    "pretty_type_name": "core::option::Option<i16>",
+    "pretty_print": "Some(8)",
+    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
+    "summary": "lldb_lookup.MSVCEnumSummaryProvider",
+    "children": [
+     {
+      "name": "0",
+      "type": "short",
+      "value": 8
+     }
+    ]
+   },
+   "none": {
+    "type": "enum2$<core::option::Option<i64> >",
+    "pretty_type_name": "core::option::Option<i64>",
+    "pretty_print": "None",
+    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
+    "summary": "lldb_lookup.MSVCEnumSummaryProvider"
+   },
+   "os_string": {
+    "type": "std::ffi::os_str::OsString",
+    "pretty_print": "\"IAMA OS string \ud83d\ude03\"",
+    "summary": "lldb_lookup.StdOsStringSummaryProvider",
+    "children": [
+     {
+      "name": "inner",
+      "type": "std::sys::os_str::wtf8::Buf",
+      "children": [
+       {
+        "name": "inner",
+        "type": "alloc::wtf8::Wtf8Buf",
+        "children": [
+         {
+          "name": "bytes",
+          "type": "alloc::vec::Vec<u8,alloc::alloc::Global>",
+          "children": {
+           "type": "unsigned char",
+           "vals": [
+            73,
+            65,
+            77,
+            65,
+            32,
+            79,
+            83,
+            32,
+            115,
+            116,
+            114,
+            105,
+            110,
+            103,
+            32,
+            -16,
+            -97,
+            -104,
+            -125
+           ]
+          }
+         },
+         {
+          "name": "is_known_utf8",
+          "type": "bool",
+          "value": false
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "types": {
+  "ref$<slice2$<i32> >": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "int *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "unsigned long long",
+     "offset": 8
+    }
+   ],
+   "generic_params": [
+    "long"
+   ]
+  },
+  "int *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "unsigned long long": {
+   "size": 8,
+   "type_class": 4,
+   "basic_type": 18
+  },
+  "long": {
+   "size": 4,
+   "type_class": 4,
+   "basic_type": 15
+  },
+  "int": {
+   "size": 4,
+   "type_class": 4,
+   "basic_type": 13
+  },
+  "alloc::vec::Vec<u64,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<u64,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "unsigned long long",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<u64,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "unsigned long long",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVecInner<alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "cap",
+     "type": "core::num::niche_types::UsizeNoHighBit",
+     "offset": 0
+    },
+    {
+     "name": "ptr",
+     "type": "core::ptr::unique::Unique<u8>",
+     "offset": 8
+    }
+   ],
+   "generic_params": [
+    "alloc::alloc::Global"
+   ]
+  },
+  "core::num::niche_types::UsizeNoHighBit": {
+   "size": 8,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "__0",
+     "type": "unsigned long long",
+     "offset": 0
+    }
+   ]
+  },
+  "core::ptr::unique::Unique<u8>": {
+   "size": 8,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "pointer",
+     "type": "core::ptr::non_null::NonNull<u8>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "unsigned char"
+   ]
+  },
+  "core::ptr::non_null::NonNull<u8>": {
+   "size": 8,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "pointer",
+     "type": "unsigned char *",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "unsigned char"
+   ]
+  },
+  "unsigned char *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "unsigned char": {
+   "size": 1,
+   "type_class": 4,
+   "basic_type": 4
+  },
+  "alloc::alloc::Global": {
+   "size": 0,
+   "type_class": 16384
+  },
+  "ref$<str$>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "unsigned char *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "unsigned long long",
+     "offset": 8
+    }
+   ]
+  },
+  "alloc::string::String": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "vec",
+     "type": "alloc::vec::Vec<u8,alloc::alloc::Global>",
+     "offset": 0
+    }
+   ]
+  },
+  "alloc::vec::Vec<u8,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<u8,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "unsigned char",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<u8,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "unsigned char",
+    "alloc::alloc::Global"
+   ]
+  },
+  "enum2$<core::option::Option<i16> >": {
+   "size": 4,
+   "type_class": 65536,
+   "fields": [
+    {
+     "name": "variant0",
+     "type": "enum2$<core::option::Option<i16> >::Variant0",
+     "offset": 0
+    },
+    {
+     "name": "variant1",
+     "type": "enum2$<core::option::Option<i16> >::Variant1",
+     "offset": 0
+    },
+    {
+     "name": "tag",
+     "type": "unsigned short",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<i16> >::Variant0": {
+   "size": 4,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "value",
+     "type": "enum2$<core::option::Option<i16> >::None",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<i16> >::None": {
+   "size": 4,
+   "type_class": 16384
+  },
+  "enum2$<core::option::Option<i16> >::Variant1": {
+   "size": 4,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "value",
+     "type": "enum2$<core::option::Option<i16> >::Some",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<i16> >::Some": {
+   "size": 4,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "__0",
+     "type": "short",
+     "offset": 2
+    }
+   ]
+  },
+  "short": {
+   "size": 2,
+   "type_class": 4,
+   "basic_type": 11
+  },
+  "unsigned short": {
+   "size": 2,
+   "type_class": 4,
+   "basic_type": 12
+  },
+  "enum2$<core::option::Option<i64> >": {
+   "size": 16,
+   "type_class": 65536,
+   "fields": [
+    {
+     "name": "variant0",
+     "type": "enum2$<core::option::Option<i64> >::Variant0",
+     "offset": 0
+    },
+    {
+     "name": "variant1",
+     "type": "enum2$<core::option::Option<i64> >::Variant1",
+     "offset": 0
+    },
+    {
+     "name": "tag",
+     "type": "unsigned long long",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<i64> >::Variant0": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "value",
+     "type": "enum2$<core::option::Option<i64> >::None",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<i64> >::None": {
+   "size": 16,
+   "type_class": 16384
+  },
+  "enum2$<core::option::Option<i64> >::Variant1": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "value",
+     "type": "enum2$<core::option::Option<i64> >::Some",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<i64> >::Some": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "__0",
+     "type": "long long",
+     "offset": 8
+    }
+   ]
+  },
+  "long long": {
+   "size": 8,
+   "type_class": 4,
+   "basic_type": 17
+  },
+  "std::ffi::os_str::OsString": {
+   "size": 32,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "std::sys::os_str::wtf8::Buf",
+     "offset": 0
+    }
+   ]
+  },
+  "std::sys::os_str::wtf8::Buf": {
+   "size": 32,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::wtf8::Wtf8Buf",
+     "offset": 0
+    }
+   ]
+  },
+  "alloc::wtf8::Wtf8Buf": {
+   "size": 32,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "bytes",
+     "type": "alloc::vec::Vec<u8,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "is_known_utf8",
+     "type": "bool",
+     "offset": 24
+    }
+   ]
+  },
+  "bool": {
+   "size": 1,
+   "type_class": 4,
+   "basic_type": 21
+  }
+ }
+}

@@ -508,6 +508,41 @@ define!(
     fn __debuginfo<T>(name: &'static str, s: T)
 );
 
+#[rustc_diagnostic_item = "mir_cast_fn_ptr_safety"]
+pub enum Safety {
+    Safe,
+    Unsafe,
+}
+#[rustc_diagnostic_item = "mir_cast_ptr_coercion"]
+pub enum PointerCoercion {
+    ReifyFnPointer(Safety),
+    UnsafeFnPointer,
+    ClosureFnPointer(Safety),
+    MutToConstPointer,
+    ArrayToPointer,
+    UnsizePointee,
+}
+#[rustc_diagnostic_item = "mir_cast_kind"]
+pub enum CastKind {
+    PointerExposeProvenance,
+    PointerWithExposedProvenance,
+    IntToInt,
+    FloatToInt,
+    FloatToFloat,
+    IntToFloat,
+    PtrToPtr,
+    FnPtrToPtr,
+    Transmute,
+    BoxDerefTransmute,
+    Subtype,
+    PointerCoercion(PointerCoercion),
+}
+define!(
+    "mir_cast",
+    /// Emits a cast of the specified kind.
+    fn Cast<T, U>(operand: T, kind: CastKind) -> U
+);
+
 /// Macro for generating custom MIR.
 ///
 /// See the module documentation for syntax details. This macro is not magic - it only transforms

@@ -6,6 +6,7 @@ use crate::ffi::{OsStr, OsString, c_void};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit, offset_of};
+use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
@@ -17,6 +18,9 @@ use crate::sys::path::{WCStr, maybe_verbatim};
 use crate::sys::time::SystemTime;
 use crate::sys::{Align8, AsInner, FromInner, IntoInner, c, cvt};
 use crate::{fmt, ptr, slice};
+
+#[cfg(test)]
+mod tests;
 
 mod dir;
 pub use dir::Dir;
@@ -301,7 +305,7 @@ impl OpenOptions {
                 if self.truncate && !self.create_new {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "creating or truncating a file requires write or append access",
+                        "append and truncate cannot both be enabled",
                     ));
                 }
             }
@@ -339,7 +343,7 @@ impl File {
         let path = maybe_verbatim(path)?;
         // SAFETY: maybe_verbatim returns null-terminated strings
         let path = unsafe { WCStr::from_wchars_with_null_unchecked(&path) };
-        Self::open_native(&path, opts)
+        Self::open_native(path, opts)
     }
 
     fn open_native(path: &WCStr, opts: &OpenOptions) -> io::Result<File> {
@@ -406,7 +410,7 @@ impl File {
         self.fsync()
     }
 
-    fn acquire_lock(&self, flags: c::LOCK_FILE_FLAGS) -> io::Result<()> {
+    fn acquire_lock(&self, flags: u32) -> io::Result<()> {
         unsafe {
             let mut overlapped: c::OVERLAPPED = mem::zeroed();
             let event = c::CreateEventW(ptr::null_mut(), c::FALSE, c::FALSE, ptr::null());
@@ -784,9 +788,9 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
-        if times.accessed.map_or(false, is_zero)
-            || times.modified.map_or(false, is_zero)
-            || times.created.map_or(false, is_zero)
+        if times.accessed.is_some_and(is_zero)
+            || times.modified.is_some_and(is_zero)
+            || times.created.is_some_and(is_zero)
         {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
@@ -794,9 +798,9 @@ impl File {
             ));
         }
         let is_max = |t: c::FILETIME| t.dwLowDateTime == u32::MAX && t.dwHighDateTime == u32::MAX;
-        if times.accessed.map_or(false, is_max)
-            || times.modified.map_or(false, is_max)
-            || times.created.map_or(false, is_max)
+        if times.accessed.is_some_and(is_max)
+            || times.modified.is_some_and(is_max)
+            || times.created.is_some_and(is_max)
         {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
@@ -1114,7 +1118,7 @@ impl FileAttr {
     }
 
     pub fn changed_u64(&self) -> Option<u64> {
-        self.change_time.as_ref().map(|c| to_u64(c))
+        self.change_time.as_ref().map(to_u64)
     }
 
     pub fn volume_serial_number(&self) -> Option<u32> {
@@ -1169,7 +1173,7 @@ impl FilePermissions {
     }
 
     pub fn file_attributes(&self) -> u32 {
-        self.attrs as u32
+        self.attrs
     }
 }
 
@@ -1305,7 +1309,7 @@ pub fn unlink(path: &WCStr) -> io::Result<()> {
             let mut opts = OpenOptions::new();
             opts.access_mode(c::DELETE);
             opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
-            if let Ok(f) = File::open_native(&path, &opts) {
+            if let Ok(f) = File::open_native(path, &opts) {
                 if f.posix_delete().is_ok() {
                     return Ok(());
                 }
@@ -1328,7 +1332,7 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
             let mut opts = OpenOptions::new();
             opts.access_mode(c::DELETE);
             opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-            let Ok(f) = File::open_native(&old, &opts) else { return Err(err).io_result() };
+            let Ok(f) = File::open_native(old, &opts) else { return Err(err).io_result() };
 
             // Calculate the layout of the `FILE_RENAME_INFO` we pass to `SetFileInformation`
             // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
@@ -1419,7 +1423,7 @@ pub fn readlink(path: &WCStr) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
     opts.access_mode(0);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = File::open_native(&path, &opts)?;
+    let file = File::open_native(path, &opts)?;
     file.readlink()
 }
 
@@ -1506,7 +1510,7 @@ fn metadata(path: &WCStr, reparse: ReparsePoint) -> io::Result<FileAttr> {
     // Attempt to open the file normally.
     // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileExW`.
     // If the fallback fails for any reason we return the original error.
-    match File::open_native(&path, &opts) {
+    match File::open_native(path, &opts) {
         Ok(file) => file.file_attr(),
         Err(e)
             if [Some(c::ERROR_SHARING_VIOLATION as _), Some(c::ERROR_ACCESS_DENIED as _)]
@@ -1564,6 +1568,15 @@ pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     }
 }
 
+pub fn set_perm_nofollow(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
+    let mut opts = OpenOptions::new();
+    opts.access_mode(c::FILE_WRITE_ATTRIBUTES);
+    // `FILE_FLAG_OPEN_REPARSE_POINT` for no_follow behavior
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
+    let file = File::open_native(p, &opts)?;
+    file.set_permissions(perm)
+}
+
 pub fn set_times(p: &WCStr, times: FileTimes) -> io::Result<()> {
     let mut opts = OpenOptions::new();
     opts.access_mode(c::FILE_WRITE_ATTRIBUTES);
@@ -1582,12 +1595,75 @@ pub fn set_times_nofollow(p: &WCStr, times: FileTimes) -> io::Result<()> {
 }
 
 fn get_path(f: impl AsRawHandle) -> io::Result<PathBuf> {
+    let h = f.as_raw_handle();
+    // If getting the canonical path fails with ERROR_INVALID_FUNCTION
+    // then it's likely it failed to resolve the path's drive.
+    // In that case, use the fallback method to resolve it.
+    let invalid_function = Some(c::ERROR_INVALID_FUNCTION as i32);
+    match get_path_canonical(h) {
+        Err(e) if e.raw_os_error() == invalid_function => get_path_fallback(h).ok_or(e),
+        result => result,
+    }
+}
+
+fn get_path_canonical(handle: c::HANDLE) -> io::Result<PathBuf> {
     fill_utf16_buf(
-        |buf, sz| unsafe {
-            c::GetFinalPathNameByHandleW(f.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
-        },
+        |buf, sz| unsafe { c::GetFinalPathNameByHandleW(handle, buf, sz, c::VOLUME_NAME_DOS) },
         |buf| PathBuf::from(OsString::from_wide(buf)),
     )
+}
+
+/// Fallback in case `get_path_canonical` fails.
+///
+/// `get_path_canonical` can fail if the Win32 drive name cannot be resolved.
+/// This can happen with certain third party drivers that don't integrate
+/// with the mount manager.
+///
+/// Instead we manually do the same job by getting the NT path
+/// and then finding the first drive letter that points to a prefix of
+/// that path. From there we can construct a Win32 path.
+///
+/// It's implemented by first getting the NT path, which should always succeed.
+/// Then we use [`GetLogicalDrives`] to get a bit array of win32 drive letters
+/// from 'A' to 'Z'. If the corresponding bit is set then it means that drive exists.
+/// E.g. bit 2 being set means there's a `C:` drive.
+///
+/// Then for each drive we use [`QueryDosDeviceW`] to see the NT path that drive resolves to.
+/// If that path is a prefix to the path we got initially then we treat that as the canonical drive letter.
+/// So in the unlikely even two drives point to the same device, the lowest one is considered canonical.
+///
+/// [`GetLogicalDrives`]: https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-getlogicaldrives
+/// [`QueryDosDeviceW`]: https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-querydosdevicew
+fn get_path_fallback(handle: c::HANDLE) -> Option<PathBuf> {
+    fill_utf16_buf(
+        |buf, sz| unsafe { c::GetFinalPathNameByHandleW(handle, buf, sz, c::VOLUME_NAME_NT) },
+        |nt_path| {
+            let mut buf = [0_u16; c::MAX_PATH as usize];
+            for letter in api::get_logical_drives() {
+                let device_name = [letter as u16, b':' as u16, 0];
+                // SAFETY: `device_name` is a null terminated u16 string
+                if let Some(drive_path) = unsafe { api::query_dos_device(&device_name, &mut buf) } {
+                    if let Some(nt_path) = nt_path.strip_prefix(drive_path) {
+                        // Reserve approximately enough space for the drive + path.
+                        let mut path = Vec::with_capacity(r"\\?\C:".len() + nt_path.len());
+                        // Create a verbatim drive root (e.g. \\?\D:)
+                        let mut verbatim_root = *br#"\\?\C:"#;
+                        verbatim_root[4] = letter;
+                        path.extend_from_slice(&verbatim_root);
+                        path.extend(OsString::from_wide(nt_path).into_encoded_bytes());
+                        // SAFETY: All characters are either in the ASCII range (the prefix)
+                        // or else came from an OsString.
+                        unsafe {
+                            return Some(OsString::from_encoded_bytes_unchecked(path).into());
+                        }
+                    }
+                }
+            }
+            None
+        },
+    )
+    .ok()
+    .flatten()
 }
 
 pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
@@ -1653,7 +1729,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     } else {
         // Get an absolute path and then convert the prefix to `\??\`
         let abs_path = crate::path::absolute(original)?.into_os_string().into_encoded_bytes();
-        if abs_path.len() > 0 && abs_path[1..].starts_with(br":\") {
+        if !abs_path.is_empty() && abs_path[1..].starts_with(br":\") {
             let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path) };
             r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
         } else if abs_path.starts_with(br"\\.\") {
@@ -1676,33 +1752,46 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
         SubstituteNameLength: u16,
         PrintNameOffset: u16,
         PrintNameLength: u16,
-        PathBuffer: [MaybeUninit<u16>; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize],
+        // `MAXIMUM_REPARSE_DATA_BUFFER_SIZE` is a size in bytes, but this is a
+        // buffer of `u16`s, so it holds half as many elements.
+        PathBuffer: [MaybeUninit<u16>; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize / 2],
     }
-    let data_len = 12 + (abs_path.len() * 2);
-    if data_len > u16::MAX as usize {
-        return Err(io::const_error!(io::ErrorKind::InvalidInput, "`original` path is too long"));
-    }
-    let data_len = data_len as u16;
     let mut header = MountPointBuffer {
         ReparseTag: c::IO_REPARSE_TAG_MOUNT_POINT,
-        ReparseDataLength: data_len,
+        ReparseDataLength: 0, // filled in below
         Reserved: 0,
         SubstituteNameOffset: 0,
         SubstituteNameLength: (abs_path.len() * 2) as u16,
+        // The print name follows the substitute name and its null terminator.
         PrintNameOffset: ((abs_path.len() + 1) * 2) as u16,
         PrintNameLength: 0,
-        PathBuffer: [MaybeUninit::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize],
+        PathBuffer: [MaybeUninit::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize / 2],
     };
+    // A mount point reparse point requires both the substitute name and the
+    // (empty) print name to be null terminated, even though their lengths are
+    // explicit. Bounds-check and copy in a single step so an over-long path
+    // fails cleanly instead of overflowing the buffer.
+    let Some(path_buffer) = header.PathBuffer.get_mut(..abs_path.len() + 2) else {
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "`original` path is too long"));
+    };
+    let (substitute_name, terminators) = path_buffer.split_at_mut(abs_path.len());
+    substitute_name.write_copy_of_slice(&abs_path);
+    terminators.write_copy_of_slice(&[0, 0]);
+    // Total size of the structure: the fixed header fields, the path, and the
+    // two null terminators.
+    let total_len = offset_of!(MountPointBuffer, PathBuffer) + (abs_path.len() + 2) * 2;
+    // `ReparseDataLength` counts only the bytes after the 8-byte common header
+    // (`ReparseTag`, `ReparseDataLength`, `Reserved`), i.e.
+    // `SubstituteNameLength + PrintNameLength + 12`.
+    header.ReparseDataLength =
+        (total_len - offset_of!(MountPointBuffer, SubstituteNameOffset)) as u16;
     unsafe {
-        let ptr = header.PathBuffer.as_mut_ptr();
-        ptr.copy_from(abs_path.as_ptr().cast_uninit(), abs_path.len());
-
         let mut ret = 0;
         cvt(c::DeviceIoControl(
             d.as_raw_handle(),
             c::FSCTL_SET_REPARSE_POINT,
             (&raw const header).cast::<c_void>(),
-            data_len as u32 + 8,
+            total_len as u32,
             ptr::null_mut(),
             0,
             &mut ret,

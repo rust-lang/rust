@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 
 trait Foo {}
 

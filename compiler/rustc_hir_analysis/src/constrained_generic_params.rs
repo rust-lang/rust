@@ -109,22 +109,22 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
 
 pub(crate) fn identify_constrained_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: ty::GenericPredicates<'tcx>,
+    gen_clauses: ty::GenericClauses<'tcx>,
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     input_parameters: &mut FxHashSet<Parameter>,
 ) {
-    let mut predicates = predicates.predicates.to_vec();
-    setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
+    let mut clauses = gen_clauses.clauses.to_vec();
+    setup_constraining_clauses(tcx, &mut clauses, impl_trait_ref, input_parameters);
 }
 
-/// Order the predicates in `predicates` such that each parameter is
+/// Order the clauses in `clauses` such that each parameter is
 /// constrained before it is used, if that is possible, and add the
 /// parameters so constrained to `input_parameters`. For example,
 /// imagine the following impl:
 /// ```ignore (illustrative)
 /// impl<T: Debug, U: Iterator<Item = T>> Trait for U
 /// ```
-/// The impl's predicates are collected from left to right. Ignoring
+/// The impl's clauses are collected from left to right. Ignoring
 /// the implicit `Sized` bounds, these are
 ///   * `T: Debug`
 ///   * `U: Iterator`
@@ -135,9 +135,9 @@ pub(crate) fn identify_constrained_generic_params<'tcx>(
 /// variables and match them with the impl trait-ref, so we know that
 /// `$U = IntoIter<u32>`.
 ///
-/// However, in order to process the `$T: Debug` predicate, we must first
+/// However, in order to process the `$T: Debug` clause, we must first
 /// know the value of `$T` - which is only given by processing the
-/// projection. As we occasionally want to process predicates in a single
+/// projection. As we occasionally want to process clauses in a single
 /// pass, we want the projection to come first. In fact, as projections
 /// can (acyclically) depend on one another - see RFC447 for details - we
 /// need to topologically sort them.
@@ -161,9 +161,9 @@ pub(crate) fn identify_constrained_generic_params<'tcx>(
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub(crate) fn setup_constraining_predicates<'tcx>(
+pub(crate) fn setup_constraining_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: &mut [(ty::Clause<'tcx>, Span)],
+    clauses: &mut [(ty::Clause<'tcx>, Span)],
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     input_parameters: &mut FxHashSet<Parameter>,
 ) {
@@ -192,19 +192,18 @@ pub(crate) fn setup_constraining_predicates<'tcx>(
     //   * T: Debug
     //   * U: Iterator
     debug!(
-        "setup_constraining_predicates: predicates={:?} \
-            impl_trait_ref={:?} input_parameters={:?}",
-        predicates, impl_trait_ref, input_parameters
+        "setup_constraining_clauses: clauses={:?} impl_trait_ref={:?} input_parameters={:?}",
+        clauses, impl_trait_ref, input_parameters
     );
     let mut i = 0;
     let mut changed = true;
     while changed {
         changed = false;
 
-        for j in i..predicates.len() {
+        for j in i..clauses.len() {
             // Note that we don't have to care about binders here,
             // as the impl trait ref never contains any late-bound regions.
-            if let ty::ClauseKind::Projection(projection) = predicates[j].0.kind().skip_binder() &&
+            if let ty::ClauseKind::Projection(projection) = clauses[j].0.kind().skip_binder() &&
 
             // Special case: watch out for some kind of sneaky attempt to
             // project out an associated type defined by this very trait.
@@ -219,15 +218,15 @@ pub(crate) fn setup_constraining_predicates<'tcx>(
             {
                 input_parameters.extend(parameters_for(tcx, projection.term, false));
 
-                predicates.swap(i, j);
+                clauses.swap(i, j);
                 i += 1;
                 changed = true;
             }
         }
         debug!(
-            "setup_constraining_predicates: predicates={:?} \
+            "setup_constraining_clauses: clauses={:?} \
                 i={} impl_trait_ref={:?} input_parameters={:?}",
-            predicates, i, impl_trait_ref, input_parameters
+            clauses, i, impl_trait_ref, input_parameters
         );
     }
 }

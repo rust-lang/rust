@@ -1,5 +1,7 @@
 //! impl char {}
 
+#![expect(clippy::manual_is_ascii_check, reason = "this module implements various is_ascii checks")]
+
 use super::*;
 use crate::panic::const_panic;
 use crate::slice;
@@ -343,6 +345,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_classify", since = "1.87.0")]
+    #[expect(clippy::to_digit_is_some, reason = "implements is_digit")]
     #[inline]
     pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
@@ -470,9 +473,7 @@ impl char {
     }
 
     /// An extended version of `escape_debug` that optionally permits escaping
-    /// Extended Grapheme codepoints, single quotes, and double quotes. This
-    /// allows us to format characters like nonspacing marks better when they're
-    /// at the start of a string, and allows escaping single quotes in
+    /// single quotes and double quotes. This allows escaping single quotes in
     /// characters, and double quotes in strings.
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
@@ -486,13 +487,16 @@ impl char {
             '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
             '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
 
-            // ASCII fast path
-            '\x20'..='\x7E' => EscapeDebug::printable(self),
+            // ASCII fast path,
+            // plus U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
+            // and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK
+            // which should not be escaped despite being grapheme extenders.
+            '\x20'..='\x7E' | '\u{FF9E}' | '\u{FF9F}' => EscapeDebug::printable(self),
 
             _ if self.is_control()
                 || self.is_private_use()
                 || self.is_whitespace()
-                || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || self.is_grapheme_extender()
                 || self.is_default_ignorable()
                 || self.is_format_control()
                 || !self.is_assigned() =>
@@ -1244,7 +1248,8 @@ impl char {
     ///
     /// Basic usage:
     ///
-    /// ```ignore(private)
+    /// ```
+    /// #![feature(default_ignorable)]
     /// assert!('\u{AD}'.is_default_ignorable()); // SOFT HYPHEN
     /// assert!('\u{115F}'.is_default_ignorable()); // HANGUL CHOSEONG FILLER
     /// assert!('\u{200B}'.is_default_ignorable()); // ZERO WIDTH SPACE
@@ -1255,9 +1260,11 @@ impl char {
     /// assert!(!'\n'.is_default_ignorable());
     /// assert!(!'\0'.is_default_ignorable());
     /// assert!(!'q'.is_default_ignorable());
+    /// ```
     #[must_use]
+    #[unstable(feature = "default_ignorable", issue = "160583")]
     #[inline]
-    fn is_default_ignorable(self) -> bool {
+    pub fn is_default_ignorable(self) -> bool {
         self > '\u{AC}' && unicode::Default_Ignorable_Code_Point(self)
     }
 
@@ -1806,10 +1813,32 @@ impl char {
     /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[must_use = "this returns the case-folded character as a new iterator, \
                   without modifying the original"]
-    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "157000")]
     #[inline]
     pub fn to_casefold_unnormalized(self) -> ToCasefold {
         ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
+    }
+
+    /// Returns the code point value as a `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(char_to_u32)]
+    ///
+    /// let ascii = 'a';
+    /// let heart = '❤';
+    ///
+    /// assert_eq!(ascii.to_u32(), 97_u32);
+    /// assert_eq!(heart.to_u32(), 0x2764_u32);
+    /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[unstable(feature = "char_to_u32", issue = "158938")]
+    #[rustc_const_unstable(feature = "char_to_u32", issue = "158938")]
+    #[inline(always)]
+    pub const fn to_u32(self) -> u32 {
+        self as u32
     }
 
     /// Checks if the value is within the ASCII range.
@@ -1957,6 +1986,7 @@ impl char {
     /// [to_ascii_lowercase]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[expect(clippy::manual_ignore_case_cmp, reason = "implements eq_ignore_ascii_case")]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &char) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
@@ -2354,8 +2384,8 @@ impl char {
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_06_05
     ///
     /// # Examples
     ///
@@ -2426,9 +2456,6 @@ impl char {
 }
 
 pub(crate) struct EscapeDebugExtArgs {
-    /// Escape Grapheme Extender codepoints?
-    pub(crate) escape_grapheme_extender: bool,
-
     /// Escape single quotes?
     pub(crate) escape_single_quote: bool,
 
@@ -2437,11 +2464,8 @@ pub(crate) struct EscapeDebugExtArgs {
 }
 
 impl EscapeDebugExtArgs {
-    pub(crate) const ESCAPE_ALL: Self = Self {
-        escape_grapheme_extender: true,
-        escape_single_quote: true,
-        escape_double_quote: true,
-    };
+    pub(crate) const ESCAPE_ALL: Self =
+        Self { escape_single_quote: true, escape_double_quote: true };
 }
 
 #[inline]

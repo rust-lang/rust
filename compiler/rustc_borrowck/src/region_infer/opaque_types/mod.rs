@@ -73,7 +73,7 @@ pub(crate) fn clone_and_resolve_opaque_types<'tcx>(
     let opaque_types = opaque_types
         .into_iter()
         .map(|entry| {
-            fold_regions(infcx.tcx, infcx.resolve_vars_if_possible(entry), |r, _| {
+            fold_regions(infcx.tcx, infcx.deeply_resolve_ignoring_regions(entry), |r, _| {
                 let vid = if let ty::RePlaceholder(placeholder) = r.kind() {
                     constraints.placeholder_region(infcx, placeholder).as_var()
                 } else {
@@ -531,7 +531,7 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     body: &Body<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     region_bound_pairs: &RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesClause<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],

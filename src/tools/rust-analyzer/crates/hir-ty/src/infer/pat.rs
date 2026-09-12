@@ -10,8 +10,8 @@ use hir_def::{
     AdtId, LocalFieldId, VariantId,
     expr_store::path::Path,
     hir::{
-        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId,
-        RecordFieldPat,
+        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked, Literal, Pat,
+        PatId, RecordFieldPat,
     },
     resolver::ValueNs,
     signatures::VariantFields,
@@ -237,7 +237,7 @@ impl<'db> ResolvedPat<'db> {
     }
 }
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     /// Experimental pattern feature: after matching against a shared reference, do we limit the
     /// default binding mode in subpatterns to be `ref` when it would otherwise be `ref mut`?
     /// This corresponds to Rule 3 of RFC 3627.
@@ -853,7 +853,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let mut demand_eqtype = |x: &mut _| {
             if let Some((_, x_ty, x_expr)) = *x {
-                _ = self.demand_eqtype(ExprOrPatId::from(x_expr), expected, x_ty);
+                _ = self.demand_eqtype(ExprOrPatIdPacked::from(x_expr), expected, x_ty);
             }
         };
         demand_eqtype(&mut lhs);
@@ -868,7 +868,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // We require types to be resolved here so that we emit inference failure
         // rather than "_ is not a char or numeric".
         let ty = self.structurally_resolve_type(
-            lhs_expr.or(rhs_expr).map(ExprOrPatId::ExprId).unwrap_or(pat.into()),
+            lhs_expr.or(rhs_expr).map(ExprOrPatIdPacked::from).unwrap_or(pat.into()),
             expected,
         );
         if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {
@@ -916,7 +916,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         if matches!(bm.0, ByRef::Yes(Mutability::Mut))
             && let MutblCap::WeaklyNot = pat_info.max_ref_mutbl
         {
-            // FIXME: Emit an error: cannot borrow as mutable inside an `&` pattern.
+            self.push_diagnostic(InferenceDiagnostic::MutRefInImmRefPat { pat });
         }
 
         // ...and store it in a side table:
@@ -1242,13 +1242,17 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // Report an error if an incorrect number of fields was specified.
         if matches!(variant, VariantId::UnionId(_)) {
             if fields.len() != 1 {
-                // FIXME: Emit an error, unions can't have more than one field.
+                self.push_diagnostic(InferenceDiagnostic::UnionPatMustHaveExactlyOneField { pat });
             }
             if has_rest_pat {
-                // FIXME: Emit an error, unions can't have a rest pat.
+                self.push_diagnostic(InferenceDiagnostic::UnionPatHasRest { pat });
             }
         } else if !unmentioned_fields.is_empty() && !has_rest_pat {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::RecordMissingFields {
+                record: ExprOrPatId::PatId(pat),
+                variant,
+                missed_fields: unmentioned_fields.into_iter().map(|f| f.0).collect(),
+            })
         }
     }
 
@@ -1614,7 +1618,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             TyKind::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
                 let (opt_slice_ty, expected) =
-                    self.check_array_pat_len(pat, element_ty, expected, slice, len, min.into());
+                    self.check_array_pat_len(pat, element_ty, expected, slice, len, min);
                 // `opt_slice_ty.is_none()` => `slice.is_none()`.
                 // Note, though, that opt_slice_ty could be `Some(error_ty)`.
                 assert!(opt_slice_ty.is_some() || slice.is_none());
@@ -1658,11 +1662,11 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         arr_ty: Ty<'db>,
         slice: Option<PatId>,
         len: Const<'db>,
-        min_len: u128,
+        min_len: u64,
     ) -> (Option<Ty<'db>>, Ty<'db>) {
-        let len = crate::consteval::try_const_usize(self.db, len);
+        let len = self.table.try_structurally_resolve_const(pat.into(), len);
 
-        if let Some(len) = len {
+        if let Some(len) = len.try_to_target_usize(self.data_layout()) {
             // Now we know the length...
             if slice.is_none() {
                 // ...and since there is no variable-length pattern,
@@ -1698,7 +1702,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             let updated_arr_ty = Ty::new_array(self.interner(), element_ty, min_len);
             _ = self.demand_eqtype(pat.into(), updated_arr_ty, arr_ty);
             return (None, updated_arr_ty);
-        } else {
+        } else if !len.is_error() {
             // We have a variable-length pattern and don't know the array length.
             // This happens if we have e.g.,
             // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.

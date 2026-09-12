@@ -1,19 +1,16 @@
 use super::USELESS_ATTRIBUTE;
 use super::utils::{is_lint_level, is_word, namespace_and_lint};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanExt, first_line_of_span};
+use clippy_utils::source::{SpanExt as _, first_line_of_span};
 use clippy_utils::sym;
 use rustc_ast::{Attribute, Item, ItemKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, LintContext};
+use rustc_lint::{EarlyContext, LintContext as _};
 
 pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
     let skip_unused_imports = attrs.iter().any(|attr| attr.has_name(sym::macro_use));
 
     for attr in attrs {
-        if attr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
         if let Some(lint_list) = &attr.meta_item_list()
             && attr.name().is_some_and(is_lint_level)
         {
@@ -72,9 +69,10 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                     _ => {},
                 }
             }
-            let line_span = first_line_of_span(cx, attr.span);
 
-            if let Some(src) = line_span.get_text(cx)
+            if !attr.span.in_external_macro(cx.sess().source_map())
+                && let line_span = first_line_of_span(cx, attr.span)
+                && let Some(src) = line_span.get_text(cx)
                 && src.contains("#[")
             {
                 #[expect(clippy::collapsible_span_lint_calls)]

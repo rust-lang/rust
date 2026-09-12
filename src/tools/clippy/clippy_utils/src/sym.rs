@@ -1,4 +1,4 @@
-#![allow(non_upper_case_globals)]
+#![expect(non_upper_case_globals)]
 
 use rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT;
 
@@ -40,6 +40,7 @@ generate! {
     AsyncReadExt,
     AsyncWriteExt,
     BACKSLASH_SINGLE_QUOTE: r"\'",
+    BITS,
     BTreeEntry,
     BTreeSet,
     Binary,
@@ -222,7 +223,6 @@ generate! {
     eprint_macro,
     eprintln_macro,
     err,
-    exp,
     expect_err,
     expn_data,
     exported_private_dependencies,
@@ -363,6 +363,7 @@ generate! {
     into_bytes,
     into_ok,
     into_owned,
+    into_raw,
     intrinsics_unaligned_volatile_load,
     intrinsics_unaligned_volatile_store,
     io,
@@ -404,9 +405,6 @@ generate! {
     ln,
     lock,
     lock_api,
-    log,
-    log10,
-    log2,
     macro_concat,
     macro_use_imports,
     map_break,
@@ -435,6 +433,7 @@ generate! {
     module_name_repetitions,
     msrv,
     msrvs,
+    mul_add,
     mut_ptr,
     mutex,
     needless_return,
@@ -528,7 +527,6 @@ generate! {
     rsplitn_mut,
     rustc_errors,
     rustc_lint,
-    rustc_lint_defs,
     rustc_middle,
     rustc_span,
     rustfmt_skip,

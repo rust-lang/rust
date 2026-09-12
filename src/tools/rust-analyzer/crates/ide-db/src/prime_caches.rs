@@ -4,9 +4,8 @@
 //! various caches, it's not really advanced at the moment.
 use std::panic::AssertUnwindSafe;
 
-use base_db::all_crates;
 use hir::{Symbol, import_map::ImportMap, sym};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::{Cancelled, Database};
 
 use crate::{FxIndexMap, RootDatabase, base_db::Crate, symbol_index::SymbolIndex};
@@ -23,12 +22,22 @@ pub struct ParallelPrimeCachesProgress {
     pub work_type: &'static str,
 }
 
+/// Warm caches for `scope`.
+///
+/// `scope` must be closed under transitive dependencies: the scheduler only
+/// follows reverse-dep edges within `scope`. Out-of-scope crates can still be
+/// primed by salsa on demand when a scope crate's queries reach into them.
+/// Callers that want to prime everything pass `&all_crates(db)`.
 pub fn parallel_prime_caches(
     db: &RootDatabase,
+    scope: &[Crate],
     num_worker_threads: usize,
     cb: &(dyn Fn(ParallelPrimeCachesProgress) + Sync),
 ) {
-    let _p = tracing::info_span!("parallel_prime_caches").entered();
+    if scope.is_empty() {
+        return;
+    }
+    let _p = tracing::info_span!("parallel_prime_caches", scope_size = scope.len()).entered();
 
     enum ParallelPrimeCacheWorkerProgress {
         BeginCrateDefMap { crate_id: Crate, crate_name: Symbol },
@@ -52,17 +61,30 @@ pub fn parallel_prime_caches(
     // Such def map will just block on the dependency, which is just wasted time. So better
     // to compute the symbols/import map of an already computed def map in that time.
 
+    let scope_set: FxHashSet<Crate> = scope.iter().copied().collect();
+
     let (reverse_deps, mut to_be_done_deps) = {
-        let all_crates = all_crates(db);
-        let to_be_done_deps = all_crates
+        // Only count in-scope deps — otherwise an out-of-scope dep would
+        // leave the scheduler waiting on a crate it never enqueued.
+        let to_be_done_deps = scope
             .iter()
-            .map(|&krate| (krate, krate.data(db).dependencies.len() as u32))
+            .map(|&krate| {
+                let count = krate
+                    .data(db)
+                    .dependencies
+                    .iter()
+                    .filter(|dep| scope_set.contains(&dep.crate_id))
+                    .count() as u32;
+                (krate, count)
+            })
             .collect::<FxHashMap<_, _>>();
         let mut reverse_deps =
-            all_crates.iter().map(|&krate| (krate, Vec::new())).collect::<FxHashMap<_, _>>();
-        for &krate in &*all_crates {
+            scope.iter().map(|&krate| (krate, Vec::new())).collect::<FxHashMap<_, _>>();
+        for &krate in scope {
             for dep in &krate.data(db).dependencies {
-                reverse_deps.get_mut(&dep.crate_id).unwrap().push(krate);
+                if let Some(rev) = reverse_deps.get_mut(&dep.crate_id) {
+                    rev.push(krate);
+                }
             }
         }
         (reverse_deps, to_be_done_deps)
@@ -197,7 +219,7 @@ pub fn parallel_prime_caches(
         )
     };
 
-    let crate_def_maps_total = all_crates(db).len();
+    let crate_def_maps_total = scope.len();
     let mut crate_def_maps_done = 0;
     let (mut crate_import_maps_total, mut crate_import_maps_done) = (0usize, 0usize);
     let (mut module_symbols_total, mut module_symbols_done) = (0usize, 0usize);

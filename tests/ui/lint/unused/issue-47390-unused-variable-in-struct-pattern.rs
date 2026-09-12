@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(box_patterns)]
-
 #![warn(unused)] // UI tests pass `-A unused` (#43896)
 
 struct SoulHistory {
@@ -64,11 +62,6 @@ fn main() {
     // Referenced struct
     match &bag {
         &Large::Suit { case } => {} //~ WARNING unused variable: `case`
-    };
-
-    // Boxed struct
-    match Box::new(bag) {
-        box Large::Suit { case } => {} //~ WARNING unused variable: `case`
     };
 
     // Tuple with struct

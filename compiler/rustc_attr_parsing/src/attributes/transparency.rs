@@ -7,9 +7,6 @@ pub(crate) struct RustcMacroTransparencyParser;
 
 impl SingleAttributeParser for RustcMacroTransparencyParser {
     const PATH: &[Symbol] = &[sym::rustc_macro_transparency];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Custom(|cx, used, unused| {
-        cx.dcx().span_err(vec![used, unused], "multiple macro transparency attributes");
-    });
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);

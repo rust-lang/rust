@@ -15,8 +15,9 @@ but many parts of the standard library do not work and return errors. For
 example `println!` does nothing, `std::fs` always return errors, and
 `std::thread::spawn` will panic. There is no means by which this can be
 overridden. For a WebAssembly target that more fully supports the standard
-library see the [`wasm32-wasip1`](./wasm32-wasip1.md) or
-[`wasm32-wasip2`](./wasm32-wasip2.md) targets.
+library see the [`wasm32-wasip1`](./wasm32-wasip1.md),
+[`wasm32-wasip2`](./wasm32-wasip2.md), or
+[`wasm32-wasip3`](./wasm32-wasip3.md), targets.
 
 The `wasm32-unknown-unknown` target has full support for the `core` and `alloc`
 crates. It additionally supports the `HashMap` type in the `std` crate, although

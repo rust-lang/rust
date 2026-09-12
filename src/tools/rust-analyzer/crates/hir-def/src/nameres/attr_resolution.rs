@@ -1,6 +1,6 @@
 //! Post-nameres attribute resolution.
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use hir_expand::{
     AttrMacroAttrIds, MacroCallId, MacroCallKind, MacroDefId,
     attrs::{Attr, AttrId, AttrInput},
@@ -12,7 +12,6 @@ use syntax::ast;
 
 use crate::{
     AstIdWithPath, MacroId, ModuleId, UnresolvedMacro,
-    db::DefDatabase,
     item_scope::BuiltinShadowMode,
     nameres::{LocalDefMap, path_resolution::ResolveMode},
 };
@@ -31,11 +30,12 @@ impl DefMap {
     pub(crate) fn resolve_attr_macro(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         original_module: ModuleId,
         ast_id: AstIdWithPath<ast::Item>,
         attr: &Attr,
         attr_id: AttrId,
+        macro_depth: u32,
     ) -> Result<ResolvedAttr, UnresolvedMacro> {
         // NB: does not currently work for derive helpers as they aren't recorded in the `DefMap`
 
@@ -73,7 +73,8 @@ impl DefMap {
             // replace their input, and derive macros are not allowed in this function.
             AttrMacroAttrIds::from_one(attr_id),
             self.krate,
-            db.macro_def(def),
+            def.definition(db),
+            macro_depth,
         )))
     }
 
@@ -103,12 +104,13 @@ impl DefMap {
 }
 
 pub(super) fn attr_macro_as_call_id(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     item_attr: &AstIdWithPath<ast::Item>,
     macro_attr: &Attr,
     censored_attr_ids: AttrMacroAttrIds,
     krate: Crate,
     def: MacroDefId,
+    macro_depth: u32,
 ) -> MacroCallId {
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt)) => {
@@ -129,11 +131,12 @@ pub(super) fn attr_macro_as_call_id(
             censored_attr_ids,
         },
         macro_attr.ctxt,
+        macro_depth,
     )
 }
 
 pub(super) fn derive_macro_as_call_id(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr_index: AttrId,
     derive_pos: u32,
@@ -141,6 +144,7 @@ pub(super) fn derive_macro_as_call_id(
     krate: Crate,
     resolver: impl Fn(&ModPath) -> Option<(MacroId, MacroDefId)>,
     derive_macro_id: MacroCallId,
+    macro_depth: u32,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
     let (macro_id, def_id) = resolver(&item_attr.path)
         .filter(|(_, def_id)| def_id.is_derive())
@@ -155,6 +159,7 @@ pub(super) fn derive_macro_as_call_id(
             derive_macro_id,
         },
         call_site,
+        macro_depth,
     );
     Ok((macro_id, def_id, call_id))
 }

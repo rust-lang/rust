@@ -1,6 +1,6 @@
 //! Utils for extracting, inspecting or transforming source code
 
-#![allow(clippy::module_name_repetitions)]
+#![expect(clippy::module_name_repetitions)]
 
 use std::sync::Arc;
 
@@ -13,7 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, Pos, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
+    BytePos, DUMMY_SP, DesugaringKind, Pos as _, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
     SyntaxContext, hygiene,
 };
 use std::borrow::Cow;
@@ -553,8 +553,7 @@ pub fn snippet<'a, 'sm>(sm: impl HasSourceMap<'sm>, span: Span, default: &'a str
 ///
 /// - Applicability level `Unspecified` will never be changed.
 /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-/// - If the default value is used and the applicability level is `MachineApplicable`, change it to
-///   `HasPlaceholders`
+/// - If the default value is used and the applicability level is `MachineApplicable`, change it to `HasPlaceholders`
 ///
 /// If the span might realistically contain a macro call (e.g. `vec![]`), consider using
 /// [`snippet_with_context`] instead.

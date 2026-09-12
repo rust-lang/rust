@@ -15,9 +15,12 @@ pub const EXTENSIVE_ITER_ENV: &str = "LIBM_EXTENSIVE_ITERATIONS";
 
 /// The override value, if set by the above environment.
 static EXTENSIVE_ITER_OVERRIDE: LazyLock<Option<u64>> = LazyLock::new(|| {
-    env::var(EXTENSIVE_ITER_ENV)
-        .map(|v| v.parse().expect("failed to parse iteration count"))
-        .ok()
+    let s = env::var(EXTENSIVE_ITER_ENV).ok()?;
+    let r = match s.as_str() {
+        "unlimited" | "max" => u64::MAX,
+        _ => s.parse().expect("failed to parse iteration count"),
+    };
+    Some(r)
 });
 
 /// Specific tests that need to have a reduced amount of iterations to complete in a reasonable
@@ -236,8 +239,9 @@ fn slow_platform() -> bool {
     slow_on_ci && crate::ci()
 }
 
-/// The number of iterations to run for a given test.
-pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
+/// The maximum number of iterations to run for a given argument in a given test. This may be
+/// greater than the number of representable values.
+pub fn arg_max_iterations(ctx: &CheckCtx, argnum: usize) -> u64 {
     let t_env = TestEnv::from_env(ctx);
 
     // Ideally run 5M tests
@@ -258,52 +262,58 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     // Run fewer random tests than domain tests.
     let random_iter_count = domain_iter_count / 100;
 
+    let mut should_adjust = true;
     let mut total_iterations = match ctx.gen_kind {
-        GeneratorKind::Spaced if ctx.extensive => extensive_max_iterations(),
+        GeneratorKind::Spaced if ctx.extensive => {
+            // If an exact number is provided, no need to adjust
+            should_adjust = EXTENSIVE_ITER_OVERRIDE.is_none();
+            extensive_max_iterations()
+        }
         GeneratorKind::Spaced => domain_iter_count,
         GeneratorKind::Random => random_iter_count,
         GeneratorKind::EdgeCases | GeneratorKind::List => {
-            unimplemented!("shoudn't need `iteration_count` for {:?}", ctx.gen_kind)
+            unimplemented!("shoudn't need `arg_max_iterations` for {:?}", ctx.gen_kind)
         }
     };
 
-    // This signature has too many possible inputs to test exhaustively, so increase input count
-    // on all other kinds of tests to get better coverage.
-    if t_env.total_input_bits > MAX_REASONABLE_EXHAUSTIVE_BITS {
-        if ctx.extensive {
-            // Extensive already has a pretty high test count.
-            total_iterations *= 2;
-        } else {
-            total_iterations *= 4;
+    // Apply some adjustments so tests with more possible inputs (argument count or larger float
+    // types) get more tests.
+    if should_adjust {
+        // This signature has too many possible inputs to test exhaustively, so increase input count
+        // on all other kinds of tests to get better coverage.
+        if t_env.total_input_bits > MAX_REASONABLE_EXHAUSTIVE_BITS {
+            if ctx.extensive {
+                // Extensive already has a pretty high test count.
+                total_iterations *= 2;
+            } else {
+                total_iterations *= 4;
+            }
         }
-    }
 
-    // Functions with more arguments get more iterations.
-    let arg_multiplier = 1 << (t_env.input_count - 1);
-    total_iterations *= arg_multiplier;
+        // Functions with more arguments get more iterations.
+        let arg_multiplier = 1 << (t_env.input_count - 1);
+        total_iterations *= arg_multiplier;
 
-    // FMA has a huge domain but is reasonably fast to run, so increase another 1.5x.
-    if ctx.base_name == BaseName::Fma {
-        total_iterations = 3 * total_iterations / 2;
-    }
+        // FMA has a huge domain but is reasonably fast to run, so increase another 1.5x.
+        if ctx.base_name == BaseName::Fma {
+            total_iterations = 3 * total_iterations / 2;
+        }
 
-    // Some tests are significantly slower than others and need to be further reduced.
-    if let Some(slow) = EXTREMELY_SLOW_TESTS
-        .iter()
-        .find(|slow| slow.matches_ctx(ctx))
-    {
-        // However, do not override if the extensive iteration count has been manually set.
-        if !(ctx.extensive && EXTENSIVE_ITER_OVERRIDE.is_some()) {
+        // Some tests are significantly slower than others and need to be further reduced.
+        if let Some(slow) = EXTREMELY_SLOW_TESTS
+            .iter()
+            .find(|slow| slow.matches_ctx(ctx))
+        {
             total_iterations /= slow.reduce_factor;
         }
-    }
 
-    if cfg!(optimizations_enabled) {
-        // Always run at least 10,000 tests.
-        total_iterations = total_iterations.max(10_000);
-    } else {
-        // Without optimizations, just run a quick check regardless of other parameters.
-        total_iterations = 800;
+        if cfg!(optimizations_enabled) {
+            // Always run at least 10,000 tests.
+            total_iterations = total_iterations.max(10_000);
+        } else {
+            // Without optimizations, just run a quick check regardless of other parameters.
+            total_iterations = 800;
+        }
     }
 
     let mut overridden = false;
@@ -312,7 +322,7 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         overridden = true;
     }
 
-    // Adjust for the number of inputs
+    // Distribute available iterations among inputs.
     let ntests = match t_env.input_count {
         1 => total_iterations,
         2 => (total_iterations as f64).sqrt().ceil() as u64,
@@ -320,7 +330,7 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         _ => panic!("test has more than three arguments"),
     };
 
-    let total = ntests.pow(t_env.input_count.try_into().unwrap());
+    let total = ntests.saturating_pow(t_env.input_count.try_into().unwrap());
 
     let seed_msg = match ctx.gen_kind {
         GeneratorKind::Spaced => String::new(),

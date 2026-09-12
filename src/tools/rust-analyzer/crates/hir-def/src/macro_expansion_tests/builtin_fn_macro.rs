@@ -132,13 +132,23 @@ fn test_env_expand() {
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { env!("TEST_ENV_VAR"); }
+fn main() {
+    env!("TEST_ENV_VAR");
+    env!("TEST_ENV_VAR",);
+    env!("TEST_ENV_VAR", "error");
+    env!("TEST_ENV_VAR", "error",);
+}
 "#,
         expect![[r##"
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { "UNRESOLVED_ENV_VAR"; }
+fn main() {
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+}
 "##]],
     );
 }
@@ -150,13 +160,21 @@ fn test_option_env_expand() {
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { option_env!("TEST_ENV_VAR"); }
+fn main() {
+    option_env!("TEST_ENV_VAR");
+    option_env!("TEST_ENV_VAR",);
+    option_env!("TEST_ENV_VAR", "invalid");
+}
 "#,
         expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { $crate::option::Option::None:: < &str>; }
+fn main() {
+    $crate::option::Option::None:: < &str>;
+    $crate::option::Option::None:: < &str>;
+    /* error: unexpected input */;
+}
 "#]],
     );
 }

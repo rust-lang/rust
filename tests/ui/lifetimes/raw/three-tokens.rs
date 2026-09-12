@@ -1,12 +1,18 @@
-//@ edition: 2015
-//@ check-pass
-// Ensure that we parse `'r#lt` as three tokens in edition 2015.
+// Ensure that we parse `'r#lt` as three tokens pre Rust 2021.
+// Moreover, make sure we emit the relevant migration lint.
 
-macro_rules! ed2015 {
+//@ edition: 2015..2021
+//@ check-pass
+
+#![warn(rust_2021_prefixes_incompatible_syntax)]
+
+macro_rules! check {
     ('r # lt) => {};
     ($lt:lifetime) => { compile_error!() };
 }
 
-ed2015!('r#lt);
+check!('r#lt);
+//~^ WARNING parsed as a prefix in Rust 2021 and onward
+//~| WARNING this changes meaning in Rust 2021
 
 fn main() {}

@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 fn make_up_a_value<T>() -> T {
     unsafe {
     //~^ ERROR mismatched types

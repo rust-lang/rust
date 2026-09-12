@@ -2,6 +2,7 @@
 
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius
+//@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
 
 trait Decode<'a> {
@@ -18,7 +19,7 @@ pub struct ADecoder<'a> {
 }
 fn make_a_decoder<'a>() -> ADecoder<'a> {
     //~^ ERROR the trait bound
-    //[nll]~| ERROR the trait bound
+    //~| ERROR the trait bound
     panic!()
 }
 

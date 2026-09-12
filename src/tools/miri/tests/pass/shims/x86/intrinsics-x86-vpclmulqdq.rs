@@ -19,8 +19,15 @@ use std::mem::transmute;
 fn main() {
     // Mostly copied from library/stdarch/crates/core_arch/src/x86/vpclmulqdq.rs
 
+    // These tests require vpclmuldqd, which is recent enough that contributors may be using CPUs that
+    // do not support it. But we still want to run this natively if the machine happens to have vpclmulqdq.
+    // So we bail out dynamically.
+    if !is_x86_feature_detected!("vpclmulqdq") {
+        println!("warning: skipping vpclmulqdq tests");
+        return;
+    }
+
     assert!(is_x86_feature_detected!("pclmulqdq"));
-    assert!(is_x86_feature_detected!("vpclmulqdq"));
 
     unsafe {
         test_mm256_clmulepi64_epi128();

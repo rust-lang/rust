@@ -6,7 +6,9 @@ struct Foo<'a> {
 }
 
 impl<'a> Foo<'a> {
-    fn foo(_: [u8; Foo::X]) { std::mem::transmute([4]) }
+    fn foo(_: [u8; core::direct_const_arg!(Foo::X)]) {
+        std::mem::transmute([4])
+    }
 }
 
 fn main() {}

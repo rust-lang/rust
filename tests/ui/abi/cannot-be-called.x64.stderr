@@ -73,14 +73,14 @@ LL |     x86(&raw const BYTE);
 error: functions with the "x86-interrupt" ABI cannot be called
   --> $DIR/cannot-be-called.rs:102:5
    |
-LL |     f()
-   |     ^^^
+LL |     f(frame)
+   |     ^^^^^^^^
    |
 note: an `extern "x86-interrupt"` function can only be called using inline assembly
   --> $DIR/cannot-be-called.rs:102:5
    |
-LL |     f()
-   |     ^^^
+LL |     f(frame)
+   |     ^^^^^^^^
 
 error: aborting due to 12 previous errors
 

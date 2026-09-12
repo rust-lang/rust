@@ -1,18 +1,17 @@
 //@aux-build:proc_macros.rs
+#![warn(clippy::needless_ifs)]
 #![allow(
     clippy::blocks_in_conditions,
+    clippy::no_effect,
+    clippy::short_circuit_statement,
+    clippy::unnecessary_operation
+)]
+#![expect(
     clippy::if_same_then_else,
     clippy::ifs_same_cond,
-    clippy::let_unit_value,
     clippy::needless_else,
-    clippy::no_effect,
-    clippy::nonminimal_bool,
-    clippy::short_circuit_statement,
-    clippy::unnecessary_operation,
-    clippy::redundant_pattern_matching,
-    unused
+    clippy::redundant_pattern_matching
 )]
-#![warn(clippy::needless_ifs)]
 extern crate proc_macros;
 use proc_macros::{external, with_span};
 
@@ -98,7 +97,6 @@ fn main() {
     //~^ needless_ifs
 
     // Don't leave trailing attributes
-    #[allow(unused)]
     if true {}
     //~^ needless_ifs
 

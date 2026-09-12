@@ -13,8 +13,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
-use crate::core::config::TargetSelection;
+use build_helper::git::PathFreshness;
+
+use crate::core::builder::{Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun};
+use crate::core::config::{Config, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -74,7 +76,7 @@ impl GccOutput {
     }
 }
 
-impl Step for Gcc {
+impl CommandLineStep for Gcc {
     type Output = GccOutput;
 
     const IS_HOST: bool = true;
@@ -135,9 +137,11 @@ pub enum GccBuildStatus {
 /// Tries to download GCC from CI if it is enabled and GCC artifacts
 /// are available for the given target.
 /// Returns a path to the libgccjit.so file.
-#[cfg(not(test))]
 fn try_download_gcc(builder: &Builder<'_>, target_pair: GccTargetPair) -> Option<PathBuf> {
-    use build_helper::git::PathFreshness;
+    // Don't actually download GCC during unit tests.
+    if cfg!(test) {
+        return None;
+    }
 
     // Try to download GCC from CI if configured and available
     if !matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::DownloadFromCi) {
@@ -192,11 +196,6 @@ fn try_download_gcc(builder: &Builder<'_>, target_pair: GccTargetPair) -> Option
             None
         }
     }
-}
-
-#[cfg(test)]
-fn try_download_gcc(_builder: &Builder<'_>, _target_pair: GccTargetPair) -> Option<PathBuf> {
-    None
 }
 
 /// This returns information about whether GCC should be built or if it's already built.
@@ -291,7 +290,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
     // Target on which libgccjit.so will be executed. Here we will generate a dylib with
     // instructions for that target.
     let host = target_pair.host;
-    if builder.build.cc_tool(host).is_like_clang() || builder.build.cxx_tool(host).is_like_clang() {
+    if builder.sess.cc_tool(host).is_like_clang() || builder.sess.cxx_tool(host).is_like_clang() {
         panic!(
             "Attempting to build GCC using Clang, which is known to misbehave. Please use GCC as the host C/C++ compiler. "
         );
@@ -328,19 +327,19 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
         .arg("--with-bugurl=https://github.com/rust-lang/gcc/")
         .arg(format!("--prefix={}", install_dir.display()));
 
-    let cc = builder.build.cc(host).display().to_string();
+    let cc = builder.sess.cc(host).display().to_string();
     let cc = builder
-        .build
+        .sess
         .config
         .ccache
         .as_ref()
         .map_or_else(|| cc.clone(), |ccache| format!("{ccache} {cc}"));
     configure_cmd.env("CC", cc);
 
-    if let Ok(ref cxx) = builder.build.cxx(host) {
+    if let Ok(ref cxx) = builder.sess.cxx(host) {
         let cxx = cxx.display().to_string();
         let cxx = builder
-            .build
+            .sess
             .config
             .ccache
             .as_ref()
@@ -367,15 +366,13 @@ pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
 }
 
 /// The absolute path to the downloaded GCC artifacts.
-#[cfg(not(test))]
-fn ci_gcc_root(config: &crate::Config, target: TargetSelection) -> PathBuf {
+fn ci_gcc_root(config: &Config, target: TargetSelection) -> PathBuf {
     config.out.join(target).join("ci-gcc")
 }
 
 /// Detect whether GCC sources have been modified locally or not.
-#[cfg(not(test))]
-fn detect_gcc_freshness(config: &crate::Config, is_git: bool) -> build_helper::git::PathFreshness {
-    use build_helper::git::PathFreshness;
+fn detect_gcc_freshness(config: &Config, is_git: bool) -> build_helper::git::PathFreshness {
+    assert!(cfg!(not(test)), "unit tests shouldn't care about GCC freshness");
 
     if is_git {
         config.check_path_modifications(&["src/gcc", "src/bootstrap/download-ci-gcc-stamp"])

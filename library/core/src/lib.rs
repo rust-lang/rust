@@ -105,10 +105,10 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![feature(arbitrary_self_types_pointers)]
 #![feature(auto_traits)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
@@ -121,6 +121,7 @@
 #![feature(derive_const)]
 #![feature(diagnostic_on_const)]
 #![feature(diagnostic_on_unmatched_args)]
+#![feature(diagnostic_opaque)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(extern_types)]
@@ -144,7 +145,6 @@
 #![feature(multiple_supertrait_upcastable)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(no_core)]
 #![feature(optimize_attribute)]
 #![feature(pattern_types)]
@@ -154,6 +154,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(simd_ffi)]
+#![feature(splat)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
@@ -183,6 +184,10 @@
 #![feature(s390x_target_feature)]
 #![feature(wasm_target_feature)]
 #![feature(x86_amx_intrinsics)]
+// tidy-alphabetical-end
+
+// tidy-alphabetical-start
+#![expect(clippy::partialeq_ne_impl, reason = "we need to implement ne for a lot of core types")]
 // tidy-alphabetical-end
 
 // allow using `core::` in intra-doc links
@@ -236,12 +241,10 @@ mod internal_macros;
 #[path = "num/shells/legacy_int_modules.rs"]
 mod legacy_int_modules;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
-#[allow(deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use legacy_int_modules::{i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
-#[allow(deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use legacy_int_modules::{i128, u128};
 
 #[path = "num/f128.rs"]
@@ -339,6 +342,8 @@ mod bool;
 mod escape;
 mod tuple;
 mod unit;
+#[unstable(feature = "view_type_macro", issue = "155938")]
+pub mod view;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;
@@ -358,7 +363,9 @@ pub mod primitive;
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
     deprecated_in_future,
-    unreachable_pub
+    unreachable_pub,
+    // FIXME: stdach is a submodule so clippy lints should be fixed (and ideally enforced) there
+    clippy::all,
 )]
 #[allow(rustdoc::bare_urls)]
 mod core_arch;

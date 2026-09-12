@@ -27,7 +27,7 @@ pub(crate) enum DivergingFallbackBehavior {
     ToNever,
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn type_inference_fallback(&mut self) {
         debug!(
             "type-inference-fallback start obligations: {:#?}",

@@ -21,42 +21,6 @@ use libc::dirfd;
 use libc::fstatat as fstatat64;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
-#[cfg(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "illumos",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-    all(target_os = "linux", target_env = "musl"),
-))]
-use libc::readdir as readdir64;
-#[cfg(not(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "l4re",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-)))]
-use libc::readdir_r as readdir64_r;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::readdir64;
-#[cfg(target_os = "l4re")]
-use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
@@ -65,19 +29,20 @@ use libc::{
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
+    target_os = "l4re",
 )))]
 use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
-#[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "l4re",
-    target_os = "hurd"
-))]
+#[cfg(target_os = "l4re")]
+use libc::{
+    dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64, lstat as lstat64,
+    off_t as off64_t, open as open64, stat as stat64,
+};
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 use crate::ffi::{CStr, OsStr, OsString};
@@ -101,6 +66,28 @@ use crate::sys::weak::syscall;
 use crate::sys::weak::weak;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, cvt_r};
 use crate::{mem, ptr};
+
+// Used by rustc for checking the definitions of other function with the same symbol names
+//
+// See the `invalid_runtime_symbols_definitions` lint.
+#[cfg(not(test))]
+mod runtime_symbols {
+    use core::ffi::{c_char, c_int, c_size_t, c_ssize_t, c_void};
+
+    unsafe extern "C" {
+        #[rustc_canonical_symbol]
+        fn open(pathname: *const c_char, flags: c_int, ...) -> c_int;
+
+        #[rustc_canonical_symbol]
+        fn read(fd: c_int, buf: *mut c_void, count: c_size_t) -> c_ssize_t;
+
+        #[rustc_canonical_symbol]
+        fn write(fd: c_int, buf: *const c_void, count: c_size_t) -> c_ssize_t;
+
+        #[rustc_canonical_symbol]
+        fn close(fd: c_int) -> c_int;
+    }
+}
 
 pub struct File(FileDesc);
 
@@ -286,6 +273,7 @@ cfg_select! {
         target_os = "nto",
         target_os = "qnx",
         target_os = "vxworks",
+        target_os = "l4re",
     ) => {
         pub use crate::sys::fs::common::Dir;
     }
@@ -349,7 +337,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
                     // fallback to procfs as last resort
                     let mut p = PathBuf::from("/proc/self/fd");
                     p.push(&fd.to_string());
-                    return run_path_with_cstr(&p, &readlink).ok()
+                    return run_path_with_cstr(&p, &readlink).ok();
                 }
                 _ => {
                     return None;
@@ -404,21 +392,6 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
     get_path(fd)
 }
 
-#[cfg(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
     entry: dirent64_min,
@@ -431,53 +404,19 @@ pub struct DirEntry {
 // Define a minimal subset of fields we need from `dirent64`, especially since
 // we're not using the immediate `d_name` on these targets. Keeping this as an
 // `entry` field in `DirEntry` helps reduce the `cfg` boilerplate elsewhere.
-#[cfg(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-))]
 struct dirent64_min {
     d_ino: u64,
     #[cfg(not(any(
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks",
         target_os = "aix",
         target_os = "nto",
         target_os = "qnx",
         target_os = "vita",
     )))]
     d_type: u8,
-}
-
-#[cfg(not(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-)))]
-pub struct DirEntry {
-    dir: Arc<InnerReadDir>,
-    // The full entry includes a fixed-length `d_name`.
-    entry: dirent64,
 }
 
 #[derive(Clone)]
@@ -623,7 +562,8 @@ impl FileAttr {
     target_os = "nto",
     target_os = "qnx",
     target_os = "aix",
-    target_os = "wasi"
+    target_os = "wasi",
+    target_os = "l4re"
 )))]
 impl FileAttr {
     #[cfg(not(any(
@@ -749,7 +689,7 @@ impl FileAttr {
     }
 }
 
-#[cfg(any(target_os = "nto", target_os = "qnx", target_os = "wasi"))]
+#[cfg(any(target_os = "nto", target_os = "qnx", target_os = "wasi", target_os = "l4re"))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec.into())
@@ -858,48 +798,89 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
-    #[cfg(any(
-        target_os = "aix",
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "hurd",
-        target_os = "illumos",
-        target_os = "linux",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "redox",
-        target_os = "solaris",
-        target_os = "vita",
-        target_os = "wasi",
-    ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        use crate::sys::io::{errno, set_errno};
-
         if self.end_of_stream {
             return None;
         }
 
         unsafe {
             loop {
-                // As of POSIX.1-2017, readdir() is not required to be thread safe; only
-                // readdir_r() is. However, readdir_r() cannot correctly handle platforms
-                // with unlimited or variable NAME_MAX. Many modern platforms guarantee
-                // thread safety for readdir() as long an individual DIR* is not accessed
-                // concurrently, which is sufficient for Rust.
-                set_errno(0);
-                let entry_ptr: *const dirent64 = readdir64(self.inner.dirp.0);
-                if entry_ptr.is_null() {
-                    // We either encountered an error, or reached the end. Either way,
-                    // the next call to next() should return None.
-                    self.end_of_stream = true;
+                // POSIX.1-2024 formalized what was already guaranteed by a lot
+                // of implementations and required readdir() to be thread-safe as
+                // long as an individual DIR* is not accessed concurrently. Taking
+                // a mutable reference to the `ReadDir` iterator prevents that.
+                // Even POSIX.1-1994 specified that the data in the returned
+                // dirent
+                // > is not overwritten by another call to readdir() on a
+                // > different directory stream.
+                //
+                // and that guarantee together with the requirement that the
+                // underlying syscalls need to be thread-safe because of readdir_r
+                // make it very unlikely for an implementation to be non-conforming.
+                // Nevertheless, there are still some platforms where we either
+                // cannot confirm `readdir` to be thread-safe or know that it
+                // isn't.
+                cfg_select! {
+                    any(
+                        target_os = "espidf", // readdir truly isn't thread-safe.
+                        target_os = "lynxos178",
+                        target_os = "qurt",
+                        target_os = "rtems",
+                        target_os = "vxworks",
+                    ) => {
+                        use crate::mem::MaybeUninit;
 
-                    // To distinguish between errors and end-of-directory, we had to clear
-                    // errno beforehand to check for an error now.
-                    return match errno() {
-                        0 => None,
-                        e => Some(Err(Error::from_raw_os_error(e))),
-                    };
+                        let mut entry = MaybeUninit::uninit();
+                        let mut entry_ptr: *mut dirent64 = ptr::null_mut();
+                        let err =
+                            libc::readdir_r(self.inner.dirp.0, entry.as_mut_ptr(), &mut entry_ptr);
+                        if err != 0 {
+                            if entry_ptr.is_null() {
+                                // We encountered an error (which will be returned in this iteration), but
+                                // we also reached the end of the directory stream. The `end_of_stream`
+                                // flag is enabled to make sure that we return `None` in the next iteration
+                                // (instead of looping forever)
+                                self.end_of_stream = true;
+                            }
+                            return Some(Err(Error::from_raw_os_error(err)));
+                        }
+                        if entry_ptr.is_null() {
+                            return None;
+                        }
+
+                        let entry_ptr = entry_ptr.cast_const();
+                    }
+                    _ => {
+                        #[cfg(not(any(
+                            all(target_os = "linux", not(target_env = "musl")),
+                            target_os = "hurd",
+                            target_os = "l4re",
+                        )))]
+                        use libc::readdir as readdir64;
+                        #[cfg(any(
+                            all(target_os = "linux", not(target_env = "musl")),
+                            target_os = "hurd",
+                            target_os = "l4re"
+                        ))]
+                        use libc::readdir64;
+
+                        use crate::sys::io::{errno, set_errno};
+
+                        set_errno(0);
+                        let entry_ptr: *const dirent64 = readdir64(self.inner.dirp.0);
+                        if entry_ptr.is_null() {
+                            // We either encountered an error, or reached the end. Either way,
+                            // the next call to next() should return None.
+                            self.end_of_stream = true;
+
+                            // To distinguish between errors and end-of-directory, we had to clear
+                            // errno beforehand to check for an error now.
+                            return match errno() {
+                                0 => None,
+                                e => Some(Err(Error::from_raw_os_error(e))),
+                            };
+                        }
+                    }
                 }
 
                 // The dirent64 struct is a weird imaginary thing that isn't ever supposed
@@ -930,24 +911,37 @@ impl Iterator for ReadDir {
                 // When loading from a field, we can skip the `&raw const`; `(*entry_ptr).d_ino` as
                 // a value expression will do the right thing: `byte_offset` to the field and then
                 // only access those bytes.
-                #[cfg(not(target_os = "vita"))]
                 let entry = dirent64_min {
-                    #[cfg(target_os = "freebsd")]
+                    #[cfg(any(
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "openbsd",
+                    ))]
                     d_ino: (*entry_ptr).d_fileno,
-                    #[cfg(not(target_os = "freebsd"))]
+                    #[cfg(any(target_os = "nuttx", target_os = "vita",))]
+                    d_ino: 0,
+                    #[cfg(not(any(
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "nuttx",
+                        target_os = "openbsd",
+                        target_os = "vita",
+                    )))]
                     d_ino: (*entry_ptr).d_ino as u64,
                     #[cfg(not(any(
                         target_os = "solaris",
                         target_os = "illumos",
+                        target_os = "haiku",
+                        target_os = "vxworks",
                         target_os = "aix",
                         target_os = "nto",
                         target_os = "qnx",
+                        target_os = "vita",
                     )))]
                     d_type: (*entry_ptr).d_type as u8,
                 };
-
-                #[cfg(target_os = "vita")]
-                let entry = dirent64_min { d_ino: 0u64 };
 
                 return Some(Ok(DirEntry {
                     entry,
@@ -957,54 +951,9 @@ impl Iterator for ReadDir {
             }
         }
     }
-
-    #[cfg(not(any(
-        target_os = "aix",
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "hurd",
-        target_os = "illumos",
-        target_os = "linux",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "redox",
-        target_os = "solaris",
-        target_os = "vita",
-        target_os = "wasi",
-    )))]
-    fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        if self.end_of_stream {
-            return None;
-        }
-
-        unsafe {
-            let mut ret = DirEntry { entry: mem::zeroed(), dir: Arc::clone(&self.inner) };
-            let mut entry_ptr = ptr::null_mut();
-            loop {
-                let err = readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr);
-                if err != 0 {
-                    if entry_ptr.is_null() {
-                        // We encountered an error (which will be returned in this iteration), but
-                        // we also reached the end of the directory stream. The `end_of_stream`
-                        // flag is enabled to make sure that we return `None` in the next iteration
-                        // (instead of looping forever)
-                        self.end_of_stream = true;
-                    }
-                    return Some(Err(Error::from_raw_os_error(err)));
-                }
-                if entry_ptr.is_null() {
-                    return None;
-                }
-                if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
-                    return Some(Ok(ret));
-                }
-            }
-        }
-    }
 }
 
-/// Aborts the process if a file desceriptor is not open, if debug asserts are enabled
+/// Aborts the process if a file descriptor is not open, if debug asserts are enabled
 ///
 /// Many IO syscalls can't be fully trusted about EBADF error codes because those
 /// might get bubbled up from a remote FUSE server rather than the file descriptor
@@ -1080,7 +1029,7 @@ impl DirEntry {
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
-        let name = self.name_cstr().as_ptr();
+        let name = self.name.as_ptr();
 
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
@@ -1122,6 +1071,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "qnx",
         target_os = "vita",
+        target_os = "l4re",
     ))]
     pub fn file_type(&self) -> io::Result<FileType> {
         self.metadata().map(|m| m.file_type())
@@ -1136,6 +1086,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "qnx",
         target_os = "vita",
+        target_os = "l4re",
     )))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
@@ -1150,110 +1101,12 @@ impl DirEntry {
         }
     }
 
-    #[cfg(any(
-        target_os = "aix",
-        target_os = "android",
-        target_os = "cygwin",
-        target_os = "emscripten",
-        target_os = "espidf",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "haiku",
-        target_os = "horizon",
-        target_os = "hurd",
-        target_os = "illumos",
-        target_os = "l4re",
-        target_os = "linux",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "redox",
-        target_os = "rtems",
-        target_os = "solaris",
-        target_os = "vita",
-        target_os = "vxworks",
-        target_os = "wasi",
-        target_vendor = "apple",
-    ))]
     pub fn ino(&self) -> u64 {
-        self.entry.d_ino as u64
-    }
-
-    #[cfg(any(target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly"))]
-    pub fn ino(&self) -> u64 {
-        self.entry.d_fileno as u64
-    }
-
-    #[cfg(target_os = "nuttx")]
-    pub fn ino(&self) -> u64 {
-        // Leave this 0 for now, as NuttX does not provide an inode number
-        // in its directory entries.
-        0
-    }
-
-    #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "dragonfly",
-        target_vendor = "apple",
-    ))]
-    fn name_bytes(&self) -> &[u8] {
-        use crate::slice;
-        unsafe {
-            slice::from_raw_parts(
-                self.entry.d_name.as_ptr() as *const u8,
-                self.entry.d_namlen as usize,
-            )
-        }
-    }
-    #[cfg(not(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "dragonfly",
-        target_vendor = "apple",
-    )))]
-    fn name_bytes(&self) -> &[u8] {
-        self.name_cstr().to_bytes()
-    }
-
-    #[cfg(not(any(
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "hurd",
-        target_os = "wasi",
-    )))]
-    fn name_cstr(&self) -> &CStr {
-        unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
-    }
-    #[cfg(any(
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "hurd",
-        target_os = "wasi",
-    ))]
-    fn name_cstr(&self) -> &CStr {
-        &self.name
+        self.entry.d_ino
     }
 
     pub fn file_name_os_str(&self) -> &OsStr {
-        OsStr::from_bytes(self.name_bytes())
+        OsStr::from_bytes(self.name.as_bytes())
     }
 }
 
@@ -1340,7 +1193,7 @@ impl OpenOptions {
                 if self.truncate && !self.create_new {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "creating or truncating a file requires write or append access",
+                        "append and truncate cannot both be enabled",
                     ));
                 }
             }
@@ -1443,6 +1296,7 @@ impl File {
             target_os = "nto",
             target_os = "qnx",
             target_os = "hurd",
+            target_os = "l4re",
         ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fdatasync(fd)
@@ -1458,6 +1312,7 @@ impl File {
             target_os = "nto",
             target_os = "qnx",
             target_os = "hurd",
+            target_os = "l4re",
             target_vendor = "apple",
         )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
@@ -1481,11 +1336,9 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
-                return Ok(());
+                Ok(())
             }
-            _ => {
-                Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported"))
-            }
+            _ => Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported")),
         }
     }
 
@@ -1505,11 +1358,9 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
-                return Ok(());
+                Ok(())
             }
-            _ => {
-                Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
-            }
+            _ => Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported")),
         }
     }
 
@@ -1528,7 +1379,8 @@ impl File {
                 target_os = "android",
                 target_vendor = "apple",
             ) => {
-                let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
+                let result =
+                    cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
                 if let Err(err) = result {
                     if err.kind() == io::ErrorKind::WouldBlock {
                         Err(TryLockError::WouldBlock)
@@ -1539,18 +1391,16 @@ impl File {
                     Ok(())
                 }
             }
-            _ => {
-                Err(TryLockError::Error(io::const_error!(
-                    io::ErrorKind::Unsupported,
-                    "try_lock() not supported"
-                )))
-            }
+            _ => Err(TryLockError::Error(io::const_error!(
+                io::ErrorKind::Unsupported,
+                "try_lock() not supported"
+            ))),
         }
     }
 
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
         cfg_select! {
-                any(
+            any(
                 target_os = "freebsd",
                 target_os = "fuchsia",
                 target_os = "hurd",
@@ -1563,7 +1413,8 @@ impl File {
                 target_os = "android",
                 target_vendor = "apple",
             ) => {
-                let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
+                let result =
+                    cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
                 if let Err(err) = result {
                     if err.kind() == io::ErrorKind::WouldBlock {
                         Err(TryLockError::WouldBlock)
@@ -1574,12 +1425,10 @@ impl File {
                     Ok(())
                 }
             }
-            _ => {
-                Err(TryLockError::Error(io::const_error!(
-                    io::ErrorKind::Unsupported,
-                    "try_lock_shared() not supported"
-                )))
-            }
+            _ => Err(TryLockError::Error(io::const_error!(
+                io::ErrorKind::Unsupported,
+                "try_lock_shared() not supported"
+            ))),
         }
     }
 
@@ -1599,11 +1448,9 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
-                return Ok(());
+                Ok(())
             }
-            _ => {
-                Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
-            }
+            _ => Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported")),
         }
     }
 
@@ -1704,7 +1551,13 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_select! {
-            any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
+            any(
+                target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "nuttx",
+                target_os = "l4re"
+            ) => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
@@ -1716,17 +1569,22 @@ impl File {
             }
             target_vendor = "apple" => {
                 let ta = TimesAttrlist::from_times(&times)?;
-                cvt(unsafe { libc::fsetattrlist(
-                    self.as_raw_fd(),
-                    ta.attrlist(),
-                    ta.times_buf(),
-                    ta.times_buf_size(),
-                    0
-                ) })?;
+                cvt(unsafe {
+                    libc::fsetattrlist(
+                        self.as_raw_fd(),
+                        ta.attrlist(),
+                        ta.times_buf(),
+                        ta.times_buf_size(),
+                        0,
+                    )
+                })?;
                 Ok(())
             }
             target_os = "android" => {
-                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+                let times = [
+                    file_time_to_timespec(times.accessed)?,
+                    file_time_to_timespec(times.modified)?,
+                ];
                 // futimens requires Android API level 19
                 cvt(unsafe {
                     weak!(
@@ -1734,18 +1592,26 @@ impl File {
                     );
                     match futimens.get() {
                         Some(futimens) => futimens(self.as_raw_fd(), times.as_ptr()),
-                        None => return Err(io::const_error!(
-                            io::ErrorKind::Unsupported,
-                            "setting file times requires Android API level >= 19",
-                        )),
+                        None => {
+                            return Err(io::const_error!(
+                                io::ErrorKind::Unsupported,
+                                "setting file times requires Android API level >= 19",
+                            ));
+                        }
                     }
                 })?;
                 Ok(())
             }
             _ => {
-                #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
+                #[cfg(all(
+                    target_os = "linux",
+                    target_env = "gnu",
+                    target_pointer_width = "32",
+                    not(target_arch = "riscv32")
+                ))]
                 {
-                    use crate::sys::pal::{time::__timespec64, weak::weak};
+                    use crate::sys::pal::time::__timespec64;
+                    use crate::sys::pal::weak::weak;
 
                     // Added in glibc 2.34
                     weak!(
@@ -1753,14 +1619,19 @@ impl File {
                     );
 
                     if let Some(futimens64) = __futimens64.get() {
-                        let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())
-                            .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _));
+                        let to_timespec = |time: Option<SystemTime>| {
+                            time.map(|time| time.t.to_timespec64())
+                                .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _))
+                        };
                         let times = [to_timespec(times.accessed), to_timespec(times.modified)];
                         cvt(unsafe { futimens64(self.as_raw_fd(), times.as_ptr()) })?;
                         return Ok(());
                     }
                 }
-                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+                let times = [
+                    file_time_to_timespec(times.accessed)?,
+                    file_time_to_timespec(times.modified)?,
+                ];
                 cvt(unsafe { libc::futimens(self.as_raw_fd(), times.as_ptr()) })?;
                 Ok(())
             }
@@ -1926,7 +1797,7 @@ impl fmt::Debug for File {
 // Format in octal, followed by the mode format used in `ls -l`.
 //
 // References:
-//   https://pubs.opengroup.org/onlinepubs/009696899/utilities/ls.html
+//   https://pubs.opengroup.org/onlinepubs/9799919799/utilities/ls.html
 //   https://www.gnu.org/software/libc/manual/html_node/Testing-File-Type.html
 //   https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
 //
@@ -2013,6 +1884,102 @@ pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ())
 }
 
+#[cfg(target_os = "vxworks")]
+pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    // VxWorks has no `O_NOFOLLOW`, and its `fchmodat` rejects
+    // `AT_SYMLINK_NOFOLLOW` with `ENOTSUP`, so a no-follow chmod is unsupported.
+    Err(crate::io::ErrorKind::Unsupported.into())
+}
+
+#[cfg(target_os = "android")]
+pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    // Currently Android seems to be having inconsistent behavior with fchmodat
+    // with `AT_SYMLINK_NOFOLLOW` or openat with `O_NOFOLLOW` + fchmod.
+    // See this issue here mentioning inconsistent behavior on fchmodat:
+    // https://github.com/android/ndk/issues/1258
+    // On the arm-android CI job, using fchmodat with `AT_SYMLINK_NOFOLLOW` +
+    // fallback behavior on a symlink sets the target file's permissions,
+    // which is incorrect behavior.
+    Err(crate::io::ErrorKind::Unsupported.into())
+}
+
+#[cfg(not(any(target_os = "android", target_os = "vxworks")))]
+pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
+    #[inline]
+    /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior
+    fn open_and_set_permissions(p: &CStr, perm: FilePermissions) -> io::Result<()> {
+        use crate::fs::{OpenOptions, Permissions};
+
+        let mut options = OpenOptions::new();
+        options.read(true);
+
+        // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+        // Their filesystems do not have symbolic links, so no special handling is required.
+        #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+        {
+            #[cfg(not(target_os = "wasi"))]
+            use crate::os::unix::fs::OpenOptionsExt;
+            #[cfg(target_os = "wasi")]
+            use crate::os::wasi::fs::OpenOptionsExt;
+            options.custom_flags(libc::O_NOFOLLOW);
+        }
+
+        // SAFETY: Since this function is called with `with_native_path`
+        // and that successfully converted the `&Path` to a `CString`,
+        // it should be safe to convert the `&CStr` back to a `Path`.
+        let os_str = unsafe { OsStr::from_encoded_bytes_unchecked(p.to_bytes()) };
+        options.open(Path::new(os_str))?.set_permissions(Permissions::from_inner(perm))
+    }
+
+    // This res value is modified for platforms that support the `fchmodat` syscall.
+    #[allow(unused)]
+    let mut res: Result<(), core::io::Error> = Err(crate::io::ErrorKind::Unsupported.into());
+
+    // These platforms support `fchmodat`, so utilize this syscall over `open` + `fchmod`
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "dragonfly",
+        target_os = "nto",
+        target_os = "qnx"
+    ))]
+    {
+        res = cvt_r(|| unsafe {
+            libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
+        })
+        .map(|_| ());
+    }
+
+    // If fchmodat fails with `ErrorKind::Unsupported` fallback to using open + fchmod. This is just in case
+    // for older systems like Ubuntu 20.04 where fchmodat fails with EOPNOTSUPP on both regular files and
+    // symlinks when AT_SYMLINK_NOFOLLOW is passed in.
+    match res {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            if err.kind() == crate::io::ErrorKind::Unsupported {
+                match open_and_set_permissions(p, perm) {
+                    Ok(_) => return Ok(()),
+                    Err(e) => {
+                        if e.kind() == crate::io::ErrorKind::FilesystemLoop {
+                            // When open is used with O_NOFOLLOW flag, if the trailing component of
+                            // a path is a symbolic link, it should fail with ELOOP error. Instead of
+                            // returning `FilesystemLoop`, this returns `Unsupported` to keep it consistent
+                            // with what `fchmodat` would return when chmoding a symlink using AT_SYMLINK_NOFOLLOW.
+                            return Err(err);
+                        }
+                        return Err(e);
+                    }
+                }
+            }
+
+            Err(err)
+        }
+    }
+}
+
 pub fn rmdir(p: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ())
 }
@@ -2057,12 +2024,10 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
             target_os = "vxworks",
             target_os = "redox",
             target_os = "espidf",
-            // Android has `linkat` on newer versions, but we happen to know
-            // `link` always has the correct behavior, so it's here as well.
-            target_os = "android",
             // Other misc platforms
             target_os = "horizon",
             target_os = "vita",
+            target_os = "l4re",
             target_env = "nto70",
         ) => {
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
@@ -2070,7 +2035,9 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
         _ => {
             // Where we can, use `linkat` instead of `link`; see the comment above
             // this one for details on why.
-            cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
+            cvt(unsafe {
+                libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0)
+            })?;
         }
     }
     Ok(())
@@ -2136,72 +2103,96 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 
 fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Result<()> {
     cfg_select! {
-       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "vita", target_os = "rtems") => {
+        any(
+            target_os = "redox",
+            target_os = "espidf",
+            target_os = "horizon",
+            target_os = "nuttx",
+            target_os = "vita",
+            target_os = "rtems"
+        ) => {
             let _ = (p, times, follow_symlinks);
-            Err(io::const_error!(
-                io::ErrorKind::Unsupported,
-                "setting file times not supported",
-            ))
-       }
-       target_vendor = "apple" => {
+            Err(io::const_error!(io::ErrorKind::Unsupported, "setting file times not supported"))
+        }
+        target_vendor = "apple" => {
             // Apple platforms use setattrlist which supports setting times on symlinks
             let ta = TimesAttrlist::from_times(&times)?;
-            let options = if follow_symlinks {
-                0
-            } else {
-                libc::FSOPT_NOFOLLOW
-            };
+            let options = if follow_symlinks { 0 } else { libc::FSOPT_NOFOLLOW };
 
-            cvt(unsafe { libc::setattrlist(
-                p.as_ptr(),
-                ta.attrlist(),
-                ta.times_buf(),
-                ta.times_buf_size(),
-                options as u32
-            ) })?;
+            cvt(unsafe {
+                libc::setattrlist(
+                    p.as_ptr(),
+                    ta.attrlist(),
+                    ta.times_buf(),
+                    ta.times_buf_size(),
+                    options as u32,
+                )
+            })?;
             Ok(())
-       }
-       target_os = "android" => {
-            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+        }
+        target_os = "android" => {
+            let times =
+                [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
             let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
             // utimensat requires Android API level 19
             cvt(unsafe {
                 weak!(
-                    fn utimensat(dirfd: c_int, path: *const libc::c_char, times: *const libc::timespec, flags: c_int) -> c_int;
+                    fn utimensat(
+                        dirfd: c_int,
+                        path: *const libc::c_char,
+                        times: *const libc::timespec,
+                        flags: c_int,
+                    ) -> c_int;
                 );
                 match utimensat.get() {
                     Some(utimensat) => utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags),
-                    None => return Err(io::const_error!(
-                        io::ErrorKind::Unsupported,
-                        "setting file times requires Android API level >= 19",
-                    )),
+                    None => {
+                        return Err(io::const_error!(
+                            io::ErrorKind::Unsupported,
+                            "setting file times requires Android API level >= 19",
+                        ));
+                    }
                 }
             })?;
             Ok(())
-       }
-       _ => {
+        }
+        _ => {
             let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
-            #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
+            #[cfg(all(
+                target_os = "linux",
+                target_env = "gnu",
+                target_pointer_width = "32",
+                not(target_arch = "riscv32")
+            ))]
             {
-                use crate::sys::pal::{time::__timespec64, weak::weak};
+                use crate::sys::pal::time::__timespec64;
+                use crate::sys::pal::weak::weak;
 
                 // Added in glibc 2.34
                 weak!(
-                    fn __utimensat64(dirfd: c_int, path: *const c_char, times: *const __timespec64, flags: c_int) -> c_int;
+                    fn __utimensat64(
+                        dirfd: c_int,
+                        path: *const c_char,
+                        times: *const __timespec64,
+                        flags: c_int,
+                    ) -> c_int;
                 );
 
                 if let Some(utimensat64) = __utimensat64.get() {
-                    let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())
-                        .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _));
+                    let to_timespec = |time: Option<SystemTime>| {
+                        time.map(|time| time.t.to_timespec64())
+                            .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _))
+                    };
                     let times = [to_timespec(times.accessed), to_timespec(times.modified)];
                     cvt(unsafe { utimensat64(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags) })?;
                     return Ok(());
                 }
             }
-            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+            let times =
+                [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
             cvt(unsafe { libc::utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags) })?;
             Ok(())
-         }
+        }
     }
 }
 
@@ -2431,6 +2422,7 @@ pub use remove_dir_impl::remove_dir_all;
     target_os = "nto",
     target_os = "qnx",
     target_os = "vxworks",
+    target_os = "l4re",
     miri
 ))]
 mod remove_dir_impl {
@@ -2446,6 +2438,7 @@ mod remove_dir_impl {
     target_os = "nto",
     target_os = "qnx",
     target_os = "vxworks",
+    target_os = "l4re",
     miri
 )))]
 mod remove_dir_impl {
@@ -2528,7 +2521,7 @@ mod remove_dir_impl {
 
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
-        let fd = match openat_nofollow_dironly(parent_fd, &path) {
+        let fd = match openat_nofollow_dironly(parent_fd, path) {
             Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
                 // not a directory - don't traverse further
                 // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
@@ -2558,24 +2551,23 @@ mod remove_dir_impl {
 
         for child in dir {
             let child = child?;
-            let child_name = child.name_cstr();
             // we need an inner try block, because if one of these
             // directories has already been deleted, then we need to
             // continue the loop, not return ok.
             let result: io::Result<()> = try {
                 match is_dir(&child) {
                     Some(true) => {
-                        remove_dir_all_recursive(Some(fd), child_name)?;
+                        remove_dir_all_recursive(Some(fd), &child.name)?;
                     }
                     Some(false) => {
-                        cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
+                        cvt(unsafe { unlinkat(fd, child.name.as_ptr(), 0) })?;
                     }
                     None => {
                         // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
                         // if the process has the appropriate privileges. This however can causing orphaned
                         // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
                         // into it first instead of trying to unlink() it.
-                        remove_dir_all_recursive(Some(fd), child_name)?;
+                        remove_dir_all_recursive(Some(fd), &child.name)?;
                     }
                 }
             };
@@ -2599,7 +2591,7 @@ mod remove_dir_impl {
         if attr.file_type().is_symlink() {
             super::unlink(p)
         } else {
-            remove_dir_all_recursive(None, &p)
+            remove_dir_all_recursive(None, p)
         }
     }
 

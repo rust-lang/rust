@@ -2,12 +2,14 @@ mod intrinsic;
 mod json_parser;
 mod types;
 
-use crate::common::SupportedArchitecture;
+use crate::common::argument::Argument;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
+use crate::common::intrinsic_helpers::{SimdLen, TypeDefinition, TypeKind};
+use crate::common::values::test_values_array_name;
+use crate::common::{PASSES, PREDICATE_LOCAL, SupportedArchitecture};
 use intrinsic::ArmType;
-use json_parser::get_neon_intrinsics;
+use json_parser::get_intrinsics;
 
 #[derive(PartialEq)]
 pub struct Arm(Vec<Intrinsic<Arm>>);
@@ -29,12 +31,21 @@ impl SupportedArchitecture for Arm {
 #include <arm_acle.h>
 #include <arm_fp16.h>
 #include <arm_neon.h>
+#ifdef __ARM_FEATURE_SVE
+#include <arm_sve.h>
+#endif
 "#;
     const RUST_PRELUDE: &str = RUST_PRELUDE;
 
     fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str> {
         // GCC uses an extra `-` in the arch name
+        let big_endian = cli_options.target.starts_with("aarch64_be");
+        let a32 = cli_options.target.starts_with("armv7");
         match cli_options.cc_arg_style {
+            CcArgStyle::Clang if !a32 && !big_endian => vec![
+                "-march=armv8.6a+crypto+crc+dotprod+fp16+sve2-aes+sve2-sm4+sve2-sha3+sve2-bitperm+\
+                 f32mm+f64mm+sve2p1",
+            ],
             CcArgStyle::Clang => vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"],
             // SVE tests aren't run under GCC so there are no target features added for SVE
             CcArgStyle::Gcc => vec!["-march=armv8.6-a+crypto+crc+dotprod+fp16+sha3+sm4"],
@@ -45,7 +56,7 @@ impl SupportedArchitecture for Arm {
         let big_endian = cli_options.target.starts_with("aarch64_be");
         let a32 = cli_options.target.starts_with("armv7");
         let mut intrinsics =
-            get_neon_intrinsics(&cli_options.filename).expect("Error parsing input file");
+            get_intrinsics(&cli_options.filename).expect("Error parsing input file");
 
         intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
         intrinsics.dedup();
@@ -69,13 +80,13 @@ impl SupportedArchitecture for Arm {
                 let has_sve_arg = i
                     .arguments
                     .iter()
-                    .any(|a| a.ty.simd_len == Some(SimdLen::Scalable));
+                    .any(|a| a.ty.num_lanes() == SimdLen::Scalable);
                 !(has_f16_arg && has_sve_arg)
             })
             .filter(|i| {
                 let has_f16_ret =
                     i.results.kind() == TypeKind::Float && i.results.bit_len == Some(16);
-                let has_sve_ret = i.results.simd_len == Some(SimdLen::Scalable);
+                let has_sve_ret = i.results.num_lanes() == SimdLen::Scalable;
                 !(has_f16_ret && has_sve_ret)
             })
             // Skip `svqcvtn{u,}n*_x2` intrinsics - not yet implemented!
@@ -100,10 +111,6 @@ impl SupportedArchitecture for Arm {
             // zeroed vectors in Rust, which are inherently going to be different than the
             // undefined vectors returned by the C intrinsics.
             .filter(|i| !i.name.starts_with("svundef"))
-            // Skip `sveorv` intrinsics - the code produced by `intrinsic-test` for these
-            // miscompiles and the Rust intrinsic call gets replaced by a constant zero (see
-            // llvm/llvm-project#203921).
-            .filter(|i| !i.name.starts_with("sveorv"))
             // These load intrinsics expect each element in the scalable vector `bases` argument to
             // be able to be cast to a pointer, which we don't support generating tests for yet.
             .filter(|i| !(i.name.starts_with("svld") && i.name.contains("_gather_")))
@@ -129,6 +136,35 @@ impl SupportedArchitecture for Arm {
 
         Self(intrinsics)
     }
+
+    fn predicate_function(size: u32) -> String {
+        format!("svptrue_b{size}()")
+    }
+
+    fn load_call(arg: &Argument<Self>, idx: usize) -> String {
+        let name = arg.generate_name();
+        let load = arg.ty.load_function();
+        let ptr = format!(
+            "{vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _",
+            vals_name = test_values_array_name(&arg.ty)
+        );
+
+        match arg.ty.num_lanes() {
+            // If the load is of a `svbool_t`, then we load a `svint8_t` and
+            SimdLen::Scalable if matches!(arg.ty.kind(), TypeKind::Bool) => {
+                format!(
+                    r#"
+let {name} = {load}({PREDICATE_LOCAL}, {ptr});
+let {name} = svcmpne_n_s8({PREDICATE_LOCAL}, {name}, 0);
+                "#
+                )
+            }
+            // If this load is of a scalable vector, then prepend an additional argument
+            // containing the predicate for the load.
+            SimdLen::Scalable => format!("let {name} = {load}({PREDICATE_LOCAL}, {ptr});"),
+            SimdLen::Fixed(..) => format!("let {name} = {load}({ptr});"),
+        }
+    }
 }
 
 const RUST_PRELUDE: &str = r#"
@@ -140,6 +176,7 @@ const RUST_PRELUDE: &str = r#"
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_feat_lut))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fp8))]
+#![cfg_attr(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"), feature(stdarch_aarch64_sve))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(faminmax))]
 #![feature(stdarch_neon_f16)]
 
@@ -148,4 +185,135 @@ use core_arch::arch::aarch64::*;
 
 #[cfg(target_arch = "arm")]
 use core_arch::arch::arm::*;
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+const fn svpattern_from_i32(value: i32) -> svpattern {
+    match value {
+        0 => svpattern::SV_POW2,
+        1 => svpattern::SV_VL1,
+        2 => svpattern::SV_VL2,
+        3 => svpattern::SV_VL3,
+        4 => svpattern::SV_VL4,
+        5 => svpattern::SV_VL5,
+        6 => svpattern::SV_VL6,
+        7 => svpattern::SV_VL7,
+        8 => svpattern::SV_VL8,
+        9 => svpattern::SV_VL16,
+        10 => svpattern::SV_VL32,
+        11 => svpattern::SV_VL64,
+        12 => svpattern::SV_VL128,
+        13 => svpattern::SV_VL256,
+        29 => svpattern::SV_MUL4,
+        30 => svpattern::SV_MUL3,
+        31 => svpattern::SV_ALL,
+        _ => unreachable!(),
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+const fn svprfop_from_i32(value: i32) -> svprfop {
+    match value {
+        0 => svprfop::SV_PLDL1KEEP,
+        1 => svprfop::SV_PLDL1STRM,
+        2 => svprfop::SV_PLDL2KEEP,
+        3 => svprfop::SV_PLDL2STRM,
+        4 => svprfop::SV_PLDL3KEEP,
+        5 => svprfop::SV_PLDL3STRM,
+        8 => svprfop::SV_PSTL1KEEP,
+        9 => svprfop::SV_PSTL1STRM,
+        10 => svprfop::SV_PSTL2KEEP,
+        11 => svprfop::SV_PSTL2STRM,
+        12 => svprfop::SV_PSTL3KEEP,
+        13 => svprfop::SV_PSTL3STRM,
+        _ => unreachable!(),
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint8_to_slice(a: &svint8_t) -> &[i8] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntb() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint8_to_slice(a: &svuint8_t) -> &[u8] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntb() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint16_to_slice(a: &svint16_t) -> &[i16] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcnth() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint16_to_slice(a: &svuint16_t) -> &[u16] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcnth() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint32_to_slice(a: &svint32_t) -> &[i32] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntw() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint32_to_slice(a: &svuint32_t) -> &[u32] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntw() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint64_to_slice(a: &svint64_t) -> &[i64] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint64_to_slice(a: &svuint64_t) -> &[u64] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svfloat32_to_slice(a: &svfloat32_t) -> &[NanEqF32] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntw() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svfloat64_to_slice(a: &svfloat64_t) -> &[NanEqF64] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
+#[repr(transparent)]
+#[derive(Copy,Clone,PartialEq,Eq)]
+struct b8(u8);
+
+impl std::fmt::Debug for b8 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:08b}", self.0)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svbool_to_slice(a: &svbool_t) -> &[b8] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
 "#;

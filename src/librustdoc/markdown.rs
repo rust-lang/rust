@@ -69,13 +69,14 @@ pub(crate) fn render_and_write(
     let playground_url = options.markdown_playground_url.or(options.playground_url);
     let playground = playground_url.map(|url| markdown::Playground { crate_name: None, url });
 
-    let mut out =
-        File::create(&output).map_err(|e| format!("{output}: {e}", output = output.display()))?;
-
     let (metadata, text) = extract_leading_metadata(&input_str);
     if metadata.is_empty() {
         return Err("invalid markdown file: no initial lines starting with `# ` or `%`".to_owned());
     }
+
+    let mut out =
+        File::create(&output).map_err(|e| format!("{output}: {e}", output = output.display()))?;
+
     let title = metadata[0];
 
     let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());

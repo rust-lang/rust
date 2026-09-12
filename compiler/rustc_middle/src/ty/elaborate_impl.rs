@@ -16,7 +16,7 @@ impl<'tcx> Elaboratable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
         &self,
         clause: ty::Clause<'tcx>,
         _span: Span,
-        _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        _parent_trait_pred: ty::PolyTraitClause<'tcx>,
         _index: usize,
     ) -> Self {
         clause
@@ -36,7 +36,7 @@ impl<'tcx> Elaboratable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
         &self,
         clause: ty::Clause<'tcx>,
         _span: Span,
-        _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        _parent_trait_pred: ty::PolyTraitClause<'tcx>,
         _index: usize,
     ) -> Self {
         clause.as_predicate()
@@ -56,7 +56,7 @@ impl<'tcx> Elaboratable<TyCtxt<'tcx>> for (ty::Predicate<'tcx>, Span) {
         &self,
         clause: ty::Clause<'tcx>,
         _span: Span,
-        _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        _parent_trait_pred: ty::PolyTraitClause<'tcx>,
         _index: usize,
     ) -> Self {
         (clause.as_predicate(), self.1)
@@ -76,7 +76,7 @@ impl<'tcx> Elaboratable<TyCtxt<'tcx>> for (ty::Clause<'tcx>, Span) {
         &self,
         clause: ty::Clause<'tcx>,
         _span: Span,
-        _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        _parent_trait_pred: ty::PolyTraitClause<'tcx>,
         _index: usize,
     ) -> Self {
         (clause, self.1)

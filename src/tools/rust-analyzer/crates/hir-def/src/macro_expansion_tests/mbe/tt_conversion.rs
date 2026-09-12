@@ -107,6 +107,22 @@ fn f2() { /* error: expected ident */ }
 }
 
 #[test]
+fn lifetime_bound_to_ident_fragment() {
+    check(
+        r#"
+macro_rules! m { ($t:ident) => { $t } }
+
+fn f() { m!('a); }
+"#,
+        expect![[r#"
+macro_rules! m { ($t:ident) => { $t } }
+
+fn f() { /* error: expected ident */missing; }
+"#]],
+    )
+}
+
+#[test]
 fn expansion_does_not_parse_as_expression() {
     check(
         r#"

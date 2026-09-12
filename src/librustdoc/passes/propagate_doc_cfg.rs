@@ -1,22 +1,18 @@
-//! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
+//! Propagates `#[doc(cfg(…))]` ([RFC 3631]) to child items.
+//!
+//! [RFC 3631]: https://rust-lang.github.io/rfcs/3631-rustdoc-cfgs-handling.html
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
+use rustc_hir::{Attribute, find_attr};
+use rustc_span::{ExpnKind, MacroKind};
 
 use crate::clean::inline::{load_attrs, merge_attrs};
 use crate::clean::{CfgInfo, Crate, Item, ItemId, ItemKind};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::passes::Pass;
 
-pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
-    name: "propagate-doc-cfg",
-    run: Some(propagate_doc_cfg),
-    description: "propagates `#[doc(cfg(...))]` to child items",
-};
-
-pub(crate) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(super) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
     if cx.tcx.features().doc_cfg() {
         CfgPropagator { cx, cfg_info: CfgInfo::default(), impl_cfg_info: FxHashMap::default() }
             .fold_crate(cr)
@@ -133,8 +129,40 @@ impl DocFolder for CfgPropagator<'_, '_> {
         {
             self.cfg_info = cfg_info;
         }
-
         if let ItemKind::PlaceholderImplItem = item.kind {
+            if let Some(impl_def_id) = item.item_id.as_def_id() {
+                let tcx = self.cx.tcx;
+                let expn_data = tcx.expn_that_defined(impl_def_id).expn_data();
+                if matches!(expn_data.kind, ExpnKind::Macro(MacroKind::Derive, _))
+                    // This impl block comes from a `derive` expansion, so we want to retrieve
+                    // the `cfg_attr` if any.
+                    && let Some(self_ty_def_id) = tcx
+                        .type_of(impl_def_id)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .ty_adt_def()
+                        .map(|adt| adt.did())
+                    && let self_ty_attrs = load_attrs(tcx, self_ty_def_id)
+                    && let Some(cfgs_attr_trace) =
+                        find_attr!(self_ty_attrs, CfgAttrTrace(cfgs) => cfgs)
+                    && !cfgs_attr_trace.is_empty()
+                {
+                    // We retrieve the `cfg_attr` of the `derive` this `impl` comes from.
+                    let derive_span = expn_data.call_site;
+                    let attrs_iter = Attribute::Parsed(AttributeKind::CfgTrace(
+                        cfgs_attr_trace
+                            .iter()
+                            .filter(|(_, span)| span.contains(derive_span))
+                            .cloned()
+                            .collect(),
+                    ));
+                    crate::clean::extract_cfg_from_attrs(
+                        std::iter::once(&attrs_iter),
+                        tcx,
+                        &mut self.cfg_info,
+                    );
+                }
+            }
             // If we have a placeholder impl, we store the current `cfg` "context" to be used
             // on the actual impl later on (the impls are generated after we go through the whole
             // AST so they're stored in the `krate` object at the end).

@@ -81,34 +81,16 @@ impl WriterRelocate {
     /// Perform the collected relocations to be usable for JIT usage.
     #[cfg(all(feature = "jit", not(windows)))]
     pub(super) fn relocate_for_jit(mut self, jit_module: &cranelift_jit::JITModule) -> Vec<u8> {
-        use cranelift_module::Module;
-
         for reloc in self.relocs.drain(..) {
             match reloc.name {
                 super::DebugRelocName::Section(_) => unreachable!(),
                 super::DebugRelocName::Symbol(sym) => {
                     let addr = if sym & 1 << 31 == 0 {
                         let func_id = FuncId::from_u32(sym.try_into().unwrap());
-                        // FIXME make JITModule::get_address public and use it here instead.
-                        // HACK rust_eh_personality is likely not defined in the same crate,
-                        // so get_finalized_function won't work. Use the rust_eh_personality
-                        // of cg_clif itself, which is likely ABI compatible.
-                        if jit_module.declarations().get_function_decl(func_id).name.as_deref()
-                            == Some("rust_eh_personality")
-                        {
-                            unsafe extern "C" {
-                                fn rust_eh_personality() -> !;
-                            }
-                            rust_eh_personality as *const u8
-                        } else {
-                            jit_module.get_finalized_function(func_id)
-                        }
+                        jit_module.get_address(&func_id.into())
                     } else {
-                        jit_module
-                            .get_finalized_data(DataId::from_u32(
-                                u32::try_from(sym).unwrap() & !(1 << 31),
-                            ))
-                            .0
+                        let data_id = DataId::from_u32(u32::try_from(sym).unwrap() & !(1 << 31));
+                        jit_module.get_address(&data_id.into())
                     };
 
                     let val = (addr as u64 as i64 + reloc.addend) as u64;

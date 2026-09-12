@@ -1,10 +1,10 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 
 fn a() {
     let mut vec = [Box::new(1), Box::new(2), Box::new(3)];
     match vec {
-        [box ref _a, _, _] => {
+        [deref!(ref _a), _, _] => {
         //~^ NOTE `vec[_]` is borrowed here
             vec[0] = Box::new(4); //~ ERROR cannot assign
             //~^ NOTE `vec[_]` is assigned to here

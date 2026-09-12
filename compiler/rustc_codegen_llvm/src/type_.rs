@@ -64,8 +64,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint)
     }
 
-    pub(crate) fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
-        unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
+    pub(crate) fn type_vector(&self, ty: &'ll Type, count: u64) -> &'ll Type {
+        unsafe { llvm::LLVMVectorType(ty, count as c_uint) }
     }
 
     pub(crate) fn type_scalable_vector(&self, ty: &'ll Type, count: u64) -> &'ll Type {
@@ -295,12 +295,6 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
     fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> &'ll Type {
         layout.immediate_llvm_type(self)
-    }
-    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_llvm_immediate()
-    }
-    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_llvm_scalar_pair()
     }
     fn scalar_pair_element_backend_type(
         &self,

@@ -63,7 +63,7 @@
 
 #![allow(unused_variables)]
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct Packed {
     x: i16,
     y: i32,
@@ -74,7 +74,7 @@ impl Drop for Packed {
     fn drop(&mut self) {}
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedInPacked {
     a: i32,
     b: Packed,
@@ -82,6 +82,7 @@ struct PackedInPacked {
     d: Packed
 }
 
+#[repr(C)]
 struct PackedInUnpacked {
     a: i32,
     b: Packed,
@@ -89,6 +90,7 @@ struct PackedInUnpacked {
     d: Packed
 }
 
+#[repr(C)]
 struct Unpacked {
     x: i64,
     y: i32,
@@ -99,7 +101,7 @@ impl Drop for Unpacked {
     fn drop(&mut self) {}
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct UnpackedInPacked {
     a: i16,
     b: Unpacked,
@@ -107,7 +109,7 @@ struct UnpackedInPacked {
     d: i64
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedInPackedWithDrop {
     a: i32,
     b: Packed,
@@ -119,6 +121,7 @@ impl Drop for PackedInPackedWithDrop {
     fn drop(&mut self) {}
 }
 
+#[repr(C)]
 struct PackedInUnpackedWithDrop {
     a: i32,
     b: Packed,
@@ -130,7 +133,7 @@ impl Drop for PackedInUnpackedWithDrop {
     fn drop(&mut self) {}
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct UnpackedInPackedWithDrop {
     a: i16,
     b: Unpacked,
@@ -142,6 +145,7 @@ impl Drop for UnpackedInPackedWithDrop {
     fn drop(&mut self) {}
 }
 
+#[repr(C)]
 struct DeeplyNested {
     a: PackedInPacked,
     b: UnpackedInPackedWithDrop,

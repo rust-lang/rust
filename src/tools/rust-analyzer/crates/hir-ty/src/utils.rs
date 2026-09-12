@@ -16,28 +16,8 @@ use crate::{
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     lower::SupertraitsInfo,
-    mir::pad16,
+    mir::{IsSigned, pad16},
 };
-
-/// SAFETY: `old_pointer` must be valid for unique writes
-pub(crate) unsafe fn unsafe_update_eq<T>(old_pointer: *mut T, new_value: T) -> bool
-where
-    T: PartialEq,
-{
-    // SAFETY: Caller obligation
-    let old_ref: &mut T = unsafe { &mut *old_pointer };
-
-    if *old_ref != new_value {
-        *old_ref = new_value;
-        true
-    } else {
-        // Subtle but important: Eq impls can be buggy or define equality
-        // in surprising ways. If it says that the value has not changed,
-        // we do not modify the existing value, and thus do not have to
-        // update the revision, as downstream code will not see the new value.
-        false
-    }
-}
 
 pub(crate) fn fn_traits(lang_items: &LangItems) -> impl Iterator<Item = TraitId> + '_ {
     [lang_items.Fn, lang_items.FnMut, lang_items.FnOnce].into_iter().flatten()
@@ -128,7 +108,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
             let size = tag.size(target_data_layout).bytes_usize();
             let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
-            let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], false));
+            let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], IsSigned::No));
             match tag_encoding {
                 TagEncoding::Direct => {
                     let (var_idx, layout) =

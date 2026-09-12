@@ -112,4 +112,4 @@ return a valid pointer, and so needs to do the check internally.
 
 An up-to-date list of all language items can be found [here] in the compiler code.
 
-[here]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_hir/src/lang_items.rs
+[here]: https://github.com/rust-lang/rust/blob/ac62df9b49f9b9036af2a4957db70bf3850785e1/compiler/rustc_attr_ir/src/lang_items.rs#L158

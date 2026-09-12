@@ -3,7 +3,7 @@
 //! [`rustc`] module.
 
 // tidy-alphabetical-start
-#![allow(unused_crate_dependencies)]
+#![cfg_attr(test, allow(unused_crate_dependencies))] // Used for integration tests, not unit tests
 // tidy-alphabetical-end
 
 pub(crate) mod checks;
@@ -81,6 +81,11 @@ pub trait PatCx: Sized + fmt::Debug {
 
     /// Raise a bug.
     fn bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error;
+
+    /// Raise a delayed bug.
+    fn delayed_bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
+        self.bug(fmt)
+    }
 
     /// Lint that the range `pat` overlapped with all the ranges in `overlaps_with`, where the range
     /// they overlapped over is `overlaps_on`. We only detect singleton overlaps.

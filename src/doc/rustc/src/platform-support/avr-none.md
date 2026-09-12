@@ -63,12 +63,18 @@ The final binary will be placed into
 Note that since AVRs have rather small amounts of registers, ROM and RAM, it's
 recommended to always use `--release` to avoid running out of space.
 
-Also, please note that specifying `-C target-cpu` is required - here's a list of
+Also, please note that specifying `-C target-cpu`[^1] is required - here's a list of
 the possible variants:
 
-https://github.com/llvm/llvm-project/blob/093d4db2f3c874d4683fb01194b00dbb20e5c713/clang/lib/Basic/Targets/AVR.cpp#L32
+[https://github.com/llvm/llvm-project/blob/d5a6124259b55789bc49489632efa7c168a4f6cb/clang/lib/Basic/Targets/AVR.cpp#L48](https://github.com/llvm/llvm-project/blob/d5a6124259b55789bc49489632efa7c168a4f6cb/clang/lib/Basic/Targets/AVR.cpp#L48)
 
 Note that devices that have no SRAM are not supported, same as when compiling C/C++ programs with avr-gcc or Clang.
+
+[^1]: For this target, crates with different values of `-C target-cpu` are not link-compatible.
+Because of this, the compiler ensures that all crates that are linked together
+were compiled with the same `target-cpu`. This must be considered when
+using `rustc` commands for building. It is less relevant for Cargo, since Cargo
+generally uses the same `target-cpu` for all crates in a build.
 
 ## Testing
 
@@ -80,4 +86,4 @@ $ simavr -m atmega328p ./target/avr-none/release/your-project.elf
 ```
 
 Alternatively, if you want to write a couple of actual `#[test]`s, you can use
-[`avr-tester`](https://github.com/Patryk27/avr-tester).
+[`avr-tester`](https://crates.io/crates/avr-tester).

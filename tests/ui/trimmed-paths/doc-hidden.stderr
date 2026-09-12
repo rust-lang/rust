@@ -9,7 +9,7 @@ LL | |         DocHidden,
 ...  |
 LL | |         DocHiddenInHiddenMod,
 LL | |     ) = 3u32;
-   | |     -   ^^^^ expected `(ActuallyPub, ..., ..., ..., ..., ...)`, found `u32`
+   | |     -   ^^^^ expected `(ActuallyPub, DocHidden, _, _, _, _)`, found `u32`
    | |_____|
    |       expected due to this
    |
@@ -27,7 +27,7 @@ LL | |         DocHidden,
 ...  |
 LL | |         DocHiddenInHiddenMod,
 LL | |     ) = 3u32;
-   | |     -   ^^^^ expected `(ActuallyPub, ..., ..., ..., ..., ...)`, found `u32`
+   | |     -   ^^^^ expected `(ActuallyPub, DocHidden, _, _, _, _)`, found `u32`
    | |_____|
    |       expected due to this
    |

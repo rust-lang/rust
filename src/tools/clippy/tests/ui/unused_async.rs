@@ -1,11 +1,10 @@
 #![warn(clippy::unused_async)]
-#![allow(incomplete_features)]
 
 use std::future::Future;
 use std::pin::Pin;
 
 mod issue10800 {
-    #![allow(dead_code, unused_must_use, clippy::no_effect)]
+    #![allow(clippy::no_effect)]
 
     use std::future::ready;
 

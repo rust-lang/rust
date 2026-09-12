@@ -1,11 +1,11 @@
 use rustc_ast::{BorrowKind, UnOp};
 use rustc_hir::{Expr, ExprKind, Mutability, find_attr};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, DerefAdjustKind, OverloadedDeref,
 };
-use rustc_session::{declare_lint, declare_lint_pass};
 
-use crate::lints::{
+use crate::diagnostics::{
     ImplicitUnsafeAutorefsDiag, ImplicitUnsafeAutorefsMethodNote, ImplicitUnsafeAutorefsOrigin,
     ImplicitUnsafeAutorefsSuggestion,
 };

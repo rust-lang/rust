@@ -1,15 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanExt, position_before_rarrow, snippet_block};
+use clippy_utils::source::{SpanExt as _, position_before_rarrow, snippet_block};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl,
     FnRetTy, GenericBound, Node, OpaqueTy, TraitRef, Ty, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
 

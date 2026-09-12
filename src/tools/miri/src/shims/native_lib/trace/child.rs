@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::panic::abort_on_unwind;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
@@ -89,7 +90,7 @@ impl Supervisor {
 
         // Unwinding might be messed up due to partly protected memory, so let's abort if something
         // breaks inside here.
-        let res = std::panic::abort_unwind(|| {
+        let res = abort_on_unwind(|| {
             // Send over the info.
             // NB: if we do not wait to receive a blank confirmation response, it is
             // possible that the supervisor is alerted of the SIGSTOP *before* it has

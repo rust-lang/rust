@@ -19,9 +19,9 @@ cfg_select! {
         type GroupId = u16;
     }
     any(target_os = "nto", target_os = "qnx") => {
-        // Both IDs are signed, see `sys/target_nto.h` of the QNX Neutrino SDP.
+        // Both IDs are signed, see `sys/target_nto.h` of the QNX SDP.
         // Only positive values should be used, see e.g.
-        // https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/s/setuid.html
+        // https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/s/setuid.html
         type UserId = i32;
         type GroupId = i32;
     }
@@ -102,7 +102,7 @@ pub impl(self) trait CommandExt {
     /// locations might not appear where intended.
     ///
     /// [POSIX fork() specification]:
-    ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html
+    ///     https://pubs.opengroup.org/onlinepubs/9799919799/functions/fork.html
     /// [`std::env`]: mod@crate::env
     /// [`Error::new`]: ../../../io/struct.Error.html#method.new
     /// [`Error::other`]: ../../../io/struct.Error.html#method.other
@@ -188,7 +188,8 @@ pub impl(self) trait CommandExt {
     ///
     /// A process group ID of 0 will use the process ID as the PGID.
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::process::Command;
     /// use std::os::unix::process::CommandExt;
     ///
@@ -303,7 +304,8 @@ pub impl(self) trait ExitStatusExt {
     /// status. The following example relies on that convention and is therefore not guaranteed to
     /// hold on every target:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// # if cfg!(target_os = "fuchsia") { return; }
     /// use std::os::unix::process::ExitStatusExt;
     /// use std::process::ExitStatus;
@@ -324,7 +326,8 @@ pub impl(self) trait ExitStatusExt {
     /// 8-bit exit code in bits 8..16, so a status built with `(code & 0xff) << 8` will usually
     /// round-trip back to the original exit code:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// # if cfg!(target_os = "fuchsia") { return; }
     /// use std::os::unix::process::ExitStatusExt;
     /// use std::process::ExitStatus;
@@ -350,7 +353,8 @@ pub impl(self) trait ExitStatusExt {
     /// In other words, if [`WIFSIGNALED`][`wait`], this returns [`WTERMSIG`][`wait`]. For such a status,
     /// [`ExitStatus::code`] returns `None`:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// # if cfg!(target_os = "fuchsia") { return; }
     /// use std::os::unix::process::ExitStatusExt;
     /// use std::process::ExitStatus;
@@ -475,7 +479,8 @@ pub impl(self) trait ChildExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_send_signal)]
     ///
     /// use std::{io, os::unix::process::ChildExt, process::{Command, Stdio}};
@@ -503,7 +508,8 @@ pub impl(self) trait ChildExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_send_signal)]
     ///
     /// use std::{io, os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
@@ -535,7 +541,8 @@ pub impl(self) trait ChildExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_kill_process_group)]
     ///
     /// use std::{os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};

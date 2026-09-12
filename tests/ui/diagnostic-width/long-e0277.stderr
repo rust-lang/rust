@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `(..., ..., ..., ...): Trait` is not satisfied
+error[E0277]: the trait bound `((_, _, _, _), _, _, _): Trait` is not satisfied
   --> $DIR/long-e0277.rs:12:21
    |
 LL |     require_trait::<D>();
    |                     ^ unsatisfied trait bound
    |
-   = help: the trait `Trait` is not implemented for `(..., ..., ..., ...)`
+   = help: the trait `Trait` is not implemented for `((_, _, _, _), _, _, _)`
 help: this trait has no implementations, consider adding one
   --> $DIR/long-e0277.rs:7:1
    |

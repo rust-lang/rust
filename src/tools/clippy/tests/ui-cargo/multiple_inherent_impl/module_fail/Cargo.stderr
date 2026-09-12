@@ -38,4 +38,4 @@ note: first implementation here
 10 | | }
    | |_^
 
-error: could not compile `module_fail` (bin "module_fail") due to 2 previous errors
+error: could not compile `module-fail` (bin "module-fail") due to 2 previous errors

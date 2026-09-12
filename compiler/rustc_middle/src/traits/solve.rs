@@ -12,12 +12,33 @@ pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;
 pub type QueryInput<'tcx, P> = ir::solve::QueryInput<TyCtxt<'tcx>, P>;
 pub type QueryResult<'tcx> = ir::solve::QueryResult<TyCtxt<'tcx>>;
 pub type CandidateSource<'tcx> = ir::solve::CandidateSource<TyCtxt<'tcx>>;
-pub type CanonicalInput<'tcx, P = ty::Predicate<'tcx>> = ir::solve::CanonicalInput<TyCtxt<'tcx>, P>;
 pub type CanonicalResponse<'tcx> = ir::solve::CanonicalResponse<TyCtxt<'tcx>>;
 pub type FetchEligibleAssocItemResponse<'tcx> =
     ir::solve::FetchEligibleAssocItemResponse<TyCtxt<'tcx>>;
+pub type ComputeGoalFastPathOutcome<'tcx> = ir::solve::ComputeGoalFastPathOutcome<TyCtxt<'tcx>>;
+pub type GoalStalledOn<'tcx> = ir::solve::GoalStalledOn<TyCtxt<'tcx>>;
+pub type GoalStalledOnOpaques<'tcx> = ir::solve::GoalStalledOnOpaques<TyCtxt<'tcx>>;
+pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
 
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
+
+// Interning CanonicalInput drastically reduces max memory usage when compiling a crate that has
+// trait solver recursion depth overflows with next-solver deduplicating individual inputs.
+// This mostly fixes #161748 where it reduced the memory usage for compiling bevy_render from
+// ~14GiB to ~4GiB
+// Main improved types:
+//   - rustc_type_ir::search_graph::GlobalCache
+//   - rustc_type_ir::search_graph::NestedGoals
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, StableHash)]
+pub struct CanonicalInput<'tcx>(pub(crate) Interned<'tcx, CanonicalInputData<TyCtxt<'tcx>>>);
+
+impl<'tcx> std::ops::Deref for CanonicalInput<'tcx> {
+    type Target = CanonicalInputData<TyCtxt<'tcx>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, StableHash)]
 pub struct ExternalConstraints<'tcx>(
@@ -91,4 +112,15 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         try_visit!(opaque_types.visit_with(visitor));
         normalization_nested_goals.visit_with(visitor)
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(GoalStalledOn<'_>, 56);
+    // tidy-alphabetical-end
 }

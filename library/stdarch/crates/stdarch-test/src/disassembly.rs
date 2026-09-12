@@ -198,8 +198,11 @@ fn parse(output: &str) -> HashSet<Function> {
                 };
             }
 
+            // When using vectorcall the `ret` can have an argument, so match only the first part.
+            let is_ret = matches!(parts.first().map(String::as_str), Some("ret" | "retq"));
+
             instructions.push(parts.join(" "));
-            if matches!(&**instructions.last().unwrap(), "ret" | "retq") {
+            if is_ret {
                 cached_header = None;
                 break;
             }

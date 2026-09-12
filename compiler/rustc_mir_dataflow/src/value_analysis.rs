@@ -4,7 +4,6 @@ use std::ops::Range;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -594,7 +593,7 @@ impl<'tcx> Map<'tcx> {
         if let Some(tail) = tail {
             let ty = match tail {
                 TrackElem::Discriminant => ty.ty.discriminant_ty(tcx),
-                TrackElem::Variant(..) | TrackElem::Field(..) => todo!(),
+                TrackElem::Variant(..) | TrackElem::Field(..) => unimplemented!(),
                 TrackElem::DerefLen => tcx.types.usize,
             };
             place_index = self.register_place_index(ty, place_index, tail);
@@ -699,7 +698,7 @@ impl<'tcx> Map<'tcx> {
         // We manually iterate instead of using `children` as we need to mutate `self`.
         let mut next_child = self.places[root].first_child;
         while let Some(child) = next_child {
-            ensure_sufficient_stack(|| self.cache_preorder_invoke(child));
+            self.cache_preorder_invoke(child);
             next_child = self.places[child].next_sibling;
         }
 

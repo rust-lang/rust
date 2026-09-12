@@ -1,0 +1,8 @@
+error: backend_repr: SimdVector { element: u32 is .., count: BackendLaneCount(4) }
+ --> $DIR/rustc_dump_layout_backend_repr.rs:8:1
+  |
+8 | type Simd = std::simd::u32x4;
+  | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

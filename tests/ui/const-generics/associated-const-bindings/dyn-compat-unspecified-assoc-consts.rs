@@ -6,7 +6,8 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const K: usize;
+    #[rustc_always_gca]
+    const K: usize;
 }
 
 // fn ctxt / body

@@ -7,6 +7,9 @@ LL |     let y: f64 = 0.01f64 * 1i16.into();
    |                          type must be known at this point
    |
    = note: cannot satisfy `<f64 as Mul<_>>::Output == f64`
+   = note: multiple `impl`s satisfying `f64: Mul<_>` found in the `core` crate:
+           - impl Mul for f64;
+           - impl Mul<&f64> for f64;
 help: try using a fully qualified path to specify the expected types
    |
 LL -     let y: f64 = 0.01f64 * 1i16.into();

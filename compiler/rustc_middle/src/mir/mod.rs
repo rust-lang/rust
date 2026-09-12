@@ -310,14 +310,14 @@ pub struct Body<'tcx> {
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 
-    /// Coverage information collected from THIR/MIR during MIR building,
-    /// to be used by the `InstrumentCoverage` pass.
+    /// Coverage information collected at the THIR/MIR boundary during MIR
+    /// building, to be used by the `InstrumentCoverage` pass.
     ///
     /// Only present if coverage is enabled and this function is eligible.
     /// Boxed to limit space overhead in non-coverage builds.
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
-    pub coverage_info_hi: Option<Box<coverage::CoverageInfoHi>>,
+    pub coverage_early_info: Option<Box<coverage::CoverageEarlyInfo>>,
 
     /// Per-function coverage information added by the `InstrumentCoverage`
     /// pass, to be used in conjunction with the coverage statements injected
@@ -327,7 +327,7 @@ pub struct Body<'tcx> {
     /// is not eligible for coverage, then this should always be `None`.
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
-    pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
+    pub coverage_mir_info: Option<Box<coverage::CoverageMirInfo>>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -369,8 +369,8 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
-            coverage_info_hi: None,
-            function_coverage_info: None,
+            coverage_early_info: None,
+            coverage_mir_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -400,8 +400,8 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors: None,
-            coverage_info_hi: None,
-            function_coverage_info: None,
+            coverage_early_info: None,
+            coverage_mir_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -1558,7 +1558,7 @@ impl UserTypeProjections {
 /// * `let (x, _): T = ...` -- here, the `projs` vector would contain
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, StableHash, PartialEq)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
@@ -1701,6 +1701,8 @@ pub fn find_self_call<'tcx>(
         && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =
             **args
     {
+        let fn_args = fn_args.no_bound_vars().unwrap();
+
         if self_place.as_local() == Some(local) {
             return Some((def_id, fn_args));
         }
@@ -1730,10 +1732,10 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 160);
+    static_assert_size!(BasicBlockData<'_>, 144);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
-    static_assert_size!(Statement<'_>, 56);
+    static_assert_size!(Statement<'_>, 40);
     static_assert_size!(Terminator<'_>, 104);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end

@@ -60,7 +60,7 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<(Dura
 
 pub(crate) fn render_const_eval_error(
     db: &RootDatabase,
-    e: ConstEvalError,
+    e: ConstEvalError<'_>,
     display_target: DisplayTarget,
 ) -> String {
     let span_formatter = |file_id, text_range: TextRange| {

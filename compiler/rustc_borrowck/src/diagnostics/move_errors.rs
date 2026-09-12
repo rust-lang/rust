@@ -102,7 +102,7 @@ struct PatternBindingInfo {
     has_mutable_by_value_binding: bool,
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     pub(crate) fn report_move_errors(&mut self) {
         let grouped_errors = self.group_move_errors();
         for error in grouped_errors {
@@ -310,7 +310,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             && self.infcx.tcx.ensure_result().coherent_trait(copy_def_id).is_err()
     }
 
-    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
+    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'diag> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -439,7 +439,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> (Diag<'infcx>, CloneSuggestion) {
+    ) -> (Diag<'diag>, CloneSuggestion) {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -573,7 +573,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         closure_kind_ty: Ty<'tcx>,
         upvar_field: FieldIdx,
         asyncness: ty::Asyncness,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let tcx = self.infcx.tcx;
 
         let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
@@ -643,26 +643,26 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let closure_hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
         let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_hir_id) else { return None };
 
-        let predicates = match parent.kind {
+        let gen_clauses = match parent.kind {
             hir::ExprKind::Call(callee, _) => {
                 let ty = typeck_result.node_type_opt(callee.hir_id)?;
                 let ty::FnDef(fn_def_id, args) = *ty.kind() else { return None };
-                tcx.predicates_of(fn_def_id).instantiate(tcx, args)
+                tcx.clauses_of(fn_def_id).instantiate(tcx, args.no_bound_vars().unwrap())
             }
             hir::ExprKind::MethodCall(..) => {
                 let (_, method) = typeck_result.type_dependent_def(parent.hir_id)?;
                 let args = typeck_result.node_args(parent.hir_id);
-                tcx.predicates_of(method).instantiate(tcx, args)
+                tcx.clauses_of(method).instantiate(tcx, args)
             }
             _ => return None,
         };
 
         // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`
         // or `AsyncFn[Mut]`.
-        for (pred, span) in predicates.predicates.iter().zip(predicates.spans.iter()) {
-            let pred = pred.skip_norm_wip();
+        for (clause, span) in gen_clauses.clauses.iter().zip(gen_clauses.spans.iter()) {
+            let clause = clause.skip_norm_wip();
             let dominated_by_fn_trait = self
-                .closure_clause_kind(pred, def_id, asyncness)
+                .closure_clause_kind(clause, def_id, asyncness)
                 .is_some_and(|kind| matches!(kind, ty::ClosureKind::Fn | ty::ClosureKind::FnMut));
             if dominated_by_fn_trait {
                 // Found `<TyOfCapturingClosure as FnMut>` or
@@ -716,7 +716,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return CloneSuggestion::NotEmitted;
         };
 
-        if !errors.is_empty() {
+        if errors.has_errors() {
             return CloneSuggestion::NotEmitted;
         }
         let sugg = vec![
@@ -1243,6 +1243,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             } else if j == 0 {
                 err.span_label(binding_span, "data moved here");
+            } else if j == 5 && binds_to.len() > 6 && !self.infcx.tcx.sess.opts.verbose {
+                err.note(format!("...and {} other places", binds_to.len() - 5));
+                break;
             } else {
                 err.span_label(binding_span, "...and here");
             }

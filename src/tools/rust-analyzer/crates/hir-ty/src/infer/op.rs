@@ -9,7 +9,7 @@ use syntax::ast::{ArithOp, BinaryOp, UnaryOp};
 use tracing::debug;
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow,
+    Adjust, Adjustment, AutoBorrow, InferenceDiagnostic,
     infer::{AllowTwoPhase, AutoBorrowMutability, Expectation, InferenceContext, expr::ExprIsRead},
     method_resolution::{MethodCallee, TreatNotYetDefinedOpaques},
     next_solver::{
@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     /// Checks a `a <op>= b`
     pub(crate) fn infer_assign_op_expr(
         &mut self,
@@ -271,7 +271,11 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 method.sig.output()
             }
             Err(_errors) => {
-                // FIXME: Report diagnostic.
+                self.push_diagnostic(InferenceDiagnostic::UnaryOperatorCannotBeApplied {
+                    expr: ex,
+                    op,
+                    found: operand_ty.store(),
+                });
                 self.types.types.error
             }
         }
@@ -333,7 +337,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 let args = GenericArgs::for_item(
                     self.interner(),
                     trait_did.into(),
-                    |param_idx, param_id, _| match param_id {
+                    |param_idx, param_id, _, _| match param_id {
                         GenericParamId::LifetimeParamId(_) | GenericParamId::ConstParamId(_) => {
                             unreachable!("did not expect operand trait to have lifetime/const args")
                         }

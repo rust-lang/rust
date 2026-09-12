@@ -11,7 +11,7 @@ cfg_select! {
     target_vendor = "apple" => {
         mod apple;
         pub use apple::fill_bytes;
-    // Others, in alphabetical ordering.
+        // Others, in alphabetical ordering.
     }
     any(
         target_os = "dragonfly",
@@ -49,13 +49,7 @@ cfg_select! {
         mod getrandom;
         pub use getrandom::fill_bytes;
     }
-    any(
-        target_os = "aix",
-        target_os = "hurd",
-        target_os = "l4re",
-        target_os = "nto",
-        target_os = "qnx",
-    ) => {
+    any(target_os = "aix", target_os = "hurd", target_os = "nto", target_os = "qnx") => {
         mod unix_legacy;
         pub use unix_legacy::fill_bytes;
     }
@@ -107,6 +101,7 @@ cfg_select! {
         all(target_family = "wasm", target_os = "unknown"),
         target_os = "xous",
         target_os = "vexos",
+        target_os = "l4re",
     ) => {
         // FIXME: finally remove std support for wasm32-unknown-unknown
         // FIXME: add random data generation to xous
@@ -123,6 +118,7 @@ cfg_select! {
     all(target_os = "wasi", not(target_env = "p1")),
     target_os = "xous",
     target_os = "vexos",
+    target_os = "l4re",
 )))]
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];

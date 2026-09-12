@@ -2140,6 +2140,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn saturating_div(self, rhs: Self) -> Self {
             match self.overflowing_div(rhs) {
                 (result, false) => result,
@@ -2283,6 +2284,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_div(self, rhs: Self) -> Self {
             self.overflowing_div(rhs).0
         }
@@ -2309,6 +2311,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
             self.overflowing_div_euclid(rhs).0
         }
@@ -2335,6 +2338,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_rem(self, rhs: Self) -> Self {
             self.overflowing_rem(rhs).0
         }
@@ -2360,6 +2364,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
             self.overflowing_rem_euclid(rhs).0
         }
@@ -2392,7 +2397,7 @@ macro_rules! int_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `<<` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shl`] which has nicer behaviour.
@@ -2429,7 +2434,7 @@ macro_rules! int_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `>>` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shr`] which has nicer behaviour.
@@ -2856,6 +2861,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
             // Using `&` helps LLVM see that it is the same check made in division.
             if intrinsics::unlikely((self == Self::MIN) & (rhs == -1)) {
@@ -2885,6 +2891,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
             // Using `&` helps LLVM see that it is the same check made in division.
             if intrinsics::unlikely((self == Self::MIN) & (rhs == -1)) {
@@ -2914,6 +2921,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
             if intrinsics::unlikely(rhs == -1) {
                 (0, self == Self::MIN)
@@ -3924,7 +3932,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MIN` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
         pub const fn min_value() -> Self {
             Self::MIN
@@ -3938,7 +3946,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MAX` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self {
             Self::MAX

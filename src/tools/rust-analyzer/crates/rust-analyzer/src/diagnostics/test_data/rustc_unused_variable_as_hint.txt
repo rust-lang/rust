@@ -34,7 +34,14 @@
             source: Some(
                 "rustc",
             ),
-            message: "unused variable: `foo`\n#[warn(unused_variables)] on by default",
+            message: String(
+                "unused variable: `foo`\n#[warn(unused_variables)] on by default",
+            ),
+            tags: Some(
+                [
+                    Unnecessary,
+                ],
+            ),
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -63,11 +70,6 @@
                         },
                         message: "consider prefixing with an underscore: `_foo`",
                     },
-                ],
-            ),
-            tags: Some(
-                [
-                    Unnecessary,
                 ],
             ),
             data: None,
@@ -109,7 +111,10 @@
             source: Some(
                 "rustc",
             ),
-            message: "consider prefixing with an underscore: `_foo`",
+            message: String(
+                "consider prefixing with an underscore: `_foo`",
+            ),
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -140,7 +145,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: Some(
@@ -161,9 +165,7 @@
                     title: "consider prefixing with an underscore: `_foo`",
                     group: None,
                     kind: Some(
-                        CodeActionKind(
-                            "quickfix",
-                        ),
+                        QuickFix,
                     ),
                     command: None,
                     edit: Some(

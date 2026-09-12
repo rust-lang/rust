@@ -5,6 +5,7 @@ use std::{debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -24,7 +25,7 @@ use tracing::{debug, instrument, trace, trace_span};
 use crate::cost_checker::{CostChecker, is_call_like};
 use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
-use crate::{check_inline, util};
+use crate::{PassPolicy, check_inline, util};
 
 pub(crate) mod cycle;
 
@@ -44,18 +45,21 @@ struct CallSite<'tcx> {
 pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
-            return enabled;
-        }
-
-        match sess.mir_opt_level() {
-            0 | 1 => false,
-            2 => {
-                (sess.opts.optimize == OptLevel::More || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
-            }
-            _ => true,
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        match ctx.opts.unstable_opts.inline_mir {
+            Some(enabled) => PassPolicy::optional(enabled),
+            None => PassPolicy::optional(match ctx.mir_opt_level() {
+                0 | 1 => false,
+                // Only inline for `-Copt-level >= 2`, and don't inline
+                // in incremental mode to increase incremental effectiveness.
+                // FIXME: This should be cleaned up to not rely on inspecting the global opt level.
+                2 => {
+                    (ctx.opts.optimize == OptLevel::More
+                        || ctx.opts.optimize == OptLevel::Aggressive)
+                        && ctx.opts.incremental.is_none()
+                }
+                _ => true,
+            }),
         }
     }
 
@@ -66,10 +70,6 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
             debug!("running simplify cfg on {:?}", body.source);
             simplify_cfg(tcx, body);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -82,16 +82,9 @@ impl ForceInline {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for ForceInline {
-    fn is_enabled(&self, _: &rustc_session::Session) -> bool {
-        true
-    }
-
-    fn can_be_overridden(&self) -> bool {
-        false
-    }
-
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Forced inlining is part of MIR semantics.
+        PassPolicy::Required
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -354,11 +347,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
         // which can create a cycle, even when no attempt is made to inline the function in the other
         // direction.
-        if body.coroutine.is_some() {
-            return false;
-        }
-
-        true
+        body.coroutine.is_none()
     }
 
     #[instrument(level = "debug", skip(self, callee_body))]
@@ -560,7 +549,9 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
             // To resolve an instance its args have to be fully normalized.
             let args = tcx
                 .try_normalize_erasing_regions(inliner.typing_env(), Unnormalized::new_wip(args))
-                .ok()?;
+                .ok()?
+                .no_bound_vars()
+                .unwrap();
             let mut callee =
                 Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
 
@@ -730,7 +721,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             }
         }
         // These have no own callable MIR.
-        InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
+        InstanceKind::Intrinsic(_) | InstanceKind::LlvmIntrinsic(_) | InstanceKind::Virtual(..) => {
             debug!("instance without MIR (intrinsic / virtual)");
             return Err("implementation limitation -- cannot inline intrinsic");
         }
@@ -774,7 +765,8 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::ThreadLocal(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Ok(()),
+        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {
@@ -784,9 +776,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
     }
 
     if let Some(callee_def_id) = callee_def_id.as_local()
-        && !inliner
-            .tcx()
-            .is_lang_item(inliner.tcx().parent(caller_def_id), rustc_hir::LangItem::FnOnce)
+        && !inliner.tcx().is_lang_item(inliner.tcx().parent(caller_def_id), LangItem::FnOnce)
     {
         // If we know for sure that the function we're calling will itself try to
         // call us, then we avoid inlining that function.

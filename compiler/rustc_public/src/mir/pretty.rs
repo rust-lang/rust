@@ -310,6 +310,9 @@ fn pretty_assert_message<W: Write>(writer: &mut W, msg: &AssertMessage) -> io::R
         AssertMessage::NullPointerDereference => {
             write!(writer, "\"null pointer dereference occurred\"")
         }
+        AssertMessage::NullReferenceConstructed => {
+            write!(writer, "\"null reference produced\"")
+        }
         AssertMessage::InvalidEnumConstruction(op) => {
             let pretty_op = pretty_operand(op);
             write!(writer, "\"trying to construct an enum from an invalid value {{}}\",{pretty_op}")

@@ -7,6 +7,14 @@ pub impl(self) trait FloatToInt<Int>: Sized {
     #[unstable(feature = "convert_float_to_int", issue = "67057")]
     #[doc(hidden)]
     unsafe fn to_int_unchecked(self) -> Int;
+
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn to_int_saturating(self) -> Int;
+
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn to_int_checked(self) -> Option<Int>;
 }
 
 macro_rules! impl_float_to_int {
@@ -19,6 +27,52 @@ macro_rules! impl_float_to_int {
                     // SAFETY: the safety contract must be upheld by the caller.
                     unsafe { crate::intrinsics::float_to_int_unchecked(self) }
                 }
+                #[inline]
+                fn to_int_saturating(self) -> $Int {
+                    // `as` already saturates and maps `NaN` to zero.
+                    self as $Int
+                }
+                #[inline]
+                fn to_int_checked(self) -> Option<$Int> {
+                    // We will compute LOW_THRESHOLD and HIGH_THRESHOLD
+                    // as <$Int>::MIN - 1 and <$Int>::MAX + 1 respectively,
+                    // or the next lower/higher value in case those are not
+                    // representable exactly. These thresholds represent the
+                    // first disallowed values.
+
+                    const LOW_THRESHOLD: $Float = {
+                        // The minimum of an integer type is representable or -INF
+                        // for all floats, as it is zero or a power of two.
+                        let int_min = <$Int>::MIN as $Float;
+                        let one_below_if_representable = int_min - 1.0;
+                        if one_below_if_representable == int_min {
+                            // We must allow int_min itself. In case int_min is
+                            // -INF this stays -INF, allowing any finite value.
+                            int_min.next_down()
+                        } else {
+                            one_below_if_representable
+                        }
+                    };
+
+                    const HIGH_THRESHOLD: $Float = {
+                        // The maximum of an integer type is always of the form
+                        // 2^k - 1 for some reasonable k. We can construct 2^k
+                        // exactly by summing 2^(k-1) twice, which fits in the
+                        // integer. The outcome will be exactly <$Int>::MAX + 1,
+                        // or INF allowing any finite value.
+                        let half = (<$Int>::MAX / 2) + 1;
+                        half as $Float + half as $Float
+                    };
+
+                    // NaN always fails these comparisons, and infinities at
+                    // least one.
+                    if LOW_THRESHOLD < self && self < HIGH_THRESHOLD {
+                        // SAFETY: we made sure we are in-bounds and finite.
+                        Some(unsafe { self.to_int_unchecked() })
+                    } else {
+                        None
+                    }
+                }
             }
         )+
     }
@@ -28,6 +82,34 @@ impl_float_to_int!(f16 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i12
 impl_float_to_int!(f32 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f64 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f128 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+
+/// Supporting trait for the inherent `cast` method converting between float types.
+/// Typically doesn’t need to be used directly.
+#[unstable(feature = "float_conversions", issue = "159913")]
+pub impl(self) trait FloatToFloat<Flt>: Sized {
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn cast(self) -> Flt;
+}
+
+macro_rules! impl_float_to_float {
+    ($Float:ty => $($Flt:ty),+) => {
+        $(
+            #[unstable(feature = "float_conversions", issue = "159913")]
+            impl FloatToFloat<$Flt> for $Float {
+                #[inline]
+                fn cast(self) -> $Flt {
+                    self as $Flt
+                }
+            }
+        )+
+    }
+}
+
+impl_float_to_float!(f16 => f16, f32, f64, f128);
+impl_float_to_float!(f32 => f16, f32, f64, f128);
+impl_float_to_float!(f64 => f16, f32, f64, f128);
+impl_float_to_float!(f128 => f16, f32, f64, f128);
 
 /// Implement `From<bool>` for integers
 macro_rules! impl_from_bool {
@@ -138,27 +220,27 @@ impl_from!(i16 => isize, #[stable(feature = "lossless_iusize_conv", since = "1.2
 // of the `f16`/`f128` impls can be used on stable as the `f16` and `f128` types are unstable).
 
 // signed integer -> float
-impl_from!(i8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i8 => f16, #[unstable(feature = "f16", issue = "116909")], #[unstable_feature_bound(f16)]);
 impl_from!(i8 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i8 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(i8 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i8 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 impl_from!(i16 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(i16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i16 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 impl_from!(i32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(i32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i32 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 impl_from!(i64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // unsigned integer -> float
-impl_from!(u8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u8 => f16, #[unstable(feature = "f16", issue = "116909")], #[unstable_feature_bound(f16)]);
 impl_from!(u8 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u8 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(u8 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u8 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 impl_from!(u16 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(u16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u16 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 impl_from!(u32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(u32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u32 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 impl_from!(u64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // float -> float
@@ -170,20 +252,22 @@ impl_from!(u64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unsta
 //
 // See also <https://github.com/rust-lang/rust/issues/123831>.
 impl_from!(f16 => f32, #[unstable(feature = "f32_from_f16", issue = "154005")], #[unstable_feature_bound(f32_from_f16)]);
-impl_from!(f16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(f16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(f16 => f64, #[unstable(feature = "f16", issue = "116909")], #[unstable_feature_bound(f16)]);
+// Also #[unstable(feature = "f16", issue = "116909")]:
+impl_from!(f16 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f16, f128)]);
 impl_from!(f32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(f32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(f64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(f32 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
+impl_from!(f64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 macro_rules! impl_float_from_bool {
     (
+        $(#[$attr:meta])*
         $float:ty $(;
             doctest_prefix: $(#[doc = $doctest_prefix:literal])*
             doctest_suffix: $(#[doc = $doctest_suffix:literal])*
         )?
     ) => {
-        #[stable(feature = "float_from_bool", since = "1.68.0")]
+        $(#[$attr])*
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             const impl From<bool> for $float {
             #[doc = concat!("Converts a [`bool`] to [`", stringify!($float),"`] losslessly.")]
@@ -210,6 +294,8 @@ macro_rules! impl_float_from_bool {
 
 // boolean -> float
 impl_float_from_bool!(
+    #[unstable(feature = "f16", issue = "116909")]
+    #[unstable_feature_bound(f16)]
     f16;
     doctest_prefix:
     // rustdoc doesn't remove the conventional space after the `///`
@@ -220,9 +306,17 @@ impl_float_from_bool!(
     doctest_suffix:
     ///# }
 );
-impl_float_from_bool!(f32);
-impl_float_from_bool!(f64);
 impl_float_from_bool!(
+    #[stable(feature = "float_from_bool", since = "1.68.0")]
+    f32
+);
+impl_float_from_bool!(
+    #[stable(feature = "float_from_bool", since = "1.68.0")]
+    f64
+);
+impl_float_from_bool!(
+    #[unstable(feature = "f128", issue = "116909")]
+    #[unstable_feature_bound(f128)]
     f128;
     doctest_prefix:
     ///# #![allow(unused_features)]
@@ -242,8 +336,7 @@ macro_rules! impl_try_from_unbounded {
             type Error = TryFromIntError;
 
             /// Tries to create the target number type from a source
-            /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            /// number type. This never returns an error.
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
                 Ok(value as Self)
@@ -262,7 +355,7 @@ macro_rules! impl_try_from_lower_bounded {
 
             /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            #[doc = concat!("is less than [`", stringify!($target), "::MIN`].")]
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u >= 0 {
@@ -285,7 +378,7 @@ macro_rules! impl_try_from_upper_bounded {
 
             /// Tries to create the target number type from a source
             /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
+            #[doc = concat!("is greater than [`", stringify!($target), "::MAX`].")]
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u > (Self::MAX as $source) {

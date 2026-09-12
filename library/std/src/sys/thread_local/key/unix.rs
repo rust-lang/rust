@@ -31,10 +31,18 @@ pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
     key
 }
 
+#[cold]
+fn fail() -> ! {
+    rtabort!("Unexpected TLS failure")
+}
+
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
     let r = unsafe { libc::pthread_setspecific(key, value as *mut _) };
-    debug_assert_eq!(r, 0);
+    // May happen on memory exhaustion
+    if r != 0 {
+        fail()
+    }
 }
 
 #[inline]
@@ -46,5 +54,8 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 #[inline]
 pub unsafe fn destroy(key: Key) {
     let r = unsafe { libc::pthread_key_delete(key) };
-    debug_assert_eq!(r, 0);
+    // only documented error is for invalid keys
+    if r != 0 {
+        fail()
+    }
 }

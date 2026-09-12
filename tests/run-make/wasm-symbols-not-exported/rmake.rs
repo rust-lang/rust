@@ -28,7 +28,7 @@ fn verify_symbols(path: &Path) {
                 if e.kind != wasmparser::ExternalKind::Func {
                     continue;
                 }
-                if e.name == "foo" {
+                if e.name == "foo" || e.name == "_initialize" {
                     continue;
                 }
                 panic!("unexpected export {e:?}");

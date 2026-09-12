@@ -714,7 +714,7 @@ error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/mixed-site-span.rs:23:9
    |
 LL |         proc_macro_rules!();
-   |         ^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
 help: an identifier with the same name exists, but is not accessible due to macro hygiene
   --> $DIR/mixed-site-span.rs:22:13
@@ -732,7 +732,7 @@ error[E0425]: cannot find value `local_def` in this scope
   --> $DIR/mixed-site-span.rs:28:9
    |
 LL |         local_def;
-   |         ^^^^^^^^^
+   |         ^^^^^^^^^ not found in this scope
    |
 help: an identifier with the same name is defined here, but is not accessible due to macro hygiene
   --> $DIR/mixed-site-span.rs:23:9

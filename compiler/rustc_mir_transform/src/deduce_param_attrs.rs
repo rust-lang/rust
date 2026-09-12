@@ -74,8 +74,7 @@ impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
                   MutatingUseContext::Store
                 | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput
-                | MutatingUseContext::Projection
-                | MutatingUseContext::Retag) => {
+                | MutatingUseContext::Projection) => {
                 self.usage[i] |= UsageSummary::MUTATE;
             }
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {

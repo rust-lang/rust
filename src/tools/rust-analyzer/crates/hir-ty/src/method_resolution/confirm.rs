@@ -36,8 +36,8 @@ use crate::{
     },
 };
 
-struct ConfirmContext<'a, 'b, 'db> {
-    ctx: &'a mut InferenceContext<'b, 'db>,
+struct ConfirmContext<'a, 'db> {
+    ctx: &'a mut InferenceContext<'db>,
     candidate: FunctionId,
     call_expr: ExprId,
 }
@@ -49,7 +49,7 @@ pub(crate) struct ConfirmResult<'db> {
     pub(crate) adjustments: Box<[Adjustment]>,
 }
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn confirm_method(
         &mut self,
         pick: &probe::Pick<'db>,
@@ -70,12 +70,12 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
     }
 }
 
-impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
+impl<'a, 'db> ConfirmContext<'a, 'db> {
     fn new(
-        ctx: &'a mut InferenceContext<'b, 'db>,
+        ctx: &'a mut InferenceContext<'db>,
         candidate: FunctionId,
         call_expr: ExprId,
-    ) -> ConfirmContext<'a, 'b, 'db> {
+    ) -> ConfirmContext<'a, 'db> {
         ConfirmContext { ctx, candidate, call_expr }
     }
 
@@ -312,7 +312,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
 
     fn extract_existential_trait_ref<R, F>(&self, self_ty: Ty<'db>, mut closure: F) -> R
     where
-        F: FnMut(&ConfirmContext<'a, 'b, 'db>, Ty<'db>, PolyExistentialTraitRef<'db>) -> R,
+        F: FnMut(&ConfirmContext<'a, 'db>, Ty<'db>, PolyExistentialTraitRef<'db>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to
@@ -348,13 +348,13 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
         generic_args: Option<&HirGenericArgs>,
         parent_args: GenericArgs<'db>,
     ) -> GenericArgs<'db> {
-        struct LowererCtx<'a, 'b, 'db> {
-            ctx: &'a mut InferenceContext<'b, 'db>,
+        struct LowererCtx<'a, 'db> {
+            ctx: &'a mut InferenceContext<'db>,
             expr: ExprId,
             parent_args: &'a [GenericArg<'db>],
         }
 
-        impl<'db> GenericArgsLowerer<'db> for LowererCtx<'_, '_, 'db> {
+        impl<'db> GenericArgsLowerer<'db> for LowererCtx<'_, 'db> {
             fn report_len_mismatch(
                 &mut self,
                 def: GenericDefId,
@@ -395,16 +395,16 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
                     (
                         GenericParamDataRef::LifetimeParamData(_),
                         HirGenericArg::Lifetime(lifetime),
-                    ) => self.ctx.make_body_lifetime(*lifetime).into(),
+                    ) => self.ctx.make_lifetime(*lifetime).into(),
                     (GenericParamDataRef::TypeParamData(_), HirGenericArg::Type(type_ref)) => {
-                        self.ctx.make_body_ty(*type_ref).into()
+                        self.ctx.make_ty(*type_ref).into()
                     }
                     (GenericParamDataRef::ConstParamData(_), HirGenericArg::Const(konst)) => {
                         let GenericParamId::ConstParamId(const_id) = param_id else {
                             unreachable!("non-const param ID for const param");
                         };
                         let const_ty = self.ctx.db.const_param_ty(const_id);
-                        self.ctx.create_body_anon_const(konst.expr, const_ty, false).into()
+                        self.ctx.create_anon_const(konst.expr, const_ty, false).into()
                     }
                     _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),
                 }
@@ -417,7 +417,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
                 arg: TypeLikeConst<'_>,
             ) -> Const<'db> {
                 match arg {
-                    TypeLikeConst::Path(path) => self.ctx.make_path_as_body_const(path),
+                    TypeLikeConst::Path(path) => self.ctx.make_path_as_const(path),
                     TypeLikeConst::Infer => self.ctx.table.next_const_var(Span::Dummy),
                 }
             }

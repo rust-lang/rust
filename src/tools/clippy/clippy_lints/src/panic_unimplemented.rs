@@ -4,8 +4,7 @@ use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::{is_in_test, is_inside_always_const_context, sym};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 pub struct PanicUnimplemented {
     allow_panic_in_tests: bool,

@@ -1,8 +1,8 @@
 #![crate_name = "foo"]
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
-type const N: usize = 2;
+const N: usize = core::direct_const_arg!(2);
 
 //@ has 'foo/trait.CollectArray.html'
 //@ has - '//pre[@class="rust item-decl"]/code' '[A; N]'

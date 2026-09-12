@@ -1,6 +1,6 @@
 use ControlFlow::{Break, Continue};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::{fn_def_id, get_enclosing_block, sym};
 use rustc_ast::Mutability;
 use rustc_ast::visit::visit_opt;
@@ -8,9 +8,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{Expr, ExprKind, HirId, LetStmt, Node, PatKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::hir::nested_filter;
-use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use std::ops::ControlFlow;
 

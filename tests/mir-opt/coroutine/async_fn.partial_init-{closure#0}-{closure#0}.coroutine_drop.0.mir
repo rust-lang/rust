@@ -14,7 +14,7 @@ fn partial_init::{closure#0}::{closure#0}(_1: &mut {async block@$DIR/async_fn.rs
 
     bb0: {
         _8 = discriminant((*_1));
-        switchInt(move _8) -> [0: bb2, otherwise: bb4];
+        switchInt(move _8) -> [0: bb2, otherwise: bb3];
     }
 
     bb1: {
@@ -22,14 +22,10 @@ fn partial_init::{closure#0}::{closure#0}(_1: &mut {async block@$DIR/async_fn.rs
     }
 
     bb2: {
-        goto -> bb3;
-    }
-
-    bb3: {
         goto -> bb1;
     }
 
-    bb4: {
+    bb3: {
         return;
     }
 }

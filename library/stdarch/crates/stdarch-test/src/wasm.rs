@@ -2,6 +2,7 @@
 
 use crate::Function;
 use std::collections::HashSet;
+use std::path::Path;
 
 pub(crate) fn disassemble_myself() -> HashSet<Function> {
     // Use `std::env::args` to find the path to our executable. Assume the
@@ -11,6 +12,27 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
     let me = std::env::args()
         .next()
         .expect("failed to find current wasm file");
+    let me = Path::new(&me);
+    let me = if me.exists() {
+        // Old build-dir layout
+        me.to_path_buf()
+    } else {
+        // Cargo's build-dir layout stores an artifact named
+        // `<crate>-<hash>.wasm` at `<crate>/<hash>/out/<crate>-<hash>.wasm`.
+        // The build directory is mounted as the WASI working directory, so
+        // reconstruct that guest-visible path from the executable name.
+        let file_name = me
+            .file_name()
+            .and_then(|name| name.to_str())
+            .expect("current wasm file has a file name");
+        let stem = file_name
+            .strip_suffix(".wasm")
+            .expect("current wasm file does not have a .wasm extension");
+        let (crate_name, hash) = stem
+            .rsplit_once('-')
+            .expect("current wasm file name does not contain an artifact hash");
+        Path::new(crate_name).join(hash).join("out").join(file_name)
+    };
     let output = wasmprinter::print_file(&me).unwrap();
 
     let mut ret: HashSet<Function> = HashSet::new();

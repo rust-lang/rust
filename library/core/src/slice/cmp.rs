@@ -5,7 +5,7 @@ use crate::ascii;
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
 use crate::marker::Destruct;
-use crate::mem::SizedTypeProperties;
+use crate::mem::{SizedTypeProperties, transmute_copy};
 use crate::num::NonZero;
 use crate::ops::ControlFlow;
 
@@ -176,7 +176,7 @@ const trait SliceChain: Sized {
     fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
 }
 
-type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
+type AlwaysBreak<B> = ControlFlow<B, !>;
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd> SlicePartialOrd for A {
@@ -386,28 +386,27 @@ impl<T> SliceContains for T
 where
     T: PartialEq,
 {
+    #[expect(clippy::manual_contains, reason = "implements slice_contains")]
     default fn slice_contains(&self, x: &[Self]) -> bool {
         x.iter().any(|y| *y == *self)
     }
 }
 
-impl SliceContains for u8 {
+impl<T: BytewiseEq> SliceContains for T {
     #[inline]
-    fn slice_contains(&self, x: &[Self]) -> bool {
-        memchr::memchr(*self, x).is_some()
-    }
-}
-
-impl SliceContains for i8 {
-    #[inline]
-    fn slice_contains(&self, x: &[Self]) -> bool {
-        let byte = *self as u8;
-        // SAFETY: `i8` and `u8` have the same memory layout, thus casting `x.as_ptr()`
-        // as `*const u8` is safe. The `x.as_ptr()` comes from a reference and is thus guaranteed
-        // to be valid for reads for the length of the slice `x.len()`, which cannot be larger
-        // than `isize::MAX`. The returned slice is never mutated.
-        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
-        memchr::memchr(byte, bytes).is_some()
+    #[expect(clippy::manual_contains, reason = "implements slice_contains")]
+    default fn slice_contains(&self, x: &[Self]) -> bool {
+        if size_of::<T>() == 1 {
+            // SAFETY: `BytewiseEq` guarantees that values have no padding or provenance and
+            // compare like their underlying bytes. Since `T` is one byte, both the value and
+            // slice can be read as `u8`s.
+            let (byte, bytes) = unsafe {
+                (transmute_copy::<T, u8>(self), from_raw_parts(x.as_ptr().cast::<u8>(), x.len()))
+            };
+            memchr::memchr(byte, bytes).is_some()
+        } else {
+            x.iter().any(|y| *y == *self)
+        }
     }
 }
 

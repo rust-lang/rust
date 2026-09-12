@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union, db::ExpandDatabase};
+use hir::{Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId},
@@ -64,7 +64,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> Opti
 // FIXME: Add Snippet Support
 fn field_fix(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> Option<Assist> {
     // Get the FileRange of the invalid field access
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
+    let root = d.expr.file_id.parse_or_expand(ctx.sema.db);
     let expr = d.expr.value.to_node(&root).left()?;
 
     let error_range = ctx.sema.original_range_opt(expr.syntax())?;
@@ -85,6 +85,7 @@ fn field_fix(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> 
 
     if !is_editable_crate(target_module.krate(ctx.sema.db), ctx.sema.db)
         || SyntaxKind::from_keyword(field_name, ctx.edition).is_some()
+        || !syntax::utils::is_identifier(field_name, ctx.edition)
     {
         return None;
     }
@@ -148,11 +149,7 @@ fn add_field_to_struct_fix(
                 Some(make::visibility_pub_crate())
             };
 
-            let field_name = match field_name.chars().next() {
-                Some(ch) if ch.is_numeric() => return None,
-                Some(_) => make::name(field_name),
-                None => return None,
-            };
+            let field_name = make::name(field_name);
 
             let (offset, record_field) = record_field_layout(
                 visibility,
@@ -180,12 +177,7 @@ fn add_field_to_struct_fix(
             // Add a field list to the Unit Struct
             let mut src_change_builder =
                 SourceChangeBuilder::new(struct_range.file_id.file_id(ctx.sema.db));
-            let field_name = match field_name.chars().next() {
-                // FIXME : See match arm below regarding tuple structs.
-                Some(ch) if ch.is_numeric() => return None,
-                Some(_) => make::name(field_name),
-                None => return None,
-            };
+            let field_name = make::name(field_name);
             let visibility = if error_range.file_id == struct_range.file_id {
                 None
             } else {
@@ -266,7 +258,7 @@ fn method_fix(
     ctx: &DiagnosticsContext<'_, '_>,
     expr_ptr: &InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 ) -> Option<Assist> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.sema.db);
     let expr = expr_ptr.value.to_node(&root);
     let FileRange { range, file_id } = ctx.sema.original_range_opt(expr.syntax())?;
     Some(Assist {
@@ -521,6 +513,18 @@ impl Kek {
 
 fn main() {}
             "#,
+        )
+    }
+
+    #[test]
+    fn no_fix_when_indexed_on_union() {
+        check_no_fix(
+            r#"
+union U { a: u32 }
+fn main(u: U) {
+    u.0$0;
+}
+"#,
         )
     }
 

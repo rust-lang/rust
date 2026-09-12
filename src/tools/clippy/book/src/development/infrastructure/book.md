@@ -16,7 +16,7 @@ locally to view changes before you commit them to the repository. You likely
 already have `cargo` installed, so the easiest option is to:
 
 ```shell
-cargo install mdbook
+cargo install --locked mdbook
 ```
 
 See the mdBook [installation](https://github.com/rust-lang/mdBook#installation)

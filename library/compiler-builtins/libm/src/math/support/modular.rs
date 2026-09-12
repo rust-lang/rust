@@ -231,6 +231,7 @@ mod test {
     use crate::support::modular::Reducer;
 
     #[test]
+    #[cfg_attr(miri, ignore)] // This test is very slow when using Miri
     fn reducer_ops() {
         for n in 33..=63_u8 {
             for x in 0..2 * n {
@@ -259,6 +260,7 @@ mod test {
         }
     }
     #[test]
+    #[cfg_attr(miri, ignore)] // This test is very slow when using Miri
     fn reduction_u8() {
         for y in 1..64u8 {
             for x in 0..2 * y {

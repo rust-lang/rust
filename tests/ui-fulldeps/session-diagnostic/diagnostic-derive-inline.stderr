@@ -541,6 +541,11 @@ help: a built-in attribute with a similar name exists
 LL - #[lint("this is an example message", code = E0123)]
 LL + #[link("this is an example message", code = E0123)]
    |
+help: the derive macros `Lift` and `Lift_Generic` accept the similarly named `lift` attribute
+   |
+LL - #[lint("this is an example message", code = E0123)]
+LL + #[lift("this is an example message", code = E0123)]
+   |
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive-inline.rs:565:3

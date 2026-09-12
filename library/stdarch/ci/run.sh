@@ -82,7 +82,7 @@ cargo_test() {
             else
               dir="debug"
             fi
-            export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime -Wexceptions --dir /checkout/target/wasm32-wasip1/$dir/deps::."
+            export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime -Wexceptions --dir /checkout/target/wasm32-wasip1/$dir/build::."
             cmd="$cmd --nocapture"
             ;;
     esac

@@ -1,4 +1,4 @@
-//@ compile-flags:-Z unstable-options --show-coverage --document-private-items
+//@ compile-flags:-Z unstable-options --show-coverage --document-private-items -o -
 //@ check-pass
 
 #![allow(unused)]

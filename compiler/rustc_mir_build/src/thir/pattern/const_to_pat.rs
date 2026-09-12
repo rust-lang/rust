@@ -5,6 +5,7 @@ use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Diag, msg};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -79,14 +80,16 @@ impl<'tcx> ConstToPat<'tcx> {
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         if let ty::ConstKind::Alias(_, alias_const) = self.c.kind() {
             if let ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id } = alias_const.kind
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id } = alias_const.kind
                 && let Some(def_id) = def_id.as_local()
             {
                 // Include the container item in the output.
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
             if let ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id } = alias_const.kind
             {
                 err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
@@ -107,11 +110,44 @@ impl<'tcx> ConstToPat<'tcx> {
             self.tcx.erase_and_anonymize_regions(self.typing_env).with_codegen_normalized(self.tcx);
         let alias_const = self.tcx.erase_and_anonymize_regions(alias_const);
 
-        // FIXME(gca): This will become insufficient once associated constants can be
-        // implemented as `type` consts (project-const-generics#76). At that point it'll
-        // become necessary to just use type system normalization for all const patterns
-        // but that's not yet possible.
-        let mut thir_pat = if alias_const.kind.is_type_const(self.tcx) {
+        let mk_too_generic_err = || {
+            let mut err = self
+                .tcx
+                .dcx()
+                .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
+            for arg in alias_const.args {
+                if let ty::GenericArgKind::Type(ty) = arg.kind()
+                    && let ty::Param(param_ty) = ty.kind()
+                {
+                    let def_id = self.tcx.hir_enclosing_body_owner(self.id);
+                    let generics = self.tcx.generics_of(def_id);
+                    let param = generics.type_param(*param_ty, self.tcx);
+                    let span = self.tcx.def_span(param.def_id);
+                    err.span_label(span, "constant depends on this generic parameter");
+                    if let Some(ident) = self.tcx.def_ident_span(def_id)
+                        && self.tcx.sess.source_map().is_multiline(ident.between(span))
+                    {
+                        // Display the `fn` name as well in the diagnostic, as the generic isn't
+                        // in the same line and it could be confusing otherwise.
+                        err.span_label(ident, "");
+                    }
+                }
+            }
+            return self.mk_err(err, ty);
+        };
+
+        // Under generic_const_args, `alias_const` might be a regular const declared in a trait, but
+        // is `impl`d as a directly represented const. We do not know whether it is here, so we must
+        // use type system normalization for all consts under generic_const_args.
+        //
+        // We probably want to always use type system normalization on stable too, but that would be
+        // a breaking change (in addition to needing significant improvements to diagnostics), so
+        // right now, we limit this to just generic_const_args.
+        //
+        // See: https://github.com/rust-lang/project-const-generics/issues/105
+        let const_value = if self.tcx.features().generic_const_args()
+            || alias_const.kind.is_direct_const(self.tcx)
+        {
             let Ok(normalize) = self
                 .tcx
                 .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(self.c))
@@ -124,7 +160,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
                 return self.mk_err(err, ty);
             };
-            self.valtree_to_pat(value)
+            value
         } else {
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
@@ -139,7 +175,8 @@ impl<'tcx> ConstToPat<'tcx> {
                         // on its use as well.
                         if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
                             && let ty::AliasConstKind::Projection { .. }
-                            | ty::AliasConstKind::Inherent { .. }
+                            | ty::AliasConstKind::InherentSelf { .. }
+                            | ty::AliasConstKind::InherentImpl { .. }
                             | ty::AliasConstKind::Free { .. } = alias_const.kind
                         {
                             err.downgrade_to_delayed_bug();
@@ -147,29 +184,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         return self.mk_err(err, ty);
                     }
                     Err(ErrorHandled::TooGeneric(_)) => {
-                        let mut err = self
-                            .tcx
-                            .dcx()
-                            .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
-                        for arg in alias_const.args {
-                            if let ty::GenericArgKind::Type(ty) = arg.kind()
-                                && let ty::Param(param_ty) = ty.kind()
-                            {
-                                let def_id = self.tcx.hir_enclosing_body_owner(self.id);
-                                let generics = self.tcx.generics_of(def_id);
-                                let param = generics.type_param(*param_ty, self.tcx);
-                                let span = self.tcx.def_span(param.def_id);
-                                err.span_label(span, "constant depends on this generic parameter");
-                                if let Some(ident) = self.tcx.def_ident_span(def_id)
-                                    && self.tcx.sess.source_map().is_multiline(ident.between(span))
-                                {
-                                    // Display the `fn` name as well in the diagnostic, as the generic isn't
-                                    // in the same line and it could be confusing otherwise.
-                                    err.span_label(ident, "");
-                                }
-                            }
-                        }
-                        return self.mk_err(err, ty);
+                        return mk_too_generic_err();
                     }
                     Ok(Err(bad_ty)) => {
                         // The pattern cannot be turned into a valtree.
@@ -192,8 +207,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 };
 
             // Lower the valtree to a THIR pattern.
-            self.valtree_to_pat(ty::Value { ty, valtree })
+            ty::Value { ty, valtree }
         };
+        if const_value.ty.has_param() {
+            return mk_too_generic_err();
+        }
+        let mut thir_pat = self.valtree_to_pat(const_value);
 
         if !thir_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
@@ -607,9 +626,8 @@ fn type_has_partial_eq_impl<'tcx>(
     // (If there isn't, then we can safely issue a hard
     // error, because that's never worked, due to compiler
     // using `PartialEq::eq` in this scenario in the past.)
-    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, DUMMY_SP);
-    let structural_partial_eq_trait_id =
-        tcx.require_lang_item(hir::LangItem::StructuralPeq, DUMMY_SP);
+    let partial_eq_trait_id = tcx.require_lang_item(LangItem::PartialEq, DUMMY_SP);
+    let structural_partial_eq_trait_id = tcx.require_lang_item(LangItem::StructuralPeq, DUMMY_SP);
 
     // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
     // ignored. However that should be pretty much impossible since consts that do not depend on

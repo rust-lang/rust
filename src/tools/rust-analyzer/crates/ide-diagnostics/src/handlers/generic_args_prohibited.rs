@@ -479,7 +479,7 @@ fn baz(v: foo::Bar) {
         check_diagnostics(
             r#"
 mod foo {
-    pub struct Bar(i32);
+    pub struct Bar(pub i32);
 }
 fn baz(v: foo::Bar) {
     let foo::<()>::Bar(..) = v;

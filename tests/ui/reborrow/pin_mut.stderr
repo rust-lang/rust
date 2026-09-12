@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/pin_mut.rs:9:20
+  --> $DIR/pin_mut.rs:14:20
    |
 LL |     let a = Pin::new(a);
    |         - move occurs because `a` has type `Pin<&mut ()>`, which does not implement the `Copy` trait
@@ -9,7 +9,7 @@ LL |     let _ = method(a);
    |                    ^ value used here after move
    |
 note: consider changing this parameter type in function `method` to borrow instead if owning the value isn't necessary
-  --> $DIR/pin_mut.rs:3:14
+  --> $DIR/pin_mut.rs:8:14
    |
 LL | fn method(a: Pin<&mut ()>) {}
    |    ------    ^^^^^^^^^^^^ this parameter takes ownership of the value

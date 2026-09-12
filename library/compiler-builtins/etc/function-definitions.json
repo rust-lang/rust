@@ -343,6 +343,7 @@
     "fma": {
         "sources": [
             "libm/src/math/arch/aarch64/fma.rs",
+            "libm/src/math/arch/loongarch/fma.rs",
             "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs",
             "libm/src/math/generic/fma.rs"
@@ -352,6 +353,7 @@
     "fmaf": {
         "sources": [
             "libm/src/math/arch/aarch64/fma.rs",
+            "libm/src/math/arch/loongarch/fma.rs",
             "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs",
             "libm/src/math/generic/fma.rs"
@@ -832,6 +834,7 @@
         "sources": [
             "libm/src/math/arch/aarch64/rounding.rs",
             "libm/src/math/arch/i586/rounding.rs",
+            "libm/src/math/arch/loongarch/rounding.rs",
             "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/generic/rint.rs",
             "libm/src/math/rint.rs"
@@ -841,6 +844,7 @@
     "rintf": {
         "sources": [
             "libm/src/math/arch/aarch64/rounding.rs",
+            "libm/src/math/arch/loongarch/rounding.rs",
             "libm/src/math/arch/wasm32/rounding.rs",
             "libm/src/math/generic/rint.rs",
             "libm/src/math/rint.rs"
@@ -981,6 +985,7 @@
     "sqrt": {
         "sources": [
             "libm/src/math/arch/aarch64/sqrt.rs",
+            "libm/src/math/arch/loongarch/sqrt.rs",
             "libm/src/math/arch/wasm32/sqrt.rs",
             "libm/src/math/arch/x86/sqrt.rs",
             "libm/src/math/generic/sqrt.rs",
@@ -991,6 +996,7 @@
     "sqrtf": {
         "sources": [
             "libm/src/math/arch/aarch64/sqrt.rs",
+            "libm/src/math/arch/loongarch/sqrt.rs",
             "libm/src/math/arch/wasm32/sqrt.rs",
             "libm/src/math/arch/x86/sqrt.rs",
             "libm/src/math/generic/sqrt.rs",

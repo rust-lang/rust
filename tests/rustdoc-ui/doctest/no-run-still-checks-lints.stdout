@@ -1,0 +1,29 @@
+
+running 1 test
+test $DIR/no-run-still-checks-lints.rs - foo (line 7) - compile ... FAILED
+
+failures:
+
+---- $DIR/no-run-still-checks-lints.rs - foo (line 7) stdout ----
+error: unused variable: `a`
+  --> $DIR/no-run-still-checks-lints.rs:8:5
+   |
+LL | let a = 3;
+   |     ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: the lint level is defined here
+  --> $DIR/no-run-still-checks-lints.rs:6:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/no-run-still-checks-lints.rs - foo (line 7)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

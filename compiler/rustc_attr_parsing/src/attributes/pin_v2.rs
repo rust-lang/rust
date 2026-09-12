@@ -1,6 +1,6 @@
+use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::target::Target;
 use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::NoArgsAttributeParser;

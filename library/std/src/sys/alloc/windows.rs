@@ -1,5 +1,18 @@
+//! Implements `System` on Windows.
+//!
+//! All pointers returned by this allocator have, in addition to the guarantees of `GlobalAlloc`, the
+//! following properties:
+//!
+//! If the pointer was allocated or reallocated with a `layout` specifying an alignment <= `MIN_ALIGN`
+//! the pointer will be aligned to at least `MIN_ALIGN` and point to the start of the allocated block.
+//!
+//! If the pointer was allocated or reallocated with a `layout` specifying an alignment > `MIN_ALIGN`
+//! the pointer will be aligned to the specified alignment and not point to the start of the allocated block.
+//! Instead there will be a header readable directly before the returned pointer, containing the actual
+//! location of the start of the block.
+
 use super::{MIN_ALIGN, realloc_fallback};
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::Layout;
 use crate::ffi::c_void;
 use crate::mem::MaybeUninit;
 use crate::ptr;
@@ -150,70 +163,56 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
     }
 }
 
-// All pointers returned by this allocator have, in addition to the guarantees of `GlobalAlloc`, the
-// following properties:
-//
-// If the pointer was allocated or reallocated with a `layout` specifying an alignment <= `MIN_ALIGN`
-// the pointer will be aligned to at least `MIN_ALIGN` and point to the start of the allocated block.
-//
-// If the pointer was allocated or reallocated with a `layout` specifying an alignment > `MIN_ALIGN`
-// the pointer will be aligned to the specified alignment and not point to the start of the allocated block.
-// Instead there will be a header readable directly before the returned pointer, containing the actual
-// location of the start of the block.
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
-unsafe impl GlobalAlloc for System {
-    #[inline]
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
-        let zeroed = false;
-        unsafe { allocate(layout, zeroed) }
-    }
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
+    let zeroed = false;
+    unsafe { allocate(layout, zeroed) }
+}
 
-    #[inline]
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
-        let zeroed = true;
-        unsafe { allocate(layout, zeroed) }
-    }
+#[inline]
+pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+    // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
+    let zeroed = true;
+    unsafe { allocate(layout, zeroed) }
+}
 
-    #[inline]
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        let block = {
-            if layout.align() <= MIN_ALIGN {
-                ptr
-            } else {
-                // The location of the start of the block is stored in the padding before `ptr`.
+#[inline]
+pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+    let block = {
+        if layout.align() <= MIN_ALIGN {
+            ptr
+        } else {
+            // The location of the start of the block is stored in the padding before `ptr`.
 
-                // SAFETY: Because of the contract of `System`, `ptr` is guaranteed to be non-null
-                // and have a header readable directly before it.
-                unsafe { ptr::read((ptr as *mut Header).sub(1)).0 }
-            }
-        };
+            // SAFETY: Because of the contract of `System`, `ptr` is guaranteed to be non-null
+            // and have a header readable directly before it.
+            unsafe { ptr::read((ptr as *mut Header).sub(1)).0 }
+        }
+    };
 
+    // because `ptr` has been successfully allocated with this allocator,
+    // there must be a valid process heap.
+    let heap = get_process_heap();
+
+    // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
+    // `block` is a pointer to the start of an allocated block.
+    unsafe { HeapFree(heap, 0, block.cast::<c_void>()) };
+}
+
+#[inline]
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN {
         // because `ptr` has been successfully allocated with this allocator,
         // there must be a valid process heap.
         let heap = get_process_heap();
 
         // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
-        // `block` is a pointer to the start of an allocated block.
-        unsafe { HeapFree(heap, 0, block.cast::<c_void>()) };
-    }
-
-    #[inline]
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        if layout.align() <= MIN_ALIGN {
-            // because `ptr` has been successfully allocated with this allocator,
-            // there must be a valid process heap.
-            let heap = get_process_heap();
-
-            // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
-            // `ptr` is a pointer to the start of an allocated block.
-            // The returned pointer points to the start of an allocated block.
-            unsafe { HeapReAlloc(heap, 0, ptr.cast::<c_void>(), new_size).cast::<u8>() }
-        } else {
-            // SAFETY: `realloc_fallback` is implemented using `dealloc` and `alloc`, which will
-            // correctly handle `ptr` and return a pointer satisfying the guarantees of `System`
-            unsafe { realloc_fallback(self, ptr, layout, new_size) }
-        }
+        // `ptr` is a pointer to the start of an allocated block.
+        // The returned pointer points to the start of an allocated block.
+        unsafe { HeapReAlloc(heap, 0, ptr.cast::<c_void>(), new_size).cast::<u8>() }
+    } else {
+        // SAFETY: `realloc_fallback` is implemented using `dealloc` and `alloc`, which will
+        // correctly handle `ptr` and return a pointer satisfying the guarantees of `System`
+        unsafe { realloc_fallback(ptr, layout, new_size) }
     }
 }

@@ -233,7 +233,7 @@
 
 
 #![allow(unused_variables)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 use self::Univariant::Unit;
 
@@ -291,7 +291,7 @@ fn main() {
     let (&cc, _) = (&38, 39);
 
     // unique pointer
-    let box dd = Box::new((40, 41, 42));
+    let deref!(dd) = Box::new((40, 41, 42));
 
     // ref binding
     let ref ee = (43, 44, 45);

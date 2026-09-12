@@ -59,6 +59,30 @@ pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
     matching_files
 }
 
+/// Browse the directory `path` recursively and return all files which respect the parameters
+/// outlined by `closure`.
+#[track_caller]
+pub fn recursive_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
+    path: P,
+    filter: F,
+) -> Vec<PathBuf> {
+    let mut matching_files = Vec::new();
+    let mut stack = vec![path.as_ref().to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in rfs::read_dir(dir) {
+            let entry = entry.expect("failed to read directory entry.");
+            let path = entry.path();
+
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.is_file() && filter(&path) {
+                matching_files.push(path);
+            }
+        }
+    }
+    matching_files
+}
+
 /// Browse the directory `path` non-recursively and return all directories which respect the
 /// parameters outlined by `closure`.
 #[track_caller]

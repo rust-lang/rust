@@ -6,8 +6,9 @@ use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::ty::Ty;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Env, Os};
 
+use super::HOSTNAME;
 use crate::*;
 
 pub struct UnixEnvVars<'tcx> {
@@ -217,6 +218,81 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         interp_ok(Pointer::null())
+    }
+
+    fn gethostname(
+        &mut self,
+        name_op: &OpTy<'tcx>,
+        len_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        this.assert_target_os_is_unix("gethostname");
+
+        let name = this.read_pointer(name_op)?;
+        let len = this.read_target_usize(len_op)?;
+
+        // macOS makes a length of zero UB by writing to `name[namelen - 1]`:
+        // <https://github.com/apple-oss-distributions/Libc/blob/main/gen/FreeBSD/gethostname.c#L48-L60>
+        //
+        // Since POSIX does not clearly specify whether a zero length is valid, require the length
+        // argument to be non-zero on every platform. This cannot be folded into the access check
+        // below: `check_ptr_access` delegates to `check_and_deref_ptr`, which treats every
+        // zero-sized access as valid and returns before checking `name`. In particular, it would
+        // accept a null pointer here.
+        if len == 0 {
+            throw_ub_format!("`gethostname` called with a length of zero");
+        }
+        // The caller promises that `name` points to an array of `len` bytes, so validate that
+        // entire range up front. Since `len` is non-zero, this also rejects null and dangling
+        // pointers.
+        this.check_ptr_access(name, Size::from_bytes(len), CheckInAllocMsg::MemoryAccess)?;
+
+        if len > u64::try_from(HOSTNAME.len()).unwrap() {
+            let (written, _) = this.write_c_str(HOSTNAME, name, len)?;
+            assert!(written); // Value should fit.
+            return interp_ok(Scalar::from_i32(0));
+        }
+
+        // The exact behavior on a too short buffer differs by platform and even libc.
+        // POSIX says:
+        // > The returned name shall be null-terminated, except that if namelen is
+        // > an insufficient length to hold the host name, then the returned name
+        // > shall be truncated and it is unspecified whether the returned name is
+        // > null-terminated.
+        match (&this.tcx.sess.target.os, &this.tcx.sess.target.env) {
+            (Os::Android, _) => {
+                // Android violates POSIX and does not write anything:
+                // <https://raw.githubusercontent.com/aosp-mirror/platform_bionic/master/libc/bionic/gethostname.cpp>
+                this.set_errno_and_return_neg1_i32(LibcError("ENAMETOOLONG"))
+            }
+            (Os::Linux, Env::Gnu) | (Os::FreeBsd, _) => {
+                // Write what we can *without* trailing null.
+                let len: usize = len.try_into().unwrap();
+                this.write_bytes_ptr(name, HOSTNAME[..len].iter().copied())?;
+                this.set_errno_and_return_neg1_i32(LibcError("ENAMETOOLONG"))
+            }
+            (Os::Linux, _) | (Os::MacOs, _) | (Os::Solaris, _) | (Os::Illumos, _) => {
+                // Write what we can *with* trailing null.
+                let len: usize = len.try_into().unwrap();
+                let copy_len = len.strict_sub(1);
+                this.write_bytes_ptr(
+                    name,
+                    HOSTNAME[..copy_len].iter().copied().chain(std::iter::once(0)),
+                )?;
+
+                // These implementations report truncation as successful. POSIX requires
+                // truncation when `namelen` is insufficient, but does not require it
+                // to be reported as an error.
+                // musl: <https://git.musl-libc.org/cgit/musl/tree/src/unistd/gethostname.c>
+                // macOS: <https://github.com/apple-oss-distributions/Libc/blob/main/gen/FreeBSD/gethostname.c>
+                // Illumos: <https://github.com/illumos/illumos-gate/blob/master/usr/src/lib/libc/port/gen/gethostname.c>
+                // Solaris: <https://docs.oracle.com/cd/E88353_01/html/E37843/gethostname-3c.html>
+                interp_ok(Scalar::from_i32(0))
+            }
+            _ => {
+                throw_unsup_format!("`gethostname` is not supported on {}", this.tcx.sess.target.os)
+            }
+        }
     }
 
     fn chdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {

@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: both enable-separately-disable-together enable-together-disable-separately
 //@ check-fail
 //@ ignore-nvptx64 stack protector is not supported
@@ -19,13 +19,13 @@
 //@ [enable-together-disable-separately] compile-flags: -Z unstable-options  -C control-flow-guard=on -Z stack-protector=all -Z allow-partial-mitigations=stack-protector,control-flow-guard -Z deny-partial-mitigations=control-flow-guard -Z deny-partial-mitigations=stack-protector
 
 fn main() {}
-//~^ ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with

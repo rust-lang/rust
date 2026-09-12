@@ -103,7 +103,7 @@ pub(crate) fn build_expn_tree(
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
 ) -> Result<ExpnTree, MappingsError> {
-    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, hir_info, graph);
 
     let mut nodes = FxIndexMap::default();
     let new_node = |&context: &SyntaxContext| ExpnNode::for_context(context);
@@ -173,8 +173,8 @@ pub(crate) fn build_expn_tree(
 
     // Associate each branch span (recorded during MIR building) with its
     // corresponding expansion tree node.
-    if let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() {
-        for branch_span in &coverage_info_hi.branch_spans {
+    if let Some(early_info) = mir_body.coverage_early_info.as_deref() {
+        for branch_span in &early_info.branch_spans {
             if let Some(node) = nodes.get_mut(&branch_span.span.ctxt()) {
                 node.branch_spans.push(BranchSpan::clone(branch_span));
             }

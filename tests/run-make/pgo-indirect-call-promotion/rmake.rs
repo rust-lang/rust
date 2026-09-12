@@ -9,6 +9,8 @@
 // Reason: llvm_profdata is used
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{llvm_filecheck, llvm_profdata, rfs, run, rustc};
 

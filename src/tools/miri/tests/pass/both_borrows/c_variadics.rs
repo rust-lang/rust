@@ -1,7 +1,6 @@
 //@revisions: stack tree tree_implicit_writes
 //@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(c_variadic)]
 
 fn main() {
     unsafe extern "C" fn write_with_first_arg(ptr_to_val: *mut i32, _hidden_mut_ref_to_val: ...) {

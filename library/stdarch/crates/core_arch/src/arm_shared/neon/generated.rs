@@ -27,7 +27,7 @@ use super::*;
     stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
 )]
 pub fn __crc32b(crc: u32, data: u8) -> u32 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32b"
@@ -52,7 +52,7 @@ pub fn __crc32b(crc: u32, data: u8) -> u32 {
     stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
 )]
 pub fn __crc32cb(crc: u32, data: u8) -> u32 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32cb"
@@ -75,7 +75,7 @@ pub fn __crc32cb(crc: u32, data: u8) -> u32 {
 pub fn __crc32cd(crc: u32, data: u64) -> u32 {
     let b: u32 = (data & 0xFFFFFFFF) as u32;
     let c: u32 = (data >> 32) as u32;
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")]
         fn ___crc32cw(crc: u32, data: u32) -> u32;
     }
@@ -96,7 +96,7 @@ pub fn __crc32cd(crc: u32, data: u64) -> u32 {
     stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
 )]
 pub fn __crc32ch(crc: u32, data: u16) -> u32 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32ch"
@@ -121,7 +121,7 @@ pub fn __crc32ch(crc: u32, data: u16) -> u32 {
     stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
 )]
 pub fn __crc32cw(crc: u32, data: u32) -> u32 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32cw"
@@ -144,7 +144,7 @@ pub fn __crc32cw(crc: u32, data: u32) -> u32 {
 pub fn __crc32d(crc: u32, data: u64) -> u32 {
     let b: u32 = (data & 0xFFFFFFFF) as u32;
     let c: u32 = (data >> 32) as u32;
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")]
         fn ___crc32w(crc: u32, data: u32) -> u32;
     }
@@ -165,7 +165,7 @@ pub fn __crc32d(crc: u32, data: u64) -> u32 {
     stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
 )]
 pub fn __crc32h(crc: u32, data: u16) -> u32 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32h"
@@ -190,7 +190,7 @@ pub fn __crc32h(crc: u32, data: u16) -> u32 {
     stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")
 )]
 pub fn __crc32w(crc: u32, data: u32) -> u32 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32w"
@@ -212,7 +212,7 @@ pub fn __crc32w(crc: u32, data: u32) -> u32 {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadal_s8(a: int16x4_t, b: int8x8_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadals.v4i16.v8i8")]
         fn _priv_vpadal_s8(a: int16x4_t, b: int8x8_t) -> int16x4_t;
     }
@@ -230,7 +230,7 @@ fn priv_vpadal_s8(a: int16x4_t, b: int8x8_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadalq_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadals.v8i16.v16i8")]
         fn _priv_vpadalq_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t;
     }
@@ -248,7 +248,7 @@ fn priv_vpadalq_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadal_s16(a: int32x2_t, b: int16x4_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadals.v2i32.v4i16")]
         fn _priv_vpadal_s16(a: int32x2_t, b: int16x4_t) -> int32x2_t;
     }
@@ -266,7 +266,7 @@ fn priv_vpadal_s16(a: int32x2_t, b: int16x4_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadalq_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadals.v4i32.v8i16")]
         fn _priv_vpadalq_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t;
     }
@@ -284,7 +284,7 @@ fn priv_vpadalq_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadal_s32(a: int64x1_t, b: int32x2_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadals.v1i64.v2i32")]
         fn _priv_vpadal_s32(a: int64x1_t, b: int32x2_t) -> int64x1_t;
     }
@@ -302,7 +302,7 @@ fn priv_vpadal_s32(a: int64x1_t, b: int32x2_t) -> int64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadalq_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadals.v2i64.v4i32")]
         fn _priv_vpadalq_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t;
     }
@@ -320,7 +320,7 @@ fn priv_vpadalq_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadal_u8(a: uint16x4_t, b: uint8x8_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadalu.v4i16.v8i8")]
         fn _priv_vpadal_u8(a: uint16x4_t, b: uint8x8_t) -> uint16x4_t;
     }
@@ -338,7 +338,7 @@ fn priv_vpadal_u8(a: uint16x4_t, b: uint8x8_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadalq_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadalu.v8i16.v16i8")]
         fn _priv_vpadalq_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t;
     }
@@ -356,7 +356,7 @@ fn priv_vpadalq_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadal_u16(a: uint32x2_t, b: uint16x4_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadalu.v2i32.v4i16")]
         fn _priv_vpadal_u16(a: uint32x2_t, b: uint16x4_t) -> uint32x2_t;
     }
@@ -374,7 +374,7 @@ fn priv_vpadal_u16(a: uint32x2_t, b: uint16x4_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadalq_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadalu.v4i32.v8i16")]
         fn _priv_vpadalq_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t;
     }
@@ -392,7 +392,7 @@ fn priv_vpadalq_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadal_u32(a: uint64x1_t, b: uint32x2_t) -> uint64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadalu.v1i64.v2i32")]
         fn _priv_vpadal_u32(a: uint64x1_t, b: uint32x2_t) -> uint64x1_t;
     }
@@ -410,7 +410,7 @@ fn priv_vpadal_u32(a: uint64x1_t, b: uint32x2_t) -> uint64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 fn priv_vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadalu.v2i64.v4i32")]
         fn _priv_vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t;
     }
@@ -829,7 +829,7 @@ pub fn vabaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vabd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -859,7 +859,7 @@ pub fn vabd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vabdq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -888,7 +888,7 @@ pub fn vabdq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -917,7 +917,7 @@ pub fn vabd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabdq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -946,7 +946,7 @@ pub fn vabdq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sabd.v8i8"
@@ -975,7 +975,7 @@ pub fn vabd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabdq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sabd.v16i8"
@@ -1004,7 +1004,7 @@ pub fn vabdq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sabd.v4i16"
@@ -1033,7 +1033,7 @@ pub fn vabd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabdq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sabd.v8i16"
@@ -1062,7 +1062,7 @@ pub fn vabdq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sabd.v2i32"
@@ -1091,7 +1091,7 @@ pub fn vabd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabdq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sabd.v4i32"
@@ -1120,7 +1120,7 @@ pub fn vabdq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uabd.v8i8"
@@ -1149,7 +1149,7 @@ pub fn vabd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabdq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uabd.v16i8"
@@ -1178,7 +1178,7 @@ pub fn vabdq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uabd.v4i16"
@@ -1207,7 +1207,7 @@ pub fn vabd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabdq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uabd.v8i16"
@@ -1236,7 +1236,7 @@ pub fn vabdq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uabd.v2i32"
@@ -1265,7 +1265,7 @@ pub fn vabd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vabdq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uabd.v4i32"
@@ -3167,7 +3167,7 @@ pub fn vaddw_u8(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aesd"
@@ -3193,7 +3193,7 @@ pub fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aesd"
@@ -3236,7 +3236,7 @@ pub fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aese"
@@ -3262,7 +3262,7 @@ pub fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aese"
@@ -3305,7 +3305,7 @@ pub fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aesimc"
@@ -3331,7 +3331,7 @@ pub fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aesimc"
@@ -3369,7 +3369,7 @@ pub fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aesmc"
@@ -3395,7 +3395,7 @@ pub fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.aesmc"
@@ -4775,7 +4775,7 @@ pub fn vbslq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcage_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v4i16.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -4805,7 +4805,7 @@ pub fn vcage_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcageq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v8i16.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -4834,7 +4834,7 @@ pub fn vcageq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcage_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v2i32.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -4863,7 +4863,7 @@ pub fn vcage_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcageq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v4i32.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -4893,7 +4893,7 @@ pub fn vcageq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcagt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v4i16.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -4923,7 +4923,7 @@ pub fn vcagt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcagtq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v8i16.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -4952,7 +4952,7 @@ pub fn vcagtq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcagt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v2i32.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -4981,7 +4981,7 @@ pub fn vcagt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcagtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v4i32.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -6714,7 +6714,7 @@ pub fn vclezq_f16(a: float16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcls_s8(a: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -6743,7 +6743,7 @@ pub fn vcls_s8(a: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vclsq_s8(a: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -6772,7 +6772,7 @@ pub fn vclsq_s8(a: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcls_s16(a: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -6801,7 +6801,7 @@ pub fn vcls_s16(a: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vclsq_s16(a: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -6830,7 +6830,7 @@ pub fn vclsq_s16(a: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcls_s32(a: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -6859,7 +6859,7 @@ pub fn vcls_s32(a: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vclsq_s32(a: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcls.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -8818,7 +8818,7 @@ pub fn vcvtq_f32_u32(a: uint32x4_t) -> float32x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_f16_s16<const N: i32>(a: int16x4_t) -> float16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxs2fp.v4f16.v4i16"
@@ -8853,7 +8853,7 @@ pub fn vcvt_n_f16_s16<const N: i32>(a: int16x4_t) -> float16x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_f16_s16<const N: i32>(a: int16x8_t) -> float16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxs2fp.v8f16.v8i16"
@@ -8888,7 +8888,7 @@ pub fn vcvtq_n_f16_s16<const N: i32>(a: int16x8_t) -> float16x8_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_f16_u16<const N: i32>(a: uint16x4_t) -> float16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxu2fp.v4f16.v4i16"
@@ -8923,7 +8923,7 @@ pub fn vcvt_n_f16_u16<const N: i32>(a: uint16x4_t) -> float16x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_f16_u16<const N: i32>(a: uint16x8_t) -> float16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxu2fp.v8f16.v8i16"
@@ -8946,7 +8946,7 @@ pub fn vcvtq_n_f16_u16<const N: i32>(a: uint16x8_t) -> float16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxs2fp.v2f32.v2i32"
@@ -8965,7 +8965,7 @@ pub fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxs2fp.v4f32.v4i32"
@@ -8984,7 +8984,7 @@ pub fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxs2fp.v2f32.v2i32"
@@ -9003,7 +9003,7 @@ pub fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxs2fp.v4f32.v4i32"
@@ -9022,7 +9022,7 @@ pub fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxu2fp.v2f32.v2i32"
@@ -9041,7 +9041,7 @@ pub fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfxu2fp.v4f32.v4i32"
@@ -9060,7 +9060,7 @@ pub fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.v2f32.v2i32"
@@ -9079,7 +9079,7 @@ pub fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.v4f32.v4i32"
@@ -9110,7 +9110,7 @@ pub fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_s16_f16<const N: i32>(a: float16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxs.v4i16.v4f16"
@@ -9145,7 +9145,7 @@ pub fn vcvt_n_s16_f16<const N: i32>(a: float16x4_t) -> int16x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_s16_f16<const N: i32>(a: float16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxs.v8i16.v8f16"
@@ -9168,7 +9168,7 @@ pub fn vcvtq_n_s16_f16<const N: i32>(a: float16x8_t) -> int16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxs.v2i32.v2f32"
@@ -9187,7 +9187,7 @@ pub fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxs.v4i32.v4f32"
@@ -9206,7 +9206,7 @@ pub fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxs.v2i32.v2f32"
@@ -9225,7 +9225,7 @@ pub fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxs.v4i32.v4f32"
@@ -9256,7 +9256,7 @@ pub fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_u16_f16<const N: i32>(a: float16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxu.v4i16.v4f16"
@@ -9291,7 +9291,7 @@ pub fn vcvt_n_u16_f16<const N: i32>(a: float16x4_t) -> uint16x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_u16_f16<const N: i32>(a: float16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxu.v8i16.v8f16"
@@ -9314,7 +9314,7 @@ pub fn vcvtq_n_u16_f16<const N: i32>(a: float16x8_t) -> uint16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxu.v2i32.v2f32"
@@ -9333,7 +9333,7 @@ pub fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             target_arch = "arm",
             link_name = "llvm.arm.neon.vcvtfp2fxu.v4i32.v4f32"
@@ -9352,7 +9352,7 @@ pub fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.v2i32.v2f32"
@@ -9371,7 +9371,7 @@ pub fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.v4i32.v4f32"
@@ -9443,7 +9443,7 @@ pub fn vcvtq_s16_f16(a: float16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptosi.sat.v2i32.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9472,7 +9472,7 @@ pub fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptosi.sat.v4i32.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9545,7 +9545,7 @@ pub fn vcvtq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptoui.sat.v2i32.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9574,7 +9574,7 @@ pub fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.fptoui.sat.v4i32.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9597,7 +9597,7 @@ pub fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9622,7 +9622,7 @@ pub fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) ->
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9647,7 +9647,7 @@ pub fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) 
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9672,7 +9672,7 @@ pub fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t)
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9697,7 +9697,7 @@ pub fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9722,7 +9722,7 @@ pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) 
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9747,7 +9747,7 @@ pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9772,7 +9772,7 @@ pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9797,14 +9797,14 @@ pub fn vdotq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x1
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sdot.v2i32.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9827,14 +9827,14 @@ pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sdot.v2i32.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9863,14 +9863,14 @@ pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sdot.v4i32.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9893,14 +9893,14 @@ pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sdot.v4i32.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9931,14 +9931,14 @@ pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.udot.v2i32.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9961,14 +9961,14 @@ pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.udot.v2i32.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9997,14 +9997,14 @@ pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.udot.v4i32.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -10027,14 +10027,14 @@ pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.udot.v4i32.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -15285,11 +15285,17 @@ pub fn vget_low_f16(a: float16x8_t) -> float16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15307,11 +15313,17 @@ pub fn vget_high_f32(a: float32x4_t) -> float32x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15333,11 +15345,17 @@ pub fn vget_high_f32(a: float32x4_t) -> float32x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15355,11 +15373,17 @@ pub fn vget_high_p16(a: poly16x8_t) -> poly16x4_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15381,11 +15405,17 @@ pub fn vget_high_p16(a: poly16x8_t) -> poly16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15403,11 +15433,17 @@ pub fn vget_high_p8(a: poly8x16_t) -> poly8x8_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15430,11 +15466,17 @@ pub fn vget_high_p8(a: poly8x16_t) -> poly8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15452,11 +15494,17 @@ pub fn vget_high_s16(a: int16x8_t) -> int16x4_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15478,11 +15526,17 @@ pub fn vget_high_s16(a: int16x8_t) -> int16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15500,11 +15554,17 @@ pub fn vget_high_s32(a: int32x4_t) -> int32x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15526,11 +15586,17 @@ pub fn vget_high_s32(a: int32x4_t) -> int32x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15548,11 +15614,17 @@ pub fn vget_high_s8(a: int8x16_t) -> int8x8_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15575,11 +15647,17 @@ pub fn vget_high_s8(a: int8x16_t) -> int8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15597,11 +15675,17 @@ pub fn vget_high_u16(a: uint16x8_t) -> uint16x4_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15623,11 +15707,17 @@ pub fn vget_high_u16(a: uint16x8_t) -> uint16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15645,11 +15735,17 @@ pub fn vget_high_u32(a: uint32x4_t) -> uint32x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15671,11 +15767,17 @@ pub fn vget_high_u32(a: uint32x4_t) -> uint32x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15693,11 +15795,17 @@ pub fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15720,11 +15828,17 @@ pub fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15742,11 +15856,17 @@ pub fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15767,11 +15887,17 @@ pub fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15789,11 +15915,17 @@ pub fn vget_high_s64(a: int64x2_t) -> int64x1_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15814,11 +15946,17 @@ pub fn vget_high_s64(a: int64x2_t) -> int64x1_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15836,11 +15974,17 @@ pub fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -17399,7 +17543,7 @@ pub fn vget_low_u64(a: uint64x2_t) -> uint64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shadd.v8i8"
@@ -17428,7 +17572,7 @@ pub fn vhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shadd.v16i8"
@@ -17457,7 +17601,7 @@ pub fn vhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shadd.v4i16"
@@ -17486,7 +17630,7 @@ pub fn vhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shadd.v8i16"
@@ -17515,7 +17659,7 @@ pub fn vhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shadd.v2i32"
@@ -17544,7 +17688,7 @@ pub fn vhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shadd.v4i32"
@@ -17573,7 +17717,7 @@ pub fn vhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhadd.v8i8"
@@ -17602,7 +17746,7 @@ pub fn vhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhadd.v16i8"
@@ -17631,7 +17775,7 @@ pub fn vhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhadd.v4i16"
@@ -17660,7 +17804,7 @@ pub fn vhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhadd.v8i16"
@@ -17689,7 +17833,7 @@ pub fn vhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhadd.v2i32"
@@ -17718,7 +17862,7 @@ pub fn vhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhadd.v4i32"
@@ -17747,7 +17891,7 @@ pub fn vhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shsub.v4i16"
@@ -17776,7 +17920,7 @@ pub fn vhsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shsub.v8i16"
@@ -17805,7 +17949,7 @@ pub fn vhsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shsub.v2i32"
@@ -17834,7 +17978,7 @@ pub fn vhsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shsub.v4i32"
@@ -17863,7 +18007,7 @@ pub fn vhsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shsub.v8i8"
@@ -17892,7 +18036,7 @@ pub fn vhsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.shsub.v16i8"
@@ -17921,7 +18065,7 @@ pub fn vhsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhsub.v8i8"
@@ -17950,7 +18094,7 @@ pub fn vhsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhsub.v16i8"
@@ -17979,7 +18123,7 @@ pub fn vhsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhsub.v4i16"
@@ -18008,7 +18152,7 @@ pub fn vhsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhsub.v8i16"
@@ -18037,7 +18181,7 @@ pub fn vhsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhsub.v2i32"
@@ -18066,7 +18210,7 @@ pub fn vhsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uhsub.v4i32"
@@ -19797,7 +19941,7 @@ pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) 
 pub unsafe fn vld1_p64(ptr: *const p64) -> poly64x1_t {
     let a: *const i8 = ptr as *const i8;
     let b: i32 = crate::mem::align_of::<p64>() as i32;
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v1i64")]
         fn _vld1_v1i64(a: *const i8, b: i32) -> int64x1_t;
     }
@@ -21432,7 +21576,7 @@ pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1_v1i64<const ALIGN: i32>(a: *const i8) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v1i64")]
         fn _vld1_v1i64(a: *const i8, b: i32) -> int64x1_t;
     }
@@ -21445,7 +21589,7 @@ unsafe fn vld1_v1i64<const ALIGN: i32>(a: *const i8) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1_v2f32<const ALIGN: i32>(a: *const i8) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v2f32")]
         fn _vld1_v2f32(a: *const i8, b: i32) -> float32x2_t;
     }
@@ -21458,7 +21602,7 @@ unsafe fn vld1_v2f32<const ALIGN: i32>(a: *const i8) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1_v2i32<const ALIGN: i32>(a: *const i8) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v2i32")]
         fn _vld1_v2i32(a: *const i8, b: i32) -> int32x2_t;
     }
@@ -21471,7 +21615,7 @@ unsafe fn vld1_v2i32<const ALIGN: i32>(a: *const i8) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1_v4i16<const ALIGN: i32>(a: *const i8) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4i16")]
         fn _vld1_v4i16(a: *const i8, b: i32) -> int16x4_t;
     }
@@ -21484,7 +21628,7 @@ unsafe fn vld1_v4i16<const ALIGN: i32>(a: *const i8) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1_v8i8<const ALIGN: i32>(a: *const i8) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v8i8")]
         fn _vld1_v8i8(a: *const i8, b: i32) -> int8x8_t;
     }
@@ -21497,7 +21641,7 @@ unsafe fn vld1_v8i8<const ALIGN: i32>(a: *const i8) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1q_v16i8<const ALIGN: i32>(a: *const i8) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v16i8")]
         fn _vld1q_v16i8(a: *const i8, b: i32) -> int8x16_t;
     }
@@ -21510,7 +21654,7 @@ unsafe fn vld1q_v16i8<const ALIGN: i32>(a: *const i8) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1q_v2i64<const ALIGN: i32>(a: *const i8) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v2i64")]
         fn _vld1q_v2i64(a: *const i8, b: i32) -> int64x2_t;
     }
@@ -21523,7 +21667,7 @@ unsafe fn vld1q_v2i64<const ALIGN: i32>(a: *const i8) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1q_v4f32<const ALIGN: i32>(a: *const i8) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4f32")]
         fn _vld1q_v4f32(a: *const i8, b: i32) -> float32x4_t;
     }
@@ -21536,7 +21680,7 @@ unsafe fn vld1q_v4f32<const ALIGN: i32>(a: *const i8) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1q_v4i32<const ALIGN: i32>(a: *const i8) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4i32")]
         fn _vld1q_v4i32(a: *const i8, b: i32) -> int32x4_t;
     }
@@ -21549,7 +21693,7 @@ unsafe fn vld1q_v4i32<const ALIGN: i32>(a: *const i8) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 unsafe fn vld1q_v8i16<const ALIGN: i32>(a: *const i8) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v8i16")]
         fn _vld1q_v8i16(a: *const i8, b: i32) -> int16x8_t;
     }
@@ -21563,7 +21707,7 @@ unsafe fn vld1q_v8i16<const ALIGN: i32>(a: *const i8) -> int16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg(not(target_arch = "arm64ec"))]
 unsafe fn vld1_v4f16(a: *const i8, b: i32) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4f16")]
         fn _vld1_v4f16(a: *const i8, b: i32) -> float16x4_t;
     }
@@ -21577,7 +21721,7 @@ unsafe fn vld1_v4f16(a: *const i8, b: i32) -> float16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg(not(target_arch = "arm64ec"))]
 unsafe fn vld1q_v8f16(a: *const i8, b: i32) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v8f16")]
         fn _vld1q_v8f16(a: *const i8, b: i32) -> float16x8_t;
     }
@@ -21620,7 +21764,7 @@ pub unsafe fn vld1q_dup_p64(ptr: *const p64) -> poly64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v4f16.p0")]
         fn _vld2_dup_f16(ptr: *const f16, size: i32) -> float16x4x2_t;
     }
@@ -21639,7 +21783,7 @@ pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_dup_f16(a: *const f16) -> float16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v8f16.p0")]
         fn _vld2q_dup_f16(ptr: *const f16, size: i32) -> float16x8x2_t;
     }
@@ -21660,7 +21804,7 @@ pub unsafe fn vld2q_dup_f16(a: *const f16) -> float16x8x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v4f16.p0"
@@ -21684,7 +21828,7 @@ pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_dup_f16(a: *const f16) -> float16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v8f16.p0"
@@ -21703,7 +21847,7 @@ pub unsafe fn vld2q_dup_f16(a: *const f16) -> float16x8x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_dup_f32(a: *const f32) -> float32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v2f32.p0")]
         fn _vld2_dup_f32(ptr: *const i8, size: i32) -> float32x2x2_t;
     }
@@ -21719,7 +21863,7 @@ pub unsafe fn vld2_dup_f32(a: *const f32) -> float32x2x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_dup_f32(a: *const f32) -> float32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v4f32.p0")]
         fn _vld2q_dup_f32(ptr: *const i8, size: i32) -> float32x4x2_t;
     }
@@ -21735,7 +21879,7 @@ pub unsafe fn vld2q_dup_f32(a: *const f32) -> float32x4x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_dup_s8(a: *const i8) -> int8x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v8i8.p0")]
         fn _vld2_dup_s8(ptr: *const i8, size: i32) -> int8x8x2_t;
     }
@@ -21751,7 +21895,7 @@ pub unsafe fn vld2_dup_s8(a: *const i8) -> int8x8x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_dup_s8(a: *const i8) -> int8x16x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v16i8.p0")]
         fn _vld2q_dup_s8(ptr: *const i8, size: i32) -> int8x16x2_t;
     }
@@ -21767,7 +21911,7 @@ pub unsafe fn vld2q_dup_s8(a: *const i8) -> int8x16x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_dup_s16(a: *const i16) -> int16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v4i16.p0")]
         fn _vld2_dup_s16(ptr: *const i8, size: i32) -> int16x4x2_t;
     }
@@ -21783,7 +21927,7 @@ pub unsafe fn vld2_dup_s16(a: *const i16) -> int16x4x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_dup_s16(a: *const i16) -> int16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v8i16.p0")]
         fn _vld2q_dup_s16(ptr: *const i8, size: i32) -> int16x8x2_t;
     }
@@ -21799,7 +21943,7 @@ pub unsafe fn vld2q_dup_s16(a: *const i16) -> int16x8x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_dup_s32(a: *const i32) -> int32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v2i32.p0")]
         fn _vld2_dup_s32(ptr: *const i8, size: i32) -> int32x2x2_t;
     }
@@ -21815,7 +21959,7 @@ pub unsafe fn vld2_dup_s32(a: *const i32) -> int32x2x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_dup_s32(a: *const i32) -> int32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v4i32.p0")]
         fn _vld2q_dup_s32(ptr: *const i8, size: i32) -> int32x4x2_t;
     }
@@ -21831,7 +21975,7 @@ pub unsafe fn vld2q_dup_s32(a: *const i32) -> int32x4x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2_dup_f32(a: *const f32) -> float32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v2f32.p0"
@@ -21850,7 +21994,7 @@ pub unsafe fn vld2_dup_f32(a: *const f32) -> float32x2x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2q_dup_f32(a: *const f32) -> float32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v4f32.p0"
@@ -21869,7 +22013,7 @@ pub unsafe fn vld2q_dup_f32(a: *const f32) -> float32x4x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2_dup_s8(a: *const i8) -> int8x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v8i8.p0"
@@ -21888,7 +22032,7 @@ pub unsafe fn vld2_dup_s8(a: *const i8) -> int8x8x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2q_dup_s8(a: *const i8) -> int8x16x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v16i8.p0"
@@ -21907,7 +22051,7 @@ pub unsafe fn vld2q_dup_s8(a: *const i8) -> int8x16x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2_dup_s16(a: *const i16) -> int16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v4i16.p0"
@@ -21926,7 +22070,7 @@ pub unsafe fn vld2_dup_s16(a: *const i16) -> int16x4x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2q_dup_s16(a: *const i16) -> int16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v8i16.p0"
@@ -21945,7 +22089,7 @@ pub unsafe fn vld2q_dup_s16(a: *const i16) -> int16x8x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2_dup_s32(a: *const i32) -> int32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v2i32.p0"
@@ -21964,7 +22108,7 @@ pub unsafe fn vld2_dup_s32(a: *const i32) -> int32x2x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2q_dup_s32(a: *const i32) -> int32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v4i32.p0"
@@ -22006,7 +22150,7 @@ pub unsafe fn vld2_dup_p64(a: *const p64) -> poly64x1x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld2_dup_s64(a: *const i64) -> int64x1x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v1i64.p0")]
         fn _vld2_dup_s64(ptr: *const i8, size: i32) -> int64x1x2_t;
     }
@@ -22022,7 +22166,7 @@ pub unsafe fn vld2_dup_s64(a: *const i64) -> int64x1x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2_dup_s64(a: *const i64) -> int64x1x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2r.v1i64.p0"
@@ -22297,7 +22441,7 @@ pub unsafe fn vld2q_dup_p16(a: *const p16) -> poly16x8x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v4f16.p0")]
         fn _vld2_f16(ptr: *const f16, size: i32) -> float16x4x2_t;
     }
@@ -22316,7 +22460,7 @@ pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_f16(a: *const f16) -> float16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v8f16.p0")]
         fn _vld2q_f16(ptr: *const f16, size: i32) -> float16x8x2_t;
     }
@@ -22337,7 +22481,7 @@ pub unsafe fn vld2q_f16(a: *const f16) -> float16x8x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v4f16.p0"
@@ -22361,7 +22505,7 @@ pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_f16(a: *const f16) -> float16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v8f16.p0"
@@ -22380,7 +22524,7 @@ pub unsafe fn vld2q_f16(a: *const f16) -> float16x8x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_f32(a: *const f32) -> float32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v2f32")]
         fn _vld2_f32(ptr: *const i8, size: i32) -> float32x2x2_t;
     }
@@ -22396,7 +22540,7 @@ pub unsafe fn vld2_f32(a: *const f32) -> float32x2x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_f32(a: *const f32) -> float32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v4f32")]
         fn _vld2q_f32(ptr: *const i8, size: i32) -> float32x4x2_t;
     }
@@ -22412,7 +22556,7 @@ pub unsafe fn vld2q_f32(a: *const f32) -> float32x4x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_s8(a: *const i8) -> int8x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v8i8")]
         fn _vld2_s8(ptr: *const i8, size: i32) -> int8x8x2_t;
     }
@@ -22428,7 +22572,7 @@ pub unsafe fn vld2_s8(a: *const i8) -> int8x8x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_s8(a: *const i8) -> int8x16x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v16i8")]
         fn _vld2q_s8(ptr: *const i8, size: i32) -> int8x16x2_t;
     }
@@ -22444,7 +22588,7 @@ pub unsafe fn vld2q_s8(a: *const i8) -> int8x16x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_s16(a: *const i16) -> int16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v4i16")]
         fn _vld2_s16(ptr: *const i8, size: i32) -> int16x4x2_t;
     }
@@ -22460,7 +22604,7 @@ pub unsafe fn vld2_s16(a: *const i16) -> int16x4x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_s16(a: *const i16) -> int16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v8i16")]
         fn _vld2q_s16(ptr: *const i8, size: i32) -> int16x8x2_t;
     }
@@ -22476,7 +22620,7 @@ pub unsafe fn vld2q_s16(a: *const i16) -> int16x8x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2_s32(a: *const i32) -> int32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v2i32")]
         fn _vld2_s32(ptr: *const i8, size: i32) -> int32x2x2_t;
     }
@@ -22492,7 +22636,7 @@ pub unsafe fn vld2_s32(a: *const i32) -> int32x2x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld2))]
 pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v4i32")]
         fn _vld2q_s32(ptr: *const i8, size: i32) -> int32x4x2_t;
     }
@@ -22508,7 +22652,7 @@ pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2_f32(a: *const f32) -> float32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v2f32.p0"
@@ -22527,7 +22671,7 @@ pub unsafe fn vld2_f32(a: *const f32) -> float32x2x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2q_f32(a: *const f32) -> float32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v4f32.p0"
@@ -22546,7 +22690,7 @@ pub unsafe fn vld2q_f32(a: *const f32) -> float32x4x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2_s8(a: *const i8) -> int8x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v8i8.p0"
@@ -22565,7 +22709,7 @@ pub unsafe fn vld2_s8(a: *const i8) -> int8x8x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2q_s8(a: *const i8) -> int8x16x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v16i8.p0"
@@ -22584,7 +22728,7 @@ pub unsafe fn vld2q_s8(a: *const i8) -> int8x16x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2_s16(a: *const i16) -> int16x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v4i16.p0"
@@ -22603,7 +22747,7 @@ pub unsafe fn vld2_s16(a: *const i16) -> int16x4x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2q_s16(a: *const i16) -> int16x8x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v8i16.p0"
@@ -22622,7 +22766,7 @@ pub unsafe fn vld2q_s16(a: *const i16) -> int16x8x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2_s32(a: *const i32) -> int32x2x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v2i32.p0"
@@ -22641,7 +22785,7 @@ pub unsafe fn vld2_s32(a: *const i32) -> int32x2x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v4i32.p0"
@@ -22664,7 +22808,7 @@ pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) -> float16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v4f16.p0")]
         fn _vld2_lane_f16(
             ptr: *const f16,
@@ -22690,7 +22834,7 @@ pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) ->
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x2_t) -> float16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v8f16.p0")]
         fn _vld2q_lane_f16(
             ptr: *const f16,
@@ -22719,7 +22863,7 @@ pub unsafe fn vld2q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x2_t) -
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) -> float16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v4f16.p0"
@@ -22746,7 +22890,7 @@ pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) ->
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x2_t) -> float16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v8f16.p0"
@@ -22772,7 +22916,7 @@ pub unsafe fn vld2q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x2_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld2_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x2_t) -> float32x2x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v2f32.p0"
@@ -22793,7 +22937,7 @@ pub unsafe fn vld2_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x2_t) ->
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld2q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x2_t) -> float32x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v4f32.p0"
@@ -22815,7 +22959,7 @@ pub unsafe fn vld2q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x2_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld2_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x2_t) -> int8x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v8i8.p0"
@@ -22836,7 +22980,7 @@ pub unsafe fn vld2_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x2_t) -> int8
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld2_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x2_t) -> int16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v4i16.p0"
@@ -22857,7 +23001,7 @@ pub unsafe fn vld2_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x2_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld2q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x2_t) -> int16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v8i16.p0"
@@ -22878,7 +23022,7 @@ pub unsafe fn vld2q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x2_t) -> 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld2_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x2_t) -> int32x2x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v2i32.p0"
@@ -22899,7 +23043,7 @@ pub unsafe fn vld2_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x2_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld2q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x2_t) -> int32x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2lane.v4i32.p0"
@@ -22920,7 +23064,7 @@ pub unsafe fn vld2q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x2_t) -> 
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x2_t) -> float32x2x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v2f32.p0")]
         fn _vld2_lane_f32(
             ptr: *const i8,
@@ -22944,7 +23088,7 @@ pub unsafe fn vld2_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x2_t) ->
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x2_t) -> float32x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v4f32.p0")]
         fn _vld2q_lane_f32(
             ptr: *const i8,
@@ -22968,7 +23112,7 @@ pub unsafe fn vld2q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x2_t) -
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x2_t) -> int16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v8i16.p0")]
         fn _vld2q_lane_s16(
             ptr: *const i8,
@@ -22992,7 +23136,7 @@ pub unsafe fn vld2q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x2_t) -> 
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x2_t) -> int32x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v4i32.p0")]
         fn _vld2q_lane_s32(
             ptr: *const i8,
@@ -23016,7 +23160,7 @@ pub unsafe fn vld2q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x2_t) -> 
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x2_t) -> int8x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v8i8.p0")]
         fn _vld2_lane_s8(ptr: *const i8, a: int8x8_t, b: int8x8_t, n: i32, size: i32)
             -> int8x8x2_t;
@@ -23035,7 +23179,7 @@ pub unsafe fn vld2_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x2_t) -> int8
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x2_t) -> int16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v4i16.p0")]
         fn _vld2_lane_s16(
             ptr: *const i8,
@@ -23059,7 +23203,7 @@ pub unsafe fn vld2_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x2_t) -> i
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x2_t) -> int32x2x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2lane.v2i32.p0")]
         fn _vld2_lane_s32(
             ptr: *const i8,
@@ -23304,7 +23448,7 @@ pub unsafe fn vld2_p64(a: *const p64) -> poly64x1x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld2_s64(a: *const i64) -> int64x1x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v1i64")]
         fn _vld2_s64(ptr: *const i8, size: i32) -> int64x1x2_t;
     }
@@ -23320,7 +23464,7 @@ pub unsafe fn vld2_s64(a: *const i64) -> int64x1x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld2_s64(a: *const i64) -> int64x1x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld2.v1i64.p0"
@@ -23595,7 +23739,7 @@ pub unsafe fn vld2q_p16(a: *const p16) -> poly16x8x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v4f16.p0")]
         fn _vld3_dup_f16(ptr: *const f16, size: i32) -> float16x4x3_t;
     }
@@ -23614,7 +23758,7 @@ pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_dup_f16(a: *const f16) -> float16x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v8f16.p0")]
         fn _vld3q_dup_f16(ptr: *const f16, size: i32) -> float16x8x3_t;
     }
@@ -23635,7 +23779,7 @@ pub unsafe fn vld3q_dup_f16(a: *const f16) -> float16x8x3_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v4f16.p0"
@@ -23659,7 +23803,7 @@ pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_dup_f16(a: *const f16) -> float16x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v8f16.p0"
@@ -23678,7 +23822,7 @@ pub unsafe fn vld3q_dup_f16(a: *const f16) -> float16x8x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3_dup_f32(a: *const f32) -> float32x2x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v2f32.p0"
@@ -23697,7 +23841,7 @@ pub unsafe fn vld3_dup_f32(a: *const f32) -> float32x2x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3q_dup_f32(a: *const f32) -> float32x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v4f32.p0"
@@ -23716,7 +23860,7 @@ pub unsafe fn vld3q_dup_f32(a: *const f32) -> float32x4x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3_dup_s8(a: *const i8) -> int8x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v8i8.p0"
@@ -23735,7 +23879,7 @@ pub unsafe fn vld3_dup_s8(a: *const i8) -> int8x8x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3q_dup_s8(a: *const i8) -> int8x16x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v16i8.p0"
@@ -23754,7 +23898,7 @@ pub unsafe fn vld3q_dup_s8(a: *const i8) -> int8x16x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3_dup_s16(a: *const i16) -> int16x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v4i16.p0"
@@ -23773,7 +23917,7 @@ pub unsafe fn vld3_dup_s16(a: *const i16) -> int16x4x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3q_dup_s16(a: *const i16) -> int16x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v8i16.p0"
@@ -23792,7 +23936,7 @@ pub unsafe fn vld3q_dup_s16(a: *const i16) -> int16x8x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3_dup_s32(a: *const i32) -> int32x2x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v2i32.p0"
@@ -23811,7 +23955,7 @@ pub unsafe fn vld3_dup_s32(a: *const i32) -> int32x2x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3q_dup_s32(a: *const i32) -> int32x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v4i32.p0"
@@ -23830,7 +23974,7 @@ pub unsafe fn vld3q_dup_s32(a: *const i32) -> int32x4x3_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3_dup_s64(a: *const i64) -> int64x1x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3r.v1i64.p0"
@@ -23849,7 +23993,7 @@ pub unsafe fn vld3_dup_s64(a: *const i64) -> int64x1x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_dup_f32(a: *const f32) -> float32x2x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v2f32.p0")]
         fn _vld3_dup_f32(ptr: *const i8, size: i32) -> float32x2x3_t;
     }
@@ -23865,7 +24009,7 @@ pub unsafe fn vld3_dup_f32(a: *const f32) -> float32x2x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_dup_f32(a: *const f32) -> float32x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v4f32.p0")]
         fn _vld3q_dup_f32(ptr: *const i8, size: i32) -> float32x4x3_t;
     }
@@ -23881,7 +24025,7 @@ pub unsafe fn vld3q_dup_f32(a: *const f32) -> float32x4x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_dup_s8(a: *const i8) -> int8x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v8i8.p0")]
         fn _vld3_dup_s8(ptr: *const i8, size: i32) -> int8x8x3_t;
     }
@@ -23897,7 +24041,7 @@ pub unsafe fn vld3_dup_s8(a: *const i8) -> int8x8x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_dup_s8(a: *const i8) -> int8x16x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v16i8.p0")]
         fn _vld3q_dup_s8(ptr: *const i8, size: i32) -> int8x16x3_t;
     }
@@ -23913,7 +24057,7 @@ pub unsafe fn vld3q_dup_s8(a: *const i8) -> int8x16x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_dup_s16(a: *const i16) -> int16x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v4i16.p0")]
         fn _vld3_dup_s16(ptr: *const i8, size: i32) -> int16x4x3_t;
     }
@@ -23929,7 +24073,7 @@ pub unsafe fn vld3_dup_s16(a: *const i16) -> int16x4x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_dup_s16(a: *const i16) -> int16x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v8i16.p0")]
         fn _vld3q_dup_s16(ptr: *const i8, size: i32) -> int16x8x3_t;
     }
@@ -23945,7 +24089,7 @@ pub unsafe fn vld3q_dup_s16(a: *const i16) -> int16x8x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_dup_s32(a: *const i32) -> int32x2x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v2i32.p0")]
         fn _vld3_dup_s32(ptr: *const i8, size: i32) -> int32x2x3_t;
     }
@@ -23961,7 +24105,7 @@ pub unsafe fn vld3_dup_s32(a: *const i32) -> int32x2x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_dup_s32(a: *const i32) -> int32x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v4i32.p0")]
         fn _vld3q_dup_s32(ptr: *const i8, size: i32) -> int32x4x3_t;
     }
@@ -24000,7 +24144,7 @@ pub unsafe fn vld3_dup_p64(a: *const p64) -> poly64x1x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld3_dup_s64(a: *const i64) -> int64x1x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v1i64.p0")]
         fn _vld3_dup_s64(ptr: *const i8, size: i32) -> int64x1x3_t;
     }
@@ -24272,7 +24416,7 @@ pub unsafe fn vld3q_dup_p16(a: *const p16) -> poly16x8x3_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_f16(a: *const f16) -> float16x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v4f16.p0")]
         fn _vld3_f16(ptr: *const f16, size: i32) -> float16x4x3_t;
     }
@@ -24291,7 +24435,7 @@ pub unsafe fn vld3_f16(a: *const f16) -> float16x4x3_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_f16(a: *const f16) -> float16x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v8f16.p0")]
         fn _vld3q_f16(ptr: *const f16, size: i32) -> float16x8x3_t;
     }
@@ -24437,7 +24581,7 @@ pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_f32(a: *const f32) -> float32x2x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v2f32.p0")]
         fn _vld3_f32(ptr: *const i8, size: i32) -> float32x2x3_t;
     }
@@ -24453,7 +24597,7 @@ pub unsafe fn vld3_f32(a: *const f32) -> float32x2x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_f32(a: *const f32) -> float32x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v4f32.p0")]
         fn _vld3q_f32(ptr: *const i8, size: i32) -> float32x4x3_t;
     }
@@ -24469,7 +24613,7 @@ pub unsafe fn vld3q_f32(a: *const f32) -> float32x4x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_s8(a: *const i8) -> int8x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v8i8.p0")]
         fn _vld3_s8(ptr: *const i8, size: i32) -> int8x8x3_t;
     }
@@ -24485,7 +24629,7 @@ pub unsafe fn vld3_s8(a: *const i8) -> int8x8x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_s8(a: *const i8) -> int8x16x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v16i8.p0")]
         fn _vld3q_s8(ptr: *const i8, size: i32) -> int8x16x3_t;
     }
@@ -24501,7 +24645,7 @@ pub unsafe fn vld3q_s8(a: *const i8) -> int8x16x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_s16(a: *const i16) -> int16x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v4i16.p0")]
         fn _vld3_s16(ptr: *const i8, size: i32) -> int16x4x3_t;
     }
@@ -24517,7 +24661,7 @@ pub unsafe fn vld3_s16(a: *const i16) -> int16x4x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_s16(a: *const i16) -> int16x8x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v8i16.p0")]
         fn _vld3q_s16(ptr: *const i8, size: i32) -> int16x8x3_t;
     }
@@ -24533,7 +24677,7 @@ pub unsafe fn vld3q_s16(a: *const i16) -> int16x8x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3_s32(a: *const i32) -> int32x2x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v2i32.p0")]
         fn _vld3_s32(ptr: *const i8, size: i32) -> int32x2x3_t;
     }
@@ -24549,7 +24693,7 @@ pub unsafe fn vld3_s32(a: *const i32) -> int32x2x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld3))]
 pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v4i32.p0")]
         fn _vld3q_s32(ptr: *const i8, size: i32) -> int32x4x3_t;
     }
@@ -24569,7 +24713,7 @@ pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) -> float16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v4f16.p0")]
         fn _vld3_lane_f16(
             ptr: *const f16,
@@ -24596,7 +24740,7 @@ pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) ->
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x3_t) -> float16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v8f16.p0")]
         fn _vld3q_lane_f16(
             ptr: *const f16,
@@ -24626,7 +24770,7 @@ pub unsafe fn vld3q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x3_t) -
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) -> float16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v4f16.p0"
@@ -24658,7 +24802,7 @@ pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) ->
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x3_t) -> float16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v8f16.p0"
@@ -24685,7 +24829,7 @@ pub unsafe fn vld3q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x3_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld3_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x3_t) -> float32x2x3_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v2f32.p0"
@@ -24712,7 +24856,7 @@ pub unsafe fn vld3_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x3_t) ->
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -> float32x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v4f32.p0"
@@ -24739,7 +24883,7 @@ pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x3_t) -> float32x2x3_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v2f32.p0")]
         fn _vld3_lane_f32(
             ptr: *const i8,
@@ -24764,7 +24908,7 @@ pub unsafe fn vld3_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x3_t) ->
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld3_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x3_t) -> int8x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v8i8.p0"
@@ -24791,7 +24935,7 @@ pub unsafe fn vld3_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x3_t) -> int8
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld3_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x3_t) -> int16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v4i16.p0"
@@ -24818,7 +24962,7 @@ pub unsafe fn vld3_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x3_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld3q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x3_t) -> int16x8x3_t {
     static_assert_uimm_bits!(LANE, 4);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v8i16.p0"
@@ -24845,7 +24989,7 @@ pub unsafe fn vld3q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x3_t) -> 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld3_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x3_t) -> int32x2x3_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v2i32.p0"
@@ -24872,7 +25016,7 @@ pub unsafe fn vld3_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x3_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld3q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x3_t) -> int32x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld3lane.v4i32.p0"
@@ -24899,7 +25043,7 @@ pub unsafe fn vld3q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x3_t) -> 
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x3_t) -> int8x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v8i8.p0")]
         fn _vld3_lane_s8(
             ptr: *const i8,
@@ -24924,7 +25068,7 @@ pub unsafe fn vld3_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x3_t) -> int8
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x3_t) -> int16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v4i16.p0")]
         fn _vld3_lane_s16(
             ptr: *const i8,
@@ -24949,7 +25093,7 @@ pub unsafe fn vld3_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x3_t) -> i
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x3_t) -> int16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v8i16.p0")]
         fn _vld3q_lane_s16(
             ptr: *const i8,
@@ -24974,7 +25118,7 @@ pub unsafe fn vld3q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x3_t) -> 
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x3_t) -> int32x2x3_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v2i32.p0")]
         fn _vld3_lane_s32(
             ptr: *const i8,
@@ -24999,7 +25143,7 @@ pub unsafe fn vld3_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x3_t) -> i
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x3_t) -> int32x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v4i32.p0")]
         fn _vld3q_lane_s32(
             ptr: *const i8,
@@ -25257,7 +25401,7 @@ pub unsafe fn vld3_s64(a: *const i64) -> int64x1x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld3_s64(a: *const i64) -> int64x1x3_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v1i64.p0")]
         fn _vld3_s64(ptr: *const i8, size: i32) -> int64x1x3_t;
     }
@@ -25528,7 +25672,7 @@ pub unsafe fn vld3q_p16(a: *const p16) -> poly16x8x3_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -> float32x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3lane.v4f32.p0")]
         fn _vld3q_lane_f32(
             ptr: *const i8,
@@ -25553,7 +25697,7 @@ pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v4f16.p0")]
         fn _vld4_dup_f16(ptr: *const f16, size: i32) -> float16x4x4_t;
     }
@@ -25571,7 +25715,7 @@ pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_dup_f16(a: *const f16) -> float16x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v8f16.p0")]
         fn _vld4q_dup_f16(ptr: *const f16, size: i32) -> float16x8x4_t;
     }
@@ -25591,7 +25735,7 @@ pub unsafe fn vld4q_dup_f16(a: *const f16) -> float16x8x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v4f16.p0"
@@ -25614,7 +25758,7 @@ pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_dup_f16(a: *const f16) -> float16x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v8f16.p0"
@@ -25633,7 +25777,7 @@ pub unsafe fn vld4q_dup_f16(a: *const f16) -> float16x8x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v2f32.p0")]
         fn _vld4_dup_f32(ptr: *const i8, size: i32) -> float32x2x4_t;
     }
@@ -25649,7 +25793,7 @@ pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v4f32.p0")]
         fn _vld4q_dup_f32(ptr: *const i8, size: i32) -> float32x4x4_t;
     }
@@ -25665,7 +25809,7 @@ pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v8i8.p0")]
         fn _vld4_dup_s8(ptr: *const i8, size: i32) -> int8x8x4_t;
     }
@@ -25681,7 +25825,7 @@ pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v16i8.p0")]
         fn _vld4q_dup_s8(ptr: *const i8, size: i32) -> int8x16x4_t;
     }
@@ -25697,7 +25841,7 @@ pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v4i16.p0")]
         fn _vld4_dup_s16(ptr: *const i8, size: i32) -> int16x4x4_t;
     }
@@ -25713,7 +25857,7 @@ pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v8i16.p0")]
         fn _vld4q_dup_s16(ptr: *const i8, size: i32) -> int16x8x4_t;
     }
@@ -25729,7 +25873,7 @@ pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v2i32.p0")]
         fn _vld4_dup_s32(ptr: *const i8, size: i32) -> int32x2x4_t;
     }
@@ -25745,7 +25889,7 @@ pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
 #[cfg_attr(test, assert_instr(vld4))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v4i32.p0")]
         fn _vld4q_dup_s32(ptr: *const i8, size: i32) -> int32x4x4_t;
     }
@@ -25761,7 +25905,7 @@ pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v2f32.p0.p0"
@@ -25780,7 +25924,7 @@ pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v4f32.p0.p0"
@@ -25799,7 +25943,7 @@ pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v8i8.p0.p0"
@@ -25818,7 +25962,7 @@ pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v16i8.p0.p0"
@@ -25837,7 +25981,7 @@ pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v4i16.p0.p0"
@@ -25856,7 +26000,7 @@ pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v8i16.p0.p0"
@@ -25875,7 +26019,7 @@ pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v2i32.p0.p0"
@@ -25894,7 +26038,7 @@ pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v4i32.p0.p0"
@@ -25913,7 +26057,7 @@ pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4r.v1i64.p0.p0"
@@ -25955,7 +26099,7 @@ pub unsafe fn vld4_dup_p64(a: *const p64) -> poly64x1x4_t {
 #[cfg_attr(test, assert_instr(nop))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v1i64.p0")]
         fn _vld4_dup_s64(ptr: *const i8, size: i32) -> int64x1x4_t;
     }
@@ -26226,7 +26370,7 @@ pub unsafe fn vld4q_dup_p16(a: *const p16) -> poly16x8x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_f16(a: *const f16) -> float16x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v4f16.p0")]
         fn _vld4_f16(ptr: *const f16, size: i32) -> float16x4x4_t;
     }
@@ -26244,7 +26388,7 @@ pub unsafe fn vld4_f16(a: *const f16) -> float16x4x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_f16(a: *const f16) -> float16x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v8f16.p0")]
         fn _vld4q_f16(ptr: *const f16, size: i32) -> float16x8x4_t;
     }
@@ -26388,7 +26532,7 @@ pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4_f32(a: *const f32) -> float32x2x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v2f32.p0")]
         fn _vld4_f32(ptr: *const i8, size: i32) -> float32x2x4_t;
     }
@@ -26404,7 +26548,7 @@ pub unsafe fn vld4_f32(a: *const f32) -> float32x2x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4q_f32(a: *const f32) -> float32x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v4f32.p0")]
         fn _vld4q_f32(ptr: *const i8, size: i32) -> float32x4x4_t;
     }
@@ -26420,7 +26564,7 @@ pub unsafe fn vld4q_f32(a: *const f32) -> float32x4x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4_s8(a: *const i8) -> int8x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v8i8.p0")]
         fn _vld4_s8(ptr: *const i8, size: i32) -> int8x8x4_t;
     }
@@ -26436,7 +26580,7 @@ pub unsafe fn vld4_s8(a: *const i8) -> int8x8x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4q_s8(a: *const i8) -> int8x16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v16i8.p0")]
         fn _vld4q_s8(ptr: *const i8, size: i32) -> int8x16x4_t;
     }
@@ -26452,7 +26596,7 @@ pub unsafe fn vld4q_s8(a: *const i8) -> int8x16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4_s16(a: *const i16) -> int16x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v4i16.p0")]
         fn _vld4_s16(ptr: *const i8, size: i32) -> int16x4x4_t;
     }
@@ -26468,7 +26612,7 @@ pub unsafe fn vld4_s16(a: *const i16) -> int16x4x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4q_s16(a: *const i16) -> int16x8x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v8i16.p0")]
         fn _vld4q_s16(ptr: *const i8, size: i32) -> int16x8x4_t;
     }
@@ -26484,7 +26628,7 @@ pub unsafe fn vld4q_s16(a: *const i16) -> int16x8x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4_s32(a: *const i32) -> int32x2x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v2i32.p0")]
         fn _vld4_s32(ptr: *const i8, size: i32) -> int32x2x4_t;
     }
@@ -26500,7 +26644,7 @@ pub unsafe fn vld4_s32(a: *const i32) -> int32x2x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vld4))]
 pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v4i32.p0")]
         fn _vld4q_s32(ptr: *const i8, size: i32) -> int32x4x4_t;
     }
@@ -26520,7 +26664,7 @@ pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) -> float16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v4f16.p0")]
         fn _vld4_lane_f16(
             ptr: *const f16,
@@ -26548,7 +26692,7 @@ pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) ->
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x4_t) -> float16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v8f16.p0")]
         fn _vld4q_lane_f16(
             ptr: *const f16,
@@ -26578,7 +26722,7 @@ pub unsafe fn vld4q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x4_t) -
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) -> float16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v4f16.p0"
@@ -26610,7 +26754,7 @@ pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) ->
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x4_t) -> float16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v8f16.p0"
@@ -26638,7 +26782,7 @@ pub unsafe fn vld4q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x4_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) -> float32x2x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v2f32.p0"
@@ -26666,7 +26810,7 @@ pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) ->
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -> float32x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v4f32.p0"
@@ -26694,7 +26838,7 @@ pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v8i8.p0"
@@ -26722,7 +26866,7 @@ pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> int16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v4i16.p0"
@@ -26750,7 +26894,7 @@ pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> int16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v8i16.p0"
@@ -26778,7 +26922,7 @@ pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> int32x2x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v2i32.p0"
@@ -26806,7 +26950,7 @@ pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x4_t) -> int32x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ld4lane.v4i32.p0"
@@ -26834,7 +26978,7 @@ pub unsafe fn vld4q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x4_t) -> 
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) -> float32x2x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v2f32.p0")]
         fn _vld4_lane_f32(
             ptr: *const i8,
@@ -26860,7 +27004,7 @@ pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) ->
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -> float32x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v4f32.p0")]
         fn _vld4q_lane_f32(
             ptr: *const i8,
@@ -26886,7 +27030,7 @@ pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v8i8.p0")]
         fn _vld4_lane_s8(
             ptr: *const i8,
@@ -26912,7 +27056,7 @@ pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> int16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v4i16.p0")]
         fn _vld4_lane_s16(
             ptr: *const i8,
@@ -26938,7 +27082,7 @@ pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> i
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> int16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v8i16.p0")]
         fn _vld4q_lane_s16(
             ptr: *const i8,
@@ -26964,7 +27108,7 @@ pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> 
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> int32x2x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v2i32.p0")]
         fn _vld4_lane_s32(
             ptr: *const i8,
@@ -26990,7 +27134,7 @@ pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> i
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x4_t) -> int32x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4lane.v4i32.p0")]
         fn _vld4q_lane_s32(
             ptr: *const i8,
@@ -27249,7 +27393,7 @@ pub unsafe fn vld4_s64(a: *const i64) -> int64x1x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vld4_s64(a: *const i64) -> int64x1x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v1i64.p0")]
         fn _vld4_s64(ptr: *const i8, size: i32) -> int64x1x4_t;
     }
@@ -27551,7 +27695,7 @@ pub unsafe fn vldrq_p128(a: *const p128) -> p128 {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -27581,7 +27725,7 @@ pub fn vmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -27610,7 +27754,7 @@ pub fn vmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -27639,7 +27783,7 @@ pub fn vmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -27957,7 +28101,7 @@ pub fn vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -27987,7 +28131,7 @@ pub fn vmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28016,7 +28160,7 @@ pub fn vmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28045,7 +28189,7 @@ pub fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28075,7 +28219,7 @@ pub fn vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28105,7 +28249,7 @@ pub fn vmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28134,7 +28278,7 @@ pub fn vminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28163,7 +28307,7 @@ pub fn vmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28481,7 +28625,7 @@ pub fn vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28511,7 +28655,7 @@ pub fn vminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28540,7 +28684,7 @@ pub fn vminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -28569,7 +28713,7 @@ pub fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -31346,7 +31490,7 @@ pub fn vmlsl_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smmla.v4i32.v16i8"
@@ -31375,7 +31519,7 @@ pub fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.ummla.v4i32.v16i8"
@@ -32984,7 +33128,7 @@ pub fn vmulq_n_u32(a: uint32x4_t, b: u32) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmul_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmulp.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -33013,7 +33157,7 @@ pub fn vmul_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmulq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmulp.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -33562,7 +33706,7 @@ pub fn vmull_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmull_p8(a: poly8x8_t, b: poly8x8_t) -> poly16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.pmull.v8i16"
@@ -35287,7 +35431,7 @@ pub fn vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vpadd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -35318,7 +35462,7 @@ pub fn vpadd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vpadd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -35353,7 +35497,7 @@ pub fn vpadd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -35383,7 +35527,7 @@ pub fn vpadd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -35418,7 +35562,7 @@ pub fn vpadd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.addp.v8i8"
@@ -35448,7 +35592,7 @@ pub fn vpadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.addp.v8i8"
@@ -35483,7 +35627,7 @@ pub fn vpadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.addp.v4i16"
@@ -35513,7 +35657,7 @@ pub fn vpadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.addp.v4i16"
@@ -35548,7 +35692,7 @@ pub fn vpadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.addp.v2i32"
@@ -35578,7 +35722,7 @@ pub fn vpadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.addp.v2i32"
@@ -35675,7 +35819,7 @@ pub fn vpadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddl_s8(a: int8x8_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.saddlp.v4i16.v8i8"
@@ -35704,7 +35848,7 @@ pub fn vpaddl_s8(a: int8x8_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddlq_s8(a: int8x16_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.saddlp.v8i16.v16i8"
@@ -35733,7 +35877,7 @@ pub fn vpaddlq_s8(a: int8x16_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddl_s16(a: int16x4_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.saddlp.v2i32.v4i16"
@@ -35762,7 +35906,7 @@ pub fn vpaddl_s16(a: int16x4_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddlq_s16(a: int16x8_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.saddlp.v4i32.v8i16"
@@ -35791,7 +35935,7 @@ pub fn vpaddlq_s16(a: int16x8_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddl_s32(a: int32x2_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.saddlp.v1i64.v2i32"
@@ -35820,7 +35964,7 @@ pub fn vpaddl_s32(a: int32x2_t) -> int64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddlq_s32(a: int32x4_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.saddlp.v2i64.v4i32"
@@ -35849,7 +35993,7 @@ pub fn vpaddlq_s32(a: int32x4_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddl_u8(a: uint8x8_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlp.v4i16.v8i8"
@@ -35878,7 +36022,7 @@ pub fn vpaddl_u8(a: uint8x8_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddlq_u8(a: uint8x16_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlp.v8i16.v16i8"
@@ -35907,7 +36051,7 @@ pub fn vpaddlq_u8(a: uint8x16_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddl_u16(a: uint16x4_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlp.v2i32.v4i16"
@@ -35936,7 +36080,7 @@ pub fn vpaddl_u16(a: uint16x4_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddlq_u16(a: uint16x8_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlp.v4i32.v8i16"
@@ -35965,7 +36109,7 @@ pub fn vpaddlq_u16(a: uint16x8_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddl_u32(a: uint32x2_t) -> uint64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlp.v1i64.v2i32"
@@ -35994,7 +36138,7 @@ pub fn vpaddl_u32(a: uint32x2_t) -> uint64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpaddlq_u32(a: uint32x4_t) -> uint64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlp.v2i64.v4i32"
@@ -36024,7 +36168,7 @@ pub fn vpaddlq_u32(a: uint32x4_t) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fmaxp.v2f32"
@@ -36054,7 +36198,7 @@ pub fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fmaxp.v2f32"
@@ -36089,7 +36233,7 @@ pub fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smaxp.v8i8"
@@ -36119,7 +36263,7 @@ pub fn vpmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smaxp.v8i8"
@@ -36154,7 +36298,7 @@ pub fn vpmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smaxp.v4i16"
@@ -36184,7 +36328,7 @@ pub fn vpmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smaxp.v4i16"
@@ -36219,7 +36363,7 @@ pub fn vpmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smaxp.v2i32"
@@ -36249,7 +36393,7 @@ pub fn vpmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.smaxp.v2i32"
@@ -36284,7 +36428,7 @@ pub fn vpmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v8i8"
@@ -36314,7 +36458,7 @@ pub fn vpmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v8i8"
@@ -36349,7 +36493,7 @@ pub fn vpmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v4i16"
@@ -36379,7 +36523,7 @@ pub fn vpmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v4i16"
@@ -36414,7 +36558,7 @@ pub fn vpmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v2i32"
@@ -36444,7 +36588,7 @@ pub fn vpmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v2i32"
@@ -36479,7 +36623,7 @@ pub fn vpmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fminp.v2f32"
@@ -36509,7 +36653,7 @@ pub fn vpmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fminp.v2f32"
@@ -36544,7 +36688,7 @@ pub fn vpmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sminp.v8i8"
@@ -36574,7 +36718,7 @@ pub fn vpmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sminp.v8i8"
@@ -36609,7 +36753,7 @@ pub fn vpmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sminp.v4i16"
@@ -36639,7 +36783,7 @@ pub fn vpmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sminp.v4i16"
@@ -36674,7 +36818,7 @@ pub fn vpmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sminp.v2i32"
@@ -36704,7 +36848,7 @@ pub fn vpmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sminp.v2i32"
@@ -36739,7 +36883,7 @@ pub fn vpmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v8i8"
@@ -36769,7 +36913,7 @@ pub fn vpmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v8i8"
@@ -36804,7 +36948,7 @@ pub fn vpmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v4i16"
@@ -36834,7 +36978,7 @@ pub fn vpmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v4i16"
@@ -36869,7 +37013,7 @@ pub fn vpmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v2i32"
@@ -36899,7 +37043,7 @@ pub fn vpmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vpmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v2i32"
@@ -36933,7 +37077,7 @@ pub fn vpmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqabs_s8(a: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqabs.v8i8"
@@ -36962,7 +37106,7 @@ pub fn vqabs_s8(a: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqabsq_s8(a: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqabs.v16i8"
@@ -36991,7 +37135,7 @@ pub fn vqabsq_s8(a: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqabs_s16(a: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqabs.v4i16"
@@ -37020,7 +37164,7 @@ pub fn vqabs_s16(a: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqabsq_s16(a: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqabs.v8i16"
@@ -37049,7 +37193,7 @@ pub fn vqabsq_s16(a: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqabs_s32(a: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqabs.v2i32"
@@ -37078,7 +37222,7 @@ pub fn vqabs_s32(a: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqabsq_s32(a: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqabs.v4i32"
@@ -37899,7 +38043,7 @@ pub fn vqdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -37928,7 +38072,7 @@ pub fn vqdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -37957,7 +38101,7 @@ pub fn vqdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -37986,7 +38130,7 @@ pub fn vqdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmulh.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38105,7 +38249,7 @@ pub fn vqdmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqdmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmull.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38134,7 +38278,7 @@ pub fn vqdmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqdmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqdmull.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38163,7 +38307,7 @@ pub fn vqdmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovn_s16(a: int16x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovns.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38192,7 +38336,7 @@ pub fn vqmovn_s16(a: int16x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovn_s32(a: int32x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovns.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38221,7 +38365,7 @@ pub fn vqmovn_s32(a: int32x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovn_s64(a: int64x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovns.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38250,7 +38394,7 @@ pub fn vqmovn_s64(a: int64x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovn_u16(a: uint16x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38279,7 +38423,7 @@ pub fn vqmovn_u16(a: uint16x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovn_u32(a: uint32x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38308,7 +38452,7 @@ pub fn vqmovn_u32(a: uint32x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovn_u64(a: uint64x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38337,7 +38481,7 @@ pub fn vqmovn_u64(a: uint64x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovun_s16(a: int16x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnsu.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38366,7 +38510,7 @@ pub fn vqmovun_s16(a: int16x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovun_s32(a: int32x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnsu.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38395,7 +38539,7 @@ pub fn vqmovun_s32(a: int32x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqmovun_s64(a: int64x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnsu.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38424,7 +38568,7 @@ pub fn vqmovun_s64(a: int64x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqneg_s8(a: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqneg.v8i8"
@@ -38453,7 +38597,7 @@ pub fn vqneg_s8(a: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqnegq_s8(a: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqneg.v16i8"
@@ -38482,7 +38626,7 @@ pub fn vqnegq_s8(a: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqneg_s16(a: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqneg.v4i16"
@@ -38511,7 +38655,7 @@ pub fn vqneg_s16(a: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqnegq_s16(a: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqneg.v8i16"
@@ -38540,7 +38684,7 @@ pub fn vqnegq_s16(a: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqneg_s32(a: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqneg.v2i32"
@@ -38569,7 +38713,7 @@ pub fn vqneg_s32(a: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqnegq_s32(a: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqneg.v4i32"
@@ -38874,7 +39018,7 @@ pub fn vqrdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38903,7 +39047,7 @@ pub fn vqrdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38932,7 +39076,7 @@ pub fn vqrdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38961,7 +39105,7 @@ pub fn vqrdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrdmulh.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -38990,7 +39134,7 @@ pub fn vqrdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39019,7 +39163,7 @@ pub fn vqrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39048,7 +39192,7 @@ pub fn vqrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39077,7 +39221,7 @@ pub fn vqrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39106,7 +39250,7 @@ pub fn vqrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39135,7 +39279,7 @@ pub fn vqrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39164,7 +39308,7 @@ pub fn vqrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39193,7 +39337,7 @@ pub fn vqrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshifts.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39222,7 +39366,7 @@ pub fn vqrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39251,7 +39395,7 @@ pub fn vqrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39280,7 +39424,7 @@ pub fn vqrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39309,7 +39453,7 @@ pub fn vqrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39338,7 +39482,7 @@ pub fn vqrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39367,7 +39511,7 @@ pub fn vqrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39396,7 +39540,7 @@ pub fn vqrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39425,7 +39569,7 @@ pub fn vqrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftu.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -39445,7 +39589,7 @@ pub fn vqrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v8i8")]
         fn _vqrshrn_n_s16(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
@@ -39461,7 +39605,7 @@ pub fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v4i16")]
         fn _vqrshrn_n_s32(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
@@ -39477,7 +39621,7 @@ pub fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v2i32")]
         fn _vqrshrn_n_s64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
@@ -39493,7 +39637,7 @@ pub fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqrshrn.v8i8"
@@ -39512,7 +39656,7 @@ pub fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqrshrn.v4i16"
@@ -39531,7 +39675,7 @@ pub fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqrshrn.v2i32"
@@ -39550,7 +39694,7 @@ pub fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v8i8")]
         fn _vqrshrn_n_u16(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
@@ -39566,7 +39710,7 @@ pub fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v4i16")]
         fn _vqrshrn_n_u32(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
@@ -39582,7 +39726,7 @@ pub fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v2i32")]
         fn _vqrshrn_n_u64(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
@@ -39598,7 +39742,7 @@ pub fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqrshrn.v8i8"
@@ -39617,7 +39761,7 @@ pub fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqrshrn.v4i16"
@@ -39636,7 +39780,7 @@ pub fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqrshrn.v2i32"
@@ -39655,7 +39799,7 @@ pub fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v8i8")]
         fn _vqrshrun_n_s16(a: int16x8_t, n: int16x8_t) -> uint8x8_t;
     }
@@ -39671,7 +39815,7 @@ pub fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v4i16")]
         fn _vqrshrun_n_s32(a: int32x4_t, n: int32x4_t) -> uint16x4_t;
     }
@@ -39687,7 +39831,7 @@ pub fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v2i32")]
         fn _vqrshrun_n_s64(a: int64x2_t, n: int64x2_t) -> uint32x2_t;
     }
@@ -39703,7 +39847,7 @@ pub fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqrshrun.v8i8"
@@ -39722,7 +39866,7 @@ pub fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqrshrun.v4i16"
@@ -39741,7 +39885,7 @@ pub fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqrshrun.v2i32"
@@ -40137,7 +40281,7 @@ pub fn vqshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40166,7 +40310,7 @@ pub fn vqshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40195,7 +40339,7 @@ pub fn vqshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40224,7 +40368,7 @@ pub fn vqshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40253,7 +40397,7 @@ pub fn vqshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40282,7 +40426,7 @@ pub fn vqshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40311,7 +40455,7 @@ pub fn vqshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40340,7 +40484,7 @@ pub fn vqshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshifts.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40369,7 +40513,7 @@ pub fn vqshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40398,7 +40542,7 @@ pub fn vqshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40427,7 +40571,7 @@ pub fn vqshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40456,7 +40600,7 @@ pub fn vqshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40485,7 +40629,7 @@ pub fn vqshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40514,7 +40658,7 @@ pub fn vqshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40543,7 +40687,7 @@ pub fn vqshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40572,7 +40716,7 @@ pub fn vqshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vqshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftu.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -40592,7 +40736,7 @@ pub fn vqshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v8i8")]
         fn _vqshlu_n_s8(a: int8x8_t, n: int8x8_t) -> uint8x8_t;
     }
@@ -40608,7 +40752,7 @@ pub fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v16i8")]
         fn _vqshluq_n_s8(a: int8x16_t, n: int8x16_t) -> uint8x16_t;
     }
@@ -40624,7 +40768,7 @@ pub fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v4i16")]
         fn _vqshlu_n_s16(a: int16x4_t, n: int16x4_t) -> uint16x4_t;
     }
@@ -40640,7 +40784,7 @@ pub fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v8i16")]
         fn _vqshluq_n_s16(a: int16x8_t, n: int16x8_t) -> uint16x8_t;
     }
@@ -40656,7 +40800,7 @@ pub fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v2i32")]
         fn _vqshlu_n_s32(a: int32x2_t, n: int32x2_t) -> uint32x2_t;
     }
@@ -40672,7 +40816,7 @@ pub fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v4i32")]
         fn _vqshluq_n_s32(a: int32x4_t, n: int32x4_t) -> uint32x4_t;
     }
@@ -40688,7 +40832,7 @@ pub fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v1i64")]
         fn _vqshlu_n_s64(a: int64x1_t, n: int64x1_t) -> uint64x1_t;
     }
@@ -40704,7 +40848,7 @@ pub fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v2i64")]
         fn _vqshluq_n_s64(a: int64x2_t, n: int64x2_t) -> uint64x2_t;
     }
@@ -40720,7 +40864,7 @@ pub fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v8i8"
@@ -40739,7 +40883,7 @@ pub fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v16i8"
@@ -40758,7 +40902,7 @@ pub fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v4i16"
@@ -40777,7 +40921,7 @@ pub fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v8i16"
@@ -40796,7 +40940,7 @@ pub fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v2i32"
@@ -40815,7 +40959,7 @@ pub fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v4i32"
@@ -40834,7 +40978,7 @@ pub fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v1i64"
@@ -40853,7 +40997,7 @@ pub fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshlu.v2i64"
@@ -40872,7 +41016,7 @@ pub fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v8i8")]
         fn _vqshrn_n_s16(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
@@ -40888,7 +41032,7 @@ pub fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v4i16")]
         fn _vqshrn_n_s32(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
@@ -40904,7 +41048,7 @@ pub fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v2i32")]
         fn _vqshrn_n_s64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
@@ -40920,7 +41064,7 @@ pub fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshrn.v8i8"
@@ -40939,7 +41083,7 @@ pub fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshrn.v4i16"
@@ -40958,7 +41102,7 @@ pub fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshrn.v2i32"
@@ -40977,7 +41121,7 @@ pub fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v8i8")]
         fn _vqshrn_n_u16(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
@@ -40993,7 +41137,7 @@ pub fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v4i16")]
         fn _vqshrn_n_u32(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
@@ -41009,7 +41153,7 @@ pub fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v2i32")]
         fn _vqshrn_n_u64(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
@@ -41025,7 +41169,7 @@ pub fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqshrn.v8i8"
@@ -41044,7 +41188,7 @@ pub fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqshrn.v4i16"
@@ -41063,7 +41207,7 @@ pub fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqshrn.v2i32"
@@ -41082,7 +41226,7 @@ pub fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v8i8")]
         fn _vqshrun_n_s16(a: int16x8_t, n: int16x8_t) -> uint8x8_t;
     }
@@ -41098,7 +41242,7 @@ pub fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v4i16")]
         fn _vqshrun_n_s32(a: int32x4_t, n: int32x4_t) -> uint16x4_t;
     }
@@ -41114,7 +41258,7 @@ pub fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v2i32")]
         fn _vqshrun_n_s64(a: int64x2_t, n: int64x2_t) -> uint32x2_t;
     }
@@ -41130,7 +41274,7 @@ pub fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshrun.v8i8"
@@ -41149,7 +41293,7 @@ pub fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshrun.v4i16"
@@ -41168,7 +41312,7 @@ pub fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.sqshrun.v2i32"
@@ -41694,7 +41838,7 @@ pub fn vraddhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vraddhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.raddhn.v8i8"
@@ -41723,7 +41867,7 @@ pub fn vraddhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vraddhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.raddhn.v4i16"
@@ -41752,7 +41896,7 @@ pub fn vraddhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vraddhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.raddhn.v2i32"
@@ -41845,7 +41989,7 @@ pub fn vraddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecpe_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -41875,7 +42019,7 @@ pub fn vrecpe_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecpeq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -41904,7 +42048,7 @@ pub fn vrecpeq_f16(a: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrecpe_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -41933,7 +42077,7 @@ pub fn vrecpe_f32(a: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrecpeq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -41962,7 +42106,7 @@ pub fn vrecpeq_f32(a: float32x4_t) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrecpe_u32(a: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -41991,7 +42135,7 @@ pub fn vrecpe_u32(a: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrecpeq_u32(a: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -42021,7 +42165,7 @@ pub fn vrecpeq_u32(a: uint32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecps_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecps.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -42051,7 +42195,7 @@ pub fn vrecps_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecpsq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecps.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -42080,7 +42224,7 @@ pub fn vrecpsq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrecps_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecps.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -42109,7 +42253,7 @@ pub fn vrecps_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecps.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -50916,7 +51060,7 @@ pub fn vrev64q_f16(a: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.srhadd.v8i8"
@@ -50945,7 +51089,7 @@ pub fn vrhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.srhadd.v16i8"
@@ -50974,7 +51118,7 @@ pub fn vrhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.srhadd.v4i16"
@@ -51003,7 +51147,7 @@ pub fn vrhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.srhadd.v8i16"
@@ -51032,7 +51176,7 @@ pub fn vrhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.srhadd.v2i32"
@@ -51061,7 +51205,7 @@ pub fn vrhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.srhadd.v4i32"
@@ -51090,7 +51234,7 @@ pub fn vrhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.urhadd.v8i8"
@@ -51119,7 +51263,7 @@ pub fn vrhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.urhadd.v16i8"
@@ -51148,7 +51292,7 @@ pub fn vrhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.urhadd.v4i16"
@@ -51177,7 +51321,7 @@ pub fn vrhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.urhadd.v8i16"
@@ -51206,7 +51350,7 @@ pub fn vrhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.urhadd.v2i32"
@@ -51235,7 +51379,7 @@ pub fn vrhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.urhadd.v4i32"
@@ -51265,7 +51409,7 @@ pub fn vrhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrndn_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v4f16"
@@ -51294,7 +51438,7 @@ pub fn vrndn_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrndnq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v8f16"
@@ -51322,7 +51466,7 @@ pub fn vrndnq_f16(a: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrndn_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v2f32"
@@ -51350,7 +51494,7 @@ pub fn vrndn_f32(a: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v4f32"
@@ -51378,7 +51522,7 @@ pub fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51407,7 +51551,7 @@ pub fn vrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51436,7 +51580,7 @@ pub fn vrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51465,7 +51609,7 @@ pub fn vrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51494,7 +51638,7 @@ pub fn vrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51523,7 +51667,7 @@ pub fn vrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51552,7 +51696,7 @@ pub fn vrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51581,7 +51725,7 @@ pub fn vrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshifts.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51610,7 +51754,7 @@ pub fn vrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51639,7 +51783,7 @@ pub fn vrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51668,7 +51812,7 @@ pub fn vrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51697,7 +51841,7 @@ pub fn vrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51726,7 +51870,7 @@ pub fn vrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51755,7 +51899,7 @@ pub fn vrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51784,7 +51928,7 @@ pub fn vrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -51813,7 +51957,7 @@ pub fn vrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftu.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52201,7 +52345,7 @@ pub fn vrshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v8i8")]
         fn _vrshrn_n_s16(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
@@ -52217,7 +52361,7 @@ pub fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v4i16")]
         fn _vrshrn_n_s32(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
@@ -52233,7 +52377,7 @@ pub fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v2i32")]
         fn _vrshrn_n_s64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
@@ -52249,7 +52393,7 @@ pub fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.rshrn.v8i8"
@@ -52268,7 +52412,7 @@ pub fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.rshrn.v4i16"
@@ -52287,7 +52431,7 @@ pub fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.rshrn.v2i32"
@@ -52385,7 +52529,7 @@ pub fn vrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrte_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52415,7 +52559,7 @@ pub fn vrsqrte_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrteq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52444,7 +52588,7 @@ pub fn vrsqrteq_f16(a: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52473,7 +52617,7 @@ pub fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsqrteq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52502,7 +52646,7 @@ pub fn vrsqrteq_f32(a: float32x4_t) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsqrte_u32(a: uint32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52531,7 +52675,7 @@ pub fn vrsqrte_u32(a: uint32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsqrteq_u32(a: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52561,7 +52705,7 @@ pub fn vrsqrteq_u32(a: uint32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrts_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrts.v4f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52591,7 +52735,7 @@ pub fn vrsqrts_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrtsq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrts.v8f16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52620,7 +52764,7 @@ pub fn vrsqrtsq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsqrts_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrts.v2f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -52649,7 +52793,7 @@ pub fn vrsqrts_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsqrtsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrts.v4f32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -53046,7 +53190,7 @@ pub fn vrsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsubhn.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -53075,7 +53219,7 @@ pub fn vrsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsubhn.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -53104,7 +53248,7 @@ pub fn vrsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vrsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsubhn.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -54449,7 +54593,7 @@ pub fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1c"
@@ -54475,7 +54619,7 @@ pub fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1c"
@@ -54505,7 +54649,7 @@ pub fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1h_u32(hash_e: u32) -> u32 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1h"
@@ -54531,7 +54675,7 @@ pub fn vsha1h_u32(hash_e: u32) -> u32 {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1m"
@@ -54557,7 +54701,7 @@ pub fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1m"
@@ -54588,7 +54732,7 @@ pub fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1p"
@@ -54614,7 +54758,7 @@ pub fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1p"
@@ -54645,7 +54789,7 @@ pub fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1su0"
@@ -54671,7 +54815,7 @@ pub fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> u
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1su0"
@@ -54703,7 +54847,7 @@ pub fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> u
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1su1"
@@ -54729,7 +54873,7 @@ pub fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha1su1"
@@ -54760,7 +54904,7 @@ pub fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256h2q_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256h2"
@@ -54790,7 +54934,7 @@ pub fn vsha256h2q_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256h2q_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256h2"
@@ -54826,7 +54970,7 @@ pub fn vsha256h2q_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256hq_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256h"
@@ -54856,7 +55000,7 @@ pub fn vsha256hq_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256hq_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256h"
@@ -54892,7 +55036,7 @@ pub fn vsha256hq_u32(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256su0"
@@ -54918,7 +55062,7 @@ pub fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256su0"
@@ -54949,7 +55093,7 @@ pub fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256su1q_u32(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256su1"
@@ -54976,7 +55120,7 @@ pub fn vsha256su1q_u32(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t)
     stable(feature = "aarch64_neon_crypto_intrinsics", since = "1.72.0")
 )]
 pub fn vsha256su1q_u32(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha256su1"
@@ -55000,7 +55144,7 @@ pub fn vsha256su1q_u32(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t)
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v16i8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v16i8")]
         fn _vshiftlins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
     }
@@ -55013,7 +55157,7 @@ fn vshiftlins_v16i8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v1i64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v1i64")]
         fn _vshiftlins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t;
     }
@@ -55026,7 +55170,7 @@ fn vshiftlins_v1i64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v2i32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i32")]
         fn _vshiftlins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t;
     }
@@ -55039,7 +55183,7 @@ fn vshiftlins_v2i32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v2i64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i64")]
         fn _vshiftlins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
     }
@@ -55052,7 +55196,7 @@ fn vshiftlins_v2i64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v4i16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i16")]
         fn _vshiftlins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t;
     }
@@ -55065,7 +55209,7 @@ fn vshiftlins_v4i16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v4i32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i32")]
         fn _vshiftlins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
     }
@@ -55078,7 +55222,7 @@ fn vshiftlins_v4i32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v8i16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i16")]
         fn _vshiftlins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t;
     }
@@ -55091,7 +55235,7 @@ fn vshiftlins_v8i16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftlins_v8i8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i8")]
         fn _vshiftlins_v8i8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
     }
@@ -55106,7 +55250,7 @@ fn vshiftlins_v8i8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v16i8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v16i8")]
         fn _vshiftrins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
     }
@@ -55121,7 +55265,7 @@ fn vshiftrins_v16i8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v1i64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v1i64")]
         fn _vshiftrins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t;
     }
@@ -55136,7 +55280,7 @@ fn vshiftrins_v1i64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v2i32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i32")]
         fn _vshiftrins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t;
     }
@@ -55151,7 +55295,7 @@ fn vshiftrins_v2i32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v2i64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i64")]
         fn _vshiftrins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
     }
@@ -55166,7 +55310,7 @@ fn vshiftrins_v2i64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v4i16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i16")]
         fn _vshiftrins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t;
     }
@@ -55181,7 +55325,7 @@ fn vshiftrins_v4i16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v4i32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i32")]
         fn _vshiftrins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
     }
@@ -55196,7 +55340,7 @@ fn vshiftrins_v4i32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v8i16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i16")]
         fn _vshiftrins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t;
     }
@@ -55211,7 +55355,7 @@ fn vshiftrins_v8i16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[rustc_legacy_const_generics(2)]
 fn vshiftrins_v8i8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i8")]
         fn _vshiftrins_v8i8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
     }
@@ -55604,7 +55748,7 @@ pub fn vshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55633,7 +55777,7 @@ pub fn vshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55662,7 +55806,7 @@ pub fn vshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55691,7 +55835,7 @@ pub fn vshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55720,7 +55864,7 @@ pub fn vshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55749,7 +55893,7 @@ pub fn vshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55778,7 +55922,7 @@ pub fn vshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55807,7 +55951,7 @@ pub fn vshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshifts.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55836,7 +55980,7 @@ pub fn vshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v8i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55865,7 +56009,7 @@ pub fn vshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55894,7 +56038,7 @@ pub fn vshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v4i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55923,7 +56067,7 @@ pub fn vshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v8i16")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55952,7 +56096,7 @@ pub fn vshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v2i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -55981,7 +56125,7 @@ pub fn vshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v4i32")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -56010,7 +56154,7 @@ pub fn vshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v1i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -56039,7 +56183,7 @@ pub fn vshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftu.v2i64")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -57637,7 +57781,7 @@ pub unsafe fn vst1q_f16(ptr: *mut f16, a: float16x8_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.p0.v4f16")]
         fn _vst1_f16_x2(ptr: *mut f16, a: float16x4_t, b: float16x4_t);
     }
@@ -57655,7 +57799,7 @@ pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.p0.v8f16")]
         fn _vst1q_f16_x2(ptr: *mut f16, a: float16x8_t, b: float16x8_t);
     }
@@ -57672,7 +57816,7 @@ pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v4f16.p0"
@@ -57692,7 +57836,7 @@ pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v8f16.p0"
@@ -57713,7 +57857,7 @@ pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v4f16")]
         fn _vst1_f16_x3(ptr: *mut f16, a: float16x4_t, b: float16x4_t, c: float16x4_t);
     }
@@ -57731,7 +57875,7 @@ pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v8f16")]
         fn _vst1q_f16_x3(ptr: *mut f16, a: float16x8_t, b: float16x8_t, c: float16x8_t);
     }
@@ -57748,7 +57892,7 @@ pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v4f16.p0"
@@ -57768,7 +57912,7 @@ pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v8f16.p0"
@@ -57790,7 +57934,7 @@ pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v4f16")]
         fn _vst1_f16_x4(
             ptr: *mut f16,
@@ -57815,7 +57959,7 @@ pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_f16_x4(a: *mut f16, b: float16x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v8f16")]
         fn _vst1q_f16_x4(
             ptr: *mut f16,
@@ -57838,7 +57982,7 @@ pub unsafe fn vst1q_f16_x4(a: *mut f16, b: float16x8x4_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v4f16.p0"
@@ -57864,7 +58008,7 @@ pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x4(a: *mut f16, b: float16x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v8f16.p0"
@@ -58225,7 +58369,7 @@ pub unsafe fn vst1q_p64(ptr: *mut p64, a: poly64x2_t) {
 #[cfg_attr(test, assert_instr(vst1))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_f32_x2(a: *mut f32, b: float32x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v2f32.p0")]
         fn _vst1_f32_x2(ptr: *mut f32, a: float32x2_t, b: float32x2_t);
     }
@@ -58241,7 +58385,7 @@ pub unsafe fn vst1_f32_x2(a: *mut f32, b: float32x2x2_t) {
 #[cfg_attr(test, assert_instr(vst1))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_f32_x2(a: *mut f32, b: float32x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v4f32.p0")]
         fn _vst1q_f32_x2(ptr: *mut f32, a: float32x4_t, b: float32x4_t);
     }
@@ -58257,7 +58401,7 @@ pub unsafe fn vst1q_f32_x2(a: *mut f32, b: float32x4x2_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1_f32_x2(a: *mut f32, b: float32x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v2f32.p0"
@@ -58276,7 +58420,7 @@ pub unsafe fn vst1_f32_x2(a: *mut f32, b: float32x2x2_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1q_f32_x2(a: *mut f32, b: float32x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v4f32.p0"
@@ -58295,7 +58439,7 @@ pub unsafe fn vst1q_f32_x2(a: *mut f32, b: float32x4x2_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1_f32_x3(a: *mut f32, b: float32x2x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v2f32.p0"
@@ -58314,7 +58458,7 @@ pub unsafe fn vst1_f32_x3(a: *mut f32, b: float32x2x3_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1q_f32_x3(a: *mut f32, b: float32x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v4f32.p0"
@@ -58333,7 +58477,7 @@ pub unsafe fn vst1q_f32_x3(a: *mut f32, b: float32x4x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_f32_x4(a: *mut f32, b: float32x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v2f32.p0")]
         fn _vst1_f32_x4(
             ptr: *mut f32,
@@ -58355,7 +58499,7 @@ pub unsafe fn vst1_f32_x4(a: *mut f32, b: float32x2x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v4f32.p0")]
         fn _vst1q_f32_x4(
             ptr: *mut f32,
@@ -58377,7 +58521,7 @@ pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1_f32_x4(a: *mut f32, b: float32x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v2f32.p0"
@@ -58402,7 +58546,7 @@ pub unsafe fn vst1_f32_x4(a: *mut f32, b: float32x2x4_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v4f32.p0"
@@ -59180,7 +59324,7 @@ pub unsafe fn vst1q_p64_x4(a: *mut p64, b: poly64x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s8_x2(a: *mut i8, b: int8x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v8i8.p0"
@@ -59199,7 +59343,7 @@ pub unsafe fn vst1_s8_x2(a: *mut i8, b: int8x8x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s8_x2(a: *mut i8, b: int8x16x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v16i8.p0"
@@ -59218,7 +59362,7 @@ pub unsafe fn vst1q_s8_x2(a: *mut i8, b: int8x16x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s16_x2(a: *mut i16, b: int16x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v4i16.p0"
@@ -59237,7 +59381,7 @@ pub unsafe fn vst1_s16_x2(a: *mut i16, b: int16x4x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s16_x2(a: *mut i16, b: int16x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v8i16.p0"
@@ -59256,7 +59400,7 @@ pub unsafe fn vst1q_s16_x2(a: *mut i16, b: int16x8x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s32_x2(a: *mut i32, b: int32x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v2i32.p0"
@@ -59275,7 +59419,7 @@ pub unsafe fn vst1_s32_x2(a: *mut i32, b: int32x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s32_x2(a: *mut i32, b: int32x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v4i32.p0"
@@ -59294,7 +59438,7 @@ pub unsafe fn vst1q_s32_x2(a: *mut i32, b: int32x4x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s64_x2(a: *mut i64, b: int64x1x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v1i64.p0"
@@ -59313,7 +59457,7 @@ pub unsafe fn vst1_s64_x2(a: *mut i64, b: int64x1x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s64_x2(a: *mut i64, b: int64x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x2.v2i64.p0"
@@ -59332,7 +59476,7 @@ pub unsafe fn vst1q_s64_x2(a: *mut i64, b: int64x2x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s8_x2(a: *mut i8, b: int8x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v8i8.p0")]
         fn _vst1_s8_x2(ptr: *mut i8, a: int8x8_t, b: int8x8_t);
     }
@@ -59348,7 +59492,7 @@ pub unsafe fn vst1_s8_x2(a: *mut i8, b: int8x8x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s8_x2(a: *mut i8, b: int8x16x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v16i8.p0")]
         fn _vst1q_s8_x2(ptr: *mut i8, a: int8x16_t, b: int8x16_t);
     }
@@ -59364,7 +59508,7 @@ pub unsafe fn vst1q_s8_x2(a: *mut i8, b: int8x16x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s16_x2(a: *mut i16, b: int16x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v4i16.p0")]
         fn _vst1_s16_x2(ptr: *mut i16, a: int16x4_t, b: int16x4_t);
     }
@@ -59380,7 +59524,7 @@ pub unsafe fn vst1_s16_x2(a: *mut i16, b: int16x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s16_x2(a: *mut i16, b: int16x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v8i16.p0")]
         fn _vst1q_s16_x2(ptr: *mut i16, a: int16x8_t, b: int16x8_t);
     }
@@ -59396,7 +59540,7 @@ pub unsafe fn vst1q_s16_x2(a: *mut i16, b: int16x8x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s32_x2(a: *mut i32, b: int32x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v2i32.p0")]
         fn _vst1_s32_x2(ptr: *mut i32, a: int32x2_t, b: int32x2_t);
     }
@@ -59412,7 +59556,7 @@ pub unsafe fn vst1_s32_x2(a: *mut i32, b: int32x2x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s32_x2(a: *mut i32, b: int32x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v4i32.p0")]
         fn _vst1q_s32_x2(ptr: *mut i32, a: int32x4_t, b: int32x4_t);
     }
@@ -59428,7 +59572,7 @@ pub unsafe fn vst1q_s32_x2(a: *mut i32, b: int32x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s64_x2(a: *mut i64, b: int64x1x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v1i64.p0")]
         fn _vst1_s64_x2(ptr: *mut i64, a: int64x1_t, b: int64x1_t);
     }
@@ -59444,7 +59588,7 @@ pub unsafe fn vst1_s64_x2(a: *mut i64, b: int64x1x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s64_x2(a: *mut i64, b: int64x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.v2i64.p0")]
         fn _vst1q_s64_x2(ptr: *mut i64, a: int64x2_t, b: int64x2_t);
     }
@@ -59460,7 +59604,7 @@ pub unsafe fn vst1q_s64_x2(a: *mut i64, b: int64x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s8_x3(a: *mut i8, b: int8x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v8i8.p0"
@@ -59479,7 +59623,7 @@ pub unsafe fn vst1_s8_x3(a: *mut i8, b: int8x8x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s8_x3(a: *mut i8, b: int8x16x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v16i8.p0"
@@ -59498,7 +59642,7 @@ pub unsafe fn vst1q_s8_x3(a: *mut i8, b: int8x16x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s16_x3(a: *mut i16, b: int16x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v4i16.p0"
@@ -59517,7 +59661,7 @@ pub unsafe fn vst1_s16_x3(a: *mut i16, b: int16x4x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s16_x3(a: *mut i16, b: int16x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v8i16.p0"
@@ -59536,7 +59680,7 @@ pub unsafe fn vst1q_s16_x3(a: *mut i16, b: int16x8x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s32_x3(a: *mut i32, b: int32x2x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v2i32.p0"
@@ -59555,7 +59699,7 @@ pub unsafe fn vst1_s32_x3(a: *mut i32, b: int32x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s32_x3(a: *mut i32, b: int32x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v4i32.p0"
@@ -59574,7 +59718,7 @@ pub unsafe fn vst1q_s32_x3(a: *mut i32, b: int32x4x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s64_x3(a: *mut i64, b: int64x1x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v1i64.p0"
@@ -59593,7 +59737,7 @@ pub unsafe fn vst1_s64_x3(a: *mut i64, b: int64x1x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s64_x3(a: *mut i64, b: int64x2x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x3.v2i64.p0"
@@ -59612,7 +59756,7 @@ pub unsafe fn vst1q_s64_x3(a: *mut i64, b: int64x2x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s8_x3(a: *mut i8, b: int8x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v8i8.p0")]
         fn _vst1_s8_x3(ptr: *mut i8, a: int8x8_t, b: int8x8_t, c: int8x8_t);
     }
@@ -59628,7 +59772,7 @@ pub unsafe fn vst1_s8_x3(a: *mut i8, b: int8x8x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s8_x3(a: *mut i8, b: int8x16x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v16i8.p0")]
         fn _vst1q_s8_x3(ptr: *mut i8, a: int8x16_t, b: int8x16_t, c: int8x16_t);
     }
@@ -59644,7 +59788,7 @@ pub unsafe fn vst1q_s8_x3(a: *mut i8, b: int8x16x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s16_x3(a: *mut i16, b: int16x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v4i16.p0")]
         fn _vst1_s16_x3(ptr: *mut i16, a: int16x4_t, b: int16x4_t, c: int16x4_t);
     }
@@ -59660,7 +59804,7 @@ pub unsafe fn vst1_s16_x3(a: *mut i16, b: int16x4x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s16_x3(a: *mut i16, b: int16x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v8i16.p0")]
         fn _vst1q_s16_x3(ptr: *mut i16, a: int16x8_t, b: int16x8_t, c: int16x8_t);
     }
@@ -59676,7 +59820,7 @@ pub unsafe fn vst1q_s16_x3(a: *mut i16, b: int16x8x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s32_x3(a: *mut i32, b: int32x2x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v2i32.p0")]
         fn _vst1_s32_x3(ptr: *mut i32, a: int32x2_t, b: int32x2_t, c: int32x2_t);
     }
@@ -59692,7 +59836,7 @@ pub unsafe fn vst1_s32_x3(a: *mut i32, b: int32x2x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s32_x3(a: *mut i32, b: int32x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v4i32.p0")]
         fn _vst1q_s32_x3(ptr: *mut i32, a: int32x4_t, b: int32x4_t, c: int32x4_t);
     }
@@ -59708,7 +59852,7 @@ pub unsafe fn vst1q_s32_x3(a: *mut i32, b: int32x4x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s64_x3(a: *mut i64, b: int64x1x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v1i64.p0")]
         fn _vst1_s64_x3(ptr: *mut i64, a: int64x1_t, b: int64x1_t, c: int64x1_t);
     }
@@ -59724,7 +59868,7 @@ pub unsafe fn vst1_s64_x3(a: *mut i64, b: int64x1x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s64_x3(a: *mut i64, b: int64x2x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v2i64.p0")]
         fn _vst1q_s64_x3(ptr: *mut i64, a: int64x2_t, b: int64x2_t, c: int64x2_t);
     }
@@ -59740,7 +59884,7 @@ pub unsafe fn vst1q_s64_x3(a: *mut i64, b: int64x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s8_x4(a: *mut i8, b: int8x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v8i8.p0"
@@ -59759,7 +59903,7 @@ pub unsafe fn vst1_s8_x4(a: *mut i8, b: int8x8x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s8_x4(a: *mut i8, b: int8x16x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v16i8.p0"
@@ -59778,7 +59922,7 @@ pub unsafe fn vst1q_s8_x4(a: *mut i8, b: int8x16x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s16_x4(a: *mut i16, b: int16x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v4i16.p0"
@@ -59797,7 +59941,7 @@ pub unsafe fn vst1_s16_x4(a: *mut i16, b: int16x4x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s16_x4(a: *mut i16, b: int16x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v8i16.p0"
@@ -59816,7 +59960,7 @@ pub unsafe fn vst1q_s16_x4(a: *mut i16, b: int16x8x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s32_x4(a: *mut i32, b: int32x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v2i32.p0"
@@ -59835,7 +59979,7 @@ pub unsafe fn vst1_s32_x4(a: *mut i32, b: int32x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s32_x4(a: *mut i32, b: int32x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v4i32.p0"
@@ -59854,7 +59998,7 @@ pub unsafe fn vst1q_s32_x4(a: *mut i32, b: int32x4x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1_s64_x4(a: *mut i64, b: int64x1x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v1i64.p0"
@@ -59873,7 +60017,7 @@ pub unsafe fn vst1_s64_x4(a: *mut i64, b: int64x1x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st1))]
 pub unsafe fn vst1q_s64_x4(a: *mut i64, b: int64x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st1x4.v2i64.p0"
@@ -59892,7 +60036,7 @@ pub unsafe fn vst1q_s64_x4(a: *mut i64, b: int64x2x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s8_x4(a: *mut i8, b: int8x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v8i8.p0")]
         fn _vst1_s8_x4(ptr: *mut i8, a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t);
     }
@@ -59908,7 +60052,7 @@ pub unsafe fn vst1_s8_x4(a: *mut i8, b: int8x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s8_x4(a: *mut i8, b: int8x16x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v16i8.p0")]
         fn _vst1q_s8_x4(ptr: *mut i8, a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x16_t);
     }
@@ -59924,7 +60068,7 @@ pub unsafe fn vst1q_s8_x4(a: *mut i8, b: int8x16x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s16_x4(a: *mut i16, b: int16x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v4i16.p0")]
         fn _vst1_s16_x4(ptr: *mut i16, a: int16x4_t, b: int16x4_t, c: int16x4_t, d: int16x4_t);
     }
@@ -59940,7 +60084,7 @@ pub unsafe fn vst1_s16_x4(a: *mut i16, b: int16x4x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s16_x4(a: *mut i16, b: int16x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v8i16.p0")]
         fn _vst1q_s16_x4(ptr: *mut i16, a: int16x8_t, b: int16x8_t, c: int16x8_t, d: int16x8_t);
     }
@@ -59956,7 +60100,7 @@ pub unsafe fn vst1q_s16_x4(a: *mut i16, b: int16x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s32_x4(a: *mut i32, b: int32x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v2i32.p0")]
         fn _vst1_s32_x4(ptr: *mut i32, a: int32x2_t, b: int32x2_t, c: int32x2_t, d: int32x2_t);
     }
@@ -59972,7 +60116,7 @@ pub unsafe fn vst1_s32_x4(a: *mut i32, b: int32x2x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s32_x4(a: *mut i32, b: int32x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v4i32.p0")]
         fn _vst1q_s32_x4(ptr: *mut i32, a: int32x4_t, b: int32x4_t, c: int32x4_t, d: int32x4_t);
     }
@@ -59988,7 +60132,7 @@ pub unsafe fn vst1q_s32_x4(a: *mut i32, b: int32x4x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_s64_x4(a: *mut i64, b: int64x1x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v1i64.p0")]
         fn _vst1_s64_x4(ptr: *mut i64, a: int64x1_t, b: int64x1_t, c: int64x1_t, d: int64x1_t);
     }
@@ -60004,7 +60148,7 @@ pub unsafe fn vst1_s64_x4(a: *mut i64, b: int64x1x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_s64_x4(a: *mut i64, b: int64x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x4.p0.v2i64.p0")]
         fn _vst1q_s64_x4(ptr: *mut i64, a: int64x2_t, b: int64x2_t, c: int64x2_t, d: int64x2_t);
     }
@@ -60846,7 +60990,7 @@ pub unsafe fn vst1q_p16_x4(a: *mut p16, b: poly16x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1_v1i64<const ALIGN: i32>(addr: *const i8, val: int64x1_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v1i64.p0")]
         fn _vst1_v1i64(addr: *const i8, val: int64x1_t, align: i32);
     }
@@ -60860,7 +61004,7 @@ unsafe fn vst1_v1i64<const ALIGN: i32>(addr: *const i8, val: int64x1_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1_v2f32<const ALIGN: i32>(addr: *const i8, val: float32x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v2f32.p0")]
         fn _vst1_v2f32(addr: *const i8, val: float32x2_t, align: i32);
     }
@@ -60874,7 +61018,7 @@ unsafe fn vst1_v2f32<const ALIGN: i32>(addr: *const i8, val: float32x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1_v2i32<const ALIGN: i32>(addr: *const i8, val: int32x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v2i32.p0")]
         fn _vst1_v2i32(addr: *const i8, val: int32x2_t, align: i32);
     }
@@ -60888,7 +61032,7 @@ unsafe fn vst1_v2i32<const ALIGN: i32>(addr: *const i8, val: int32x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1_v4i16<const ALIGN: i32>(addr: *const i8, val: int16x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v4i16.p0")]
         fn _vst1_v4i16(addr: *const i8, val: int16x4_t, align: i32);
     }
@@ -60902,7 +61046,7 @@ unsafe fn vst1_v4i16<const ALIGN: i32>(addr: *const i8, val: int16x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1_v8i8<const ALIGN: i32>(addr: *const i8, val: int8x8_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v8i8.p0")]
         fn _vst1_v8i8(addr: *const i8, val: int8x8_t, align: i32);
     }
@@ -60916,7 +61060,7 @@ unsafe fn vst1_v8i8<const ALIGN: i32>(addr: *const i8, val: int8x8_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1q_v16i8<const ALIGN: i32>(addr: *const i8, val: int8x16_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v16i8.p0")]
         fn _vst1q_v16i8(addr: *const i8, val: int8x16_t, align: i32);
     }
@@ -60930,7 +61074,7 @@ unsafe fn vst1q_v16i8<const ALIGN: i32>(addr: *const i8, val: int8x16_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1q_v2i64<const ALIGN: i32>(addr: *const i8, val: int64x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v2i64.p0")]
         fn _vst1q_v2i64(addr: *const i8, val: int64x2_t, align: i32);
     }
@@ -60944,7 +61088,7 @@ unsafe fn vst1q_v2i64<const ALIGN: i32>(addr: *const i8, val: int64x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1q_v4f32<const ALIGN: i32>(addr: *const i8, val: float32x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v4f32.p0")]
         fn _vst1q_v4f32(addr: *const i8, val: float32x4_t, align: i32);
     }
@@ -60958,7 +61102,7 @@ unsafe fn vst1q_v4f32<const ALIGN: i32>(addr: *const i8, val: float32x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1q_v4i32<const ALIGN: i32>(addr: *const i8, val: int32x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v4i32.p0")]
         fn _vst1q_v4i32(addr: *const i8, val: int32x4_t, align: i32);
     }
@@ -60972,7 +61116,7 @@ unsafe fn vst1q_v4i32<const ALIGN: i32>(addr: *const i8, val: int32x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16", ALIGN = 0))]
 #[rustc_legacy_const_generics(2)]
 unsafe fn vst1q_v8i16<const ALIGN: i32>(addr: *const i8, val: int16x8_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v8i16.p0")]
         fn _vst1q_v8i16(addr: *const i8, val: int16x8_t, align: i32);
     }
@@ -60990,7 +61134,7 @@ unsafe fn vst1q_v8i16<const ALIGN: i32>(addr: *const i8, val: int16x8_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 unsafe fn vst1_v4f16(addr: *const i8, val: float16x4_t, align: i32) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v4f16.p0")]
         fn _vst1_v4f16(addr: *const i8, val: float16x4_t, align: i32);
     }
@@ -61008,7 +61152,7 @@ unsafe fn vst1_v4f16(addr: *const i8, val: float16x4_t, align: i32) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 unsafe fn vst1q_v8f16(addr: *const i8, val: float16x8_t, align: i32) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v8f16.p0")]
         fn _vst1q_v8f16(addr: *const i8, val: float16x8_t, align: i32);
     }
@@ -61051,7 +61195,7 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2.v4f16.p0"
@@ -61072,7 +61216,7 @@ pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2q_f16(a: *mut f16, b: float16x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2.v8f16.p0"
@@ -61094,7 +61238,7 @@ pub unsafe fn vst2q_f16(a: *mut f16, b: float16x8x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.p0.v4f16")]
         fn _vst2_f16(ptr: *mut i8, a: float16x4_t, b: float16x4_t, size: i32);
     }
@@ -61113,7 +61257,7 @@ pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2q_f16(a: *mut f16, b: float16x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.p0.v8f16")]
         fn _vst2q_f16(ptr: *mut i8, a: float16x8_t, b: float16x8_t, size: i32);
     }
@@ -61225,7 +61369,7 @@ pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2_f32(a: *mut f32, b: float32x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v2f32.p0")]
         fn _vst2_f32(ptr: *mut i8, a: float32x2_t, b: float32x2_t, size: i32);
     }
@@ -61241,7 +61385,7 @@ pub unsafe fn vst2_f32(a: *mut f32, b: float32x2x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2q_f32(a: *mut f32, b: float32x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v4f32.p0")]
         fn _vst2q_f32(ptr: *mut i8, a: float32x4_t, b: float32x4_t, size: i32);
     }
@@ -61257,7 +61401,7 @@ pub unsafe fn vst2q_f32(a: *mut f32, b: float32x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2_s8(a: *mut i8, b: int8x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v8i8.p0")]
         fn _vst2_s8(ptr: *mut i8, a: int8x8_t, b: int8x8_t, size: i32);
     }
@@ -61273,7 +61417,7 @@ pub unsafe fn vst2_s8(a: *mut i8, b: int8x8x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2q_s8(a: *mut i8, b: int8x16x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v16i8.p0")]
         fn _vst2q_s8(ptr: *mut i8, a: int8x16_t, b: int8x16_t, size: i32);
     }
@@ -61289,7 +61433,7 @@ pub unsafe fn vst2q_s8(a: *mut i8, b: int8x16x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2_s16(a: *mut i16, b: int16x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v4i16.p0")]
         fn _vst2_s16(ptr: *mut i8, a: int16x4_t, b: int16x4_t, size: i32);
     }
@@ -61305,7 +61449,7 @@ pub unsafe fn vst2_s16(a: *mut i16, b: int16x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2q_s16(a: *mut i16, b: int16x8x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v8i16.p0")]
         fn _vst2q_s16(ptr: *mut i8, a: int16x8_t, b: int16x8_t, size: i32);
     }
@@ -61321,7 +61465,7 @@ pub unsafe fn vst2q_s16(a: *mut i16, b: int16x8x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2_s32(a: *mut i32, b: int32x2x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v2i32.p0")]
         fn _vst2_s32(ptr: *mut i8, a: int32x2_t, b: int32x2_t, size: i32);
     }
@@ -61337,7 +61481,7 @@ pub unsafe fn vst2_s32(a: *mut i32, b: int32x2x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v4i32.p0")]
         fn _vst2q_s32(ptr: *mut i8, a: int32x4_t, b: int32x4_t, size: i32);
     }
@@ -61357,7 +61501,7 @@ pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v4f16.p0"
@@ -61380,7 +61524,7 @@ pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v8f16.p0"
@@ -61404,7 +61548,7 @@ pub unsafe fn vst2q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0.v4f16")]
         fn _vst2_lane_f16(ptr: *mut i8, a: float16x4_t, b: float16x4_t, n: i32, size: i32);
     }
@@ -61425,7 +61569,7 @@ pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0.v8f16")]
         fn _vst2q_lane_f16(ptr: *mut i8, a: float16x8_t, b: float16x8_t, n: i32, size: i32);
     }
@@ -61443,7 +61587,7 @@ pub unsafe fn vst2q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v2f32.p0"
@@ -61464,7 +61608,7 @@ pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v4f32.p0"
@@ -61485,7 +61629,7 @@ pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v8i8.p0"
@@ -61506,7 +61650,7 @@ pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v4i16.p0"
@@ -61527,7 +61671,7 @@ pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v8i16.p0"
@@ -61548,7 +61692,7 @@ pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v2i32.p0"
@@ -61569,7 +61713,7 @@ pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st2lane.v4i32.p0"
@@ -61590,7 +61734,7 @@ pub unsafe fn vst2q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.v2f32.p0")]
         fn _vst2_lane_f32(ptr: *mut i8, a: float32x2_t, b: float32x2_t, n: i32, size: i32);
     }
@@ -61608,7 +61752,7 @@ pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.v4f32.p0")]
         fn _vst2q_lane_f32(ptr: *mut i8, a: float32x4_t, b: float32x4_t, n: i32, size: i32);
     }
@@ -61626,7 +61770,7 @@ pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.v8i8.p0")]
         fn _vst2_lane_s8(ptr: *mut i8, a: int8x8_t, b: int8x8_t, n: i32, size: i32);
     }
@@ -61644,7 +61788,7 @@ pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.v4i16.p0")]
         fn _vst2_lane_s16(ptr: *mut i8, a: int16x4_t, b: int16x4_t, n: i32, size: i32);
     }
@@ -61662,7 +61806,7 @@ pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.v8i16.p0")]
         fn _vst2q_lane_s16(ptr: *mut i8, a: int16x8_t, b: int16x8_t, n: i32, size: i32);
     }
@@ -61680,7 +61824,7 @@ pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.v2i32.p0")]
         fn _vst2_lane_s32(ptr: *mut i8, a: int32x2_t, b: int32x2_t, n: i32, size: i32);
     }
@@ -61698,7 +61842,7 @@ pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.v4i32.p0")]
         fn _vst2q_lane_s32(ptr: *mut i8, a: int32x4_t, b: int32x4_t, n: i32, size: i32);
     }
@@ -62217,7 +62361,7 @@ pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst3))]
 pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3.p0.v4f16")]
         fn _vst3_f16(ptr: *mut i8, a: float16x4_t, b: float16x4_t, c: float16x4_t, size: i32);
     }
@@ -62236,7 +62380,7 @@ pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst3))]
 pub unsafe fn vst3q_f16(a: *mut f16, b: float16x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3.p0.v8f16")]
         fn _vst3q_f16(ptr: *mut i8, a: float16x8_t, b: float16x8_t, c: float16x8_t, size: i32);
     }
@@ -62254,7 +62398,7 @@ pub unsafe fn vst3q_f16(a: *mut f16, b: float16x8x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3.v4f16.p0"
@@ -62275,7 +62419,7 @@ pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3q_f16(a: *mut f16, b: float16x8x3_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3.v8f16.p0"
@@ -62491,7 +62635,7 @@ pub unsafe fn vst3q_s32(a: *mut i32, b: int32x4x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v4f16")]
         fn _vst3_lane_f16(
             ptr: *mut i8,
@@ -62519,7 +62663,7 @@ pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v8f16")]
         fn _vst3q_lane_f16(
             ptr: *mut i8,
@@ -62546,7 +62690,7 @@ pub unsafe fn vst3q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v4f16.p0"
@@ -62569,7 +62713,7 @@ pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v8f16.p0"
@@ -62590,7 +62734,7 @@ pub unsafe fn vst3q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v2f32")]
         fn _vst3_lane_f32(
             ptr: *mut i8,
@@ -62615,7 +62759,7 @@ pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v4f32")]
         fn _vst3q_lane_f32(
             ptr: *mut i8,
@@ -62640,7 +62784,7 @@ pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v8i8")]
         fn _vst3_lane_s8(ptr: *mut i8, a: int8x8_t, b: int8x8_t, c: int8x8_t, n: i32, size: i32);
     }
@@ -62658,7 +62802,7 @@ pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v4i16")]
         fn _vst3_lane_s16(
             ptr: *mut i8,
@@ -62683,7 +62827,7 @@ pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v8i16")]
         fn _vst3q_lane_s16(
             ptr: *mut i8,
@@ -62708,7 +62852,7 @@ pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v2i32")]
         fn _vst3_lane_s32(
             ptr: *mut i8,
@@ -62733,7 +62877,7 @@ pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0.v4i32")]
         fn _vst3q_lane_s32(
             ptr: *mut i8,
@@ -62758,7 +62902,7 @@ pub unsafe fn vst3q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v2f32.p0"
@@ -62779,7 +62923,7 @@ pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v4f32.p0"
@@ -62800,7 +62944,7 @@ pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v8i8.p0"
@@ -62821,7 +62965,7 @@ pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v4i16.p0"
@@ -62842,7 +62986,7 @@ pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v8i16.p0"
@@ -62863,7 +63007,7 @@ pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v2i32.p0"
@@ -62884,7 +63028,7 @@ pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st3lane.v4i32.p0"
@@ -63406,7 +63550,7 @@ pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v4f16")]
         fn _vst4_f16(
             ptr: *mut i8,
@@ -63432,7 +63576,7 @@ pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4q_f16(a: *mut f16, b: float16x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v8f16")]
         fn _vst4q_f16(
             ptr: *mut i8,
@@ -63457,7 +63601,7 @@ pub unsafe fn vst4q_f16(a: *mut f16, b: float16x8x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4.v4f16.p0"
@@ -63478,7 +63622,7 @@ pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_f16(a: *mut f16, b: float16x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4.v8f16.p0"
@@ -63497,7 +63641,7 @@ pub unsafe fn vst4q_f16(a: *mut f16, b: float16x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4_f32(a: *mut f32, b: float32x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v2f32")]
         fn _vst4_f32(
             ptr: *mut i8,
@@ -63520,7 +63664,7 @@ pub unsafe fn vst4_f32(a: *mut f32, b: float32x2x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4q_f32(a: *mut f32, b: float32x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v4f32")]
         fn _vst4q_f32(
             ptr: *mut i8,
@@ -63543,7 +63687,7 @@ pub unsafe fn vst4q_f32(a: *mut f32, b: float32x4x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4_s8(a: *mut i8, b: int8x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v8i8")]
         fn _vst4_s8(ptr: *mut i8, a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t, size: i32);
     }
@@ -63559,7 +63703,7 @@ pub unsafe fn vst4_s8(a: *mut i8, b: int8x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4q_s8(a: *mut i8, b: int8x16x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v16i8")]
         fn _vst4q_s8(
             ptr: *mut i8,
@@ -63582,7 +63726,7 @@ pub unsafe fn vst4q_s8(a: *mut i8, b: int8x16x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4_s16(a: *mut i16, b: int16x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v4i16")]
         fn _vst4_s16(
             ptr: *mut i8,
@@ -63605,7 +63749,7 @@ pub unsafe fn vst4_s16(a: *mut i16, b: int16x4x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4q_s16(a: *mut i16, b: int16x8x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v8i16")]
         fn _vst4q_s16(
             ptr: *mut i8,
@@ -63628,7 +63772,7 @@ pub unsafe fn vst4q_s16(a: *mut i16, b: int16x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4_s32(a: *mut i32, b: int32x2x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v2i32")]
         fn _vst4_s32(
             ptr: *mut i8,
@@ -63651,7 +63795,7 @@ pub unsafe fn vst4_s32(a: *mut i32, b: int32x2x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v4i32")]
         fn _vst4q_s32(
             ptr: *mut i8,
@@ -63775,7 +63919,7 @@ pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v4f16")]
         fn _vst4_lane_f16(
             ptr: *mut i8,
@@ -63804,7 +63948,7 @@ pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v8f16")]
         fn _vst4q_lane_f16(
             ptr: *mut i8,
@@ -63832,7 +63976,7 @@ pub unsafe fn vst4q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v4f16.p0"
@@ -63862,7 +64006,7 @@ pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v8f16.p0"
@@ -63890,7 +64034,7 @@ pub unsafe fn vst4q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v2f32")]
         fn _vst4_lane_f32(
             ptr: *mut i8,
@@ -63916,7 +64060,7 @@ pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v4f32")]
         fn _vst4q_lane_f32(
             ptr: *mut i8,
@@ -63942,7 +64086,7 @@ pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v8i8")]
         fn _vst4_lane_s8(
             ptr: *mut i8,
@@ -63968,7 +64112,7 @@ pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v4i16")]
         fn _vst4_lane_s16(
             ptr: *mut i8,
@@ -63994,7 +64138,7 @@ pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v8i16")]
         fn _vst4q_lane_s16(
             ptr: *mut i8,
@@ -64020,7 +64164,7 @@ pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v2i32")]
         fn _vst4_lane_s32(
             ptr: *mut i8,
@@ -64046,7 +64190,7 @@ pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4lane.p0.v4i32")]
         fn _vst4q_lane_s32(
             ptr: *mut i8,
@@ -64072,7 +64216,7 @@ pub unsafe fn vst4q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v2f32.p0"
@@ -64100,7 +64244,7 @@ pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v4f32.p0"
@@ -64128,7 +64272,7 @@ pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v8i8.p0"
@@ -64149,7 +64293,7 @@ pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v4i16.p0"
@@ -64177,7 +64321,7 @@ pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v8i16.p0"
@@ -64205,7 +64349,7 @@ pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v2i32.p0"
@@ -64233,7 +64377,7 @@ pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.st4lane.v4i32.p0"
@@ -65869,7 +66013,7 @@ pub fn vsudotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x1
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbl))]
 fn vtbl1(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbl1")]
         fn _vtbl1(a: int8x8_t, b: int8x8_t) -> int8x8_t;
     }
@@ -65917,7 +66061,7 @@ pub fn vtbl1_p8(a: poly8x8_t, b: uint8x8_t) -> poly8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbl))]
 fn vtbl2(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbl2")]
         fn _vtbl2(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
     }
@@ -65965,7 +66109,7 @@ pub fn vtbl2_p8(a: poly8x8x2_t, b: uint8x8_t) -> poly8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbl))]
 fn vtbl3(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbl3")]
         fn _vtbl3(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t) -> int8x8_t;
     }
@@ -66027,7 +66171,7 @@ pub fn vtbl3_p8(a: poly8x8x3_t, b: uint8x8_t) -> poly8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbl))]
 fn vtbl4(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t, e: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbl4")]
         fn _vtbl4(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t, e: int8x8_t) -> int8x8_t;
     }
@@ -66090,7 +66234,7 @@ pub fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbx))]
 fn vtbx1(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbx1")]
         fn _vtbx1(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
     }
@@ -66134,7 +66278,7 @@ pub fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbx))]
 fn vtbx2(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbx2")]
         fn _vtbx2(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t) -> int8x8_t;
     }
@@ -66192,7 +66336,7 @@ pub fn vtbx2_p8(a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t) -> poly8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbx))]
 fn vtbx3(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t, e: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbx3")]
         fn _vtbx3(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t, e: int8x8_t) -> int8x8_t;
     }
@@ -66252,7 +66396,7 @@ pub fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(vtbx))]
 fn vtbx4(a: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t, e: int8x8_t, f: int8x8_t) -> int8x8_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vtbx4")]
         fn _vtbx4(
             a: int8x8_t,
@@ -68243,7 +68387,7 @@ pub fn vusdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x1
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usdot.v2i32.v8i8"
@@ -68277,7 +68421,7 @@ pub fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usdot.v2i32.v8i8"
@@ -68317,7 +68461,7 @@ pub fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vusdotq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usdot.v4i32.v16i8"
@@ -68351,7 +68495,7 @@ pub fn vusdotq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vusdotq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usdot.v4i32.v16i8"
@@ -68388,7 +68532,7 @@ pub fn vusdotq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vusmmlaq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usmmla.v4i32.v16i8"

@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_with_applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos as _, Span};
 use url::Url;
 
 use crate::doc::{DOC_MARKDOWN, Fragments};

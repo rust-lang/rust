@@ -3,22 +3,21 @@
 #![feature(
     generic_const_items,
     min_generic_const_args,
+    macroless_generic_const_args,
     adt_const_params,
     generic_const_parameter_types,
-    const_param_ty_trait,
+    const_param_ty_trait
 )]
 #![expect(incomplete_features)]
 
-use std::marker::{PhantomData, ConstParamTy, ConstParamTy_};
+use std::marker::{ConstParamTy, ConstParamTy_, PhantomData};
 
 #[derive(PartialEq, Eq, ConstParamTy)]
 struct Foo<T> {
     field: T,
 }
 
-type const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = { Foo::<T> {
-    field: N,
-} };
+const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = core::direct_const_arg!(Foo::<T> { field: N });
 
 fn main() {
     // What we're trying to accomplish here is winding up with an equality relation
@@ -34,11 +33,13 @@ fn main() {
     // This tests that we are able to infer `?x=3` even though the first `ty::Const`
     // may be a fully evaluated constant, and the latter is not fully evaluatable due
     // to inference variables.
-    let _: PC<_, { WRAP::<u8, const { 1 + 1 }> }>
-        =  PC::<_, { Foo::<u8> { field: _ }}>;
+    let _: PC<_, { WRAP::<u8, const { 1 + 1 }> }> = PC::<_, { Foo::<u8> { field: _ } }>;
 }
 
 // "PhantomConst" helper equivalent to "PhantomData" used for testing equalities
 // of arbitrarily typed const arguments.
-struct PC<T: ConstParamTy_, const N: T> { _0: PhantomData<T> }
-const PC<T: ConstParamTy_, const N: T>: PC<T, N> = PC { _0: PhantomData::<T> };
+struct PC<T: ConstParamTy_, const N: T> {
+    _0: PhantomData<T>,
+}
+// FIXME(min_generic_const_args): this shouldn't have to do silly (expr,).0 hacks
+const PC<T: ConstParamTy_, const N: T>: PC<T, N> = (PC { _0: PhantomData::<T> },).0;

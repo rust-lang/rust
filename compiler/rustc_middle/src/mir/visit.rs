@@ -347,6 +347,7 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::Item(_def_id) => {}
 
                         ty::InstanceKind::Intrinsic(_def_id)
+                        | ty::InstanceKind::LlvmIntrinsic(_def_id)
                         | ty::InstanceKind::Shim(ty::ShimKind::VTable(_def_id))
                         | ty::InstanceKind::Shim(ty::ShimKind::Reify(_def_id, _))
                         | ty::InstanceKind::Virtual(_def_id, _)
@@ -361,7 +362,8 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::Shim(ty::ShimKind::FnPtr(_def_id, ty))
                         | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, Some(ty)))
                         | ty::InstanceKind::Shim(ty::ShimKind::Clone(_def_id, ty))
-                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(_def_id, ty))
                         | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_def_id, ty))
                         | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_def_id, ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
@@ -668,7 +670,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) | InvalidEnumConstruction(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | ResumedAfterDrop(_) => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | NullReferenceConstructed | ResumedAfterDrop(_) => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {
@@ -1082,7 +1084,6 @@ macro_rules! super_body {
             $self.visit_local_decl(local, & $($mutability)? $body.local_decls[local]);
         }
 
-        #[allow(unused_macro_rules)]
         macro_rules! type_annotations {
             (mut) => ($body.user_type_annotations.iter_enumerated_mut());
             () => ($body.user_type_annotations.iter_enumerated());
@@ -1178,6 +1179,7 @@ macro_rules! visit_place_fns {
                     if ty != new_ty { Some(PlaceElem::UnwrapUnsafeBinder(new_ty)) } else { None }
                 }
                 PlaceElem::Deref
+                | PlaceElem::PhantomDeref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
                 | PlaceElem::Downcast(..) => None,
@@ -1262,6 +1264,7 @@ macro_rules! visit_place_fns {
                     );
                 }
                 ProjectionElem::Deref
+                | ProjectionElem::PhantomDeref
                 | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
                 | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
                 | ProjectionElem::Downcast(_, _) => {}
@@ -1354,8 +1357,6 @@ pub enum MutatingUseContext {
     /// f(&mut x.y);
     /// ```
     Projection,
-    /// Retagging, a "Stacked Borrows" shadow state operation
-    Retag,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

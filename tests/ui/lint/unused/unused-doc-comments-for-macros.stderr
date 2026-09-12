@@ -27,5 +27,18 @@ LL | |     /// line3
    |
    = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
-error: aborting due to 2 previous errors
+error: unused doc comment
+  --> $DIR/unused-doc-comments-for-macros.rs:19:5
+   |
+LL | /     #[doc = {
+LL | |         let a = 1;
+LL | |         let b = 1;
+LL | |         let sum = a + b;
+LL | |         assert_eq!(sum, 2);
+LL | |     }]
+   | |______^ rustdoc does not generate documentation for macro invocations
+   |
+   = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
+
+error: aborting due to 3 previous errors
 

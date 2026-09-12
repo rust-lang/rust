@@ -25,8 +25,8 @@ fn test_concat() {
         let test_fst = string_to_ts("foo::bar");
         let test_snd = string_to_ts("::baz");
         let mut eq_res = TokenStream::default();
-        eq_res.push_stream(test_fst);
-        eq_res.push_stream(test_snd);
+        eq_res.push_stream_with_gluing(test_fst);
+        eq_res.push_stream_with_gluing(test_snd);
         assert_eq!(test_res.iter().count(), 5);
         assert_eq!(eq_res.iter().count(), 5);
         assert_eq!(cmp_token_stream(&test_res, &eq_res), true);
@@ -105,9 +105,9 @@ fn test_is_empty() {
 fn test_dotdotdot() {
     create_default_session_globals_then(|| {
         let mut stream = TokenStream::default();
-        stream.push_tree(TokenTree::token_joint(token::Dot, sp(0, 1)));
-        stream.push_tree(TokenTree::token_joint(token::Dot, sp(1, 2)));
-        stream.push_tree(TokenTree::token_alone(token::Dot, sp(2, 3)));
+        stream.push_tree_with_gluing(TokenTree::token_joint(token::Dot, sp(0, 1)));
+        stream.push_tree_with_gluing(TokenTree::token_joint(token::Dot, sp(1, 2)));
+        stream.push_tree_with_gluing(TokenTree::token_alone(token::Dot, sp(2, 3)));
         assert!(cmp_token_stream(&stream, &string_to_ts("...")));
         assert_eq!(stream.iter().count(), 1);
     })

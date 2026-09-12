@@ -103,7 +103,9 @@ const _: () = {
                 && zalsa_::HashEqLike::<T3>::eq(&self.parent, &data.3)
         }
     }
-    impl zalsa_struct_::Configuration for SyntaxContext {
+
+    // SAFETY: `Self::Fields`, i.e. `SyntaxContextData`, doesn't contain any lifetimes.
+    unsafe impl zalsa_struct_::Configuration for SyntaxContext {
         const LOCATION: salsa::plumbing::Location =
             salsa::plumbing::Location { file: file!(), line: line!() };
         const DEBUG_NAME: &'static str = "SyntaxContextData";
@@ -133,13 +135,9 @@ const _: () = {
             static CACHE: zalsa_::IngredientCache<zalsa_struct_::IngredientImpl<SyntaxContext>> =
                 zalsa_::IngredientCache::new();
 
-            // SAFETY: `lookup_jar_by_type` returns a valid ingredient index, and the only
-            // ingredient created by our jar is the struct ingredient.
-            unsafe {
-                CACHE.get_or_create(zalsa, || {
-                    zalsa.lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
-                })
-            }
+            // SAFETY: The ingredient at offset 0 in `JarImpl<SyntaxContext>` has type
+            // `IngredientImpl<SyntaxContext>`.
+            unsafe { CACHE.get_or_create::<zalsa_struct_::JarImpl<SyntaxContext>, 0>(zalsa) }
         }
     }
     impl zalsa_::AsId for SyntaxContext {
@@ -193,16 +191,7 @@ const _: () = {
         }
     }
 
-    unsafe impl salsa::plumbing::Update for SyntaxContext {
-        unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-            if unsafe { *old_pointer } != new_value {
-                unsafe { *old_pointer = new_value };
-                true
-            } else {
-                false
-            }
-        }
-    }
+    unsafe impl salsa::plumbing::SalsaValue for SyntaxContext {}
     impl<'db> SyntaxContext {
         pub fn new<
             Db,

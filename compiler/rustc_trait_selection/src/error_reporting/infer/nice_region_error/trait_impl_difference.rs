@@ -84,7 +84,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         let tcx = self.cx.tcx;
-        let expected_highlight = HighlightBuilder::build(tcx, expected);
+        let mut expected_highlight = HighlightBuilder::build(tcx, expected);
+        let expected_short = Highlighted {
+            highlight: expected_highlight,
+            ns: Namespace::TypeNS,
+            tcx,
+            value: expected,
+        }
+        .to_string();
+        expected_highlight.keep_regions = false;
         let expected = Highlighted {
             highlight: expected_highlight,
             ns: Namespace::TypeNS,
@@ -92,7 +100,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             value: expected,
         }
         .to_string();
-        let found_highlight = HighlightBuilder::build(tcx, found);
+        let mut found_highlight = HighlightBuilder::build(tcx, found);
+        let found_short =
+            Highlighted { highlight: found_highlight, ns: Namespace::TypeNS, tcx, value: found }
+                .to_string();
+        found_highlight.keep_regions = false;
         let found =
             Highlighted { highlight: found_highlight, ns: Namespace::TypeNS, tcx, value: found }
                 .to_string();
@@ -121,6 +133,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             rel_help: visitor.types.is_empty(),
             expected,
             found,
+            expected_short,
+            found_short,
         };
 
         let mut diag = self.tcx().dcx().create_err(diag);

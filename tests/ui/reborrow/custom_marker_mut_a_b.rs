@@ -1,8 +1,11 @@
+//! Test that a custom marker type (containing no references) can implement Reborrow and multiple
+//! overlapping reborrows conflict with one another.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 
+#[derive(Reborrow)]
 struct CustomMarker<'a>(PhantomData<&'a ()>);
-impl<'a> Reborrow for CustomMarker<'a> {}
 
 fn method<'a>(_a: CustomMarker<'a>) -> &'a () {
     &()

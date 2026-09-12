@@ -25,12 +25,19 @@ fn thread1() {
 }
 
 fn thread2() -> bool {
+    // Wait until thread1 picked an address. We need that thread to go first!
+    // There is no happens-before though since it is all Relaxed.
+    let thread1_addr = loop {
+        let addr = ADDR.load(Relaxed);
+        if addr != 0 {
+            break addr;
+        }
+    };
     // We try to get an allocation at the same address as the global `ADDR`. If we fail too often,
     // just bail. `main` will try again with a different allocation.
     for _ in 0..16 {
         let alloc = addr();
-        let addr = ADDR.load(Relaxed);
-        if alloc == addr {
+        if alloc == thread1_addr {
             // We got a reuse!
             // If the new allocation is at the same address as the old one, there must be a
             // happens-before relationship between them. Therefore, we can read VAL without racing

@@ -1,8 +1,7 @@
 //@ run-pass
 // Test lifetimes are linked properly when we create dependent region pointers.
 // Issue #3148.
-
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 struct A {
     value: B
@@ -71,7 +70,7 @@ fn get_v6_c(a: &A, _i: usize) -> &isize {
 
 fn get_v5_ref(a: &A, _i: usize) -> &isize {
     match &a.value {
-        &B {v5: box C {f: ref v}, ..} => v
+        &B {v5: C {f: ref v}, ..} => v
     }
 }
 

@@ -1,4 +1,7 @@
 //@ needs-rust-lld
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use std::path::Path;
 
 use run_make_support::{path, rfs, rustc, rustc_minicore, wasmparser};
@@ -15,6 +18,7 @@ fn main() {
         .linker_plugin_lto("on")
         .link_arg("--import-memory")
         .extern_("minicore", path("libminicore.rlib"))
+        .link_self_contained(false)
         .run();
     verify_features(Path::new("foo.wasm"));
 }

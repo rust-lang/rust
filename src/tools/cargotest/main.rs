@@ -19,7 +19,7 @@ const TEST_REPOS: &[Test] = &[
         name: "iron",
         repo: "https://github.com/iron/iron",
         sha: "cf056ea5e8052c1feea6141e40ab0306715a2c33",
-        lock: None,
+        lock: Some(include_str!("lockfiles/iron.lock")),
         packages: &[],
         features: None,
         manifest_path: None,
@@ -70,13 +70,11 @@ const TEST_REPOS: &[Test] = &[
         ],
     },
     Test {
-        name: "servo",
-        repo: "https://github.com/servo/servo",
-        sha: "785a344e32db58d4e631fd3cae17fd1f29a721ab",
-        lock: None,
-        // Only test Stylo a.k.a. Quantum CSS, the parts of Servo going into Firefox.
-        // This takes much less time to build than all of Servo and supports stable Rust.
-        packages: &["selectors"],
+        name: "stylo",
+        repo: "https://github.com/servo/stylo",
+        sha: "127b0b5cab6a6927552e889debb20beb031b79d1",
+        lock: Some(include_str!("lockfiles/stylo.lock")),
+        packages: &["selectors", "stylo"],
         features: None,
         manifest_path: None,
         filters: &[],
@@ -85,7 +83,7 @@ const TEST_REPOS: &[Test] = &[
         name: "diesel",
         repo: "https://github.com/diesel-rs/diesel",
         sha: "3db7c17c5b069656ed22750e84d6498c8ab5b81d",
-        lock: None,
+        lock: Some(include_str!("lockfiles/diesel.lock")),
         packages: &[],
         // Test the embedded sqlite variant of diesel
         // This does not require any dependency to be present,
@@ -115,9 +113,16 @@ fn main() {
 fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
     println!("testing {}", test.repo);
     let dir = clone_repo(test, out_dir);
+    let lockfile_path = dir.join("Cargo.lock");
     if let Some(lockfile) = test.lock {
-        fs::write(&dir.join("Cargo.lock"), lockfile).unwrap();
+        fs::write(&lockfile_path, lockfile).expect("failed to write lockfile");
     }
+    // Ensure all tests have a lockfile (either provided by us or checked in to the repository).
+    assert!(
+        lockfile_path.try_exists().expect("try_exists failed"),
+        "test '{}' is missing a lockfile",
+        test.name
+    );
     if !run_cargo_test(cargo, &dir, test.packages, test.features, test.manifest_path, test.filters)
     {
         panic!("tests failed for {}", test.repo);
@@ -201,14 +206,18 @@ fn run_cargo_test(
     command.args(filters);
 
     let status = command
+        // `xsv` locates binaries relative to `current_exe()`
+        // which assumes Cargo legacy build-dir layout.
+        //
+        // See failure logs:
+        // https://triage.rust-lang.org/gha-logs/rust-lang/rust/90658568103
+        //
+        // FIXME(weihanglo): replace xsv to something else with similar portfolio.
+        .env("__CARGO_TEMPORARY_BUILD_DIR_NEW_LAYOUT_OPT_OUT", "1")
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
         // Relax #![deny(warnings)] in some crates
         .env("RUSTFLAGS", "--cap-lints warn")
-        // servo tries to use 'lld-link.exe' on windows, but we don't
-        // have lld on our PATH in CI. Override it to use 'link.exe'
-        .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "link.exe")
-        .env("CARGO_TARGET_I686_PC_WINDOWS_MSVC_LINKER", "link.exe")
         .current_dir(crate_path)
         .status()
         .unwrap();

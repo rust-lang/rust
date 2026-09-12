@@ -11,7 +11,7 @@ pub fn page_size() -> usize {
 /// `_CS_PATH` or `_CS_V[67]_ENV` in the future).
 ///
 /// [posix_confstr]:
-///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
+///     https://pubs.opengroup.org/onlinepubs/9799919799/functions/confstr.html
 #[cfg(target_vendor = "apple")]
 pub fn confstr(
     key: crate::ffi::c_int,

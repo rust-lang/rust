@@ -3,8 +3,8 @@ use std::{assert_matches, fmt, iter};
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
@@ -28,7 +28,7 @@ use crate::{
 mod async_destructor_ctor;
 
 pub(super) fn provide(providers: &mut Providers) {
-    providers.mir_shims = make_shim;
+    providers.mir_shims = |tcx, shim| tcx.arena.alloc(make_shim(tcx, shim));
 }
 
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
@@ -119,7 +119,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                         &add_call_guards::CriticalCallEdges,
                     ],
                     Some(MirPhase::Runtime(RuntimePhase::Optimized)),
-                    pm::Optimizations::Allowed,
                 );
 
                 return body;
@@ -129,7 +128,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         }
         ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),
         ty::ShimKind::Clone(def_id, ty) => build_clone_shim(tcx, def_id, ty),
-        ty::ShimKind::FnPtrAddr(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::ShimKind::FnPtrAsPtr(def_id, ty) => build_fn_ptr_as_ptr_shim(tcx, def_id, ty),
+        ty::ShimKind::FnPtrFromPtr(def_id, ty) => build_fn_ptr_from_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty) => {
             let mut body =
                 async_destructor_ctor::build_future_drop_poll_shim(tcx, def_id, proxy_ty, impl_ty);
@@ -143,7 +143,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                     &add_call_guards::CriticalCallEdges,
                 ],
                 Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
-                pm::Optimizations::Allowed,
             );
             run_optimization_passes(tcx, &mut body);
             debug!("make_shim({:?}) = {:?}", shim, body);
@@ -327,7 +326,12 @@ pub fn build_drop_shim<'tcx>(
         start.terminator = Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(tcx, def_id, [ty::GenericArg::from(slice_ty)], span),
+                func: Operand::function_handle(
+                    tcx,
+                    def_id,
+                    &[ty::GenericArg::from(slice_ty)],
+                    span,
+                ),
                 args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
                 destination: Place::from(RETURN_PLACE),
                 target: Some(return_block),
@@ -456,7 +460,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         None
     }
 
-    fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {}
+    fn drop_flags_for(&mut self, _path: Self::Path, _mode: DropFlagMode) -> Vec<Place<'tcx>> {
+        Vec::new()
+    }
 
     fn field_subpath(&self, _path: Self::Path, _field: FieldIdx) -> Option<Self::Path> {
         None
@@ -618,7 +624,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = Ty::new_fn_def(tcx, self.def_id, [ty]);
+        let func_ty = tcx.type_of(self.def_id).instantiate(tcx, &[ty.into()]).skip_norm_wip();
         let func = Operand::Constant(Box::new(ConstOperand {
             span: self.span,
             user_ty: None,
@@ -1061,6 +1067,8 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // so this would otherwise not get filled).
     body.set_mentioned_items(Vec::new());
 
+    // We don't pass any passes here, we just force a phase change to `Optimized`.
+    // Otherwise this bit of MIR will trigger assertions trying to detect MIR with an invalid phase.
     pm::run_passes_no_validate(
         tcx,
         &mut body,
@@ -1073,40 +1081,98 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
 /// ```ignore (pseudo-impl)
 /// impl FnPtr for fn(u32) {
-///     fn addr(self) -> usize {
-///         self as usize
+///     fn addr(self) -> NonNull<Code> {
+///         unsafe { transmute(self as *const Code)}
 ///     }
 /// }
 /// ```
-fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
+fn build_fn_ptr_as_ptr_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> Body<'tcx> {
     assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
+
     let span = tcx.def_span(def_id);
+    let nonnull_did = tcx.require_lang_item(LangItem::NonNull, span);
+    let code_did = tcx.require_lang_item(LangItem::Code, span);
+    let nonnull_ty = tcx
+        .type_of(nonnull_did)
+        .instantiate(
+            tcx,
+            &[ty::GenericArg::from(tcx.type_of(code_did).instantiate_identity().skip_norm_wip())],
+        )
+        .skip_norm_wip();
+
     let Some(sig) =
         tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_norm_wip().no_bound_vars()
     else {
-        span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");
+        span_bug!(span, "FnPtr::as_ptr with bound vars for `{self_ty}`");
     };
-    let locals = local_decls_for_sig(&sig, span);
+    let mut locals = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo::outermost(span);
+
+    let mut statements = vec![];
     // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful
     // provenance.
-    let rvalue = Rvalue::Cast(
-        CastKind::FnPtrToPtr,
-        Operand::Move(Place::from(Local::arg(0))),
-        Ty::new_imm_ptr(tcx, tcx.types.unit),
-    );
-    let stmt = Statement::new(
+    let raw_unit_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
+    let cast_to_raw_rvalue =
+        Rvalue::Cast(CastKind::FnPtrToPtr, Operand::Move(Place::from(Local::arg(0))), raw_unit_ptr);
+    let raw_ptr = locals.push(LocalDecl::with_source_info(raw_unit_ptr, source_info)).into();
+    statements.push(Statement::new(
         source_info,
-        StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
-    );
-    let statements = vec![stmt];
+        StatementKind::Assign(Box::new((raw_ptr, cast_to_raw_rvalue))),
+    ));
+
+    let transmute_to_nonnull =
+        Rvalue::Cast(CastKind::Transmute, Operand::Move(Place::from(raw_ptr)), nonnull_ty);
+    statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((Place::return_place(), transmute_to_nonnull))),
+    ));
+
     let start_block = BasicBlockData::new_stmts(
         statements,
         Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
         false,
     );
-    let source = MirSource::from_shim(ty::ShimKind::FnPtrAddr(def_id, self_ty));
+    let source = MirSource::from_shim(ty::ShimKind::FnPtrAsPtr(def_id, self_ty));
+    new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
+}
+
+fn build_fn_ptr_from_ptr_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
+
+    let span = tcx.def_span(def_id);
+
+    let Some(sig) =
+        tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_norm_wip().no_bound_vars()
+    else {
+        span_bug!(span, "FnPtr::as_ptr with bound vars for `{self_ty}`");
+    };
+    let locals = local_decls_for_sig(&sig, span);
+
+    let source_info = SourceInfo::outermost(span);
+
+    let mut statements = vec![];
+    let transmute_to_self =
+        Rvalue::Cast(CastKind::Transmute, Operand::Move(Place::from(Local::arg(0))), self_ty);
+    statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((Place::return_place(), transmute_to_self))),
+    ));
+
+    let start_block = BasicBlockData::new_stmts(
+        statements,
+        Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
+        false,
+    );
+    let source = MirSource::from_shim(ty::ShimKind::FnPtrFromPtr(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 

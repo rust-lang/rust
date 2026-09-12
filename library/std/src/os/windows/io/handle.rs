@@ -3,6 +3,7 @@
 #![stable(feature = "io_safety", since = "1.63.0")]
 
 use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
+use crate::alloc::Allocator;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
@@ -424,7 +425,8 @@ pub trait AsHandle {
     ///
     /// # Example
     ///
-    /// ```rust,no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::File;
     /// # use std::io;
     /// use std::os::windows::io::{AsHandle, BorrowedHandle};
@@ -490,7 +492,7 @@ impl<T: AsHandle + ?Sized> AsHandle for crate::rc::UniqueRc<T> {
 }
 
 #[stable(feature = "as_windows_ptrs", since = "1.71.0")]
-impl<T: AsHandle + ?Sized> AsHandle for Box<T> {
+impl<T: AsHandle + ?Sized, A: Allocator> AsHandle for Box<T, A> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()

@@ -7,8 +7,8 @@ type D = (C, C, C, C);
 
 fn foo(x: D) {
     let () = x; //~ ERROR mismatched types
-    //~^ NOTE this expression has type `((...,
-    //~| NOTE expected `((...,
+    //~^ NOTE this expression has type `(((_,
+    //~| NOTE expected `(((_,
     //~| NOTE expected tuple
     //~| NOTE the full name for the type has been written to
     //~| NOTE consider using `--verbose` to print the full type name to the console

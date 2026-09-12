@@ -1,10 +1,10 @@
 //! Regression test for <https://github.com/rust-lang/miri/issues/3341>:
 //! If `Box` has a local allocator, then it can't be `noalias` as the allocator
 //! may want to access allocator state based on the data pointer.
-//! Ensure that the `-Zmiri-tree-borrows-relax-custom-allocator-uniqueness` flag makes us
-//! accept such code.
 
-//@compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-relax-custom-allocator-uniqueness -Zmiri-tree-borrows-implicit-writes
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 
 use std::alloc::{AllocError, Allocator, Layout};

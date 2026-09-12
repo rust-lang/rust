@@ -3,9 +3,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_span::Symbol;
 
 declare_clippy_lint! {

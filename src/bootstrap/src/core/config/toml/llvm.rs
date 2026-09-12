@@ -1,11 +1,11 @@
 //! This module defines the `Llvm` struct, which represents the `[llvm]` table
 //! in the `bootstrap.toml` configuration file.
 
-use serde::{Deserialize, Deserializer};
+use std::collections::HashMap;
 
 use crate::core::config::StringOrBool;
-use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
-use crate::{HashMap, HashSet, PathBuf, define_config, exit};
+use crate::core::config::macros::define_config;
+use crate::core::config::toml::TomlConfig;
 
 define_config! {
     /// TOML representation of how the LLVM build is configured.
@@ -45,7 +45,6 @@ define_config! {
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
 /// It does this by destructuring the `Llvm` instance to make sure every `Llvm` field is covered and not missing.
-#[cfg(not(test))]
 pub fn check_incompatible_options_for_ci_llvm(
     current_config_toml: TomlConfig,
     ci_config_toml: TomlConfig,

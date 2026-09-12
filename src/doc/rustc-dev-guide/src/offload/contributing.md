@@ -15,9 +15,11 @@ set -e
 # inputs:
 # lib.ll (host code) + host.out (device)
 
-# You only need to run the first three commands once to generate lib.ll and host.out from your rust code.
+# You only need to run the commands below once to generate lib.ll and host.out from your rust code.
 
-# RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -v --target amdgcn-amd-amdhsa -Zbuild-std=core -r
+# RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=HostMetadata=/absolute/path/to/offload.manifest -Zunstable-options" cargo +offload build -r
+#
+# RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device=/absolute/path/to/offload.manifest -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -v --target amdgcn-amd-amdhsa -Zbuild-std=core -r
 #
 # RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=/absolute/path/to/project/target/amdgcn-amd-amdhsa/release/deps/host.out -Zunstable-options" cargo +offload build -r
 #

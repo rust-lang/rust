@@ -9,20 +9,25 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, crate_description};
+use crate::core::builder::{
+    Builder, CommandLineStep, Kind, RunConfig, ShouldRun, crate_description,
+};
+use crate::core::compiler::Compiler;
+use crate::core::config::flags::Subcommand;
+use crate::core::session::{Mode, Session};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
-use crate::{Build, Compiler, Kind, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}
 
-impl Step for CleanAll {
+impl CommandLineStep for CleanAll {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Only runs as the default `./x clean` step; cannot be selected explicitly.
-        run.never()
+        // Normally this step is invoked implicitly via `./x clean`, but all
+        // steps are required to register at least one explicit path/alias.
+        run.alias("default")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -42,7 +47,7 @@ impl Step for CleanAll {
             panic!("--all and --stage can't be used at the same time for `x clean`");
         }
 
-        clean(builder.build, all, stage)
+        clean(builder.sess, all, stage)
     }
 }
 
@@ -54,12 +59,11 @@ macro_rules! clean_crate_tree {
             crates: Vec<String>,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let crates = run.builder.in_tree_crates($root_crate, None);
-                run.crates(crates)
+                run.crate_or_deps($root_crate)
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -101,8 +105,8 @@ clean_crate_tree! {
     Std, Mode::Std, "sysroot";
 }
 
-fn clean(build: &Build, all: bool, stage: Option<u32>) {
-    if build.config.dry_run() {
+fn clean(sess: &Session, all: bool, stage: Option<u32>) {
+    if sess.config.dry_run() {
         return;
     }
 
@@ -110,23 +114,23 @@ fn clean(build: &Build, all: bool, stage: Option<u32>) {
 
     // Clean the entire build directory
     if all {
-        rm_rf(&build.out);
+        rm_rf(&sess.out);
         return;
     }
 
     // Clean the target stage artifacts
     if let Some(stage) = stage {
-        clean_specific_stage(build, stage);
+        clean_specific_stage(sess, stage);
         return;
     }
 
     // Follow the default behaviour
-    clean_default(build);
+    clean_default(sess);
 }
 
-fn clean_specific_stage(build: &Build, stage: u32) {
-    for host in &build.hosts {
-        let entries = match build.out.join(host).read_dir() {
+fn clean_specific_stage(sess: &Session, stage: u32) {
+    for host in &sess.hosts {
+        let entries = match sess.out.join(host).read_dir() {
             Ok(iter) => iter,
             Err(_) => continue,
         };
@@ -146,18 +150,18 @@ fn clean_specific_stage(build: &Build, stage: u32) {
     }
 }
 
-fn clean_default(build: &Build) {
-    rm_rf(&build.out.join("tmp"));
-    rm_rf(&build.out.join("dist"));
-    rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
-    rm_rf(&build.out.join("bootstrap-shims-dump"));
-    rm_rf(BuildStamp::new(&build.out).with_prefix("rustfmt").path());
+fn clean_default(sess: &Session) {
+    rm_rf(&sess.out.join("tmp"));
+    rm_rf(&sess.out.join("dist"));
+    rm_rf(&sess.out.join("bootstrap").join(".last-warned-change-id"));
+    rm_rf(&sess.out.join("bootstrap-shims-dump"));
+    rm_rf(BuildStamp::new(&sess.out).with_prefix("rustfmt").path());
 
-    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t)).collect();
+    let mut hosts: Vec<_> = sess.hosts.iter().map(|t| sess.out.join(t)).collect();
     // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
     // might not get removed.
     // Adding its path (linked one for easier accessibility) will solve this problem.
-    hosts.push(build.out.join("host"));
+    hosts.push(sess.out.join("host"));
 
     for host in hosts {
         let entries = match host.read_dir() {
@@ -177,6 +181,16 @@ fn clean_default(build: &Build) {
 }
 
 fn rm_rf(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => return,
+        // Already deleted, nothing for us to do.
+        Err(e) if e.kind() == ErrorKind::NotFound => return,
+        _ => {}
+    }
+
+    // If remove_dir_all fails then retry.
+    // We do so manually so we can provide better diagnostics,
+    // e.g. pointing to the exact file that failed.
     match path.symlink_metadata() {
         Err(e) => {
             if e.kind() == ErrorKind::NotFound {
@@ -235,7 +249,7 @@ where
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {
                 // Delete symlinked directories on Windows
-                if m.file_type().is_symlink() && path.is_dir() && fs::remove_dir(path).is_ok() {
+                if fs::remove_dir(path).is_ok() {
                     return;
                 }
                 panic!("failed to {} {}: {}", desc, path.display(), e);

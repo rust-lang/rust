@@ -59,8 +59,6 @@ error[E0599]: no method named `size` found for struct `Vec<{integer}>` in the cu
 LL |     x.size();
    |       ^^^^
    |
-help: there is a method `resize` with a similar name, but with different arguments
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: you might have meant to use `len`
    |
 LL -     x.size();
@@ -68,7 +66,7 @@ LL +     x.len();
    |
 
 error[E0308]: mismatched types
-  --> $DIR/rustc_confusables_std_cases.rs:20:14
+  --> $DIR/rustc_confusables_std_cases.rs:19:14
    |
 LL |     x.append(42);
    |       ------ ^^ expected `&mut Vec<{integer}>`, found integer
@@ -86,7 +84,7 @@ LL +     x.push(42);
    |
 
 error[E0308]: mismatched types
-  --> $DIR/rustc_confusables_std_cases.rs:22:24
+  --> $DIR/rustc_confusables_std_cases.rs:21:24
    |
 LL |     String::new().push("");
    |                   ---- ^^ expected `char`, found `&str`
@@ -101,7 +99,7 @@ LL |     String::new().push_str("");
    |                       ++++
 
 error[E0599]: no method named `append` found for struct `String` in the current scope
-  --> $DIR/rustc_confusables_std_cases.rs:24:19
+  --> $DIR/rustc_confusables_std_cases.rs:23:19
    |
 LL |     String::new().append("");
    |                   ^^^^^^
@@ -113,7 +111,7 @@ LL +     String::new().push_str("");
    |
 
 error[E0599]: no method named `get_line` found for struct `Stdin` in the current scope
-  --> $DIR/rustc_confusables_std_cases.rs:28:11
+  --> $DIR/rustc_confusables_std_cases.rs:27:11
    |
 LL |     stdin.get_line(&mut buffer).unwrap();
    |           ^^^^^^^^

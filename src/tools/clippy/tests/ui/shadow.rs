@@ -1,12 +1,7 @@
 //@aux-build:proc_macro_derive.rs
 
-#![warn(clippy::shadow_same, clippy::shadow_reuse, clippy::shadow_unrelated)]
-#![allow(
-    clippy::let_unit_value,
-    clippy::needless_ifs,
-    clippy::redundant_guards,
-    clippy::redundant_locals
-)]
+#![warn(clippy::shadow_reuse, clippy::shadow_same, clippy::shadow_unrelated)]
+#![expect(clippy::let_unit_value, clippy::redundant_guards, clippy::redundant_locals)]
 
 extern crate proc_macro_derive;
 

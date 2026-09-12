@@ -45,7 +45,6 @@ impl Pool {
     /// Panics if job panics
     #[must_use]
     pub fn new(threads: usize) -> Self {
-        const STACK_SIZE: usize = 8 * 1024 * 1024;
         const INITIAL_INTENT: ThreadIntent = ThreadIntent::Worker;
 
         let (job_sender, job_receiver) = crossbeam_channel::unbounded();
@@ -54,7 +53,6 @@ impl Pool {
         let mut handles = Vec::with_capacity(threads);
         for idx in 0..threads {
             let handle = Builder::new(INITIAL_INTENT, format!("Worker{idx}",))
-                .stack_size(STACK_SIZE)
                 .allow_leak(true)
                 .spawn({
                     let extant_tasks = Arc::clone(&extant_tasks);

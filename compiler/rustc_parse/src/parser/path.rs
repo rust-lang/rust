@@ -4,8 +4,8 @@ use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
-    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, MgcaDisambiguation,
-    ParenthesizedArgs, Path, PathSegment, QSelf,
+    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
+    Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{BytePos, Ident, Span, kw, sym};
@@ -15,15 +15,12 @@ use tracing::debug;
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
-use crate::errors::{
-    self, AttributeOnEmptyType, AttributeOnGenericArg, ConstGenericWithoutBraces,
-    ConstGenericWithoutBracesSugg, FnPathFoundNamedParams, PathFoundAttributeInParams,
+use crate::diagnostics::{
+    self, ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, PathFoundAttributeInParams,
     PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
 };
 use crate::exp;
-use crate::parser::{
-    CommaRecoveryMode, Expr, ExprKind, FnContext, FnParseMode, RecoverColon, RecoverComma,
-};
+use crate::parser::{CommaRecoveryMode, Expr, FnContext, FnParseMode, RecoverColon, RecoverComma};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -92,7 +89,7 @@ impl<'a> Parser<'a> {
             path_span = path_lo.to(self.prev_token.span);
         } else {
             path_span = self.token.span.to(self.token.span);
-            path = ast::Path { segments: ThinVec::new(), span: path_span, tokens: None };
+            path = ast::Path { segments: ThinVec::new(), span: path_span };
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
@@ -112,10 +109,7 @@ impl<'a> Parser<'a> {
             self.parse_path_segments(&mut path.segments, style, None)?;
         }
 
-        Ok((
-            qself,
-            Path { segments: path.segments, span: lo.to(self.prev_token.span), tokens: None },
-        ))
+        Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_token.span) }))
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.
@@ -187,7 +181,7 @@ impl<'a> Parser<'a> {
                     .filter_map(|segment| segment.args.as_ref())
                     .map(|arg| arg.span())
                     .collect::<Vec<_>>();
-                parser.dcx().emit_err(errors::GenericsInPath { span });
+                parser.dcx().emit_err(diagnostics::GenericsInPath { span });
                 // Ignore these arguments to prevent unexpected behaviors.
                 let segments = path
                     .segments
@@ -221,7 +215,7 @@ impl<'a> Parser<'a> {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
-        Ok(Path { segments, span: lo.to(self.prev_token.span), tokens: None })
+        Ok(Path { segments, span: lo.to(self.prev_token.span) })
     }
 
     pub(super) fn parse_path_segments(
@@ -378,8 +372,10 @@ impl<'a> Parser<'a> {
                         let ty = self.parse_ty()?;
                         let span = lo.to(ty.span);
                         let suggestion = prev_lo.to(ty.span);
-                        self.dcx()
-                            .emit_err(errors::BadReturnTypeNotationOutput { span, suggestion });
+                        self.dcx().emit_err(diagnostics::BadReturnTypeNotationOutput {
+                            span,
+                            suggestion,
+                        });
                     }
 
                     Box::new(ast::GenericArgs::ParenthesizedElided(span))
@@ -408,23 +404,19 @@ impl<'a> Parser<'a> {
                             req_name: |_, _| false,
                             req_body: false,
                         };
-                        let param = p.parse_param_general(&mode, false, false);
-                        param.map(move |param| {
-                            if !matches!(param.pat.kind, PatKind::Missing) {
-                                dcx.emit_err(FnPathFoundNamedParams {
-                                    named_param_span: param.pat.span,
-                                });
-                            }
-                            if matches!(param.ty.kind, TyKind::CVarArgs) {
-                                dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
-                            }
-                            if !param.attrs.is_empty() {
-                                dcx.emit_err(PathFoundAttributeInParams {
-                                    span: param.attrs[0].span,
-                                });
-                            }
-                            param.ty
-                        })
+                        let param = p.parse_param_general(&mode, false, false)?;
+                        if !matches!(param.pat.kind, PatKind::Missing) {
+                            self.psess
+                                .gated_spans
+                                .gate(sym::named_fn_trait_parameters, param.pat.span);
+                        }
+                        if matches!(param.ty.kind, TyKind::CVarArgs) {
+                            dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
+                        }
+                        if !param.attrs.is_empty() {
+                            dcx.emit_err(PathFoundAttributeInParams { span: param.attrs[0].span });
+                        }
+                        Ok(param)
                     });
 
                     let (inputs, _) = match parse_params_result {
@@ -668,7 +660,7 @@ impl<'a> Parser<'a> {
                     // i.e. no multibyte characters, in this range.
                     let span = lo
                         .with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count.into()));
-                    self.dcx().emit_err(errors::UnmatchedAngle {
+                    self.dcx().emit_err(diagnostics::UnmatchedAngle {
                         span,
                         plural: snapshot.unmatched_angle_bracket_count > 1,
                     });
@@ -801,7 +793,7 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                let guar = self.dcx().emit_err(errors::LifetimeInEqConstraint {
+                let guar = self.dcx().emit_err(diagnostics::LifetimeInEqConstraint {
                     span: lt.ident.span,
                     lifetime: lt.ident,
                     binding_label: span,
@@ -818,13 +810,13 @@ impl<'a> Parser<'a> {
                     .dcx()
                     .struct_span_err(after_eq.to(before_next), "missing type to the right of `=`");
                 if matches!(self.token.kind, token::Comma | token::Gt) {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         self.psess.source_map().next_point(eq_span).to(before_next),
                         "to constrain the associated type, add a type after `=`",
                         " TheType",
                         Applicability::HasPlaceholders,
                     );
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         prev_token_span.shrink_to_hi().to(before_next),
                         format!("remove the `=` if `{ident}` is a type"),
                         "",
@@ -876,13 +868,12 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let (value, mgca_disambiguation) = if self.token.kind == token::OpenBrace {
-            let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
-            (value, MgcaDisambiguation::Direct)
+        let value = if self.token.kind == token::OpenBrace {
+            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?
         } else {
             self.parse_unambiguous_unbraced_const_arg()?
         };
-        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value, mgca_disambiguation })
+        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 
     /// Attempt to parse a const argument that has not been enclosed in braces.
@@ -892,30 +883,26 @@ impl<'a> Parser<'a> {
     /// - Single-segment paths (i.e. standalone generic const parameters).
     /// All other expressions that can be parsed will emit an error suggesting the expression be
     /// wrapped in braces.
-    pub(super) fn parse_unambiguous_unbraced_const_arg(
-        &mut self,
-    ) -> PResult<'a, (Box<Expr>, MgcaDisambiguation)> {
+    pub(super) fn parse_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, Box<Expr>> {
         let start = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-        let (expr, _) =
-            self.parse_expr_res(Restrictions::CONST_EXPR, attrs).map_err(|mut err| {
-                err.span_label(
-                    start.shrink_to_lo(),
-                    "while parsing a const generic argument starting here",
-                );
-                err
-            })?;
+        let expr = self.parse_expr_res(Restrictions::CONST_EXPR).map_err(|mut err| {
+            err.span_label(
+                start.shrink_to_lo(),
+                "while parsing a const generic argument starting here",
+            );
+            err
+        })?;
         if !self.expr_is_valid_const_arg(&expr) {
-            self.dcx().emit_err(ConstGenericWithoutBraces {
+            return Err(self.dcx().create_err(ConstGenericWithoutBraces {
                 span: expr.span,
                 sugg: ConstGenericWithoutBracesSugg {
                     left: expr.span.shrink_to_lo(),
                     right: expr.span.shrink_to_hi(),
                 },
-            });
+            }));
         }
 
-        Ok((expr, MgcaDisambiguation::Direct))
+        Ok(expr)
     }
 
     /// Parse a generic argument in a path segment.
@@ -924,12 +911,8 @@ impl<'a> Parser<'a> {
         &mut self,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Option<GenericArg>> {
-        let mut attr_span: Option<Span> = None;
-        if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
-            let attrs_wrapper = self.parse_outer_attributes()?;
-            let raw_attrs = attrs_wrapper.take_for_recovery(self.psess);
-            attr_span = Some(raw_attrs[0].span.to(raw_attrs.last().unwrap().span));
-        }
+        self.recover_from_outer_attributes("generic arguments")?;
+
         let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.
@@ -949,33 +932,9 @@ impl<'a> Parser<'a> {
             }
 
             match self.parse_ty() {
-                Ok(ty) => {
-                    // Since the type parser recovers from some malformed slice and array types and
-                    // successfully returns a type, we need to look for `TyKind::Err`s in the
-                    // type to determine if error recovery has occurred and if the input is not a
-                    // syntactically valid type after all.
-                    if let ast::TyKind::Slice(inner_ty) | ast::TyKind::Array(inner_ty, _) = &ty.kind
-                        && let ast::TyKind::Err(_) = inner_ty.kind
-                        && let Some(snapshot) = snapshot
-                        && let Some(expr) =
-                            self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
-                    {
-                        return Ok(Some(
-                            self.dummy_const_arg_needs_braces(
-                                self.dcx()
-                                    .struct_span_err(expr.span, "invalid const generic expression"),
-                                expr.span,
-                            ),
-                        ));
-                    }
-
-                    GenericArg::Type(ty)
-                }
+                Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
-                    let stopped_at_doc_comment = matches!(self.token.kind, token::DocComment(..));
-
-                    if !stopped_at_doc_comment
-                        && let Some(snapshot) = snapshot
+                    if let Some(snapshot) = snapshot
                         && let Some(expr) =
                             self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
                     {
@@ -987,16 +946,12 @@ impl<'a> Parser<'a> {
             }
         } else if self.token.is_keyword(kw::Const) {
             return self.recover_const_param_declaration(ty_generics);
-        } else if let Some(attr_span) = attr_span {
-            let diag = self.dcx().create_err(AttributeOnEmptyType { span: attr_span });
-            return Err(diag);
         } else {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
             let snapshot = self.create_snapshot_for_diagnostic();
-            let attrs = self.parse_outer_attributes()?;
-            match self.parse_expr_res(Restrictions::CONST_EXPR, attrs) {
-                Ok((expr, _)) => {
+            match self.parse_expr_res(Restrictions::CONST_EXPR) {
+                Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
                         self.dcx().struct_span_err(expr.span, "invalid const generic expression"),
                         expr.span,
@@ -1009,25 +964,6 @@ impl<'a> Parser<'a> {
                 }
             }
         };
-
-        if let Some(attr_span) = attr_span {
-            let guar = self.dcx().emit_err(AttributeOnGenericArg {
-                span: attr_span,
-                fix_span: attr_span.until(arg.span()),
-            });
-            return Ok(Some(match arg {
-                GenericArg::Type(_) => GenericArg::Type(self.mk_ty(attr_span, TyKind::Err(guar))),
-                GenericArg::Const(_) => {
-                    let error_expr = self.mk_expr(attr_span, ExprKind::Err(guar));
-                    GenericArg::Const(AnonConst {
-                        id: ast::DUMMY_NODE_ID,
-                        value: error_expr,
-                        mgca_disambiguation: MgcaDisambiguation::Direct,
-                    })
-                }
-                GenericArg::Lifetime(lt) => GenericArg::Lifetime(lt),
-            }));
-        }
 
         Ok(Some(arg))
     }

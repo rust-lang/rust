@@ -12,7 +12,7 @@ use run_make_support::{has_extension, has_prefix, path, rustdoc, shallow_find_fi
 fn main() {
     rustdoc()
         .arg("-Zunstable-options")
-        .arg("--emit=invocation-specific")
+        .arg("--emit=html-non-static-files")
         .out_dir("invocation-only")
         .arg("--resource-suffix=-xxx")
         .args(&["--theme", "y.css"])

@@ -1,14 +1,10 @@
 #![warn(clippy::or_fun_call)]
 #![allow(
-    clippy::borrow_as_ptr,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_wraps,
-    clippy::unnecessary_literal_unwrap,
-    clippy::unnecessary_result_map_or_else,
-    clippy::unnecessary_option_map_or_else,
     clippy::map_or_identity,
-    clippy::useless_vec
+    clippy::unnecessary_option_map_or_else,
+    clippy::unnecessary_result_map_or_else
 )]
+#![expect(clippy::unnecessary_literal_unwrap, clippy::useless_vec)]
 
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
@@ -198,7 +194,6 @@ fn f() -> Option<()> {
 mod issue6675 {
     unsafe fn ptr_to_ref<'a, T>(p: *const T) -> &'a T {
         unsafe {
-            #[allow(unused)]
             let x = vec![0; 1000]; // future-proofing, make this function expensive.
             &*p
         }

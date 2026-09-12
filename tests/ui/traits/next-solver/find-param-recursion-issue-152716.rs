@@ -14,7 +14,7 @@ fn foo<T>()
 where
     T: for<'a> Proj<'a, Assoc = for<'b> fn(<T as Proj<'b>>::Assoc)>,
     (): Trait<<T as Proj<'static>>::Assoc>
-    //~^ ERROR: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
+    //~^ ERROR: the trait bound `(): Trait<fn(for<'b> fn(<T as Proj<'b>>::Assoc))>` is not satisfied
 {
 }
 

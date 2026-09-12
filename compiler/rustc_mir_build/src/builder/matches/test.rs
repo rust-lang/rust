@@ -8,7 +8,8 @@
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::{LangItem, RangeEnd};
+use rustc_hir::RangeEnd;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
@@ -19,7 +20,8 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::builder::matches::{
-    MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
+    MatchPairKind, MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind,
+    TestableCase,
 };
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -30,7 +32,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pair: &MatchPairTree<'tcx>,
     ) -> Test<'tcx> {
-        let kind = match match_pair.testable_case {
+        // Or-patterns are not tested directly; instead they are expanded into subcandidates,
+        // which are then distinguished by testing whatever non-or patterns they contain.
+        let MatchPairKind::Testable { ref testable_case, .. } = match_pair.kind else {
+            bug!("or-patterns should have already been handled")
+        };
+        let kind = match *testable_case {
             TestableCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
             TestableCase::Constant { value: _, kind: PatConstKind::Bool } => TestKind::If,
@@ -51,10 +58,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
             TestableCase::Never => TestKind::Never,
-
-            // Or-patterns are not tested directly; instead they are expanded into subcandidates,
-            // which are then distinguished by testing whatever non-or patterns they contain.
-            TestableCase::Or { .. } => bug!("or-patterns should have already been handled"),
         };
 
         Test { span: match_pair.pattern_span, kind }
@@ -348,7 +351,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = self.source_info(span);
         let re_erased = self.tcx.lifetimes.re_erased;
         let trait_item = self.tcx.require_lang_item(trait_item, span);
-        let method = trait_method(self.tcx, trait_item, method, [ty]);
+        let method = trait_method(self.tcx, trait_item, method, &[ty.into()]);
         let ref_src = self.temp(Ty::new_ref(self.tcx, re_erased, ty, mutability), span);
         // `let ref_src = &src_place;`
         // or `let ref_src = &mut src_place;`
@@ -421,7 +424,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let str_ty = self.tcx.types.str_;
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, source_info.span);
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [str_ty, str_ty]);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, &[str_ty.into(), str_ty.into()]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -468,7 +471,7 @@ fn trait_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     method_name: Symbol,
-    args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    args: &[GenericArg<'tcx>],
 ) -> Const<'tcx> {
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.
@@ -478,7 +481,5 @@ fn trait_method<'tcx>(
         .find(|item| item.is_fn())
         .expect("trait method not found");
 
-    let method_ty = Ty::new_fn_def(tcx, item.def_id, args);
-
-    Const::zero_sized(method_ty)
+    Const::zero_sized(tcx.type_of(item.def_id).instantiate(tcx, args).skip_norm_wip())
 }

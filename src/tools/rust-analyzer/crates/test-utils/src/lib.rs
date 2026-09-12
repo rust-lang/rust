@@ -261,9 +261,12 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
                             .iter()
                             .find(|&&(off, _idx)| off == offset)
                             .expect("annotation continuation not found");
-                        res[idx].1.push('\n');
+                        if !res[idx].1.ends_with('\n') {
+                            res[idx].1.push('\n');
+                        }
                         res[idx].1.push_str(&content);
                         res[idx].1.push('\n');
+                        this_line_annotations.push((offset, idx));
                     }
                 }
             }
@@ -352,6 +355,7 @@ fn main() {
     zoo + 1
 } //^^^ type:
   //  | i32
+  //  | u32
 
 // ^file
     "#,
@@ -363,9 +367,9 @@ fn main() {
 
     assert_eq!(
         res[..3],
-        [("x", "def".into()), ("y", "def".into()), ("zoo", "type:\ni32\n".into())]
+        [("x", "def".into()), ("y", "def".into()), ("zoo", "type:\ni32\nu32\n".into())]
     );
-    assert_eq!(res[3].0.len(), 115);
+    assert_eq!(res[3].0.len(), 127);
 }
 
 #[test]

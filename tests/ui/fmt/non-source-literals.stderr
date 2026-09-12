@@ -9,7 +9,7 @@ help: the trait `std::fmt::Display` is not implemented for `NonDisplay`
    |
 LL | pub struct NonDisplay;
    | ^^^^^^^^^^^^^^^^^^^^^
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: in format strings you may be able to use `{:?}` (or `{:#?}` for pretty-print) instead
 
 error[E0277]: `NonDisplay` doesn't implement `std::fmt::Display`
   --> $DIR/non-source-literals.rs:10:45
@@ -22,7 +22,7 @@ help: the trait `std::fmt::Display` is not implemented for `NonDisplay`
    |
 LL | pub struct NonDisplay;
    | ^^^^^^^^^^^^^^^^^^^^^
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: in format strings you may be able to use `{:?}` (or `{:#?}` for pretty-print) instead
 
 error[E0277]: `NonDebug` doesn't implement `Debug`
   --> $DIR/non-source-literals.rs:11:42

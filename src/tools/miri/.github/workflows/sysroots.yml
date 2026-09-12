@@ -20,7 +20,7 @@ jobs:
       - name: Build the sysroots
         run: |
           rustup toolchain install nightly
-          cargo install -f rustup-toolchain-install-master
+          cargo install --locked -f rustup-toolchain-install-master
           ./miri toolchain -c rust-docs # Docs are the only place targets are separated by tier
           ./miri install
           python3 -m pip install beautifulsoup4

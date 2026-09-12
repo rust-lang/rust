@@ -1,16 +1,16 @@
 use crate::manual_ignore_case_cmp::MatchType::{Literal, ToAscii};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sym;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::ExprKind::{Binary, Lit, MethodCall};
-use rustc_hir::{BinOpKind, Expr, LangItem};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{BinOpKind, Expr};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
 use rustc_middle::ty::{Ty, UintTy};
-use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {

@@ -2,9 +2,7 @@ use std::panic;
 
 use tracing::instrument;
 
-pub use self::dep_node::{
-    DepKind, DepKindVTable, DepNode, WorkProductId, dep_kind_from_label, label_strs,
-};
+pub use self::dep_node::{DepKind, DepKindVTable, DepNode, WorkProductId, dep_kind_from_label};
 pub use self::dep_node_key::DepNodeKey;
 pub use self::graph::{
     DepGraph, DepGraphData, DepNodeIndex, QuerySideEffect, TaskDepsRef, WorkProduct,
@@ -82,7 +80,7 @@ where
 impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn dep_kind_vtable(self, dk: DepKind) -> &'tcx DepKindVTable<'tcx> {
-        &self.dep_kind_vtables[dk.as_usize()]
+        &self.query_system.dep_kind_vtables[dk.as_usize()]
     }
 
     #[inline(always)]

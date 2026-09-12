@@ -9,12 +9,13 @@ help: consider importing this trait
 LL +         use std::ops::Add;
    |
 
-error[E0404]: expected trait, found derive macro `Clone`
+error[E0404]: cannot find trait `Clone` in this scope
   --> $DIR/no-implicit-prelude-nested.rs:12:14
    |
 LL |         impl Clone for Test {}
-   |              ^^^^^ not a trait
+   |              ^^^^^ not found in this scope
    |
+   = note: a derive macro named `Clone` exists in another namespace
 help: consider importing this trait instead
    |
 LL +         use std::clone::Clone;
@@ -70,12 +71,13 @@ help: consider importing this trait
 LL +     use std::ops::Add;
    |
 
-error[E0404]: expected trait, found derive macro `Clone`
+error[E0404]: cannot find trait `Clone` in this scope
   --> $DIR/no-implicit-prelude-nested.rs:24:10
    |
 LL |     impl Clone for Test {}
-   |          ^^^^^ not a trait
+   |          ^^^^^ not found in this scope
    |
+   = note: a derive macro named `Clone` exists in another namespace
 help: consider importing this trait instead
    |
 LL +     use std::clone::Clone;
@@ -131,12 +133,13 @@ help: consider importing this trait
 LL +         use std::ops::Add;
    |
 
-error[E0404]: expected trait, found derive macro `Clone`
+error[E0404]: cannot find trait `Clone` in this scope
   --> $DIR/no-implicit-prelude-nested.rs:39:14
    |
 LL |         impl Clone for Test {}
-   |              ^^^^^ not a trait
+   |              ^^^^^ not found in this scope
    |
+   = note: a derive macro named `Clone` exists in another namespace
 help: consider importing this trait instead
    |
 LL +         use std::clone::Clone;

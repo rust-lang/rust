@@ -9,7 +9,6 @@
 // FIXME(genmc): use `std::thread` once GenMC mode performance is better and produces fewer warnings for compare_exchange.
 
 #![no_main]
-#![feature(abort_unwind)]
 
 #[path = "../../../utils/genmc.rs"]
 mod genmc;

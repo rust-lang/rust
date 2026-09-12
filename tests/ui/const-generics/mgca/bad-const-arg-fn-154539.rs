@@ -2,10 +2,11 @@
 
 trait Iter<
     const FN: fn() = {
-        || { //~ ERROR complex const arguments must be placed inside of a `const` block
+        core::direct_const_arg!(|| {
+            //~^ ERROR complex const arguments must be placed inside of a `const` block
             use std::io::*;
             write!(_, "")
-        }
+        })
     },
 >
 {

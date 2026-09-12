@@ -2,7 +2,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(3000),
+                [salsa id]: Id(500),
             },
         },
         [
@@ -11,14 +11,14 @@
                 def: EnumVariant(
                     EnumVariant {
                         id: EnumVariantId(
-                            7800,
+                            0e00,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -41,21 +41,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Alias",
                 def: TypeAlias(
                     TypeAlias {
                         id: TypeAliasId(
-                            6c00,
+                            0c80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -76,21 +75,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "B",
                 def: EnumVariant(
                     EnumVariant {
                         id: EnumVariantId(
-                            7801,
+                            0e01,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -113,21 +111,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "CONST",
                 def: Const(
                     Const {
                         id: ConstId(
-                            6400,
+                            0b80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -148,21 +145,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "CONST_WITH_INNER",
                 def: Const(
                     Const {
                         id: ConstId(
-                            6402,
+                            0b82,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -183,7 +179,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Enum",
@@ -191,7 +186,7 @@
                     Enum(
                         Enum {
                             id: EnumId(
-                                5000,
+                                0900,
                             ),
                         },
                     ),
@@ -199,7 +194,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -220,7 +215,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "ItemLikeMacro",
@@ -228,7 +222,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                0880,
                             ),
                         ),
                     },
@@ -236,7 +230,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -257,7 +251,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Macro",
@@ -265,7 +258,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                0880,
                             ),
                         ),
                     },
@@ -273,7 +266,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -294,21 +287,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "STATIC",
                 def: Static(
                     Static {
                         id: StaticId(
-                            6800,
+                            0c00,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -329,7 +321,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Struct",
@@ -337,7 +328,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4801,
+                                0801,
                             ),
                         },
                     ),
@@ -345,7 +336,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -366,7 +357,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructFromMacro",
@@ -374,7 +364,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4800,
+                                0800,
                             ),
                         },
                     ),
@@ -382,7 +372,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: MacroFile(
                         MacroCallId(
-                            Id(4000),
+                            Id(700),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -403,7 +393,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInFn",
@@ -411,7 +400,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4805,
+                                0805,
                             ),
                         },
                     ),
@@ -419,7 +408,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -442,7 +431,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInNamedConst",
@@ -450,7 +438,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4806,
+                                0806,
                             ),
                         },
                     ),
@@ -458,7 +446,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -481,7 +469,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInUnnamedConst",
@@ -489,7 +476,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4807,
+                                0807,
                             ),
                         },
                     ),
@@ -497,7 +484,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -518,7 +505,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructT",
@@ -526,7 +512,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4802,
+                                0802,
                             ),
                         },
                     ),
@@ -534,7 +520,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -555,21 +541,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Trait",
                 def: Trait(
                     Trait {
                         id: TraitId(
-                            5c00,
+                            0a80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -590,7 +575,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Trait",
@@ -598,7 +582,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                0880,
                             ),
                         ),
                     },
@@ -606,7 +590,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -627,7 +611,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Union",
@@ -635,7 +618,7 @@
                     Union(
                         Union {
                             id: UnionId(
-                                5400,
+                                0980,
                             ),
                         },
                     ),
@@ -643,7 +626,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -664,21 +647,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "a_mod",
                 def: Module(
                     Module {
                         id: ModuleIdLt {
-                            [salsa id]: Id(3001),
+                            [salsa id]: Id(501),
                         },
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -699,21 +681,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "b_mod",
                 def: Module(
                     Module {
                         id: ModuleIdLt {
-                            [salsa id]: Id(3002),
+                            [salsa id]: Id(502),
                         },
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -734,7 +715,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "define_struct",
@@ -742,7 +722,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3c01,
+                                0681,
                             ),
                         ),
                     },
@@ -750,7 +730,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -771,21 +751,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "generic_impl_fn",
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            6002,
+                            0b02,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -808,21 +787,20 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "impl_fn",
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            6001,
+                            0b01,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -845,7 +823,6 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "macro_rules_macro",
@@ -853,7 +830,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3c00,
+                                0680,
                             ),
                         ),
                     },
@@ -861,7 +838,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -882,21 +859,20 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "main",
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            6000,
+                            0b00,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -917,7 +893,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "really_define_struct",
@@ -925,7 +900,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3c01,
+                                0681,
                             ),
                         ),
                     },
@@ -933,7 +908,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -954,21 +929,20 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "trait_fn",
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            6003,
+                            0b03,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -991,14 +965,13 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
         ],
     ),
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(3001),
+                [salsa id]: Id(501),
             },
         },
         [
@@ -1008,7 +981,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4803,
+                                0803,
                             ),
                         },
                     ),
@@ -1016,7 +989,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c00),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1037,14 +1010,13 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
         ],
     ),
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(3002),
+                [salsa id]: Id(502),
             },
         },
         [
@@ -1053,14 +1025,14 @@
                 def: Trait(
                     Trait {
                         id: TraitId(
-                            5c00,
+                            0a80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c01),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1081,7 +1053,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "IsThisJustATrait",
@@ -1089,7 +1060,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                0880,
                             ),
                         ),
                     },
@@ -1097,7 +1068,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c01),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1118,7 +1089,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInModB",
@@ -1126,7 +1096,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4804,
+                                0804,
                             ),
                         },
                     ),
@@ -1134,7 +1104,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c01),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1155,7 +1125,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "SuperItemLikeMacro",
@@ -1163,7 +1132,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4c00,
+                                0880,
                             ),
                         ),
                     },
@@ -1171,7 +1140,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c01),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1192,7 +1161,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "ThisStruct",
@@ -1200,7 +1168,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4804,
+                                0804,
                             ),
                         },
                     ),
@@ -1208,7 +1176,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2c01),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1229,7 +1197,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
         ],
     ),

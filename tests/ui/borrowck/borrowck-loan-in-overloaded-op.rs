@@ -1,6 +1,3 @@
-#![feature(box_patterns)]
-
-
 use std::ops::Add;
 
 #[derive(Clone)]
@@ -10,9 +7,9 @@ impl Add for Foo {
     type Output = Foo;
 
     fn add(self, f: Foo) -> Foo {
-        let Foo(box i) = self;
-        let Foo(box j) = f;
-        Foo(Box::new(i + j))
+        let Foo(i) = self;
+        let Foo(j) = f;
+        Foo(Box::new(*i + *j))
     }
 }
 

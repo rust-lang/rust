@@ -129,7 +129,7 @@ LL +     loop { if (break println!("hello")) {} }
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:74:12
+  --> $DIR/issue-54538-unused-parens-lint.rs:69:12
    |
 LL |     if let (0 | 1) = 0 {}
    |            ^     ^
@@ -141,7 +141,7 @@ LL +     if let 0 | 1 = 0 {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:75:13
+  --> $DIR/issue-54538-unused-parens-lint.rs:70:13
    |
 LL |     if let ((0 | 1),) = (0,) {}
    |             ^     ^
@@ -153,7 +153,7 @@ LL +     if let (0 | 1,) = (0,) {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:76:13
+  --> $DIR/issue-54538-unused-parens-lint.rs:71:13
    |
 LL |     if let [(0 | 1)] = [0] {}
    |             ^     ^
@@ -165,7 +165,7 @@ LL +     if let [0 | 1] = [0] {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:77:16
+  --> $DIR/issue-54538-unused-parens-lint.rs:72:16
    |
 LL |     if let 0 | (1 | 2) = 0 {}
    |                ^     ^
@@ -177,7 +177,7 @@ LL +     if let 0 | 1 | 2 = 0 {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:79:15
+  --> $DIR/issue-54538-unused-parens-lint.rs:74:15
    |
 LL |     if let TS((0 | 1)) = TS(0) {}
    |               ^     ^
@@ -189,7 +189,7 @@ LL +     if let TS(0 | 1) = TS(0) {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:81:20
+  --> $DIR/issue-54538-unused-parens-lint.rs:76:20
    |
 LL |     if let NS { f: (0 | 1) } = (NS { f: 0 }) {}
    |                    ^     ^
@@ -201,7 +201,7 @@ LL +     if let NS { f: 0 | 1 } = (NS { f: 0 }) {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:91:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:86:9
    |
 LL |         (_) => {}
    |         ^ ^
@@ -213,7 +213,7 @@ LL +         _ => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:92:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:87:9
    |
 LL |         (y) => {}
    |         ^ ^
@@ -225,7 +225,7 @@ LL +         y => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:93:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:88:9
    |
 LL |         (ref r) => {}
    |         ^     ^
@@ -237,7 +237,7 @@ LL +         ref r => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:94:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:89:9
    |
 LL |         (e @ 1...2) => {}
    |         ^         ^
@@ -249,7 +249,7 @@ LL +         e @ 1...2 => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:100:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:95:9
    |
 LL |         (e @ &(1...2)) => {}
    |         ^            ^
@@ -261,7 +261,7 @@ LL +         e @ &(1...2) => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:101:10
+  --> $DIR/issue-54538-unused-parens-lint.rs:96:10
    |
 LL |         &(_) => {}
    |          ^ ^
@@ -273,7 +273,7 @@ LL +         &_ => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:112:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:107:9
    |
 LL |         (_) => {}
    |         ^ ^
@@ -285,7 +285,7 @@ LL +         _ => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:113:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:108:9
    |
 LL |         (y) => {}
    |         ^ ^
@@ -297,7 +297,7 @@ LL +         y => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:114:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:109:9
    |
 LL |         (ref r) => {}
    |         ^     ^
@@ -309,7 +309,7 @@ LL +         ref r => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:115:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:110:9
    |
 LL |         (e @ 1..=2) => {}
    |         ^         ^
@@ -321,7 +321,7 @@ LL +         e @ 1..=2 => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:121:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:116:9
    |
 LL |         (e @ &(1..=2)) => {}
    |         ^            ^
@@ -333,7 +333,7 @@ LL +         e @ &(1..=2) => {}
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:122:10
+  --> $DIR/issue-54538-unused-parens-lint.rs:117:10
    |
 LL |         &(_) => {}
    |          ^ ^

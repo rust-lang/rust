@@ -5,7 +5,7 @@
 macro_rules! bar {
     () => {
         // more layers don't help:
-        #[allow_internal_unsafe] //~ ERROR allow_internal_unsafe side-steps
+        #[allow_internal_unsafe] //~ ERROR the `allow_internal_unsafe` attribute side-steps
         macro_rules! baz {
             () => {}
         }

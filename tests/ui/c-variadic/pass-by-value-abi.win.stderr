@@ -9,14 +9,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                                abi: Align(8 bytes),
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Pointer(
-                                       AddressSpace(
-                                           0,
-                                       ),
-                                   ),
-                                   valid_range: 0..=$MAX,
-                               },
+                               pointer is 0..=$MAX,
                            ),
                            fields: Arbitrary {
                                offsets: $OFFSETS,

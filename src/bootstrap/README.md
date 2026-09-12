@@ -223,7 +223,7 @@ please file issues on the [Rust issue tracker][rust-issue-tracker].
 
 To run bootstrap tests, execute `x test bootstrap`.
 If you want to bless snapshot tests,
-then install `cargo-insta` (`cargo install cargo-insta`),
+then install `cargo-insta` (`cargo install --locked cargo-insta`),
 and then run `cargo insta review --manifest-path src/bootstrap/Cargo.toml`.
 
 ## Changelog

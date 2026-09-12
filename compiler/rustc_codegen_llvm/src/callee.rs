@@ -39,18 +39,14 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         let llfn = if tcx.sess.target.arch == Arch::X86
             && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
-            // When calling functions in generated import libraries, MSVC needs
-            // the fully decorated name (as would have been in the declaring
-            // object file), but MinGW wants the name as exported (as would be
-            // in the def file) which may be missing decorations.
-            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&tcx.sess.target);
+            // When calling functions in generated import libraries,
+            // LLVM/ar_archive_writer needs the fully decorated name
+            // (as would have been in the declaring object file), but dlltool
+            // wants the name as exported (as would be in the def file)
+            // which may be missing decorations.
+            let using_dlltool = common::is_using_dlltool(&tcx.sess.target);
             let llfn = cx.declare_fn(
-                &common::i686_decorated_name(
-                    dllimport,
-                    mingw_gnu_toolchain,
-                    true,
-                    !mingw_gnu_toolchain,
-                ),
+                &common::i686_decorated_name(dllimport, using_dlltool, true, !using_dlltool),
                 fn_abi,
                 Some(instance),
             );

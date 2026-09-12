@@ -11,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
-use rustc_session::config::CrateType;
+use rustc_structures::CrateType;
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;
@@ -19,7 +19,7 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::errors::SymbolAlreadyDefined;
+use crate::diagnostics::SymbolAlreadyDefined;
 use crate::type_of::LayoutLlvmExt;
 use crate::{base, llvm};
 
@@ -198,12 +198,21 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 args.push(llvm::get_param(alias_lldecl, index));
             }
 
+            // For an indirect return, the alias's own first parameter is the
+            // caller-provided return slot: forward it to the aliasee as such.
+            let (return_slot, args) = if fn_abi.ret.is_indirect() {
+                let (sret_ptr, rest) = args.split_first().unwrap();
+                (ReturnSlot::Indirect(*sret_ptr), rest)
+            } else {
+                (ReturnSlot::Direct, &args[..])
+            };
             let call = start_bx.call(
                 fn_ty,
                 Some(attrs),
                 Some(fn_abi),
                 aliasee,
-                &args,
+                return_slot,
+                args,
                 None,
                 Some(aliasee_instance),
             );

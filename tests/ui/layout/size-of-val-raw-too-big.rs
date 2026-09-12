@@ -1,4 +1,3 @@
-//~ ERROR values of the type `Example` are too big for the target architecture
 //@ build-fail
 //@ compile-flags: --crate-type lib
 //@ only-32bit Layout computation rejects this layout for different reasons on 64-bit.
@@ -16,4 +15,5 @@ pub struct Example([u8; isize::MAX as usize], [u16]);
 // does abort compilation.
 pub fn check(x: *const Example) -> usize {
     unsafe { std::intrinsics::size_of_val(x) }
+    //~^ ERROR values of the type `Example` are too big for the target architecture
 }

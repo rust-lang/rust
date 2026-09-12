@@ -3,7 +3,7 @@
 // invocations.
 
 //@ only-pauthtest
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 use run_make_support::{cc, env_var, regex, run, rustc};
 

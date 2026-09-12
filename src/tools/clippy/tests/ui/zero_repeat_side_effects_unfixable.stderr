@@ -1,5 +1,5 @@
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects_unfixable.rs:7:5
+  --> tests/ui/zero_repeat_side_effects_unfixable.rs:6:5
    |
 LL |     let _data = [|| 3i32; 0];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,13 +8,5 @@ LL |     let _data = [|| 3i32; 0];
    = note: `-D clippy::zero-repeat-side-effects` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::zero_repeat_side_effects)]`
 
-error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects_unfixable.rs:11:5
-   |
-LL |     let _data = [panic!(); 0];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider performing the side effect separately
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

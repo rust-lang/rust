@@ -7,12 +7,13 @@
 use moto_rt::libc;
 
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::alloc::Allocator;
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 #[cfg(not(any(
-    target_arch = "wasm32",
+    all(target_arch = "wasm32", not(target_os = "emscripten")),
     target_env = "sgx",
     target_os = "hermit",
     target_os = "trusty",
@@ -104,7 +105,7 @@ impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
     #[cfg(not(any(
-        target_arch = "wasm32",
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
         target_os = "hermit",
         target_os = "trusty",
         target_os = "motor"
@@ -131,7 +132,11 @@ impl BorrowedFd<'_> {
 
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
-    #[cfg(any(target_arch = "wasm32", target_os = "hermit", target_os = "trusty"))]
+    #[cfg(any(
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
+        target_os = "hermit",
+        target_os = "trusty"
+    ))]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         Err(io::Error::UNSUPPORTED_PLATFORM)
@@ -199,7 +204,7 @@ impl Drop for OwnedFd {
         unsafe {
             // Note that errors are ignored when closing a file descriptor. According to POSIX 2024,
             // we can and indeed should retry `close` on `EINTR`
-            // (https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/functions/close.html),
+            // (https://pubs.opengroup.org/onlinepubs/9799919799/functions/close.html),
             // but it is not clear yet how well widely-used implementations are conforming with this
             // mandate since older versions of POSIX left the state of the FD after an `EINTR`
             // unspecified. Ignoring errors is "fine" because some of the major Unices (in
@@ -470,7 +475,7 @@ impl<T: AsFd + ?Sized> AsFd for crate::rc::UniqueRc<T> {
 }
 
 #[stable(feature = "asfd_ptrs", since = "1.64.0")]
-impl<T: AsFd + ?Sized> AsFd for Box<T> {
+impl<T: AsFd + ?Sized, A: Allocator> AsFd for Box<T, A> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()

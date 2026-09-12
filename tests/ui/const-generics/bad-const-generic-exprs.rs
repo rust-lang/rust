@@ -18,14 +18,12 @@ fn main() {
     //~| HELP expressions must be enclosed in braces to be used as const generic arguments
     let _: Wow<[12]>;
     //~^ ERROR expected type
-    //~| ERROR invalid const generic expression
     //~| HELP expressions must be enclosed in braces to be used as const generic arguments
     let _: Wow<[0, 1, 3]>;
     //~^ ERROR expected type
     //~| HELP expressions must be enclosed in braces to be used as const generic arguments
     let _: Wow<[0xff; 8]>;
     //~^ ERROR expected type
-    //~| ERROR invalid const generic expression
     //~| HELP expressions must be enclosed in braces to be used as const generic arguments
     let _: Wow<[1, 2]>; // Regression test for issue #81698.
     //~^ ERROR expected type

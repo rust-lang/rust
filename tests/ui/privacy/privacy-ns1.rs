@@ -18,7 +18,7 @@ pub mod foo1 {
 fn test_glob1() {
     use foo1::*;
 
-    Bar();  //~ ERROR expected function, tuple struct or tuple variant, found trait `Bar`
+    Bar();  //~ ERROR cannot find function, tuple struct or tuple variant `Bar` in this scope
 }
 
 // private type, public value

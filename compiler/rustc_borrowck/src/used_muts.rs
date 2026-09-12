@@ -46,10 +46,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
 /// MIR visitor for collecting used mutable variables.
 /// The 'visit lifetime represents the duration of the MIR walk.
-struct GatherUsedMutsVisitor<'a, 'b, 'infcx, 'tcx> {
+struct GatherUsedMutsVisitor<'a, 'b, 'diag, 'tcx> {
     temporary_used_locals: FxIndexSet<Local>,
     never_initialized_mut_locals: &'a mut FxIndexSet<Local>,
-    mbcx: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
+    mbcx: &'a mut MirBorrowckCtxt<'b, 'diag, 'tcx>,
 }
 
 impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
@@ -93,8 +93,8 @@ impl<'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'_, '_, '_, 'tcx> {
     fn visit_local(&mut self, local: Local, place_context: PlaceContext, location: Location) {
         if place_context.is_place_assignment() && self.temporary_used_locals.contains(&local) {
             // Propagate the Local assigned at this Location as a used mutable local variable
-            for moi in &self.mbcx.move_data.loc_map[location] {
-                let mpi = &self.mbcx.move_data.moves[*moi].path;
+            for moi in &self.mbcx.move_data.move_out_loc_map[location] {
+                let mpi = &self.mbcx.move_data.move_outs[*moi].path;
                 let path = &self.mbcx.move_data.move_paths[*mpi];
                 debug!(
                     "assignment of {:?} to {:?}, adding {:?} to used mutable set",

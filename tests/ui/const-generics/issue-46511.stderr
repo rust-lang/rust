@@ -6,6 +6,7 @@ LL |     _a: [u8; std::mem::size_of::<&'a mut u8>()]
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error[E0392]: lifetime parameter `'a` is never used
   --> $DIR/issue-46511.rs:3:12

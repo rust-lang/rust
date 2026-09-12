@@ -162,6 +162,7 @@ pub struct Command {
     startupinfo_untrusted_source: bool,
     startupinfo_force_feedback: Option<bool>,
     inherit_handles: bool,
+    desktop: Option<Vec<u16>>,
 }
 
 pub enum Stdio {
@@ -191,6 +192,7 @@ impl Command {
             startupinfo_untrusted_source: false,
             startupinfo_force_feedback: None,
             inherit_handles: true,
+            desktop: None,
         }
     }
 
@@ -215,6 +217,7 @@ impl Command {
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
     }
+
     pub fn show_window(&mut self, cmd_show: Option<u16>) {
         self.show_window = cmd_show;
     }
@@ -237,6 +240,10 @@ impl Command {
 
     pub fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) {
         self.startupinfo_force_feedback = enabled;
+    }
+
+    pub fn desktop(&mut self, desktop: &OsStr) {
+        self.desktop = Some(desktop.encode_wide().chain([0]).collect());
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -391,6 +398,10 @@ impl Command {
             None => {}
         }
 
+        if let Some(desktop) = &mut self.desktop {
+            si.lpDesktop = desktop.as_mut_ptr();
+        }
+
         let si_ptr: *mut c::STARTUPINFOW;
 
         let mut si_ex;
@@ -404,7 +415,10 @@ impl Command {
                 // SAFETY: Casting this `*const` pointer to a `*mut` pointer is "safe"
                 // here because windows does not internally mutate the attribute list.
                 // Ideally this should be reflected in the interface of the `windows-sys` crate.
-                lpAttributeList: proc_thread_attribute_list.as_ptr().cast::<c_void>().cast_mut(),
+                lpAttributeList: proc_thread_attribute_list
+                    .as_ptr()
+                    .cast::<c::_PROC_THREAD_ATTRIBUTE_LIST>()
+                    .cast_mut(),
             };
             si_ptr = (&raw mut si_ex) as _;
         } else {
@@ -640,7 +654,24 @@ impl Stdio {
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
                 opts.inherit_handle(true);
-                File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner())
+                File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner()).map_err(
+                    |e| {
+                        // A raw `NotFound` here is easily mistaken for the program
+                        // being missing, so say what actually failed to open.
+                        // `spawn` only passes the three standard ids, but print
+                        // anything else as a number rather than mislabeling it.
+                        let stream = match stdio_id {
+                            c::STD_INPUT_HANDLE => "stdin".to_string(),
+                            c::STD_OUTPUT_HANDLE => "stdout".to_string(),
+                            c::STD_ERROR_HANDLE => "stderr".to_string(),
+                            id => format!("stdio handle {id}"),
+                        };
+                        Error::new(
+                            e.kind(),
+                            format!("failed to open NUL device for child {stream}: {e}"),
+                        )
+                    },
+                )
             }
         }
     }

@@ -3,18 +3,18 @@
 //!
 //! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
-use std::{borrow::Cow, fmt, iter::successors};
+use std::{fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
-use rowan::{GreenNodeData, GreenTokenData};
+use rowan::{GreenNodeData, GreenTokenData, TextSize};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T, TokenText,
+    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T,
     ast::{
-        self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
-        HasTypeBounds, SyntaxNode, support,
+        self, AnyComment, AstNode, AstToken, CommentShape, HasAttrs, HasGenericArgs,
+        HasGenericParams, HasName, HasTypeBounds, SyntaxNode, support,
     },
     syntax_editor::SyntaxEditor,
 };
@@ -22,40 +22,20 @@ use crate::{
 use super::{GenericParam, RangeItem, RangeOp};
 
 impl ast::Lifetime {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::Name {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
-    }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
-
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
     }
 }
 
 impl ast::NameRef {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
-    }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
-
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
@@ -67,15 +47,12 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
+fn text_of_first_token(node: &SyntaxNode) -> &str {
     fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
         green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
     }
 
-    match node.green() {
-        Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
-        Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
-    }
+    first_token(node.green()).text()
 }
 
 fn into_comma(it: NodeOrToken<SyntaxNode, SyntaxToken>) -> Option<SyntaxToken> {
@@ -290,6 +267,55 @@ impl ast::Attr {
         match self.meta() {
             Some(meta) => meta.skip_cfg_attrs(),
             None => SmallVec::new(),
+        }
+    }
+}
+
+impl ast::DocComment {
+    // `///` or `/**` or `//!` or `/*!`, all are 3 chars.
+    pub const PREFIX_LEN: TextSize = TextSize::new(3);
+
+    pub fn kind(&self) -> AttrKind {
+        match self.inner_doc_comment_token() {
+            Some(_) => AttrKind::Inner,
+            None => AttrKind::Outer,
+        }
+    }
+
+    pub fn token(&self) -> AnyComment {
+        self.syntax
+            .first_token()
+            .and_then(ast::AnyComment::cast)
+            .expect("`ast::DocComment` must have a comment token")
+    }
+
+    pub fn shape(&self) -> CommentShape {
+        CommentShape::from_text(self.text_with_markers())
+    }
+
+    /// Returns the text with the `/**...*/` or `/*!...*/` or `///...` or `//!...` markers.
+    pub fn text_with_markers(&self) -> &str {
+        text_of_first_token(&self.syntax)
+    }
+
+    /// Returns the textual content of a doc comment node as a single string with prefix and suffix removed.
+    pub fn text(&self) -> &str {
+        let shape = self.shape();
+        let text = &self.text_with_markers()[Self::PREFIX_LEN.into()..];
+        if shape == CommentShape::Block {
+            // The `*/` may not exist because of recovery.
+            text.strip_suffix("*/").unwrap_or(text)
+        } else {
+            text
+        }
+    }
+}
+
+impl ast::AnyAttr {
+    pub fn kind(&self) -> AttrKind {
+        match self {
+            ast::AnyAttr::Attr(it) => it.kind(),
+            ast::AnyAttr::DocComment(it) => it.kind(),
         }
     }
 }
@@ -619,7 +645,7 @@ impl NameLike {
             _ => None,
         }
     }
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             NameLike::NameRef(name_ref) => name_ref.text(),
             NameLike::Name(name) => name.text(),
@@ -691,7 +717,7 @@ impl ast::AstNode for NameOrNameRef {
 }
 
 impl NameOrNameRef {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             NameOrNameRef::Name(name) => name.text(),
             NameOrNameRef::NameRef(name_ref) => name_ref.text(),
@@ -1152,8 +1178,6 @@ impl ast::HasLoopBody for ast::WhileExpr {
     }
 }
 
-impl ast::HasAttrs for ast::AnyHasDocComments {}
-
 impl From<ast::Adt> for ast::Item {
     fn from(it: ast::Adt) -> Self {
         match it {
@@ -1189,15 +1213,6 @@ impl From<ast::Item> for ast::AnyHasAttrs {
 impl From<ast::AssocItem> for ast::AnyHasAttrs {
     fn from(node: ast::AssocItem) -> Self {
         Self::new(node)
-    }
-}
-
-impl ast::FormatArgsArgName {
-    /// This is not a [`ast::Name`], because the name may be a keyword.
-    pub fn name(&self) -> SyntaxToken {
-        let name = self.syntax.first_token().unwrap();
-        assert!(name.kind().is_any_identifier());
-        name
     }
 }
 

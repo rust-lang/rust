@@ -25,7 +25,7 @@ pub(crate) fn normalize_import(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
     };
 
     let target = use_item.syntax().text_range();
-    let (editor, _) = SyntaxEditor::new(use_item.syntax().ancestors().last().unwrap());
+    let (editor, _) = SyntaxEditor::new(use_item.syntax().tree_top());
     let normalized_use_item =
         try_normalize_import(editor.make(), &use_item, ctx.config.insert_use.granularity.into())?;
     editor.replace(use_item.syntax(), normalized_use_item.syntax());

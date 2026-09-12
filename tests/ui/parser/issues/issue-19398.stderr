@@ -2,12 +2,14 @@ error: expected `fn`, found keyword `unsafe`
   --> $DIR/issue-19398.rs:2:19
    |
 LL |     extern "Rust" unsafe fn foo();
-   |     --------------^^^^^^
-   |     |             |
-   |     |             expected `fn`
-   |     help: `unsafe` must come before `extern "Rust"`: `unsafe extern "Rust"`
+   |                   ^^^^^^ expected `fn`
    |
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+help: `unsafe` must come before `extern "Rust"`
+   |
+LL -     extern "Rust" unsafe fn foo();
+LL +     unsafe extern "Rust" fn foo();
+   |
 
 error: aborting due to 1 previous error
 

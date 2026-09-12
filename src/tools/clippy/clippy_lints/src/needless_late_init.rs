@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
@@ -10,8 +10,7 @@ use rustc_hir::{
     BindingMode, Block, Expr, ExprKind, HirId, HirIdMap, HirIdSet, LetStmt, LocalSource, MatchSource, Node, Pat,
     PatKind, Stmt, StmtKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 use std::borrow::Cow;
 

@@ -1,0 +1,10 @@
+
+running 5 tests
+test $DIR/doctest-crate-attributes-38129.rs - both_attrs (line 49) ... ok
+test $DIR/doctest-crate-attributes-38129.rs - both_attrs_reverse (line 76) ... ok
+test $DIR/doctest-crate-attributes-38129.rs - feature_attr (line 43) ... ok
+test $DIR/doctest-crate-attributes-38129.rs - non_feature_attr (line 17) ... ok
+test $DIR/doctest-crate-attributes-38129.rs - simple (line 12) ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

@@ -18,7 +18,7 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use span::SyntaxContext;
 use syntax::{
     AstPtr, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent, syntax_editor::SyntaxEditor,
@@ -29,7 +29,6 @@ use crate::{
     AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile,
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     ast::{self, AstNode},
-    db::ExpandDatabase,
     mod_path::ModPath,
 };
 
@@ -39,12 +38,13 @@ pub type EagerCallBackFn<'a> = &'a mut dyn FnMut(
 );
 
 pub fn expand_eager_macro_input(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     krate: Crate,
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
     call_site: SyntaxContext,
+    macro_depth: u32,
     resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<MacroCallId>> {
@@ -59,12 +59,13 @@ pub fn expand_eager_macro_input(
         krate,
         kind: MacroCallKind::FnLike { ast_id, expand_to: ExpandTo::Expr, eager: None },
         ctxt: call_site,
+        macro_depth,
     };
     let arg_id = MacroCallId::new(db, loc);
     #[allow(deprecated)] // builtin eager macros are never derives
-    let (_, _, span) = db.macro_arg(arg_id);
+    let (_, _, span) = arg_id.macro_arg(db);
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
-        db.parse_macro_expansion(arg_id);
+        arg_id.parse_macro_expansion(db);
 
     let mut arg_map = ExpansionSpanMap::empty();
 
@@ -77,6 +78,7 @@ pub fn expand_eager_macro_input(
             InFile::new(arg_id.into(), arg_exp.syntax_node()),
             krate,
             call_site,
+            macro_depth,
             resolver,
             eager_callback,
         )
@@ -113,18 +115,20 @@ pub fn expand_eager_macro_input(
             })),
         },
         ctxt: call_site,
+        macro_depth,
     };
 
     ExpandResult { value: Some(MacroCallId::new(db, loc)), err }
 }
 
 fn lazy_expand<'db>(
-    db: &'db dyn ExpandDatabase,
+    db: &'db dyn SourceDatabase,
     def: &MacroDefId,
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
     krate: Crate,
     call_site: SyntaxContext,
+    macro_depth: u32,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, &'db ExpansionSpanMap)> {
     let expand_to = ExpandTo::from_call_site(macro_call);
@@ -133,22 +137,24 @@ fn lazy_expand<'db>(
         krate,
         MacroCallKind::FnLike { ast_id, expand_to, eager: None },
         call_site,
+        macro_depth,
     );
     eager_callback(ast_id.map(|ast_id| (AstPtr::new(macro_call), ast_id)), id);
 
-    db.parse_macro_expansion(id)
+    id.parse_macro_expansion(db)
         .as_ref()
         .map(|parse| (InFile::new(id.into(), parse.0.clone()), &parse.1))
 }
 
 fn eager_macro_recur(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span_map: &ExpansionSpanMap,
     expanded_map: &mut ExpansionSpanMap,
     mut offset: TextSize,
     curr: InFile<SyntaxNode>,
     krate: Crate,
     call_site: SyntaxContext,
+    macro_depth: u32,
     macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
@@ -206,7 +212,7 @@ fn eager_macro_recur(
                 continue;
             }
         };
-        let ast_id = db.ast_id_map(curr.file_id).ast_id(&call);
+        let ast_id = curr.file_id.ast_id_map(db).ast_id(&call);
         let ExpandResult { value, err } = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
                 let ExpandResult { value, err } = expand_eager_macro_input(
@@ -216,6 +222,7 @@ fn eager_macro_recur(
                     curr.with_value(ast_id),
                     def,
                     call_site,
+                    macro_depth + 1,
                     macro_resolver,
                     eager_callback,
                 );
@@ -226,14 +233,14 @@ fn eager_macro_recur(
                             call_id,
                         );
                         let ExpandResult { value: (parse, map), err: err2 } =
-                            db.parse_macro_expansion(call_id);
+                            call_id.parse_macro_expansion(db);
 
                         map.iter().for_each(|(o, span)| expanded_map.push(o + offset, span));
 
                         let syntax_node = parse.syntax_node();
                         ExpandResult {
                             value: Some((
-                                syntax_node.clone_for_update(),
+                                syntax_node.clone(),
                                 offset + syntax_node.text_range().len(),
                             )),
                             err: err.clone().or_else(|| err2.clone()),
@@ -255,6 +262,7 @@ fn eager_macro_recur(
                     curr.with_value(ast_id),
                     krate,
                     call_site,
+                    macro_depth,
                     eager_callback,
                 );
 
@@ -268,6 +276,7 @@ fn eager_macro_recur(
                     parse.as_ref().map(|it| it.syntax_node()),
                     krate,
                     call_site,
+                    macro_depth + 1,
                     macro_resolver,
                     eager_callback,
                 );

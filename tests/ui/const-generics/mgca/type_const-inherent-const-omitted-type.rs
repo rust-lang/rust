@@ -4,7 +4,7 @@
 struct A;
 
 impl A {
-    type const B = 4;
+    const B = core::direct_const_arg!(4);
     //~^ ERROR: missing type for `const` item
     //~| ERROR: type annotations needed for the literal
 }

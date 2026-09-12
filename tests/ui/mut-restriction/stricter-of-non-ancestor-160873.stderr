@@ -1,0 +1,17 @@
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/stricter-of-non-ancestor-160873.rs:11:20
+   |
+LL |         pub mut(in std) y: i32,
+   |                    ^^^
+
+error: `InnerS` cannot be constructed using a `struct` expression outside `crate::inner`
+  --> $DIR/stricter-of-non-ancestor-160873.rs:16:13
+   |
+LL |         pub mut(self) x: i32,
+   |             --------- field restricted here
+...
+LL |     let _ = inner::InnerS { x: 0, y: 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

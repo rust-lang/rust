@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use clippy_utils::{expr_or_init, fn_def_id_with_node_args, sym};
 use rustc_ast::BinOpKind;
 use rustc_data_structures::fx::FxHashMap;
@@ -9,10 +9,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_body, walk_expr};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;

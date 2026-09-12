@@ -13,26 +13,23 @@
 //! and the `bootstrap.toml` file—merging them, applying defaults, and performing
 //! cross-component validation. The main `parse_inner` function and its supporting
 //! helpers reside here, transforming raw `Toml` data into the structured `Config` type.
-use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
-use build_helper::exit;
 use build_helper::git::{GitConfig, PathFreshness, check_path_modifications};
 use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
 
-use crate::core::build_steps::llvm;
-use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
+use crate::core::backend::CodegenBackendKind;
+use crate::core::build_steps::llvm::{LLVM_INVALIDATION_PATHS, LlvmKind, LlvmOutput};
 use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
-pub use crate::core::config::flags::Subcommand;
-use crate::core::config::flags::{Color, Flags, Warnings};
+use crate::core::config::flags::{Color, Flags, Subcommand, Warnings};
 use crate::core::config::target_selection::TargetSelectionList;
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::toml::build::{Build, Tool};
@@ -41,6 +38,7 @@ use crate::core::config::toml::dist::Dist;
 use crate::core::config::toml::gcc::Gcc;
 use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
+use crate::core::config::toml::pgo::{Pgo, PgoConfig};
 use crate::core::config::toml::rust::{
     BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
     parse_codegen_backends,
@@ -49,16 +47,14 @@ use crate::core::config::toml::target::{
     DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
 };
 use crate::core::config::{
-    CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
-    RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
+    Allocator, CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun,
+    GccCiMode, LlvmCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
+    StringOrBool, TargetSelection, threads_from_config,
 };
-use crate::core::download::{
-    DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
-};
-use crate::utils::channel;
+use crate::core::download::{DownloadContext, is_download_ci_available};
+use crate::utils::channel::{self, GitInfo};
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, get_host_target};
-use crate::{CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
+use crate::utils::helpers::{self, exe, fail, get_host_target, t};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
@@ -91,11 +87,12 @@ pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
 /// on each field, see the corresponding fields in
 /// `bootstrap.example.toml`.
 #[derive(Clone)]
-pub struct Config {
+pub(crate) struct Config {
     pub change_id: Option<ChangeId>,
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
-    /// Call Build::ninja() instead of this.
+    pub sde: Option<PathBuf>,
+    /// Call `Session::ninja` instead of this.
     pub ninja_in_file: bool,
     pub submodules: Option<bool>,
     pub compiler_docs: bool,
@@ -166,19 +163,19 @@ pub struct Config {
     pub llvm_release_debuginfo: bool,
     pub llvm_static_stdcpp: bool,
     pub llvm_libzstd: bool,
-    pub llvm_link_shared: Cell<Option<bool>>,
+    pub llvm_link_shared: Option<bool>,
     pub llvm_clang_cl: Option<String>,
     pub llvm_targets: Option<String>,
     pub llvm_experimental_targets: Option<String>,
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
-    pub llvm_clang_dir: Option<PathBuf>,
+    pub offload_clang_dir: Option<PathBuf>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
     pub llvm_enable_warnings: bool,
-    pub llvm_from_ci: bool,
+    pub llvm_ci_mode: LlvmCiMode,
     pub llvm_build_config: HashMap<String, String>,
 
     pub bootstrap_override_lld: BootstrapOverrideLld,
@@ -190,6 +187,7 @@ pub struct Config {
     pub llvm_cxxflags: Option<String>,
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
+    pub llvm_pgo: LlvmPgoConfig,
 
     // gcc codegen options
     pub gcc_ci_mode: GccCiMode,
@@ -210,6 +208,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
+    pub rust_compress_debuginfo: CompressDebuginfo,
     pub rust_rpath: bool,
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
@@ -224,27 +223,33 @@ pub struct Config {
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_annotate_moves_size_limit: Option<u64>,
-    pub rust_profile_use: Option<String>,
-    pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
     pub rust_validate_mir_opts: Option<u32>,
     pub rust_std_features: BTreeSet<String>,
     pub rust_break_on_ice: bool,
     pub rust_parallel_frontend_threads: Option<u32>,
     pub rust_rustflags: Vec<String>,
+    pub rust_pgo: PgoConfig,
+    pub rustdoc_pgo: PgoConfig,
+    pub cargo_pgo: PgoConfig,
+    pub clippy_pgo: PgoConfig,
 
-    pub llvm_profile_use: Option<String>,
-    pub llvm_profile_generate: bool,
+    pub stdlib_semver_baseline: Option<String>,
+
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
 
     pub reproducible_artifacts: Vec<String>,
 
+    /// Build triple for the pre-compiled snapshot compiler.
     pub host_target: TargetSelection,
+    /// Which triples to produce a compiler toolchain for.
     pub hosts: Vec<TargetSelection>,
+    /// Which triples to build libraries (core/alloc/std/test/proc_macro) for.
     pub targets: Vec<TargetSelection>,
+
     pub local_rebuild: bool,
-    pub jemalloc: bool,
+    pub allocator: Option<Allocator>,
     pub control_flow_guard: bool,
     pub ehcont_guard: bool,
 
@@ -280,13 +285,12 @@ pub struct Config {
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub yarn: Option<PathBuf>,
-    pub gdb: Option<PathBuf>,
-    pub lldb: Option<PathBuf>,
+    pub gdb: Option<DebuggerPath>,
+    pub lldb: Option<DebuggerPath>,
     pub python: Option<PathBuf>,
     pub windows_rc: Option<PathBuf>,
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
-    pub configure_args: Vec<String>,
     pub out: PathBuf,
     pub rust_info: channel::GitInfo,
 
@@ -299,13 +303,18 @@ pub struct Config {
     pub in_tree_llvm_info: channel::GitInfo,
     pub in_tree_gcc_info: channel::GitInfo,
 
-    // These are either the stage0 downloaded binaries or the locally installed ones.
-    pub initial_cargo: PathBuf,
-    pub initial_rustc: PathBuf,
-    pub initial_rustdoc: PathBuf,
-    pub initial_cargo_clippy: Option<PathBuf>,
-    pub initial_sysroot: PathBuf,
-    pub initial_rustfmt: Option<PathBuf>,
+    /// rustc/cargo/rustdoc/clippy paths specified in the config file
+    /// Access the `initial_` fields from `Session` to use either the externally configured
+    /// or downloaded (stage0) binaries.
+    pub external_cargo: Option<PathBuf>,
+    pub external_rustc: Option<PathBuf>,
+    pub external_rustdoc: Option<PathBuf>,
+    pub external_cargo_clippy: Option<PathBuf>,
+
+    /// Externally configured `rustfmt` binary for formatting in-tree source code.
+    /// If you want to use rustfmt for formatting, use the `InternalRustfmt` step, instead of
+    /// accessing this directly.
+    pub external_rustfmt: Option<PathBuf>,
 
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
@@ -334,6 +343,8 @@ pub struct Config {
     pub skip_std_check_if_no_download_rustc: bool,
 
     pub exec_ctx: ExecutionContext,
+
+    pub wasm_proc_macros: bool,
 }
 
 impl Config {
@@ -435,28 +446,41 @@ impl Config {
             // Undo `src/bootstrap`
             manifest_dir.parent().unwrap().parent().unwrap().to_owned()
         };
-        let src = if let Some(s) = compute_src_directory(flags_src, &exec_ctx) {
-            s
-        } else {
-            default_src_dir.clone()
-        };
 
-        #[cfg(test)]
-        {
-            if let Some(config_path) = flags_config.as_ref() {
-                assert!(
+        // Determine the root of the `rust-lang/rust` source directory from one of:
+        // - An explicit command-line argument `--src=PATH`.
+        // - Running git to find a checkout directory from the current working directory.
+        // - The source directory that this bootstrap executable was built from.
+        let src = flags_src
+            .or_else(|| compute_src_directory_via_git(&exec_ctx))
+            .unwrap_or_else(|| default_src_dir.clone());
+
+        if cfg!(test) {
+            match flags_config.as_deref() {
+                Some(config_path) => assert!(
                     !config_path.starts_with(&src),
                     "Path {config_path:?} should not be inside or equal to src dir {src:?}"
-                );
-            } else {
-                panic!("During test the config should be explicitly added");
+                ),
+                None => panic!("During test the config should be explicitly added"),
             }
         }
 
         // Now load the TOML config, as soon as possible
         let (mut toml, toml_path) = load_toml_config(&src, flags_config, &get_toml);
-
         postprocess_toml(&mut toml, &src, toml_path.clone(), &exec_ctx, &flags_set, &get_toml);
+        let TomlConfig {
+            change_id: toml_change_id,
+            build: toml_build,
+            install: toml_install,
+            llvm: toml_llvm,
+            gcc: toml_gcc,
+            rust: toml_rust,
+            target: toml_target,
+            dist: toml_dist,
+            pgo: toml_pgo,
+            profile: _,
+            include: _,
+        } = toml;
 
         // Now override TOML values with flags, to make sure that we won't later override flags with
         // TOML values by accident instead, because flags have higher priority.
@@ -479,7 +503,6 @@ impl Config {
             gdb: build_gdb,
             lldb: build_lldb,
             nodejs: build_nodejs,
-
             yarn: build_yarn,
             npm: build_npm,
             python: build_python,
@@ -497,7 +520,10 @@ impl Config {
             profiler: build_profiler,
             cargo_native_static: build_cargo_native_static,
             low_priority: build_low_priority,
-            configure_args: build_configure_args,
+            // Our `./configure` script saves a copy of its command-line arguments as
+            // `build.configure-args` when generating `bootstrap.toml`.
+            // This is for debugging only, and bootstrap itself doesn't use these values.
+            configure_args: _,
             local_rebuild: build_local_rebuild,
             print_step_timings: build_print_step_timings,
             print_step_rusage: build_print_step_rusage,
@@ -516,13 +542,13 @@ impl Config {
             optimized_compiler_builtins: build_optimized_compiler_builtins,
             jobs: build_jobs,
             compiletest_diff_tool: build_compiletest_diff_tool,
-            // No longer has any effect; kept (for now) to avoid breaking people's configs.
-            compiletest_use_stage0_libtest: _,
             tidy_extra_checks: build_tidy_extra_checks,
             ccache: build_ccache,
             exclude: build_exclude,
             compiletest_allow_stage0: build_compiletest_allow_stage0,
-        } = toml.build.unwrap_or_default();
+            sde: build_sde,
+            allocator: build_allocator,
+        } = toml_build.unwrap_or_default();
 
         let Install {
             prefix: install_prefix,
@@ -532,7 +558,7 @@ impl Config {
             libdir: install_libdir,
             mandir: install_mandir,
             datadir: install_datadir,
-        } = toml.install.unwrap_or_default();
+        } = toml_install.unwrap_or_default();
 
         let Rust {
             optimize: rust_optimize,
@@ -550,6 +576,7 @@ impl Config {
             debuginfo_level_std: rust_debuginfo_level_std,
             debuginfo_level_tools: rust_debuginfo_level_tools,
             debuginfo_level_tests: rust_debuginfo_level_tests,
+            compress_debuginfo: rust_compress_debuginfo,
             backtrace: rust_backtrace,
             incremental: rust_incremental,
             randomize_layout: rust_randomize_layout,
@@ -589,11 +616,12 @@ impl Config {
             stack_protector: rust_stack_protector,
             strip: rust_strip,
             bootstrap_override_lld: rust_bootstrap_override_lld,
-            bootstrap_override_lld_legacy: rust_bootstrap_override_lld_legacy,
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
             rustflags: rust_rustflags,
-        } = toml.rust.unwrap_or_default();
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
+            wasm_proc_macros,
+        } = toml_rust.unwrap_or_default();
 
         let Llvm {
             optimize: llvm_optimize,
@@ -619,13 +647,13 @@ impl Config {
             use_linker: llvm_use_linker,
             allow_old_toolchain: llvm_allow_old_toolchain,
             offload: llvm_offload,
-            offload_clang_dir: llvm_clang_dir,
+            offload_clang_dir,
             polly: llvm_polly,
             clang: llvm_clang,
             enable_warnings: llvm_enable_warnings,
             download_ci_llvm: llvm_download_ci_llvm,
             build_config: llvm_build_config,
-        } = toml.llvm.unwrap_or_default();
+        } = toml_llvm.unwrap_or_default();
 
         let Dist {
             sign_folder: dist_sign_folder,
@@ -635,21 +663,77 @@ impl Config {
             compression_profile: dist_compression_profile,
             include_mingw_linker: dist_include_mingw_linker,
             vendor: dist_vendor,
-        } = toml.dist.unwrap_or_default();
+        } = toml_dist.unwrap_or_default();
 
         let Gcc {
             download_ci_gcc: gcc_download_ci_gcc,
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
-        } = toml.gcc.unwrap_or_default();
+        } = toml_gcc.unwrap_or_default();
 
-        if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
-            panic!(
-                "Cannot use both `rust.use-lld` and `rust.bootstrap-override-lld`. Please use only `rust.bootstrap-override-lld`"
+        let Pgo {
+            rustc: pgo_rustc,
+            rustdoc: pgo_rustdoc,
+            cargo: pgo_cargo,
+            clippy: pgo_clippy,
+            llvm: pgo_llvm,
+        } = toml_pgo.unwrap_or_default();
+
+        // Backcompat: flags have priority over config
+        if flags_rust_profile_use.is_some() || flags_rust_profile_generate.is_some() {
+            eprintln!(
+                "WARNING: the `--rust-profile-generate` and `--rust-profile-use` flags have been deprecated. Configure PGO through the config file instead, in the [pgo.rustc] section."
+            );
+        }
+        if rust_profile_use.is_some() || rust_profile_generate.is_some() {
+            eprintln!(
+                "WARNING: the `rust.profile-generate` and `rust.profile-use` config options have been deprecated. Configure PGO through the config file instead, in the [pgo.rustc] section."
+            );
+        }
+        if flags_llvm_profile_use.is_some() || flags_llvm_profile_generate {
+            eprintln!(
+                "WARNING: the `--llvm-profile-generate` and `--llvm-profile-use` flags have been deprecated. Configure PGO through the config file instead, in the [pgo.llvm] section."
             );
         }
 
-        let bootstrap_override_lld =
-            rust_bootstrap_override_lld.or(rust_bootstrap_override_lld_legacy).unwrap_or_default();
+        let mut pgo_rustc = pgo_rustc.unwrap_or_default();
+        pgo_rustc.use_profile =
+            flags_rust_profile_use.or(pgo_rustc.use_profile).or(rust_profile_use);
+        pgo_rustc.generate_profile =
+            flags_rust_profile_generate.or(pgo_rustc.generate_profile).or(rust_profile_generate);
+        if pgo_rustc.use_profile.is_some() && pgo_rustc.generate_profile.is_some() {
+            panic!("Cannot use and generate rust PGO profiles at the same time");
+        }
+
+        let pgo_llvm = pgo_llvm.unwrap_or_default();
+        let pgo_llvm = LlvmPgoConfig {
+            use_profile: flags_llvm_profile_use.or(pgo_llvm.use_profile),
+            generate_profile: if flags_llvm_profile_generate {
+                Some(if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                    LlvmPgoGenerationMode::Directory(PathBuf::from(llvm_profile_dir))
+                } else {
+                    LlvmPgoGenerationMode::Implicit
+                })
+            } else {
+                pgo_llvm.generate_profile.map(LlvmPgoGenerationMode::Directory)
+            },
+        };
+        if pgo_llvm.use_profile.is_some() && pgo_llvm.generate_profile.is_some() {
+            panic!("Cannot use and generate LLVM PGO profiles at the same time");
+        }
+
+        let init_pgo = |pgo: Option<PgoConfig>, name: &str| -> PgoConfig {
+            let pgo_config = pgo.unwrap_or_default();
+            if pgo_config.use_profile.is_some() && pgo_config.generate_profile.is_some() {
+                panic!("Cannot use and generate {name} PGO profiles at the same time");
+            }
+            pgo_config
+        };
+
+        let pgo_rustdoc = init_pgo(pgo_rustdoc, "rustdoc");
+        let pgo_cargo = init_pgo(pgo_cargo, "cargo");
+        let pgo_clippy = init_pgo(pgo_clippy, "clippy");
+
+        let bootstrap_override_lld = rust_bootstrap_override_lld.unwrap_or_default();
 
         if rust_optimize.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
             eprintln!(
@@ -690,7 +774,7 @@ impl Config {
 
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
-        let mut out = if !out.is_absolute() {
+        let out = if !out.is_absolute() {
             // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
             absolute(&out).expect("can't make empty path absolute")
         } else {
@@ -729,10 +813,10 @@ impl Config {
 
         if !flags_skip_stage0_validation {
             if let Some(rustc) = &build_rustc {
-                check_stage0_version(rustc, "rustc", &src, &exec_ctx);
+                check_external_binary_version(rustc, "rustc", &src, &exec_ctx);
             }
             if let Some(cargo) = &build_cargo {
-                check_stage0_version(cargo, "cargo", &src, &exec_ctx);
+                check_external_binary_version(cargo, "cargo", &src, &exec_ctx);
             }
         }
 
@@ -759,34 +843,6 @@ impl Config {
             bootstrap_cache_path: &build_bootstrap_cache_path,
             ci_env,
         };
-
-        let initial_rustc = build_rustc.unwrap_or_else(|| {
-            download_beta_toolchain(&dwn_ctx, &out);
-            default_stage0_rustc_path(&out)
-        });
-
-        let initial_rustdoc = build_rustdoc
-            .unwrap_or_else(|| initial_rustc.with_file_name(exe("rustdoc", host_target)));
-
-        let initial_sysroot = t!(PathBuf::from_str(
-            command(&initial_rustc)
-                .args(["--print", "sysroot"])
-                .run_in_dry_run()
-                .run_capture_stdout(&exec_ctx)
-                .stdout()
-                .trim()
-        ));
-
-        let initial_cargo = build_cargo.unwrap_or_else(|| {
-            download_beta_toolchain(&dwn_ctx, &out);
-            initial_sysroot.join("bin").join(exe("cargo", host_target))
-        });
-
-        // NOTE: it's important this comes *after* we set `initial_rustc` just above.
-        if exec_ctx.dry_run() {
-            out = out.join("tmp-dry-run");
-            fs::create_dir_all(&out).expect("Failed to create dry-run directory");
-        }
 
         let file_content = t!(fs::read_to_string(src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
@@ -875,7 +931,7 @@ impl Config {
         // Linux targets for which the user explicitly overrode the used linker
         let mut targets_with_user_linker_override = HashSet::new();
 
-        if let Some(t) = toml.target {
+        if let Some(t) = toml_target {
             for (triple, cfg) in t {
                 let TomlTarget {
                     cc: target_cc,
@@ -903,6 +959,7 @@ impl Config {
                     codegen_backends: target_codegen_backends,
                     runner: target_runner,
                     optimized_compiler_builtins: target_optimized_compiler_builtins,
+                    allocator: target_allocator,
                     jemalloc: target_jemalloc,
                 } = cfg;
 
@@ -979,7 +1036,12 @@ impl Config {
                 target.rpath = target_rpath;
                 target.rustflags = target_rustflags.unwrap_or_default();
                 target.optimized_compiler_builtins = target_optimized_compiler_builtins;
-                target.jemalloc = target_jemalloc;
+                target.allocator = reconcile_jemalloc(
+                    target_jemalloc,
+                    target_allocator,
+                    &format!("target.{triple}"),
+                    &format!("target.{triple}"),
+                );
                 if let Some(backends) = target_codegen_backends {
                     target.codegen_backends =
                         Some(parse_codegen_backends(backends, &format!("target.{triple}")))
@@ -995,17 +1057,37 @@ impl Config {
             }
         }
 
-        let llvm_from_ci = parse_download_ci_llvm(
-            &dwn_ctx,
-            &rust_info,
-            &download_rustc_commit,
-            llvm_download_ci_llvm,
-            llvm_assertions,
-        );
-        let is_host_system_llvm =
-            is_system_llvm(&target_config, llvm_from_ci, host_target, host_target);
+        let llvm_ci_mode = parse_download_ci_llvm(llvm_download_ci_llvm);
 
-        if llvm_from_ci {
+        // Sanity checks
+        match llvm_ci_mode {
+            LlvmCiMode::DownloadIfUnchanged => {
+                if rust_info.is_from_tarball() {
+                    // Git is needed for running "if-unchanged" logic.
+                    panic!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
+                }
+            }
+            LlvmCiMode::Download => {
+                if cfg!(not(test))
+                    && ci_env.is_running_in_ci()
+                    && CiEnv::is_rust_lang_managed_ci_job()
+                {
+                    // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
+                    panic!(
+                        "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
+                    );
+                }
+            }
+            LlvmCiMode::BuildLocally => {
+                if download_rustc_commit.is_some() {
+                    panic!(
+                        "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
+                    );
+                }
+            }
+        }
+
+        if llvm_ci_mode.requests_download_from_ci() {
             let warn = |option: &str| {
                 println!(
                     "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
@@ -1040,18 +1122,10 @@ impl Config {
             }
         }
 
-        if llvm_from_ci {
-            let triple = &host_target.triple;
-            let ci_llvm_bin = ci_llvm_root(&dwn_ctx, llvm_from_ci, &out).join("bin");
-            let build_target =
-                target_config.entry(host_target).or_insert_with(|| Target::from_triple(triple));
-            check_ci_llvm!(build_target.llvm_config);
-            check_ci_llvm!(build_target.llvm_filecheck);
-            build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", host_target)));
-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", host_target)));
-        }
+        let is_host_system_llvm =
+            target_config.get(&host_target).and_then(|c| c.llvm_config.as_ref()).is_some();
 
-        for (target, linker_override) in default_linux_linker_overrides() {
+        for (target, linker_override) in default_linux_linker_overrides(&channel) {
             // If the user overrode the default Linux linker, do not apply bootstrap defaults
             if targets_with_user_linker_override.contains(&target) {
                 continue;
@@ -1095,8 +1169,6 @@ impl Config {
             }
         }
 
-        let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx, &out));
-
         if matches!(bootstrap_override_lld, BootstrapOverrideLld::SelfContained)
             && !lld_enabled
             && flags_stage.unwrap_or(0) > 0
@@ -1113,8 +1185,7 @@ impl Config {
         let download_rustc = download_rustc_commit.is_some();
 
         let stage = match flags_cmd {
-            Subcommand::Check { .. } => flags_stage.or(build_check_stage).unwrap_or(1),
-            Subcommand::Clippy { .. } | Subcommand::Fix => {
+            Subcommand::Check { .. } | Subcommand::Clippy { .. } | Subcommand::Fix { .. } => {
                 flags_stage.or(build_check_stage).unwrap_or(1)
             }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
@@ -1149,7 +1220,7 @@ impl Config {
                 eprintln!(
                     "ERROR: cannot {kind} anything on stage 0. Use at least stage 1 or set build.local-rebuild=true and use a stage0 compiler built from in-tree sources."
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
         };
 
@@ -1177,25 +1248,24 @@ impl Config {
                 eprintln!(
                     "ERROR: cannot test anything on stage 0. Use at least stage 1. If you want to run compiletest with an external stage0 toolchain, enable `build.compiletest-allow-stage0`."
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
             _ => {}
         }
 
         if flags_compile_time_deps && !matches!(flags_cmd, Subcommand::Check { .. }) {
             eprintln!("ERROR: Can't use --compile-time-deps with any subcommand other than check.");
-            exit!(1);
+            helpers::exit_process(1);
         }
 
-        if matches!(flags_cmd, Subcommand::Fix) {
+        if matches!(flags_cmd, Subcommand::Fix { .. }) {
             eprintln!(
                 "WARNING: `x fix` is provided on a best-effort basis and does not support all `cargo fix` options correctly."
             );
         }
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
-        #[cfg(not(test))]
-        if flags_stage.is_none() && ci_env.is_running_in_ci() {
+        if cfg!(not(test)) && flags_stage.is_none() && ci_env.is_running_in_ci() {
             match flags_cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
@@ -1214,7 +1284,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 Subcommand::Clean { .. }
                 | Subcommand::Check { .. }
                 | Subcommand::Clippy { .. }
-                | Subcommand::Fix
+                | Subcommand::Fix { .. }
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }
@@ -1323,8 +1393,14 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             paths
         };
 
+        // If we're building with ThinLTO on, by default we want to link
+        // to LLVM shared, to avoid re-doing ThinLTO (which happens in
+        // the link step) with each stage.
+        let llvm_link_shared = llvm_link_shared.or(llvm_thin_lto.unwrap_or(false).then_some(true));
+
         Config {
             // tidy-alphabetical-start
+            allocator: reconcile_jemalloc(rust_jemalloc, build_allocator, "rust", "build"),
             android_ndk: build_android_ndk,
             backtrace: rust_backtrace.unwrap_or(true),
             backtrace_on_ice: rust_backtrace_on_ice.unwrap_or(false),
@@ -1334,11 +1410,13 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             cargo_info,
             cargo_native_static: build_cargo_native_static.unwrap_or(false),
+            cargo_pgo: pgo_cargo,
             ccache,
-            change_id: toml.change_id.inner,
+            change_id: toml_change_id.inner,
             channel,
             ci_env,
             clippy_info,
+            clippy_pgo: pgo_clippy,
             cmd: flags_cmd,
             codegen_tests: rust_codegen_tests.unwrap_or(true),
             color: flags_color,
@@ -1347,7 +1425,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             compiletest_allow_stage0: build_compiletest_allow_stage0.unwrap_or(false),
             compiletest_diff_tool: build_compiletest_diff_tool,
             config: toml_path,
-            configure_args: build_configure_args.unwrap_or_default(),
             control_flow_guard: rust_control_flow_guard.unwrap_or(false),
             datadir: install_datadir.map(PathBuf::from),
             deny_warnings,
@@ -1373,23 +1450,21 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             explicit_stage_from_cli: flags_stage.is_some(),
             explicit_stage_from_config,
             extended: build_extended.unwrap_or(false),
+            external_cargo: build_cargo,
+            external_cargo_clippy: build_cargo_clippy,
+            external_rustc: build_rustc,
+            external_rustdoc: build_rustdoc,
+            external_rustfmt: build_rustfmt,
             free_args: flags_free_args,
             full_bootstrap: build_full_bootstrap.unwrap_or(false),
             gcc_ci_mode,
-            gdb: build_gdb.map(PathBuf::from),
+            gdb: build_gdb,
             host_target,
             hosts,
             in_tree_gcc_info,
             in_tree_llvm_info,
             include_default_paths: flags_include_default_paths,
             incremental: flags_incremental || rust_incremental == Some(true),
-            initial_cargo,
-            initial_cargo_clippy: build_cargo_clippy,
-            initial_rustc,
-            initial_rustdoc,
-            initial_rustfmt,
-            initial_sysroot,
-            jemalloc: rust_jemalloc.unwrap_or(false),
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
             json_output: flags_json_output,
             keep_stage: flags_keep_stage,
@@ -1398,38 +1473,30 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
             lld_enabled,
-            lldb: build_lldb.map(PathBuf::from),
+            lldb: build_lldb,
             llvm_allow_old_toolchain: llvm_allow_old_toolchain.unwrap_or(false),
             llvm_assertions,
             llvm_bitcode_linker_enabled: rust_llvm_bitcode_linker.unwrap_or(false),
             llvm_build_config: llvm_build_config.clone().unwrap_or(Default::default()),
             llvm_cflags,
+            llvm_ci_mode,
             llvm_clang: llvm_clang.unwrap_or(false),
             llvm_clang_cl,
-            llvm_clang_dir: llvm_clang_dir.map(PathBuf::from),
             llvm_cxxflags,
             llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
             llvm_experimental_targets,
-            llvm_from_ci,
             llvm_ldflags,
             llvm_libunwind_default: rust_llvm_libunwind
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind")),
             llvm_libzstd: llvm_libzstd.unwrap_or(false),
             llvm_link_jobs,
-            // If we're building with ThinLTO on, by default we want to link
-            // to LLVM shared, to avoid re-doing ThinLTO (which happens in
-            // the link step) with each stage.
-            llvm_link_shared: Cell::new(
-                llvm_link_shared
-                    .or((!llvm_from_ci && llvm_thin_lto.unwrap_or(false)).then_some(true)),
-            ),
+            llvm_link_shared,
             llvm_offload: llvm_offload.unwrap_or(false),
             llvm_optimize: llvm_optimize.unwrap_or(true),
+            llvm_pgo: pgo_llvm,
             llvm_plugins: llvm_plugin.unwrap_or(false),
             llvm_polly: llvm_polly.unwrap_or(false),
-            llvm_profile_generate: flags_llvm_profile_generate,
-            llvm_profile_use: flags_llvm_profile_use,
             llvm_release_debuginfo: llvm_release_debuginfo.unwrap_or(false),
             llvm_static_stdcpp: llvm_static_libstdcpp.unwrap_or(false),
             llvm_targets,
@@ -1447,6 +1514,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             musl_root: rust_musl_root.map(PathBuf::from),
             ninja_in_file: llvm_ninja.unwrap_or(true),
             nodejs: build_nodejs.map(PathBuf::from),
+            offload_clang_dir: offload_clang_dir.map(PathBuf::from),
             omit_git_hash,
             on_fail: flags_on_fail,
             optimized_compiler_builtins,
@@ -1471,6 +1539,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(vec![CodegenBackendKind::Llvm]),
             rust_codegen_units: rust_codegen_units.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
+            rust_compress_debuginfo: rust_compress_debuginfo.unwrap_or_default(),
             rust_debug_logging: rust_debug_logging
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
@@ -1493,8 +1562,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .or(rust_overflow_checks)
                 .unwrap_or(rust_debug == Some(true)),
             rust_parallel_frontend_threads: rust_parallel_frontend_threads.map(threads_from_config),
-            rust_profile_generate: flags_rust_profile_generate.or(rust_profile_generate),
-            rust_profile_use: flags_rust_profile_use.or(rust_profile_use),
+            rust_pgo: pgo_rustc,
             rust_randomize_layout: rust_randomize_layout.unwrap_or(false),
             rust_remap_debuginfo: rust_remap_debuginfo.unwrap_or(false),
             rust_rpath: rust_rpath.unwrap_or(true),
@@ -1509,9 +1577,11 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
             rustc_default_linker: rust_default_linker,
             rustc_error_format: flags_rustc_error_format,
+            rustdoc_pgo: pgo_rustdoc,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
             save_toolstates: rust_save_toolstates.map(PathBuf::from),
+            sde: build_sde.map(PathBuf::from),
             skip,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
             src,
@@ -1521,6 +1591,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
             stderr_is_tty: std::io::stderr().is_terminal(),
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
             stdout_is_tty: std::io::stdout().is_terminal(),
             submodules: build_submodules,
             sysconfdir: install_sysconfdir.map(PathBuf::from),
@@ -1535,6 +1606,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
+            wasm_proc_macros: wasm_proc_macros.unwrap_or(false),
             windows_rc: build_windows_rc.map(PathBuf::from),
             yarn: build_yarn.map(PathBuf::from),
             // tidy-alphabetical-end
@@ -1649,46 +1721,10 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         }
     }
 
-    /// The absolute path to the downloaded LLVM artifacts.
-    pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        let dwn_ctx = DownloadContext::from(self);
-        ci_llvm_root(dwn_ctx, self.llvm_from_ci, &self.out)
-    }
-
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
         self.out.join(self.host_target).join("ci-rustc")
-    }
-
-    /// Determine whether llvm should be linked dynamically.
-    ///
-    /// If `false`, llvm should be linked statically.
-    /// This is computed on demand since LLVM might have to first be downloaded from CI.
-    pub(crate) fn llvm_link_shared(&self) -> bool {
-        let mut opt = self.llvm_link_shared.get();
-        if opt.is_none() && self.dry_run() {
-            // just assume static for now - dynamic linking isn't supported on all platforms
-            return false;
-        }
-
-        let llvm_link_shared = *opt.get_or_insert_with(|| {
-            if self.llvm_from_ci {
-                self.maybe_download_ci_llvm();
-                let ci_llvm = self.ci_llvm_root();
-                let link_type = t!(
-                    std::fs::read_to_string(ci_llvm.join("link-type.txt")),
-                    format!("CI llvm missing: {}", ci_llvm.display())
-                );
-                link_type == "dynamic"
-            } else {
-                // unclear how thought-through this default is, but it maintains compatibility with
-                // previous behavior
-                false
-            }
-        });
-        self.llvm_link_shared.set(opt);
-        llvm_link_shared
     }
 
     /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
@@ -1709,18 +1745,15 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 Some(commit) => {
                     self.download_ci_rustc(commit);
 
-                    // CI-rustc can't be used without CI-LLVM. If `self.llvm_from_ci` is false, it means the "if-unchanged"
-                    // logic has detected some changes in the LLVM submodule (download-ci-llvm=false can't happen here as
-                    // we don't allow it while parsing the configuration).
-                    if !self.llvm_from_ci {
-                        // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
-                        // to not break CI. For non-CI environments, we should return an error.
-                        if self.is_running_on_ci() {
-                            println!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
-                            return None;
-                        } else {
-                            panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
-                        }
+                    let llvm_ci_requested = self.llvm_ci_mode.requests_download_from_ci();
+                    // CI-rustc can't be used without CI-LLVM. If CI LLVM is requested, but the
+                    // LLVM submodule has changes, it is an error.
+                    // FIXME: this whole logic should be refactored to not use
+                    // `has_changes_from_upstream` explicitly
+                    if llvm_ci_requested && self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS) {
+                        // download-ci-rustc should not be used on CI at the moment
+                        assert!(!self.is_running_on_ci());
+                        panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
                     }
 
                     if let Some(config_path) = &self.config {
@@ -1733,7 +1766,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                             }
                             Err(e) => {
                                 eprintln!("ERROR: Failed to parse CI rustc bootstrap.toml: {e}");
-                                exit!(2);
+                                helpers::exit_process(2);
                             }
                         };
 
@@ -1802,7 +1835,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     ///
     /// This *does not* update the submodule if `bootstrap.toml` explicitly says
     /// not to, or if we're not in a git repository (like a plain source
-    /// tarball). Typically [`crate::Build::require_submodule`] should be
+    /// tarball). Typically [`crate::core::session::Session::require_submodule`] should be
     /// used instead to provide a nice error to the user if the submodule is
     /// missing.
     #[cfg_attr(
@@ -1883,8 +1916,12 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         self.enabled_codegen_backends(target).first().unwrap()
     }
 
-    pub fn jemalloc(&self, target: TargetSelection) -> bool {
-        self.target_config.get(&target).and_then(|cfg| cfg.jemalloc).unwrap_or(self.jemalloc)
+    pub fn allocator(&self, target: TargetSelection) -> Allocator {
+        self.target_config
+            .get(&target)
+            .and_then(|cfg| cfg.allocator)
+            .or(self.allocator)
+            .unwrap_or(Allocator::System)
     }
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
@@ -1927,23 +1964,22 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
     }
 
+    pub fn compress_debuginfo(&self, target: TargetSelection) -> CompressDebuginfo {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.compress_debuginfo)
+            .unwrap_or(self.rust_compress_debuginfo)
+    }
+
     /// Checks if the given target is the same as the host target.
     pub fn is_host_target(&self, target: TargetSelection) -> bool {
         self.host_target == target
     }
 
-    /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
-    /// In particular, we expect llvm sources to be available when this is false.
-    ///
-    /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
-    pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
-        is_system_llvm(&self.target_config, self.llvm_from_ci, self.host_target, target)
-    }
-
     /// Returns `true` if this is our custom, patched, version of LLVM.
     ///
     /// This does not necessarily imply that we're managing the `llvm-project` submodule.
-    pub fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+    pub fn is_rust_llvm(&self, llvm: &LlvmOutput, target: TargetSelection) -> bool {
         match self.target_config.get(&target) {
             // We're using a user-controlled version of LLVM. The user has explicitly told us whether the version has our patches.
             // (They might be wrong, but that's not a supported use-case.)
@@ -1951,7 +1987,10 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
             // The user hasn't promised the patches match.
             // This only has our patches if it's downloaded from CI or built from source.
-            _ => !self.is_system_llvm(target),
+            _ => match llvm.kind() {
+                LlvmKind::BuiltLocally | LlvmKind::DownloadedFromCi => true,
+                LlvmKind::External => false,
+            },
         }
     }
 
@@ -1970,54 +2009,99 @@ impl AsRef<ExecutionContext> for Config {
     }
 }
 
-fn compute_src_directory(src_dir: Option<PathBuf>, exec_ctx: &ExecutionContext) -> Option<PathBuf> {
-    if let Some(src) = src_dir {
-        return Some(src);
-    } else {
-        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-        // running on a completely different machine from where it was compiled.
-        let mut cmd = helpers::git(None);
-        // NOTE: we cannot support running from outside the repository because the only other path we have available
-        // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
-        // We still support running outside the repository if we find we aren't in a git directory.
-
-        // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used an absolute path,
-        // and end up using MSYS's git rather than git-for-windows, we would get a unix-y MSYS path. But as bootstrap
-        // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
-        cmd.arg("rev-parse").arg("--show-cdup");
-        // Discard stderr because we expect this to fail when building from a tarball.
-        let output = cmd.allow_failure().run_capture_stdout(exec_ctx);
-        if output.is_success() {
-            let git_root_relative = output.stdout();
-            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
-            // and to resolve any relative components.
-            let git_root = env::current_dir()
-                .unwrap()
-                .join(PathBuf::from(git_root_relative.trim()))
-                .canonicalize()
-                .unwrap();
-            let s = git_root.to_str().unwrap();
-
-            // Bootstrap is quite bad at handling /? in front of paths
-            let git_root = match s.strip_prefix("\\\\?\\") {
-                Some(p) => PathBuf::from(p),
-                None => git_root,
-            };
-            // If this doesn't have at least `stage0`, we guessed wrong. This can happen when,
-            // for example, the build directory is inside of another unrelated git directory.
-            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
-            //
-            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
-            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
-            if git_root.join("src").join("stage0").exists() {
-                return Some(git_root);
-            }
-        } else {
-            // We're building from a tarball, not git sources.
-            // We don't support pre-downloaded bootstrap in this case.
+/// Reconciles the deprecated `jemalloc` boolean option with the new
+/// `allocator` option.
+///
+/// Emits a warning if `jemalloc` is set, and an error if *both* `jemalloc` and `allocator` are set.
+fn reconcile_jemalloc(
+    jemalloc: Option<bool>,
+    allocator: Option<Allocator>,
+    jemalloc_section: &str,
+    allocator_section: &str,
+) -> Option<Allocator> {
+    match (jemalloc, allocator) {
+        (None, None) => None,
+        (None, Some(allocator)) => Some(allocator),
+        (Some(true), None) => {
+            println!(
+                "WARNING: The `jemalloc` option is deprecated. \
+                 Please use `{allocator_section}.allocator = \"jemalloc\"` instead of `{jemalloc_section}.jemalloc = true`",
+            );
+            Some(Allocator::Jemalloc)
         }
+        (Some(false), None) => {
+            println!(
+                "WARNING: The `jemalloc` option is deprecated. \
+                 Please use `{allocator_section}.allocator = \"system\"` instead of `{jemalloc_section}.jemalloc = false`",
+            );
+            Some(Allocator::System)
+        }
+        _ => {
+            panic!(
+                "ERROR: `{jemalloc_section}.jemalloc` and `{allocator_section}.allocator` are both set. \
+                 Please remove the outdated `{jemalloc_section}.jemalloc` directive."
+            )
+        }
+    }
+}
+
+fn compute_src_directory_via_git(exec_ctx: &ExecutionContext) -> Option<PathBuf> {
+    // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
+    // running on a completely different machine from where it was compiled.
+    // NOTE: we cannot support running from outside the repository because the only other path we have available
+    // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
+    // We still support running outside the repository if we find we aren't in a git directory.
+
+    // NOTE: We get a relative path from git (`--show-cdup`) to work around an issue on MSYS/mingw.
+    // If we used an absolute path, and end up using MSYS's git rather than git-for-windows, we would
+    // get a unix-y MSYS path. But as bootstrap has already been (kinda-cross-)compiled to Windows land,
+    // we require a normal Windows path.
+
+    // Ask git to print the path of the repository root, relative to the working directory.
+    // If the working directory is the repo root, the output will be empty, which is fine.
+    let mut cmd = helpers::git(None);
+    cmd.arg("rev-parse").arg("--show-cdup");
+    // Discard stderr because we expect this to fail when building from a tarball.
+    let output = cmd.allow_failure().run_capture_stdout(exec_ctx);
+    if output.is_failure() {
+        // We're building from a tarball, not git sources.
+        // We don't support pre-downloaded bootstrap in this case.
+        return None;
+    }
+
+    // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
+    // and to resolve any relative components.
+    let stdout = output.stdout();
+    let relative_root = stdout.trim();
+    let git_root = env::current_dir().unwrap().join(relative_root).canonicalize().unwrap();
+
+    // Bootstrap is quite bad at handling /? in front of paths
+    let git_root = match git_root.to_str().unwrap().strip_prefix("\\\\?\\") {
+        Some(p) => PathBuf::from(p),
+        None => git_root,
     };
-    None
+
+    // If this doesn't have at least `./src/stage0`, we guessed wrong. This can happen when,
+    // for example, the build directory is inside of another unrelated git directory.
+    // In that case keep the original `CARGO_MANIFEST_DIR` handling.
+    //
+    // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
+    // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+    if git_root.join("src").join("stage0").exists() { Some(git_root) } else { None }
+}
+
+#[derive(Clone)]
+pub enum LlvmPgoGenerationMode {
+    /// Enable PGO instrumentation that will write profiles into a default path.
+    Implicit,
+    /// Enable PGO instrumentation that will write profiles into the specified directory.
+    Directory(PathBuf),
+}
+
+#[derive(Clone)]
+pub struct LlvmPgoConfig {
+    pub use_profile: Option<PathBuf>,
+    pub generate_profile: Option<LlvmPgoGenerationMode>,
 }
 
 /// Loads bootstrap TOML config and returns the config together with a path from where
@@ -2121,7 +2205,7 @@ fn postprocess_toml(
                 "ERROR: Failed to parse default config profile at '{}': {e}",
                 include_path.display()
             );
-            exit!(2);
+            helpers::exit_process(2);
         });
         toml.merge(
             Some(include_path),
@@ -2163,60 +2247,47 @@ fn postprocess_toml(
             }
         }
         eprintln!("failed to parse override `{option}`: `{err}");
-        exit!(2)
+        helpers::exit_process(2);
     }
     toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 }
 
-#[cfg(test)]
-pub fn check_stage0_version(
-    _program_path: &Path,
-    _component_name: &'static str,
-    _src_dir: &Path,
-    _exec_ctx: &ExecutionContext,
-) {
-}
-
-/// check rustc/cargo version is same or lower with 1 apart from the building one
-#[cfg(not(test))]
-pub fn check_stage0_version(
+/// Check that the version of an externally provided rustc/cargo is either the same or 1 version
+/// older than the in-tree version.
+fn check_external_binary_version(
     program_path: &Path,
     component_name: &'static str,
     src_dir: &Path,
     exec_ctx: &ExecutionContext,
 ) {
-    use build_helper::util::fail;
-
-    if exec_ctx.dry_run() {
+    if cfg!(test) || exec_ctx.dry_run() {
         return;
     }
 
-    let stage0_output =
-        command(program_path).arg("--version").run_capture_stdout(exec_ctx).stdout();
-    let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
+    let output = command(program_path).arg("--version").run_capture_stdout(exec_ctx).stdout();
+    let mut output = output.lines().next().unwrap().split(' ');
 
-    let stage0_name = stage0_output.next().unwrap();
-    if stage0_name != component_name {
+    let name = output.next().unwrap();
+    if name != component_name {
         fail(&format!(
-            "Expected to find {component_name} at {} but it claims to be {stage0_name}",
+            "Expected to find {component_name} at {} but it claims to be {name}",
             program_path.display()
         ));
     }
 
-    let stage0_version =
-        semver::Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
-            .unwrap();
+    let binary_version =
+        semver::Version::parse(output.next().unwrap().split('-').next().unwrap().trim()).unwrap();
     let source_version =
         semver::Version::parse(fs::read_to_string(src_dir.join("src/version")).unwrap().trim())
             .unwrap();
-    if !(source_version == stage0_version
-        || (source_version.major == stage0_version.major
-            && (source_version.minor == stage0_version.minor
-                || source_version.minor == stage0_version.minor + 1)))
+    if !(source_version == binary_version
+        || (source_version.major == binary_version.major
+            && (source_version.minor == binary_version.minor
+                || source_version.minor == binary_version.minor + 1)))
     {
         let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
         fail(&format!(
-            "Unexpected {component_name} version: {stage0_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
+            "Unexpected {component_name} version: {binary_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
         ));
     }
 }
@@ -2283,7 +2354,7 @@ pub fn download_ci_rustc_commit<'a>(
                 println!(
                     "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
                 );
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
 
             true
@@ -2362,58 +2433,17 @@ pub fn git_config(stage0_metadata: &build_helper::stage0_parser::Stage0) -> GitC
     }
 }
 
-pub fn parse_download_ci_llvm<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    rust_info: &channel::GitInfo,
-    download_rustc_commit: &Option<String>,
-    download_ci_llvm: Option<StringOrBool>,
-    asserts: bool,
-) -> bool {
-    let dwn_ctx = dwn_ctx.as_ref();
+pub fn parse_download_ci_llvm(download_ci_llvm: Option<StringOrBool>) -> LlvmCiMode {
     let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
-
-    let if_unchanged = || {
-        if rust_info.is_from_tarball() {
-            // Git is needed for running "if-unchanged" logic.
-            println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
-            crate::exit!(1);
-        }
-
-        // Fetching the LLVM submodule is unnecessary for self-tests.
-        #[cfg(not(test))]
-        update_submodule(dwn_ctx, rust_info, "src/llvm-project");
-
-        // Check for untracked changes in `src/llvm-project` and other important places.
-        let has_changes = has_changes_from_upstream(dwn_ctx, LLVM_INVALIDATION_PATHS);
-
-        // Return false if there are untracked changes, otherwise check if CI LLVM is available.
-        if has_changes {
-            false
-        } else {
-            llvm::is_ci_llvm_available_for_target(&dwn_ctx.host_target, asserts)
-        }
-    };
-
     match download_ci_llvm {
         StringOrBool::Bool(b) => {
-            if !b && download_rustc_commit.is_some() {
-                panic!(
-                    "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
-                );
+            if b {
+                LlvmCiMode::Download
+            } else {
+                LlvmCiMode::BuildLocally
             }
-
-            #[cfg(not(test))]
-            if b && dwn_ctx.is_running_on_ci() && CiEnv::is_rust_lang_managed_ci_job() {
-                // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
-                panic!(
-                    "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
-                );
-            }
-
-            // If download-ci-llvm=true we also want to check that CI llvm is available
-            b && llvm::is_ci_llvm_available_for_target(&dwn_ctx.host_target, asserts)
         }
-        StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
+        StringOrBool::String(s) if s == "if-unchanged" => LlvmCiMode::DownloadIfUnchanged,
         StringOrBool::String(other) => {
             panic!("unrecognized option for download-ci-llvm: {other:?}")
         }
@@ -2558,41 +2588,6 @@ pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> b
     submodules.unwrap_or(rust_info.is_managed_git_subrepository())
 }
 
-/// Returns `true` if this is an external version of LLVM not managed by bootstrap.
-/// In particular, we expect llvm sources to be available when this is false.
-///
-/// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
-pub fn is_system_llvm(
-    target_config: &HashMap<TargetSelection, Target>,
-    llvm_from_ci: bool,
-    host_target: TargetSelection,
-    target: TargetSelection,
-) -> bool {
-    match target_config.get(&target) {
-        Some(Target { llvm_config: Some(_), .. }) => {
-            let ci_llvm = llvm_from_ci && is_host_target(&host_target, &target);
-            !ci_llvm
-        }
-        // We're building from the in-tree src/llvm-project sources.
-        Some(Target { llvm_config: None, .. }) => false,
-        None => false,
-    }
-}
-
-pub fn is_host_target(host_target: &TargetSelection, target: &TargetSelection) -> bool {
-    host_target == target
-}
-
-pub(crate) fn ci_llvm_root<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    llvm_from_ci: bool,
-    out: &Path,
-) -> PathBuf {
-    let dwn_ctx = dwn_ctx.as_ref();
-    assert!(llvm_from_ci);
-    out.join(dwn_ctx.host_target).join("ci-llvm")
-}
-
 /// Returns the content of the given file at a specific commit.
 pub(crate) fn read_file_by_commit<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
@@ -2642,7 +2637,7 @@ fn bad_config(toml_path: &Path, e: toml::de::Error) -> ! {
         }
     }
 
-    exit!(2);
+    helpers::exit_process(2);
 }
 
 #[derive(Copy, Clone, Debug)]

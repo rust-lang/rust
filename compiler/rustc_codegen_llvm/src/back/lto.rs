@@ -18,17 +18,17 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_hir::attrs::SanitizerSet;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_session::config;
+use rustc_structures::SanitizerSet;
 use tracing::{debug, info};
 
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, codegen,
     save_temp_bitcode,
 };
-use crate::errors::{LlvmError, LtoBitcodeFromRlib};
+use crate::diagnostics::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
 
@@ -617,10 +617,12 @@ pub(crate) fn run_pass_manager(
         );
     }
 
-    if cfg!(feature = "llvm_enzyme") && enable_ad && !thin {
+    if enable_ad && !thin {
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
-        if !config.autodiff.contains(&config::AutoDiff::NoPostopt) {
+        if !config.autodiff.contains(&config::AutoDiff::NoPostopt)
+            && config.autodiff_post_passes.as_deref() != Some("")
+        {
             unsafe {
                 write::llvm_optimize(
                     cgcx, prof, dcx, module, None, None, config, opt_level, opt_stage, stage,

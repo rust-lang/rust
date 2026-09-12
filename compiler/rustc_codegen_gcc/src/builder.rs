@@ -18,7 +18,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
     BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
-    LayoutTypeCodegenMethods, OverflowOp, StaticBuilderMethods,
+    LayoutTypeCodegenMethods, OverflowOp, ReturnSlot, StaticBuilderMethods,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
@@ -36,7 +36,7 @@ use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use crate::abi::FnAbiGccExt;
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
-use crate::errors;
+use crate::diagnostics;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
@@ -81,8 +81,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             AtomicOrdering::AcqRel | AtomicOrdering::Release => AtomicOrdering::Acquire,
             _ => order,
         };
-        let previous_value =
-            self.atomic_load(dst.get_type(), dst, load_ordering, Size::from_bytes(size));
+        let previous_value = self.atomic_load(
+            dst.get_type(),
+            dst,
+            load_ordering,
+            /* volatile */ false,
+            Size::from_bytes(size),
+        );
         let previous_var =
             func.new_local(self.location, previous_value.get_type(), "previous_value");
         let return_value = func.new_local(self.location, previous_value.get_type(), "return_value");
@@ -603,6 +608,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
@@ -613,7 +619,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         let current_block = self.block;
         self.block = try_block;
-        let call = self.call(typ, fn_attrs, fn_abi, func, args, None, instance); // FIXME(antoyo): use funclet here?
+        // FIXME(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, fn_abi, func, return_slot, args, None, instance);
         self.block = current_block;
 
         let return_value =
@@ -641,13 +648,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
         _funclet: Option<&Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        let call_site = self.call(typ, fn_attrs, fn_abi, func, args, None, instance);
+        let call_site = self.call(typ, fn_attrs, fn_abi, func, return_slot, args, None, instance);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(self.location, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -1008,6 +1016,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _ty: Type<'gcc>,
         ptr: RValue<'gcc>,
         order: AtomicOrdering,
+        _volatile: bool, // FIXME we are always making the load volatile
         size: Size,
     ) -> RValue<'gcc> {
         // FIXME(antoyo): use ty.
@@ -1054,7 +1063,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let val = if place.val.llextra.is_some() {
             // FIXME: Merge with the `else` below?
             OperandValue::Ref(place.val)
-        } else if place.layout.is_gcc_immediate() {
+        } else if place.layout.backend_repr.is_scalar_or_simd() {
             let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
             OperandValue::Immediate(
                 if let abi::BackendRepr::Scalar(ref scalar) = place.layout.backend_repr {
@@ -1064,9 +1073,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                     load
                 },
             )
-        } else if let abi::BackendRepr::ScalarPair(ref a, ref b) = place.layout.backend_repr {
-            let b_offset = a.size(self).align_to(b.default_align(self).abi);
-
+        } else if let abi::BackendRepr::ScalarPair { ref a, ref b, b_offset } =
+            place.layout.backend_repr
+        {
             let mut load = |i, scalar: &abi::Scalar, align| {
                 let ptr = if i == 0 {
                     place.val.llval
@@ -1155,7 +1164,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
         // to type so it gets the proper alignment.
         let destination_type = destination.to_rvalue().get_type().unqualified();
-        let align = if flags.contains(MemFlags::UNALIGNED) { 1 } else { align.bytes() };
+        let align = align.bytes();
         let mut modified_destination_type = destination_type.get_aligned(align);
         if flags.contains(MemFlags::VOLATILE) {
             modified_destination_type = modified_destination_type.make_volatile();
@@ -1177,6 +1186,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         value: RValue<'gcc>,
         ptr: RValue<'gcc>,
         order: AtomicOrdering,
+        _volatile: bool, // FIXME we are always making the store volatile
         size: Size,
     ) {
         // FIXME(antoyo): handle alignment.
@@ -1772,19 +1782,30 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
+        // FIXME: change this in the `rustc_codegen_gcc` repo after the sync, to use the `libgccjit` indirect return suppport.
+        let args = match return_slot {
+            ReturnSlot::Direct => args.to_vec(),
+            ReturnSlot::Indirect(sret_ptr) => {
+                let mut args = args.to_vec();
+                // Prepend the indirect return pointer
+                args.insert(0, sret_ptr);
+                args
+            }
+        };
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
             // FIXME(antoyo): remove when the API supports a different type for functions.
             let func: Function<'gcc> = self.cx.rvalue_as_function(func);
-            self.function_call(func, args, funclet)
+            self.function_call(func, &args, funclet)
         } else {
             // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(typ, fn_abi, func, args, funclet)
+            self.function_ptr_call(typ, fn_abi, func, &args, funclet)
         };
         if let Some(_fn_abi) = fn_abi {
             // FIXME(bjorn3): Apply function attributes
@@ -1798,12 +1819,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _fn_attrs: Option<&CodegenFnAttrs>,
         _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         _llfn: Self::Value,
+        _return_slot: ReturnSlot<Self::Value>,
         _args: &[Self::Value],
         _funclet: Option<&Self::Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) {
         // FIXME: implement support for explicit tail calls like rustc_codegen_llvm.
-        self.tcx.dcx().emit_fatal(errors::ExplicitTailCallsUnsupported);
+        self.tcx.dcx().emit_fatal(diagnostics::ExplicitTailCallsUnsupported);
     }
 
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {

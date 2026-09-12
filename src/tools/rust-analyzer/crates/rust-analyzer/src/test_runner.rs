@@ -72,6 +72,13 @@ impl JsonLinesParser<CargoTestMessage> for CargoTestOutputParser {
         })
     }
 
+    fn from_stderr_line(&self, line: &str, _error: &mut String) -> Option<CargoTestMessage> {
+        Some(CargoTestMessage {
+            target: self.target.clone(),
+            output: CargoTestOutput::Custom { text: line.to_owned() },
+        })
+    }
+
     fn from_eof(&self) -> Option<CargoTestMessage> {
         Some(CargoTestMessage { target: self.target.clone(), output: CargoTestOutput::Finished })
     }
@@ -101,6 +108,7 @@ impl CargoTestHandle {
         ws_target_dir: Option<&Utf8Path>,
         test_target: TestTarget,
         sender: Sender<CargoTestMessage>,
+        toolchain_version: Option<&semver::Version>,
     ) -> anyhow::Result<Self> {
         let mut cmd = toolchain::command(Tool::Cargo.path(), root, &options.extra_env);
         cmd.env("RUSTC_BOOTSTRAP", "1");
@@ -124,7 +132,12 @@ impl CargoTestHandle {
         cmd.arg("--no-fail-fast");
         cmd.arg("--manifest-path");
         cmd.arg(root.join("Cargo.toml"));
-        options.apply_on_command(&mut cmd, ws_target_dir, Some(&test_target.package));
+        options.apply_on_command(
+            &mut cmd,
+            ws_target_dir,
+            Some(&test_target.package),
+            toolchain_version,
+        );
         cmd.arg("--");
         if let Some(path) = path {
             cmd.arg(path);

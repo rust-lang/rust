@@ -147,8 +147,6 @@ LL + fn f<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
 error[E0404]: expected trait, found struct `Traitor`
   --> $DIR/not-on-struct.rs:36:11
    |
-LL | trait Trait {}
-   | ----------- similarly named trait `Trait` defined here
 LL | fn g() -> Traitor + 'static {
    |           ^^^^^^^ not a trait
    |
@@ -159,6 +157,11 @@ LL | fn g() -> Traitor + 'static {
    |           -------   ^^^^^^^ ...because of this bound
    |           |
    |           expected this type to be a trait...
+note: similarly named trait `Trait` defined here
+  --> $DIR/not-on-struct.rs:35:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 help: if you meant to use a type and not a trait here, remove the bounds
    |
 LL - fn g() -> Traitor + 'static {

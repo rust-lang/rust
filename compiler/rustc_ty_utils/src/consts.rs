@@ -54,7 +54,7 @@ fn recurse_build<'tcx>(
         &ExprKind::PlaceUnwrapUnsafeBinder { .. }
         | &ExprKind::ValueUnwrapUnsafeBinder { .. }
         | &ExprKind::WrapUnsafeBinder { .. } => {
-            todo!("FIXME(unsafe_binders)")
+            unimplemented!("FIXME(unsafe_binders)")
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
@@ -70,8 +70,15 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval =
-                ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, def_id), args);
+            let uneval = ty::AliasConst::new(
+                tcx,
+                ty::AliasConstKind::new_from_def_id(
+                    tcx,
+                    def_id,
+                    ty::AliasConstInherentArgsKind::Impl,
+                ),
+                args,
+            );
             ty::Const::new_alias(tcx, ty::IsRigid::No, uneval)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
@@ -112,10 +119,10 @@ fn recurse_build<'tcx>(
                 maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?
             }
         }
-        // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
+        // `ExprKind::ValueExpr` happens when a `hir::ExprKind::Cast` is a
         // "coercion cast" i.e. using a coercion or is a no-op.
         // This is important so that `N as usize as usize` doesn't unify with `N as usize`. (untested)
-        &ExprKind::Use { source } => {
+        &ExprKind::ValueExpr { source } => {
             let value_ty = body.exprs[source].ty;
             let value = recurse_build(tcx, body, source, root_span)?;
             ty::Const::new_expr(tcx, Expr::new_cast(tcx, CastKind::Use, value_ty, value, node.ty))
@@ -210,7 +217,7 @@ fn recurse_build<'tcx>(
             error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
         }
         ExprKind::Reborrow { .. } => {
-            todo!();
+            unimplemented!();
         }
     })
 }
@@ -272,7 +279,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::LogicalOp { .. }
             | thir::ExprKind::Unary { .. }
             | thir::ExprKind::Cast { .. }
-            | thir::ExprKind::Use { .. }
+            | thir::ExprKind::ValueExpr { .. }
             | thir::ExprKind::NeverToAny { .. }
             | thir::ExprKind::PointerCoercion { .. }
             | thir::ExprKind::Loop { .. }
@@ -310,7 +317,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::ThreadLocalRef(_)
             | thir::ExprKind::Yield { .. } => false,
             thir::ExprKind::Reborrow { .. } => {
-                todo!();
+                unimplemented!();
             }
         }
     }
@@ -367,7 +374,7 @@ fn thir_abstract_const<'tcx>(
         // we want to look into them or treat them as opaque projections.
         //
         // Right now we do neither of that and simply always fail to unify them.
-        DefKind::AnonConst | DefKind::InlineConst => (),
+        DefKind::AnonConst => (),
         _ => return Ok(None),
     }
 

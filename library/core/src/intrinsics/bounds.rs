@@ -44,9 +44,86 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
 ///
 /// # Safety
 /// Must actually *be* such a type.
-pub unsafe trait FloatPrimitive: Sized + Copy {}
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+pub const unsafe trait FloatPrimitive: Sized + Copy {
+    type UInt: const core::ops::BitOr<Output = Self::UInt>
+        + const core::ops::BitAnd<Output = Self::UInt>
+        + const core::ops::Not<Output = Self::UInt>;
+    const SIGN_MASK: Self::UInt;
+    fn to_bits(self) -> Self::UInt;
+    fn from_bits(bits: Self::UInt) -> Self;
+}
 
-unsafe impl FloatPrimitive for f16 {}
-unsafe impl FloatPrimitive for f32 {}
-unsafe impl FloatPrimitive for f64 {}
-unsafe impl FloatPrimitive for f128 {}
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+const unsafe impl FloatPrimitive for f16 {
+    type UInt = u16;
+    const SIGN_MASK: Self::UInt = f16::SIGN_MASK;
+    #[inline]
+    fn to_bits(self) -> Self::UInt {
+        f16::to_bits(self)
+    }
+    #[inline]
+    fn from_bits(bits: Self::UInt) -> Self {
+        f16::from_bits(bits)
+    }
+}
+
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+const unsafe impl FloatPrimitive for f32 {
+    type UInt = u32;
+    const SIGN_MASK: Self::UInt = f32::SIGN_MASK;
+    #[inline]
+    fn to_bits(self) -> Self::UInt {
+        f32::to_bits(self)
+    }
+    #[inline]
+    fn from_bits(bits: Self::UInt) -> Self {
+        f32::from_bits(bits)
+    }
+}
+
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+const unsafe impl FloatPrimitive for f64 {
+    type UInt = u64;
+    const SIGN_MASK: Self::UInt = f64::SIGN_MASK;
+    #[inline]
+    fn to_bits(self) -> Self::UInt {
+        f64::to_bits(self)
+    }
+    #[inline]
+    fn from_bits(bits: Self::UInt) -> Self {
+        f64::from_bits(bits)
+    }
+}
+
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+const unsafe impl FloatPrimitive for f128 {
+    type UInt = u128;
+    const SIGN_MASK: Self::UInt = f128::SIGN_MASK;
+    #[inline]
+    fn to_bits(self) -> Self::UInt {
+        f128::to_bits(self)
+    }
+    #[inline]
+    fn from_bits(bits: Self::UInt) -> Self {
+        f128::from_bits(bits)
+    }
+}
+
+/// Built-in integer types (i8, i16, .., i128, isize, u8, u16, .., u128, usize).
+///
+/// Intentionally does not include other integer-repr types like `bool` or `char`.
+///
+/// # Safety
+/// Must actually *be* such a type.
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+pub const unsafe trait IntegerPrimitive: Copy + [const] Ord {}
+
+macro_rules! impl_integer_primitive {
+    ($($t:ty),*) => {$(
+        #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+        const unsafe impl IntegerPrimitive for $t {}
+    )*};
+}
+impl_integer_primitive!(i8, i16, i32, i64, i128, isize);
+impl_integer_primitive!(u8, u16, u32, u64, u128, usize);

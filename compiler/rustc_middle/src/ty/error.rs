@@ -7,8 +7,8 @@ use std::path::PathBuf;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
-use rustc_hir::limit::Limit;
 use rustc_macros::extension;
+use rustc_structures::Limit;
 pub use rustc_type_ir::error::ExpectedFound;
 
 use crate::ty::print::{FmtPrinter, Print, with_forced_trimmed_paths};
@@ -129,7 +129,8 @@ impl<'tcx> TypeError<'tcx> {
             }
             TypeError::IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
             TypeError::TargetFeatureCast(_) => {
-                "cannot coerce functions with `#[target_feature]` to safe function pointers".into()
+                "cannot coerce functions with `#[target_feature(..)]` to safe function pointers"
+                    .into()
             }
         }
     }
@@ -333,7 +334,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::AnonConst { def_id }
             | ty::AliasTermKind::ProjectionConst { def_id }
             | ty::AliasTermKind::FreeConst { def_id }
-            | ty::AliasTermKind::InherentConst { def_id } => self.def_path_str(def_id),
+            | ty::AliasTermKind::InherentConstSelf { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => self.def_path_str(def_id),
         }
     }
 }

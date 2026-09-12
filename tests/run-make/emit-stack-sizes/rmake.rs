@@ -10,6 +10,8 @@
 //@ only-elf
 // Reason: this feature only works when the output object format is ELF.
 // This won't be the case on Windows/OSX - for example, OSX produces a Mach-O binary.
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{llvm_readobj, rustc};
 

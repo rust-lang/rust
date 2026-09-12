@@ -1,9 +1,9 @@
 //@ build-fail
 //@ ignore-backends: gcc
 
-#![feature(link_llvm_intrinsics, abi_unadjusted)]
+#![feature(link_llvm_intrinsics)]
 
-extern "unadjusted" {
+extern "llvm-intrinsic" {
     #[link_name = "llvm.abcde"]
     fn foo();
     //~^ ERROR: unknown LLVM intrinsic `llvm.abcde`

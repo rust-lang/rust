@@ -1,0 +1,16 @@
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold_unfixable.rs:13:24
+   |
+LL |     let _ = opt.iter().fold(0, |acc, x| opt2.iter().fold(acc, |a, b| a + b) + x);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fold)]`
+help: try
+   |
+LL -     let _ = opt.iter().fold(0, |acc, x| opt2.iter().fold(acc, |a, b| a + b) + x);
+LL +     let _ = opt.as_ref().map_or(0, |x| opt2.iter().fold(0, |a, b| a + b) + x);
+   |
+
+error: aborting due to 1 previous error
+

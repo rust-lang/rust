@@ -22,7 +22,7 @@ fn foo<'a, 'b, T: Trait>(_: <T as Trait>::Assoc<'a, 'b>, x: &'b str) -> &'a str 
 fn main() {
     let func: for<'a, 'b> fn((), &'b str) -> &'static str = foo::<()>;
     //[current]~^ ERROR higher-ranked lifetime error
-    //[next]~^^ ERROR higher-ranked subtype error
+    //[next]~^^ ERROR higher-ranked lifetime error
     let x: &'static str = func((), &String::from("temporary"));
     println!("{x}");
 }

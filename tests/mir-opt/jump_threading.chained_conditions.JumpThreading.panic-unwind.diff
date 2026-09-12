@@ -363,61 +363,61 @@
       }
   
       bb11: {
-          _0 = const 3_u8;
-          goto -> bb14;
-      }
-  
-      bb12: {
-          _0 = const 2_u8;
-          goto -> bb14;
-      }
-  
-      bb13: {
-          _0 = const 1_u8;
-          goto -> bb14;
-      }
-  
-      bb14: {
-          StorageDead(_1);
-          return;
-      }
-  
-      bb15 (cleanup): {
-          resume;
-      }
-  
-      bb16: {
           _22 = const false;
           _23 = const false;
           StorageDead(_2);
           _19 = discriminant(_1);
-          switchInt(move _19) -> [0: bb13, 1: bb12, 2: bb11, otherwise: bb2];
+          switchInt(move _19) -> [0: bb14, 1: bb13, 2: bb12, otherwise: bb2];
+      }
+  
+      bb12: {
+          _0 = const 3_u8;
+          goto -> bb15;
+      }
+  
+      bb13: {
+          _0 = const 2_u8;
+          goto -> bb15;
+      }
+  
+      bb14: {
+          _0 = const 1_u8;
+          goto -> bb15;
+      }
+  
+      bb15: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb16 (cleanup): {
+          resume;
       }
   
       bb17: {
-          switchInt(copy _23) -> [0: bb16, otherwise: bb18];
+          switchInt(copy _23) -> [0: bb11, otherwise: bb18];
       }
   
       bb18: {
-          drop(((_2 as Some).0: std::string::String)) -> [return: bb16, unwind: bb15];
+          drop(((_2 as Some).0: std::string::String)) -> [return: bb11, unwind: bb16];
       }
   
       bb19: {
           _24 = discriminant(_2);
-          switchInt(move _24) -> [1: bb17, otherwise: bb16];
+          switchInt(move _24) -> [1: bb17, otherwise: bb11];
       }
   
       bb20 (cleanup): {
-          switchInt(copy _23) -> [0: bb15, otherwise: bb21];
+          switchInt(copy _23) -> [0: bb16, otherwise: bb21];
       }
   
       bb21 (cleanup): {
-          drop(((_2 as Some).0: std::string::String)) -> [return: bb15, unwind terminate(cleanup)];
+          drop(((_2 as Some).0: std::string::String)) -> [return: bb16, unwind terminate(cleanup)];
       }
   
       bb22 (cleanup): {
           _26 = discriminant(_2);
-          switchInt(move _26) -> [1: bb20, otherwise: bb15];
+          switchInt(move _26) -> [1: bb20, otherwise: bb16];
       }
   
       bb23: {
@@ -506,16 +506,16 @@
 + 
 +     bb31: {
 +         _24 = discriminant(_2);
-+         switchInt(move _24) -> [1: bb32, otherwise: bb16];
++         switchInt(move _24) -> [1: bb32, otherwise: bb11];
 +     }
 + 
 +     bb32: {
-+         goto -> bb16;
++         goto -> bb11;
 +     }
 + 
 +     bb33: {
 +         _24 = discriminant(_2);
-+         switchInt(move _24) -> [1: bb34, otherwise: bb16];
++         switchInt(move _24) -> [1: bb34, otherwise: bb11];
 +     }
 + 
 +     bb34: {

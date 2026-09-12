@@ -207,6 +207,14 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // If we're being run in SpawnedSecondary mode, run the test here. run_test
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
+        // SAFETY: Technically, this is a racy access that we probably shouldn't do?
+        // In practice, this is completely fine as long as the test harness is made of Rust,
+        // as std will synchronize the racy accesses that occur when they happen through std::env.
+        // Any unsoundness can only be exposed in practice if e.g. C code also takes an interest
+        // in these variables.
+        //
+        // If we ever grow an actual story for libtest and start documenting custom harness reqs,
+        // we should either fix this being racy or say "write it in Rust, please".
         unsafe {
             env::remove_var(SECONDARY_TEST_INVOKER_VAR);
         }
@@ -214,6 +222,7 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
         // Convert benchmarks to tests if we're not benchmarking.
         let mut tests = tests.iter().map(make_owned_test).collect::<Vec<_>>();
         if env::var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR).is_ok() {
+            // SAFETY: Same as for SECONDARY_TEST_INVOKER_VAR
             unsafe {
                 env::remove_var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR);
             }

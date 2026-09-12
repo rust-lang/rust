@@ -1,5 +1,4 @@
-#![deny(clippy::trait_duplication_in_bounds)]
-#![allow(unused)]
+#![warn(clippy::trait_duplication_in_bounds)]
 #![feature(const_trait_impl)]
 
 use std::any::Any;

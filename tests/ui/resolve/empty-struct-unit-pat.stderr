@@ -7,11 +7,11 @@ LL | struct Empty2;
 LL |         Empty2() => ()
    |         ^^^^^^^^
    |
-  ::: $DIR/auxiliary/empty-struct.rs:3:1
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
    |
 LL | pub struct XEmpty6();
-   | ------------------ similarly named tuple struct `XEmpty6` defined here
-   |
+   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Empty2() => ()
@@ -33,9 +33,12 @@ LL |         XEmpty2() => ()
    |
 LL | pub struct XEmpty2;
    | ------------------ `XEmpty2` defined here
-LL | pub struct XEmpty6();
-   | ------------------ similarly named tuple struct `XEmpty6` defined here
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         XEmpty2() => ()
@@ -56,11 +59,11 @@ LL | struct Empty2;
 LL |         Empty2(..) => ()
    |         ^^^^^^^^^^
    |
-  ::: $DIR/auxiliary/empty-struct.rs:3:1
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
    |
 LL | pub struct XEmpty6();
-   | ------------------ similarly named tuple struct `XEmpty6` defined here
-   |
+   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Empty2(..) => ()
@@ -82,9 +85,12 @@ LL |         XEmpty2(..) => ()
    |
 LL | pub struct XEmpty2;
    | ------------------ `XEmpty2` defined here
-LL | pub struct XEmpty6();
-   | ------------------ similarly named tuple struct `XEmpty6` defined here
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         XEmpty2(..) => ()
@@ -115,9 +121,12 @@ LL |         XE::XEmpty4() => (),
    |
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
-LL |     XEmpty5(),
-   |     ------- similarly named tuple variant `XEmpty5` defined here
    |
+note: similarly named tuple variant `XEmpty5` defined here
+  --> $DIR/auxiliary/empty-struct.rs:8:5
+   |
+LL |     XEmpty5(),
+   |     ^^^^^^^
 help: use this syntax instead
    |
 LL -         XE::XEmpty4() => (),
@@ -148,9 +157,12 @@ LL |         XE::XEmpty4(..) => (),
    |
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
-LL |     XEmpty5(),
-   |     ------- similarly named tuple variant `XEmpty5` defined here
    |
+note: similarly named tuple variant `XEmpty5` defined here
+  --> $DIR/auxiliary/empty-struct.rs:8:5
+   |
+LL |     XEmpty5(),
+   |     ^^^^^^^
 help: use this syntax instead
    |
 LL -         XE::XEmpty4(..) => (),

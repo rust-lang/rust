@@ -3,7 +3,6 @@
 //@ needs-unwind
 
 #![feature(fn_traits)]
-#![feature(never_type)]
 
 use std::panic;
 

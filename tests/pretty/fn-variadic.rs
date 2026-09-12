@@ -2,7 +2,6 @@
 // See issue #58853.
 
 //@ pp-exact
-#![feature(c_variadic)]
 
 extern "C" {
     pub fn foo(x: i32, ...);

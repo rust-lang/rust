@@ -6,6 +6,7 @@ LL |         let x: &'b ();
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/index-oob-ice-83993.rs:18:17
@@ -15,6 +16,7 @@ LL |         let _: &'b ();
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: aborting due to 2 previous errors
 

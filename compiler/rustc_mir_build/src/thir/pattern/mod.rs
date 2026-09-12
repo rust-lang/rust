@@ -16,7 +16,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::thir::{
-    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
@@ -352,11 +352,6 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 }
                 PatKind::Deref { pin, subpattern }
             }
-            hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
-                subpattern: self.lower_pattern(subpattern),
-                borrow: DerefPatBorrowMode::Box,
-            },
-
             hir::PatKind::Slice(prefix, slice, suffix) => {
                 return self.slice_or_array_pattern(pat, prefix, slice, suffix);
             }
@@ -548,7 +543,8 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
-                        ty::Adt(_, args) | ty::FnDef(_, args) => args,
+                        ty::FnDef(_, args) => args.no_bound_vars().unwrap(),
+                        ty::Adt(_, args) => args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
                             return Box::new(Pat {
@@ -641,8 +637,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let res = self.typeck_results.qpath_res(qpath, id);
 
         let (def_id, user_ty) = match res {
-            Res::Def(DefKind::Const { .. }, def_id)
-            | Res::Def(DefKind::AssocConst { .. }, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 (def_id, self.typeck_results.user_provided_types().get(id))
             }
 
@@ -662,7 +657,11 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
             ty::IsRigid::No,
             ty::AliasConst::new(
                 self.tcx,
-                ty::AliasConstKind::new_from_def_id(self.tcx, def_id),
+                ty::AliasConstKind::new_from_def_id(
+                    self.tcx,
+                    def_id,
+                    ty::AliasConstInherentArgsKind::Impl,
+                ),
                 args,
             ),
         );

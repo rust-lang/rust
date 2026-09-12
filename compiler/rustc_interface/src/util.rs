@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -10,7 +11,7 @@ use rustc_ast as ast;
 use rustc_attr_parsing::ShouldEmit;
 use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBuilder};
 use rustc_codegen_ssa::back::link::link_binary;
-use rustc_codegen_ssa::target_features::cfg_target_feature;
+use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
@@ -21,13 +22,14 @@ use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
-    Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
+    Cfg, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
-use rustc_session::{EarlyDiagCtxt, Session, filesearch};
+use rustc_session::{EarlyDiagCtxt, IncrCompSession, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
-use rustc_target::spec::Target;
+use rustc_structures::CrateType;
+use rustc_target::spec::{Arch, Target};
 use tracing::info;
 
 use crate::diagnostics;
@@ -40,43 +42,55 @@ type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 /// specific features (SSE, NEON etc.).
 ///
 /// This is performed by checking whether a set of permitted features
-/// is available on the target machine, by querying the codegen backend.
+/// is available on the target machine, by querying the `TargetConfig` from the codegen backend.
 pub(crate) fn add_configuration(
     cfg: &mut Cfg,
-    sess: &mut Session,
-    codegen_backend: &dyn CodegenBackend,
+    target_config: &TargetConfig,
+    target: &Target,
+    is_nightly_build: bool,
+    is_crt_static: bool,
 ) {
-    let tf = sym::target_feature;
-    let tf_cfg = codegen_backend.target_config(sess);
+    // Add some of the target features to `cfg`.
+    cfg.extend(
+        target
+            .rust_target_features()
+            .iter()
+            .filter_map(|(feature, gate, _)| {
+                if gate.in_cfg()
+                    && (is_nightly_build || gate.requires_nightly(/* in_cfg */ true).is_none())
+                {
+                    Some(Symbol::intern(feature))
+                } else {
+                    None
+                }
+            })
+            .filter(|feature| target_config.internal_target_features.contains(&feature))
+            .map(|feature| (sym::target_feature, Some(feature))),
+    );
 
-    sess.unstable_target_features.extend(tf_cfg.unstable_target_features.iter().copied());
-    sess.target_features.extend(tf_cfg.target_features.iter().copied());
-
-    cfg.extend(tf_cfg.target_features.into_iter().map(|feat| (tf, Some(feat))));
-
-    if tf_cfg.has_reliable_f16 {
+    if target_config.has_reliable_f16 {
         cfg.insert((sym::target_has_reliable_f16, None));
     }
-    if tf_cfg.has_reliable_f16_math {
+    if target_config.has_reliable_f16_math {
         cfg.insert((sym::target_has_reliable_f16_math, None));
     }
-    if tf_cfg.has_reliable_f128 {
+    if target_config.has_reliable_f128 {
         cfg.insert((sym::target_has_reliable_f128, None));
     }
-    if tf_cfg.has_reliable_f128_math {
+    if target_config.has_reliable_f128_math {
         cfg.insert((sym::target_has_reliable_f128_math, None));
     }
 
-    if sess.crt_static(None) {
-        cfg.insert((tf, Some(sym::crt_dash_static)));
+    if is_crt_static {
+        cfg.insert((sym::target_feature, Some(sym::crt_dash_static)));
     }
 }
 
 /// Ensures that all target features required by the ABI are present.
-/// Must be called after `unstable_target_features` has been populated!
+/// Must be called after `internal_target_features` has been populated!
 pub(crate) fn check_abi_required_features(sess: &Session) {
     let abi_feature_constraints = sess.target.abi_required_features();
-    // We check this against `unstable_target_features` as that is conveniently already
+    // We check this against `internal_target_features` as that is conveniently already
     // back-translated to rustc feature names, taking into account `-Ctarget-cpu` and `-Ctarget-feature`.
     // Just double-check that the features we care about are actually on our list.
     for feature in
@@ -88,22 +102,42 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
         );
     }
 
+    // Make this a hard error on ARM since starting with LLVM24, the backend will otherwise
+    // emit a (less friendly) hard error.
+    let hard_error = matches!(sess.target.arch, Arch::Arm);
+
     for feature in abi_feature_constraints.required {
-        if !sess.unstable_target_features.contains(&Symbol::intern(feature)) {
-            sess.dcx()
-                .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "enabled" });
+        if !sess.internal_target_features.contains(&Symbol::intern(feature)) {
+            let diag = diagnostics::AbiRequiredTargetFeature {
+                feature,
+                enabled: "enabled",
+                fcw: !hard_error,
+            };
+            if hard_error {
+                sess.dcx().emit_err(diag);
+            } else {
+                sess.dcx().emit_warn(diag);
+            }
         }
     }
     for feature in abi_feature_constraints.incompatible {
-        if sess.unstable_target_features.contains(&Symbol::intern(feature)) {
-            sess.dcx()
-                .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "disabled" });
+        if sess.internal_target_features.contains(&Symbol::intern(feature)) {
+            let diag = diagnostics::AbiRequiredTargetFeature {
+                feature,
+                enabled: "disabled",
+                fcw: !hard_error,
+            };
+            if hard_error {
+                sess.dcx().emit_err(diag);
+            } else {
+                sess.dcx().emit_warn(diag);
+            }
         }
     }
 }
 
 pub static STACK_SIZE: OnceLock<usize> = OnceLock::new();
-pub const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
+pub const DEFAULT_STACK_SIZE: usize = 17 * 1024 * 1024;
 
 fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     // Obey the environment setting or default
@@ -133,7 +167,7 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     })
 }
 
-fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: Send>(
+fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     thread_stack_size: usize,
     edition: Edition,
     sm_inputs: SourceMapInputs,
@@ -159,7 +193,7 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: 
                     edition,
                     extra_symbols,
                     Some(sm_inputs),
-                    || f(CurrentGcx::new(), Proxy::new()),
+                    || f(CurrentGcx::new()),
                 )
             })
             .unwrap()
@@ -172,13 +206,10 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: 
     })
 }
 
-pub(crate) fn run_in_thread_pool_with_globals<
-    F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send,
-    R: Send,
->(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
-    threads: usize,
+    jobs: Jobs,
     extra_symbols: &[&'static str],
     sm_inputs: SourceMapInputs,
     f: F,
@@ -191,19 +222,21 @@ pub(crate) fn run_in_thread_pool_with_globals<
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
+    let jobs_frontend = jobs.frontend.or(NonZero::new(1)).unwrap();
+    let registry = sync::Registry::new(jobs_frontend);
 
     let Some(proof) = sync::check_dyn_thread_safe() else {
+        assert_eq!(jobs_frontend.get(), 1);
         return run_in_thread_with_globals(
             thread_stack_size,
             edition,
             sm_inputs,
             extra_symbols,
-            |current_gcx, jobserver_proxy| {
+            |current_gcx| {
                 // Register the thread for use with the `WorkerLocal` type.
                 registry.register();
 
-                f(current_gcx, jobserver_proxy)
+                f(current_gcx)
             },
         );
     };
@@ -212,14 +245,13 @@ pub(crate) fn run_in_thread_pool_with_globals<
     let current_gcx2 = current_gcx.clone();
 
     let proxy = Proxy::new();
-
     let proxy_ = Arc::clone(&proxy);
-    let proxy__ = Arc::clone(&proxy);
+
     let builder = rustc_thread_pool::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
-        .acquire_thread_handler(move || proxy_.acquire_thread())
-        .release_thread_handler(move || proxy__.release_thread())
-        .num_threads(threads)
+        .acquire_thread_handler(move || proxy.acquire_thread())
+        .release_thread_handler(move || proxy_.release_thread())
+        .num_threads(jobs_frontend.get())
         .deadlock_handler(move || {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
@@ -294,12 +326,12 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                     },
                     // Run `f` on the first thread in the thread pool.
                     move |pool: &rustc_thread_pool::ThreadPool| {
-                        pool.install(|| f(current_gcx.into_inner(), proxy))
+                        pool.install(|| f(current_gcx.into_inner()))
                     },
                 )
                 .unwrap_or_else(|err| {
                     let mut diag = thread_builder_diag.early_struct_fatal(format!(
-                        "failed to spawn compiler thread pool: could not create {threads} threads ({err})",
+                        "failed to spawn compiler thread pool: could not create {jobs_frontend} threads ({err})",
                     ));
                     diag.help(
                         "try lowering `-Z threads` or checking the operating system's resource limits",
@@ -347,7 +379,7 @@ pub fn get_codegen_backend(
             filename if filename.contains('.') => {
                 load_backend_from_dylib(early_dcx, filename.as_ref())
             }
-            "dummy" => || Box::new(DummyCodegenBackend { target_config_override: None }),
+            "dummy" => || Box::new(DummyCodegenBackend),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
             backend_name => get_codegen_sysroot(early_dcx, sysroot, backend_name),
@@ -360,9 +392,7 @@ pub fn get_codegen_backend(
     unsafe { load() }
 }
 
-pub struct DummyCodegenBackend {
-    pub target_config_override: Option<Box<dyn Fn(&Session) -> TargetConfig>>,
-}
+pub struct DummyCodegenBackend;
 
 impl CodegenBackend for DummyCodegenBackend {
     fn name(&self) -> &'static str {
@@ -370,12 +400,8 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
-        if let Some(target_config_override) = &self.target_config_override {
-            return target_config_override(sess);
-        }
-
         let abi_required_features = sess.target.abi_required_features();
-        let (target_features, unstable_target_features) = cfg_target_feature::<0>(
+        let internal_target_features = internal_target_features::<0>(
             sess,
             |_feature| Default::default(),
             |feature| {
@@ -388,8 +414,7 @@ impl CodegenBackend for DummyCodegenBackend {
         );
 
         TargetConfig {
-            target_features,
-            unstable_target_features,
+            internal_target_features,
             has_reliable_f16: true,
             has_reliable_f16_math: true,
             has_reliable_f128: true,
@@ -417,6 +442,7 @@ impl CodegenBackend for DummyCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
+        _incr_comp_session: Option<&IncrCompSession>,
         _outputs: &OutputFilenames,
         _crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap) {

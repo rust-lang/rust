@@ -11,33 +11,25 @@
 //@ [aarch64] min-llvm-version: 23
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
-//@ [aarch64-llvm-pre-23] ignore-llvm-version: 23 - 99
+//@ [aarch64-llvm-pre-23] max-llvm-major-version: 22
 //@ [aarch64-llvm-pre-23] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64-llvm-pre-23] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, intrinsics)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
-#[repr(simd)]
-pub struct m8x16([i8; 16]);
-
-#[repr(simd)]
-pub struct m8x64([i8; 64]);
-
-#[repr(simd)]
-pub struct m32x4([i32; 4]);
-
-#[repr(simd)]
-pub struct m64x2([i64; 2]);
-
-#[repr(simd)]
-pub struct m64x4([i64; 4]);
+type m8x16 = i8x16;
+type m8x64 = i8x64;
+type m32x4 = i32x4;
+type m64x2 = i64x2;
+type m64x4 = i64x4;
 
 #[rustc_intrinsic]
 unsafe fn simd_bitmask<V, B>(mask: V) -> B;

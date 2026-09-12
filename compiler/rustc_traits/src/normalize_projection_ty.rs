@@ -59,19 +59,13 @@ fn normalize_canonicalized_projection<'tcx>(
                 0,
                 &mut obligations,
             );
-            obligations.extend(const_arg_has_type_obligation(
-                tcx,
-                param_env,
-                normalized_term,
-                goal,
-            ));
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
             // are recursive (given some generic parameters of the opaque's type variables).
             // In that case, we may only realize a cycle error when calling
             // `normalize_erasing_regions` in mono.
             let errors = ocx.try_evaluate_obligations();
-            if !errors.is_empty() {
+            if !errors.no_errors() {
                 // Rustdoc may attempt to normalize type alias types which are not
                 // well-formed. Rustdoc also normalizes types that are just not
                 // well-formed, since we don't do as much HIR analysis (checking
@@ -101,21 +95,23 @@ fn normalize_canonicalized_free_alias<'tcx>(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
             let def_id = goal.expect_free_def_id();
-            let obligations = tcx.predicates_of(def_id).instantiate_own(tcx, goal.args).map(
-                |(predicate, span)| {
+            let obligations =
+                tcx.clauses_of(def_id).instantiate_own(tcx, goal.args).map(|(clause, span)| {
                     traits::Obligation::new(
                         tcx,
                         ObligationCause::dummy_with_span(span),
                         param_env,
-                        predicate.skip_norm_wip(),
+                        clause.skip_norm_wip(),
                     )
-                },
-            );
+                });
             ocx.register_obligations(obligations);
             let normalized_term: ty::Term<'tcx> = if goal.kind.is_type() {
                 tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             } else {
-                tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+                traits::project::const_of_item_or_delayed_bug(tcx, def_id)
+                    .instantiate(tcx, goal.args)
+                    .skip_norm_wip()
+                    .into()
             };
             ocx.register_obligations(const_arg_has_type_obligation(
                 tcx,
@@ -148,12 +144,6 @@ fn normalize_canonicalized_inherent_projection<'tcx>(
                 0,
                 &mut obligations,
             );
-            obligations.extend(const_arg_has_type_obligation(
-                tcx,
-                param_env,
-                normalized_term,
-                goal,
-            ));
             ocx.register_obligations(obligations);
 
             Ok(NormalizationResult { normalized_term })

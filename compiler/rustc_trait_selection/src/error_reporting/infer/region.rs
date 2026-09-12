@@ -4,13 +4,14 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
     Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, msg, struct_span_code_err,
 };
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, ParamName};
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{
     self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
 };
@@ -25,6 +26,7 @@ use crate::diagnostics::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::ObligationCauseExt;
+use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
 use crate::infer::region_constraints::GenericKind;
 use crate::infer::{
     BoundRegionConversionTime, InferCtxt, RegionResolutionError, RegionVariableOrigin,
@@ -295,7 +297,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::SolverRegionConstraint(span) => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: msg!("this diagnostic is currently WIP while -Zassumptions-on-binders is incomplete"),
+                    msg: msg!("...so that a higher-ranked lifetime bound can be satisfied"),
                 }
                 .add_to_diag(err);
             }
@@ -428,7 +430,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 self.dcx().create_err(FulfillReqLifetime {
                     span,
-                    ty: self.resolve_vars_if_possible(ty),
+                    ty: self.deeply_resolve_ignoring_regions(ty),
                     note,
                 })
             }
@@ -448,9 +450,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(def_id) = preds.principal_def_id()
                 {
                     for (clause, span) in
-                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).into_iter()
+                        self.tcx.clauses_of(def_id).instantiate_identity(self.tcx).into_iter()
                     {
-                        if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
+                        if let ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) =
                             clause.kind().skip_binder()
                             && let ty::Param(param) = a.kind()
                             && param.name == kw::SelfUpper
@@ -493,7 +495,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 self.dcx().create_err(RefLongerThanData {
                     span,
-                    ty: self.resolve_vars_if_possible(ty),
+                    ty: self.deeply_resolve_ignoring_regions(ty),
                     notes: pointer_valid.into_iter().chain(data_valid).collect(),
                 })
             }
@@ -567,14 +569,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     notes: instantiated.into_iter().chain(must_outlive).collect(),
                 })
             }
-            SubregionOrigin::SolverRegionConstraint(span) => {
-                let mut d = self.dcx().struct_span_err(
-                    span,
-                    "unsatisfied lifetime constraint from -Zassumptions-on-binders :3",
-                );
-                d.note("meoow :c");
-                d
-            }
+            SubregionOrigin::SolverRegionConstraint(span) => self
+                .dcx()
+                .struct_span_err(span, "higher-ranked lifetime bound could not be satisfied"),
         };
         if sub.is_error() || sup.is_error() {
             err.downgrade_to_delayed_bug();
@@ -608,11 +605,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let Ok(trait_predicates) = self
             .tcx
-            .explicit_predicates_of(trait_item_def_id)
+            .explicit_clauses_of(trait_item_def_id)
             .instantiate_own(self.tcx, trait_item_args)
-            .map(|(pred, _)| {
-                let pred = pred.skip_norm_wip();
-                if pred.is_suggestable(self.tcx, false) { Ok(pred.to_string()) } else { Err(()) }
+            .map(|(clause, _)| {
+                let clause = clause.skip_norm_wip();
+                if clause.is_suggestable(self.tcx, false) {
+                    Ok(clause.to_string())
+                } else {
+                    Err(())
+                }
             })
             .collect::<Result<Vec<_>, ()>>()
         else {
@@ -833,7 +834,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         None => generic_param_scope,
                     },
                 };
-                match self.tcx.is_descendant_of(type_scope.into(), lifetime_scope.into()) {
+                match self.tcx.is_descendant_of(type_scope, lifetime_scope) {
                     true => type_scope,
                     false => lifetime_scope,
                 }
@@ -1286,6 +1287,9 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
         ),
         opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
     });
+    let mut highlight = RegionHighlightMode::default();
+    highlight.keep_regions = true;
+    let hidden_ty = Highlighted { highlight, ns: Namespace::TypeNS, tcx, value: hidden_ty };
 
     // Explain the region we are capturing.
     match hidden_region.kind() {

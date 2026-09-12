@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
-#![allow(unused, clippy::no_effect, clippy::needless_pass_by_ref_mut)]
 #![warn(clippy::redundant_locals)]
+#![expect(clippy::needless_pass_by_ref_mut, clippy::no_effect)]
 #![feature(coroutines, stmt_expr_attributes)]
 
 extern crate proc_macros;

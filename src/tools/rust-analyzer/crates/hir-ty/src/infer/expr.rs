@@ -7,9 +7,9 @@ use hir_def::{
     AdtId, FieldId, TupleFieldId, TupleId, VariantId,
     expr_store::path::{GenericArgs as HirGenericArgs, Path},
     hir::{
-        Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
-        InlineAsmKind, LabelId, LoopSource, Pat, PatId, RecordLitField, RecordSpread, Statement,
-        UnaryOp,
+        Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId,
+        ExprOrPatIdPacked, InlineAsmKind, LabelId, LoopSource, Pat, PatId, RecordLitField,
+        RecordSpread, Statement, UnaryOp,
     },
     resolver::ValueNs,
     signatures::VariantFields,
@@ -20,10 +20,9 @@ use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::{
     InferTy, Interner,
-    inherent::{GenericArgs as _, IntoKind, Ty as _},
+    inherent::{IntoKind, Ty as _},
 };
 use stdx::never;
-use syntax::ast::RangeOp;
 use tracing::debug;
 
 use crate::{
@@ -33,7 +32,7 @@ use crate::{
     lower::lower_mutability,
     method_resolution::{self, CandidateId, MethodCallee, MethodError},
     next_solver::{
-        ClauseKind, FnSig, GenericArg, GenericArgs, Ty, TyKind, TypeError,
+        ClauseKind, FnSig, Ty, TyKind, TypeError,
         infer::{
             BoundRegionConversionTime, InferOk,
             traits::{Obligation, ObligationCause},
@@ -43,7 +42,7 @@ use crate::{
 };
 
 use super::{
-    BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic,
+    BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic, ReturnKind,
     cast::CastCheck, find_breakable,
 };
 
@@ -53,7 +52,7 @@ pub(crate) enum ExprIsRead {
     No,
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn infer_expr(
         &mut self,
         tgt_expr: ExprId,
@@ -143,29 +142,22 @@ impl<'db> InferenceContext<'_, 'db> {
         expr: ExprId,
         is_read: ExprIsRead,
     ) -> bool {
-        // rustc does the place expr check first, but since we are feeding
-        // readness of the `expr` as a given value, we just can short-circuit
-        // the place expr check if it's true(see codes and comments below)
-        if is_read == ExprIsRead::Yes {
-            return true;
-        }
-
-        // We only care about place exprs. Anything else returns an immediate
-        // which would constitute a read. We don't care about distinguishing
-        // "syntactic" place exprs since if the base of a field projection is
-        // not a place then it would've been UB to read from it anyways since
-        // that constitutes a read.
-        if !self.is_syntactic_place_expr(expr) {
-            return true;
-        }
-
         // rustc queries parent hir node of `expr` here and determine whether
         // the current `expr` is read of value per its parent.
         // But since we don't have hir node, we cannot follow such "bottom-up"
         // method.
         // So, we pass down such readness from the parent expression through the
         // recursive `infer_expr*` calls in a "top-down" manner.
+        // rustc does the place expr check first, but since we are feeding
+        // readness of the `expr` as a given value, we just can short-circuit
+        // the place expr check if it's true(see codes and comments below)
         is_read == ExprIsRead::Yes
+            // We only care about place exprs. Anything else returns an immediate
+            // which would constitute a read. We don't care about distinguishing
+            // "syntactic" place exprs since if the base of a field projection is
+            // not a place then it would've been UB to read from it anyways since
+            // that constitutes a read.
+            || !self.is_syntactic_place_expr(expr)
     }
 
     /// Whether this pattern constitutes a read of value of the scrutinee that
@@ -227,15 +219,26 @@ impl<'db> InferenceContext<'_, 'db> {
         result
     }
 
-    fn is_syntactic_place_expr(&self, expr: ExprId) -> bool {
+    fn is_syntactic_place_expr(&mut self, expr: ExprId) -> bool {
         match &self.store[expr] {
             // Lang item paths cannot currently be local variables or statics.
             Expr::Path(Path::LangItem(_, _)) => false,
             Expr::Path(Path::Normal(path)) => path.type_anchor.is_none(),
-            Expr::Path(path) => self
-                .resolver
-                .resolve_path_in_value_ns_fully(self.db, path, self.store.expr_path_hygiene(expr))
-                .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
+            Expr::Path(path) => {
+                let guard = self.resolver.update_to_inner_scope(self.db, self.store_owner, expr);
+                let is_place = self
+                    .resolver
+                    .resolve_path_in_value_ns_fully(
+                        self.db,
+                        path,
+                        self.store.expr_path_hygiene(expr),
+                    )
+                    .is_none_or(|res| {
+                        matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))
+                    });
+                self.resolver.reset_to_guard(guard);
+                is_place
+            }
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
             Expr::Field { .. } | Expr::Index { .. } => true,
@@ -262,11 +265,8 @@ impl<'db> InferenceContext<'_, 'db> {
             | Expr::Assignment { .. }
             | Expr::Yield { .. }
             | Expr::Cast { .. }
-            | Expr::Unsafe { .. }
             | Expr::Await { .. }
             | Expr::Ref { .. }
-            | Expr::Range { .. }
-            | Expr::Box { .. }
             | Expr::RecordLit { .. }
             | Expr::Yeet { .. }
             | Expr::Missing
@@ -274,7 +274,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    pub(crate) fn check_lhs_assignable(&self, lhs: ExprId) {
+    pub(crate) fn check_lhs_assignable(&mut self, lhs: ExprId) {
         if self.is_syntactic_place_expr(lhs) {
             return;
         }
@@ -382,20 +382,16 @@ impl<'db> InferenceContext<'_, 'db> {
                 coerce.complete(self)
             }
             &Expr::Let { pat, expr } => {
-                let child_is_read = if self.pat_guaranteed_to_constitute_read_for_never(pat) {
-                    ExprIsRead::Yes
-                } else {
-                    ExprIsRead::No
-                };
-                let input_ty = self.infer_expr(expr, &Expectation::none(), child_is_read);
-                self.infer_top_pat(pat, input_ty, PatOrigin::LetExpr);
+                self.infer_let(
+                    self.table.next_ty_var(tgt_expr.into()),
+                    Some(expr),
+                    pat,
+                    PatOrigin::LetExpr,
+                );
                 self.types.types.bool
             }
-            Expr::Block { statements, tail, label, id: _ } => {
+            Expr::Block { statements, tail, label, id: _, unsafe_: _ } => {
                 self.infer_block(tgt_expr, statements, *tail, *label, expected)
-            }
-            Expr::Unsafe { id: _, statements, tail } => {
-                self.infer_block(tgt_expr, statements, *tail, None, expected)
             }
             Expr::Const(id) => {
                 self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
@@ -511,7 +507,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             Expr::Path(p) => self.infer_expr_path(p, tgt_expr.into(), tgt_expr),
             &Expr::Continue { label } => {
-                if find_continuable(&mut self.breakables, label).is_none() {
+                if find_continuable(&self.breakables, label).is_none() {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                         is_break: false,
@@ -521,9 +517,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.types.types.never
             }
             &Expr::Break { expr, label } => {
+                let breakable_idx = find_breakable(&self.breakables, label);
                 let val_ty = if let Some(expr) = expr {
-                    let opt_coerce_to = match find_breakable(&mut self.breakables, label) {
-                        Some(ctxt) => match &ctxt.coerce {
+                    let opt_coerce_to = match breakable_idx {
+                        Some(breakable_idx) => match &self.breakables[breakable_idx].coerce {
                             Some(coerce) => coerce.expected_ty(),
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
@@ -545,9 +542,16 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.types.types.unit
                 };
 
-                match find_breakable(&mut self.breakables, label) {
-                    Some(ctxt) => match ctxt.coerce.take() {
-                        Some(mut coerce) => {
+                match breakable_idx {
+                    Some(breakable_idx) => {
+                        let breakable = &mut self.breakables[breakable_idx];
+
+                        // If we encountered a `break`, then (no surprise) it may be possible to break from the
+                        // loop... unless the value being returned from the loop diverges itself, e.g.
+                        // `break return 5` or `break loop {}`.
+                        breakable.may_break |= !self.diverges.is_always();
+
+                        if let Some(mut coerce) = breakable.coerce.take() {
                             let expr = expr.unwrap_or(tgt_expr);
                             coerce.coerce(
                                 self,
@@ -556,15 +560,9 @@ impl<'db> InferenceContext<'_, 'db> {
                                 val_ty,
                                 ExprIsRead::Yes,
                             );
-
-                            // Avoiding borrowck
-                            let ctxt = find_breakable(&mut self.breakables, label)
-                                .expect("breakable stack changed during coercion");
-                            ctxt.may_break = true;
-                            ctxt.coerce = Some(coerce);
+                            self.breakables[breakable_idx].coerce = Some(coerce);
                         }
-                        None => ctxt.may_break = true,
-                    },
+                    }
                     None => {
                         self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                             expr: tgt_expr,
@@ -576,7 +574,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.types.types.never
             }
             &Expr::Return { expr } => self.infer_expr_return(tgt_expr, expr),
-            &Expr::Become { expr } => self.infer_expr_become(expr),
+            &Expr::Become { expr } => self.infer_expr_become(tgt_expr, expr),
             Expr::Yield { expr } => {
                 if let Some((resume_ty, yield_ty)) = self.resume_yield_tys {
                     if let Some(expr) = expr {
@@ -597,7 +595,9 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
                     resume_ty
                 } else {
-                    // FIXME: report error (yield expr in non-coroutine)
+                    self.push_diagnostic(InferenceDiagnostic::YieldOutsideCoroutine {
+                        expr: tgt_expr,
+                    });
                     self.types.types.error
                 }
             }
@@ -613,7 +613,7 @@ impl<'db> InferenceContext<'_, 'db> {
             Expr::Field { expr, name } => self.infer_field_access(tgt_expr, *expr, name, expected),
             Expr::Await { expr } => self.infer_await_expr(tgt_expr, *expr),
             Expr::Cast { expr, type_ref } => {
-                let cast_ty = self.make_body_ty(*type_ref);
+                let cast_ty = self.make_ty(*type_ref);
                 let expr_ty =
                     self.infer_expr(*expr, &Expectation::Castable(cast_ty), ExprIsRead::Yes);
                 self.deferred_cast_checks.push(CastCheck::new(tgt_expr, *expr, expr_ty, cast_ty));
@@ -626,7 +626,6 @@ impl<'db> InferenceContext<'_, 'db> {
                 expected,
                 tgt_expr,
             ),
-            &Expr::Box { expr } => self.infer_expr_box(expr, expected),
             Expr::UnaryOp { expr, op } => self.infer_unop_expr(*op, *expr, expected, tgt_expr),
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(BinaryOp::Assignment { op: Some(op) }) => {
@@ -654,13 +653,15 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.write_pat_ty(target, lhs_ty);
                     self.infer_expr_coerce(value, &Expectation::has_type(lhs_ty), ExprIsRead::Yes);
                 } else {
-                    let rhs_ty = self.infer_expr(value, &Expectation::none(), ExprIsRead::Yes);
-                    let resolver_guard =
-                        self.resolver.update_to_inner_scope(self.db, self.store_owner, tgt_expr);
-                    self.inside_assignment = true;
+                    // Let the target pattern constrain the RHS coercion target. In particular,
+                    // this allows a diverging RHS to coerce to the pattern's type.
+                    let expected_ty = self.table.next_ty_var(target.into());
+                    let rhs_ty = self.infer_expr_coerce(
+                        value,
+                        &Expectation::has_type(expected_ty),
+                        ExprIsRead::Yes,
+                    );
                     self.infer_top_pat(target, rhs_ty, PatOrigin::DestructuringAssignment);
-                    self.inside_assignment = false;
-                    self.resolver.reset_to_guard(resolver_guard);
                 }
                 if is_destructuring_assignment && self.diverges.is_always() {
                     // Ordinary assignments always return `()`, even when they diverge.
@@ -670,52 +671,6 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.table.new_maybe_never_var(value.into())
                 } else {
                     self.types.types.unit
-                }
-            }
-            Expr::Range { lhs, rhs, range_type } => {
-                let lhs_ty =
-                    lhs.map(|e| self.infer_expr_inner(e, &Expectation::none(), ExprIsRead::Yes));
-                let rhs_expect = lhs_ty.map_or_else(Expectation::none, Expectation::has_type);
-                let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect, ExprIsRead::Yes));
-                let single_arg_adt = |adt, ty: Ty<'db>| {
-                    Ty::new_adt(
-                        self.interner(),
-                        adt,
-                        GenericArgs::new_from_slice(&[GenericArg::from(ty)]),
-                    )
-                };
-                match (range_type, lhs_ty, rhs_ty) {
-                    (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => {
-                            Ty::new_adt(self.interner(), adt, self.types.empty.generic_args)
-                        }
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
-                        Some(adt) => single_arg_adt(adt, ty),
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Inclusive, None, Some(ty)) => {
-                        match self.resolve_range_to_inclusive() {
-                            Some(adt) => single_arg_adt(adt, ty),
-                            None => self.err_ty(),
-                        }
-                    }
-                    (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
-                        Some(adt) => single_arg_adt(adt, ty),
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Inclusive, Some(_), Some(ty)) => {
-                        match self.resolve_range_inclusive() {
-                            Some(adt) => single_arg_adt(adt, ty),
-                            None => self.err_ty(),
-                        }
-                    }
-                    (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
-                        Some(adt) => single_arg_adt(adt, ty),
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Inclusive, _, None) => self.err_ty(),
                 }
             }
             Expr::Index { base, index } => {
@@ -862,7 +817,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
                 };
 
-                let diverge = asm.options.contains(AsmOptions::NORETURN);
+                let mut diverge = asm.options.contains(AsmOptions::NORETURN);
                 asm.operands.iter().for_each(|(_, operand)| match *operand {
                     AsmOperand::In { expr, .. } => check_expr_asm_operand(self, expr, true),
                     AsmOperand::Out { expr: Some(expr), .. } | AsmOperand::InOut { expr, .. } => {
@@ -876,11 +831,19 @@ impl<'db> InferenceContext<'_, 'db> {
                         }
                     }
                     AsmOperand::Label(expr) => {
-                        self.infer_expr(
+                        let previous_diverges = self.diverges;
+                        // The label blocks should have unit return value or diverge.
+                        let ty = self.infer_expr_inner(
                             expr,
                             &Expectation::HasType(self.types.types.unit),
                             ExprIsRead::No,
                         );
+                        if !ty.is_never() {
+                            _ = self.demand_suptype(expr.into(), self.types.types.unit, ty);
+                            diverge = false;
+                        }
+                        // We need this to avoid false unreachable warning when a label diverges.
+                        self.diverges = previous_diverges;
                     }
                     AsmOperand::Const(expr) => {
                         self.infer_expr(expr, &Expectation::None, ExprIsRead::No);
@@ -902,7 +865,7 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         let ty = self.insert_type_vars_shallow(ty);
         self.write_expr_ty(tgt_expr, ty);
-        if self.shallow_resolve(ty).is_never()
+        if self.table.resolve_vars_with_obligations(ty).is_never()
             && self.expr_guaranteed_to_constitute_read_for_never(tgt_expr, is_read)
         {
             // Any expression that produces a value of type `!` must have diverged
@@ -967,8 +930,10 @@ impl<'db> InferenceContext<'_, 'db> {
             return self.types.types.error;
         };
         self.table.register_bound(awaitee_ty, into_future, ObligationCause::new(expr));
-        // Do not eagerly normalize.
-        Ty::new_projection(self.interner(), into_future_output.into(), [awaitee_ty])
+        self.table.try_structurally_resolve_type(
+            expr.into(),
+            Ty::new_projection(self.interner(), into_future_output.into(), [awaitee_ty]),
+        )
     }
 
     fn infer_record_expr(
@@ -1277,7 +1242,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn infer_expr_path(&mut self, path: &Path, id: ExprOrPatId, scope_id: ExprId) -> Ty<'db> {
+    fn infer_expr_path(&mut self, path: &Path, id: ExprOrPatIdPacked, scope_id: ExprId) -> Ty<'db> {
         let g = self.resolver.update_to_inner_scope(self.db, self.store_owner, scope_id);
         let ty = match self.infer_path(path, id) {
             Some((_, ty)) => ty,
@@ -1345,7 +1310,7 @@ impl<'db> InferenceContext<'_, 'db> {
         expr: ExprId,
     ) -> Ty<'db> {
         let interner = self.interner();
-        let count_ct = self.create_body_anon_const(count, self.types.types.usize, true);
+        let count_ct = self.create_anon_const(count, self.types.types.usize, true);
         let count = self.table.try_structurally_resolve_const(count.into(), count_ct);
 
         let uty = match expected {
@@ -1360,7 +1325,11 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             None => {
                 let ty = self.table.next_ty_var(element.into());
-                self.infer_expr(element, &Expectation::has_type(ty), ExprIsRead::Yes);
+                self.infer_expr_suptype_coerce_never(
+                    element,
+                    &Expectation::has_type(ty),
+                    ExprIsRead::Yes,
+                );
                 ty
             }
         };
@@ -1411,7 +1380,7 @@ impl<'db> InferenceContext<'_, 'db> {
         } else {
             self.table.next_ty_var(expr.into())
         };
-        let array_len = args.len() as u128;
+        let array_len = args.len() as u64;
         Ty::new_array(self.interner(), element_ty, array_len)
     }
 
@@ -1452,7 +1421,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             }
             None => {
-                // FIXME: diagnose return outside of function
+                self.push_diagnostic(InferenceDiagnostic::ReturnOutsideFunction {
+                    expr: ret,
+                    kind: ReturnKind::ReturnExpr,
+                });
                 if let Some(expr) = expr {
                     self.infer_expr_no_expect(expr, ExprIsRead::Yes);
                 }
@@ -1461,7 +1433,7 @@ impl<'db> InferenceContext<'_, 'db> {
         self.types.types.never
     }
 
-    fn infer_expr_become(&mut self, expr: ExprId) -> Ty<'db> {
+    fn infer_expr_become(&mut self, tgt_expr: ExprId, expr: ExprId) -> Ty<'db> {
         match &self.return_coercion {
             Some(return_coercion) => {
                 let ret_ty = return_coercion.expected_ty();
@@ -1474,33 +1446,15 @@ impl<'db> InferenceContext<'_, 'db> {
                 _ = self.demand_eqtype(expr.into(), call_expr_ty, ret_ty);
             }
             None => {
-                // FIXME: diagnose `become` outside of functions
+                self.push_diagnostic(InferenceDiagnostic::ReturnOutsideFunction {
+                    expr: tgt_expr,
+                    kind: ReturnKind::BecomeExpr,
+                });
                 self.infer_expr_no_expect(expr, ExprIsRead::Yes);
             }
         }
 
         self.types.types.never
-    }
-
-    fn infer_expr_box(&mut self, inner_expr: ExprId, expected: &Expectation<'db>) -> Ty<'db> {
-        if let Some(box_id) = self.resolve_boxed_box() {
-            let table = &mut self.table;
-            let inner_exp = expected
-                .to_option(table)
-                .as_ref()
-                .and_then(|e| e.as_adt())
-                .filter(|(e_adt, _)| e_adt == &box_id)
-                .map(|(_, subts)| {
-                    let g = subts.type_at(0);
-                    Expectation::rvalue_hint(self, g)
-                })
-                .unwrap_or_else(Expectation::none);
-
-            let inner_ty = self.infer_expr_inner(inner_expr, &inner_exp, ExprIsRead::Yes);
-            Ty::new_box(self.interner(), inner_ty)
-        } else {
-            self.err_ty()
-        }
     }
 
     fn infer_block(
@@ -1522,39 +1476,13 @@ impl<'db> InferenceContext<'_, 'db> {
                         Statement::Let { pat, type_ref, initializer, else_branch } => {
                             let decl_ty = type_ref
                                 .as_ref()
-                                .map(|&tr| this.make_body_ty(tr))
+                                .map(|&tr| this.make_ty(tr))
                                 .unwrap_or_else(|| this.table.next_ty_var((*pat).into()));
 
-                            let ty = if let Some(expr) = initializer {
-                                // If we have a subpattern that performs a read, we want to consider this
-                                // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
-                                let target_is_read =
-                                    if this.pat_guaranteed_to_constitute_read_for_never(*pat) {
-                                        ExprIsRead::Yes
-                                    } else {
-                                        ExprIsRead::No
-                                    };
-                                let ty = if this.contains_explicit_ref_binding(*pat) {
-                                    this.infer_expr(
-                                        *expr,
-                                        &Expectation::has_type(decl_ty),
-                                        target_is_read,
-                                    )
-                                } else {
-                                    this.infer_expr_coerce(
-                                        *expr,
-                                        &Expectation::has_type(decl_ty),
-                                        target_is_read,
-                                    )
-                                };
-                                if type_ref.is_some() { decl_ty } else { ty }
-                            } else {
-                                decl_ty
-                            };
-
-                            this.infer_top_pat(
+                            this.infer_let(
+                                decl_ty,
+                                *initializer,
                                 *pat,
-                                ty,
                                 PatOrigin::LetStmt { has_else: else_branch.is_some() },
                             );
                             if let Some(expr) = else_branch {
@@ -1631,6 +1559,31 @@ impl<'db> InferenceContext<'_, 'db> {
         self.resolver.reset_to_guard(g);
 
         coerce.complete(self)
+    }
+
+    fn infer_let(
+        &mut self,
+        decl_ty: Ty<'db>,
+        initializer: Option<ExprId>,
+        pat: PatId,
+        pat_origin: PatOrigin,
+    ) {
+        if let Some(expr) = initializer {
+            // If we have a subpattern that performs a read, we want to consider this
+            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+            let target_is_read = if self.pat_guaranteed_to_constitute_read_for_never(pat) {
+                ExprIsRead::Yes
+            } else {
+                ExprIsRead::No
+            };
+            if self.contains_explicit_ref_binding(pat) {
+                self.infer_expr(expr, &Expectation::has_type(decl_ty), target_is_read)
+            } else {
+                self.infer_expr_coerce(expr, &Expectation::has_type(decl_ty), target_is_read)
+            };
+        };
+
+        self.infer_top_pat(pat, decl_ty, pat_origin);
     }
 
     fn lookup_field(
@@ -1907,7 +1860,12 @@ impl<'db> InferenceContext<'_, 'db> {
                     )),
                     None => field_with_same_name_exists.and_then(|field_ty| {
                         let callable_sig = field_ty.callable_sig(self.interner())?;
-                        Some((field_ty, callable_sig.skip_binder(), false))
+                        let callable_sig = self.infcx().instantiate_binder_with_fresh_vars(
+                            tgt_expr.into(),
+                            BoundRegionConversionTime::FnCall,
+                            callable_sig,
+                        );
+                        Some((field_ty, callable_sig, false))
                     }),
                 };
                 match recovered {
@@ -2035,10 +1993,9 @@ impl<'db> InferenceContext<'_, 'db> {
             match tuple_type.kind() {
                 // We expected a tuple and got a tuple
                 TyKind::Tuple(arg_types) => {
-                    // Argument length differs
-                    if arg_types.len() != provided_args.len() {
-                        // FIXME: Emit an error.
-                    }
+                    // Argument length differs. The mismatch is reported below by the
+                    // shared `MismatchedArgCount` push (with `is_fn_trait_call = true`,
+                    // which the diagnostic surface renders as E0057).
                     let expected_input_tys = match expected_input_tys {
                         Some(expected_input_tys) => match expected_input_tys.first() {
                             Some(ty) => match ty.kind() {
@@ -2088,13 +2045,14 @@ impl<'db> InferenceContext<'_, 'db> {
                 call_expr,
                 expected: expected_input_tys.len() + skip_indices.len(),
                 found: provided_args.len(),
+                is_fn_trait_call: tuple_arguments == TupleArgumentsFlag::TupleArguments,
             });
         }
 
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
-        let demand_compatible = |this: &mut InferenceContext<'_, 'db>, idx| {
+        let demand_compatible = |this: &mut InferenceContext<'db>, idx| {
             let formal_input_ty: Ty<'db> = formal_input_tys[idx];
             let expected_input_ty: Ty<'db> = expected_input_tys[idx];
             let provided_arg = provided_args[idx];

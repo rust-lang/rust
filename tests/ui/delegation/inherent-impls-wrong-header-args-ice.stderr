@@ -1,0 +1,35 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:7:37
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+   |                                     ^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<'_, A, C> {
+   |                                       +++
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:15
+   |
+LL |     reuse S::<(), ()>::foo_self;
+   |               ^
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:19
+   |
+LL |     reuse S::<(), ()>::foo_self;
+   |                   ^^
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:19
+   |
+LL |     reuse S::<(), ()>::foo_self;
+   |                   ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0726, E0747.
+For more information about an error, try `rustc --explain E0726`.

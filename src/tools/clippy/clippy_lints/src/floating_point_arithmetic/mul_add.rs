@@ -1,10 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, has_ambiguous_literal_in_expr, sym};
+use clippy_utils::ty::expr_type_is_certain;
+use clippy_utils::{get_parent_expr, sym};
 use rustc_ast::AssignOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment};
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_span::Spanned;
 
 use super::SUBOPTIMAL_FLOPS;
@@ -65,24 +67,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         return;
     }
 
-    // Check if any variable in the expression has an ambiguous type (could be f32 or f64)
-    // see: https://github.com/rust-lang/rust-clippy/issues/14897
-    let has_ambiguous_type = |expr: &Expr<'_>| {
-        (matches!(expr.kind, ExprKind::Path(_)) || matches!(expr.kind, ExprKind::Call(_, _)))
-            && has_ambiguous_literal_in_expr(cx, expr)
-    };
-
-    let (recv, arg1, arg2, is_from_rhs) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs)
-        && cx.typeck_results().expr_ty(lhs).is_floating_point()
-        && !has_ambiguous_type(inner_lhs)
+    let (recv, arg1, arg2, is_from_rhs, lhs_typ) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs)
+        && let ty::Float(float_ty) = cx.typeck_results().expr_ty(lhs).kind()
     {
-        (inner_lhs, inner_rhs, lhs, true)
+        (inner_lhs, inner_rhs, lhs, true, float_ty)
     } else if !is_assign
         && let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs)
-        && cx.typeck_results().expr_ty(rhs).is_floating_point()
-        && !has_ambiguous_type(inner_lhs)
+        && let ty::Float(float_ty) = cx.typeck_results().expr_ty(rhs).kind()
     {
-        (inner_lhs, inner_rhs, rhs, false)
+        (inner_lhs, inner_rhs, rhs, false, float_ty)
     } else {
         return;
     };
@@ -98,7 +91,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 if let BinOpKind::Sub = op { -sugg } else { sugg }
             };
             let mut app = Applicability::MachineApplicable;
-            let recv_sugg = super::lib::prepare_receiver_sugg(cx, recv, &mut app);
+
+            let (recv_sugg, suffix_was_added) = super::lib::prepare_receiver_sugg(cx, recv, &mut app);
+
             let (arg1, arg2) = if is_from_rhs {
                 (
                     maybe_neg_sugg(arg1, &mut app),
@@ -110,13 +105,21 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     maybe_neg_sugg(arg2, &mut app),
                 )
             };
+
+            let mul_add_call = if suffix_was_added || expr_type_is_certain(cx, recv) {
+                format!("{recv_sugg}.mul_add({arg1}, {arg2})")
+            } else {
+                // If the receiver contains an ambiguous literal, we need to call `mul_add` with its inferred type.
+                format!("{}::mul_add({recv_sugg}, {arg1}, {arg2})", lhs_typ.name_str())
+            };
+
             diag.span_suggestion(
                 expr.span,
                 "consider using",
                 if is_assign {
-                    format!("{arg2} = {recv_sugg}.mul_add({arg1}, {arg2})")
+                    format!("{arg2} = {mul_add_call}")
                 } else {
-                    format!("{recv_sugg}.mul_add({arg1}, {arg2})")
+                    mul_add_call
                 },
                 app,
             );

@@ -1,16 +1,18 @@
-error[E0425]: cannot find value `async` in this scope
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:66:13
+error: function cannot return without recursing
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:67:22
    |
-LL |             async || {};
-   |             ^^^^^ not found in this scope
-
-error[E0308]: mismatched types
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:66:22
+LL |         reuse Trait::bar {
+   |                      ^^^
+   |                      |
+   |                      cannot return without recursing
+   |                      recursive call site
    |
-LL |             async || {};
-   |                      ^^ expected `bool`, found `()`
+   = help: a `loop` may express intention better if this is on purpose
+note: the lint level is defined here
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:61:8
+   |
+LL | #[deny(unconditional_recursion)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0308, E0425.
-For more information about an error, try `rustc --explain E0308`.

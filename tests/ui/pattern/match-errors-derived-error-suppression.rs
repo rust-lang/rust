@@ -1,8 +1,6 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/5100>
 //@ dont-require-annotations: NOTE
 
-#![feature(box_patterns)]
-
 enum A { B, C }
 
 fn main() {
@@ -29,13 +27,6 @@ fn main() {
 //~| NOTE expected a tuple with 2 elements, found one with 3 elements
 //~| NOTE expected tuple `(bool, bool)`
 //~| NOTE found tuple `(_, _, _)`
-    }
-
-    match (true, false) {
-        box (true, false) => ()
-//~^ ERROR mismatched types
-//~| NOTE expected tuple `(bool, bool)`
-//~| NOTE found struct `Box<_>`
     }
 
     match (true, false) {

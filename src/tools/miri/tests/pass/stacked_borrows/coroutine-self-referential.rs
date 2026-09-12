@@ -1,6 +1,6 @@
 // See https://github.com/rust-lang/unsafe-code-guidelines/issues/148:
 // this fails when Stacked Borrows is strictly applied even to `!Unpin` types.
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;

@@ -41,12 +41,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration public">id</span> <span class="brace">{</span>
+<pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">id</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 <span class="brace">}</span>
-<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration public">unsafe_deref</span> <span class="brace">{</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">unsafe_deref</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span>
         <span class="punctuation">*</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword const">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
     <span class="brace">}</span><span class="semicolon">;</span>
@@ -80,14 +80,14 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">let</span> <span class="variable declaration">u</span><span class="colon">:</span> <span class="union">Union</span><span class="semicolon">;</span>
 
     <span class="comment">// id should be safe here, but unsafe_deref should not</span>
-    <span class="macro public">id</span><span class="macro_bang">!</span> <span class="brace">{</span>
-        <span class="keyword macro unsafe">unsafe</span> <span class="brace macro">{</span> <span class="macro macro public unsafe">unsafe_deref</span><span class="macro_bang macro unsafe">!</span><span class="parenthesis macro unsafe">(</span><span class="parenthesis macro unsafe">)</span> <span class="brace macro">}</span>
+    <span class="macro">id</span><span class="macro_bang">!</span> <span class="brace">{</span>
+        <span class="keyword macro unsafe">unsafe</span> <span class="brace macro">{</span> <span class="macro macro unsafe">unsafe_deref</span><span class="macro_bang macro unsafe">!</span><span class="parenthesis macro unsafe">(</span><span class="parenthesis macro unsafe">)</span> <span class="brace macro">}</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 
     <span class="keyword unsafe">unsafe</span> <span class="brace">{</span>
         <span class="comment">// unsafe macro calls</span>
-        <span class="macro public unsafe">unsafe_deref</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
-        <span class="macro public unsafe">id</span><span class="macro_bang unsafe">!</span> <span class="brace unsafe">{</span> <span class="macro macro public unsafe">unsafe_deref</span><span class="macro_bang macro unsafe">!</span><span class="parenthesis macro unsafe">(</span><span class="parenthesis macro unsafe">)</span> <span class="brace unsafe">}</span><span class="semicolon">;</span>
+        <span class="macro unsafe">unsafe_deref</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
+        <span class="macro unsafe">id</span><span class="macro_bang unsafe">!</span> <span class="brace unsafe">{</span> <span class="macro macro unsafe">unsafe_deref</span><span class="macro_bang macro unsafe">!</span><span class="parenthesis macro unsafe">(</span><span class="parenthesis macro unsafe">)</span> <span class="brace unsafe">}</span><span class="semicolon">;</span>
 
         <span class="comment">// unsafe fn and method calls</span>
         <span class="function unsafe">unsafe_fn</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>

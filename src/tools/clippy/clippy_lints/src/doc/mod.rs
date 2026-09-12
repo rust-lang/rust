@@ -1,5 +1,3 @@
-#![allow(clippy::lint_without_lint_pass)]
-
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
@@ -7,7 +5,7 @@ use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Attribute, FieldDef, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_resolve::rustdoc::pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
     TaskListMarker, Text,
@@ -20,7 +18,6 @@ use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, pulldown_cmark,
     source_span_for_markdown_range, span_of_fragments,
 };
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::ops::Range;
 use url::Url;
@@ -69,18 +66,18 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detects doc comment linebreaks that use double spaces to separate lines, instead of back-slash (`\`).
+    /// Detects doc comments that use double spaces as hard line break, instead of backslash (`\`).
     ///
     /// ### Why is this bad?
-    /// Double spaces, when used as doc comment linebreaks, can be difficult to see, and may
-    /// accidentally be removed during automatic formatting or manual refactoring. The use of a back-slash (`\`)
+    /// Double spaces, when used as hard line break in doc comments, can be difficult to see, and may
+    /// accidentally be removed during automatic formatting or manual refactoring. The use of a backslash (`\`)
     /// is clearer in this regard.
     ///
     /// ### Example
-    /// The two replacement dots in this example represent a double space.
+    /// The two replacement dots (`··`) in this example represent a double space.
     /// ```no_run
-    /// /// This command takes two numbers as inputs and··
-    /// /// adds them together, and then returns the result.
+    /// /// This function adds two numbers and returns the result··
+    /// /// Overflow can occur when the max value is exceeded.
     /// fn add(l: i32, r: i32) -> i32 {
     ///     l + r
     /// }
@@ -88,8 +85,8 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// /// This command takes two numbers as inputs and\
-    /// /// adds them together, and then returns the result.
+    /// /// This function adds two numbers and returns the result\
+    /// /// Overflow can occur when the max value is exceeded.
     /// fn add(l: i32, r: i32) -> i32 {
     ///     l + r
     /// }
@@ -97,7 +94,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.87.0"]
     pub DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
     pedantic,
-    "double-space used for doc comment linebreak instead of `\\`"
+    "double space used for doc comment hard line break instead of `\\`"
 }
 
 declare_clippy_lint! {
@@ -346,12 +343,14 @@ declare_clippy_lint! {
     /// /// Returns a random number
     /// ///
     /// /// It was chosen by a fair dice roll
+    /// # fn foo() {}
     /// ```
     /// Use instead:
     /// ```no_run
     /// /// Returns a random number.
     /// ///
     /// /// It was chosen by a fair dice roll.
+    /// # fn foo() {}
     /// ```
     ///
     /// ### Terminal punctuation marks
@@ -728,14 +727,14 @@ impl_lint_pass!(Documentation => [
 ]);
 
 pub struct Documentation {
-    valid_idents: FxHashSet<String>,
+    valid_idents: &'static FxHashSet<String>,
     check_private_items: bool,
 }
 
 impl Documentation {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            valid_idents: conf.doc_valid_idents.iter().cloned().collect(),
+            valid_idents: &conf.doc_valid_idents,
             check_private_items: conf.check_private_items,
         }
     }
@@ -749,7 +748,7 @@ impl EarlyLintPass for Documentation {
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
+        let Some(headers) = check_attrs(cx, self.valid_idents, attrs) else {
             return;
         };
 
@@ -776,7 +775,8 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     cx,
                     item,
                     attrs,
-                    headers.first_paragraph_len,
+                    headers.first_paragraph_text_len,
+                    headers.first_paragraph_md_len,
                     self.check_private_items,
                 );
                 match item.kind {
@@ -851,7 +851,8 @@ struct DocHeaders {
     safety: bool,
     errors: bool,
     panics: bool,
-    first_paragraph_len: usize,
+    first_paragraph_md_len: usize,
+    first_paragraph_text_len: usize,
 }
 
 /// Does some pre-processing on raw, desugared `#[doc]` attributes such as parsing them and
@@ -1230,11 +1231,13 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 ticks_unbalanced = false;
                 paragraph_range = range;
                 if is_first_paragraph {
-                    headers.first_paragraph_len = doc[paragraph_range.clone()].chars().count();
-                    is_first_paragraph = false;
+                    headers.first_paragraph_md_len = doc[paragraph_range.clone()].chars().count();
                 }
             },
             End(TagEnd::Heading(_) | TagEnd::Paragraph | TagEnd::Item) => {
+                if is_first_paragraph {
+                    is_first_paragraph = false;
+                }
                 if let End(TagEnd::Heading(_)) = event {
                     in_heading = false;
                 }
@@ -1242,7 +1245,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     containers.pop();
                 }
                 if check_doc_markdown {
-                    if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
+                    if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone())
+                    .or_else(|| span_of_fragments(fragments.fragments)) {
                         span_lint_and_help(
                             cx,
                             DOC_MARKDOWN,
@@ -1255,13 +1259,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     } else {
                         for (text, range, assoc_code_level) in text_to_check.drain(..) {
                             markdown::check(
-                                cx,
-                                valid_idents,
-                                &text,
-                                &fragments,
-                                range,
-                                assoc_code_level,
-                                blockquote_level,
+                                cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level
                             );
                         }
                     }
@@ -1270,8 +1268,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
             End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,
             Start(_) | End(_)  // We don't care about other tags
-            | TaskListMarker(_) | Code(_) | Rule | InlineMath(..) | DisplayMath(..) => (),
+            | TaskListMarker(_) | Rule => (),
             SoftBreak | HardBreak => {
+                if is_first_paragraph {
+                    headers.first_paragraph_text_len += 1;
+                }
                 if !containers.is_empty()
                     && !in_footnote_definition
                     // Tabs aren't handled correctly vvvv
@@ -1297,7 +1298,15 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     collected_breaks.push(span);
                 }
             },
+            Code(code) | InlineMath(code) | DisplayMath(code) => {
+                if is_first_paragraph {
+                    headers.first_paragraph_text_len += code.chars().count();
+                }
+            }
             Text(text) => {
+                if is_first_paragraph {
+                    headers.first_paragraph_text_len += text.chars().count();
+                }
                 paragraph_range.end = range.end;
                 let range_ = range.clone();
                 ticks_unbalanced |= text.contains('`')

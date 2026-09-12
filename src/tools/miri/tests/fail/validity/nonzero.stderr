@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value of type (u32) is 1..: encountered 0, but expected something greater or equal to 1
+error: Undefined Behavior: constructing invalid value of type pattern_type!(u32 is 1..): encountered 0, but expected something greater or equal to 1
   --> tests/fail/validity/nonzero.rs:LL:CC
    |
 LL |     let _x = Some(unsafe { NonZero(std::mem::transmute(0_u32)) });

@@ -1,0 +1,8 @@
+
+running 3 tests
+test $DIR/test-option-check-2.rs - Bar (line 18) ... ok
+test $DIR/test-option-check-2.rs - Foo (line 11) ... ok
+test $DIR/test-option-check.rs - bar::foooo (line 8) ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

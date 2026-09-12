@@ -41,6 +41,26 @@ fn name_prefix() {
     assert_eq!(partition, vec![1, 1, 0]);
 }
 
+#[test]
+fn classify_path() {
+    let mut file_set = FileSetConfig::builder();
+    file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo".into())]);
+    file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo/bar/baz".into())]);
+    let file_set = file_set.build();
+
+    let classify = |path: &str| file_set.classify_path(&VfsPath::new_virtual_path(path.into()));
+    assert_eq!(classify("/foo/src/lib.rs"), Some(0));
+    assert_eq!(classify("/foo/bar/baz/lib.rs"), Some(1));
+    assert_eq!(classify("/quux/lib.rs"), None);
+}
+
+#[test]
+fn classify_path_default_config() {
+    let file_set = FileSetConfig::default();
+    let path = VfsPath::new_virtual_path("/foo/lib.rs".into());
+    assert_eq!(file_set.classify_path(&path), None);
+}
+
 /// Ensure that we don't consider `/foo/bar_baz.rs` to be in the
 /// `/foo/bar/` root.
 #[test]

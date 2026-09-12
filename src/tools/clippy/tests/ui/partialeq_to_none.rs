@@ -1,5 +1,5 @@
 #![warn(clippy::partialeq_to_none)]
-#![allow(clippy::eq_op, clippy::needless_ifs)]
+#![expect(clippy::eq_op, clippy::needless_ifs)]
 
 struct Foobar;
 
@@ -9,7 +9,6 @@ impl PartialEq<Option<()>> for Foobar {
     }
 }
 
-#[allow(dead_code)]
 fn foo(f: Option<u32>) -> &'static str {
     if f != None { "yay" } else { "nay" }
     //~^ partialeq_to_none

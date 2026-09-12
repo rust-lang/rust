@@ -4,7 +4,7 @@
 #![feature(rustdoc_internals)]
 
 #[doc(attribute = "foo df")] //~ ERROR
-mod foo {}
+const _: () = ();
 
 #[doc(attribute = "fooyi")] //~ ERROR
-mod foo2 {}
+const _: () = ();

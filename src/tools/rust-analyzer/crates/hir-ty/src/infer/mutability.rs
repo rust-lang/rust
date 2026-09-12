@@ -13,7 +13,7 @@ use crate::{
     lower::lower_mutability,
 };
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn infer_mut_body(&mut self, body_expr: ExprId) {
         self.infer_mut_expr(body_expr, Mutability::Not);
     }
@@ -86,8 +86,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(*id, Mutability::Not);
             }
             Expr::Let { pat, expr } => self.infer_mut_expr(*expr, self.pat_bound_mutability(*pat)),
-            Expr::Block { id: _, statements, tail, label: _ }
-            | Expr::Unsafe { id: _, statements, tail } => {
+            Expr::Block { id: _, statements, tail, label: _, unsafe_: _ } => {
                 for st in statements.iter() {
                     match st {
                         Statement::Let { pat, type_ref: _, initializer, else_branch } => {
@@ -156,10 +155,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(*expr, mutability);
             }
             Expr::UnaryOp { expr, op: _ }
-            | Expr::Range { lhs: Some(expr), rhs: None, range_type: _ }
-            | Expr::Range { rhs: Some(expr), lhs: None, range_type: _ }
             | Expr::Await { expr }
-            | Expr::Box { expr }
             | Expr::Loop { body: expr, label: _, source: _ }
             | Expr::Cast { expr, type_ref: _ } => {
                 self.infer_mut_expr(*expr, Mutability::Not);
@@ -181,8 +177,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(value, Mutability::Not);
             }
             Expr::Array(Array::Repeat { initializer: lhs, repeat: rhs })
-            | Expr::BinaryOp { lhs, rhs, op: _ }
-            | Expr::Range { lhs: Some(lhs), rhs: Some(rhs), range_type: _ } => {
+            | Expr::BinaryOp { lhs, rhs, op: _ } => {
                 self.infer_mut_expr(*lhs, Mutability::Not);
                 self.infer_mut_expr(*rhs, Mutability::Not);
             }
@@ -193,8 +188,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_not_expr_iter(exprs.iter().copied());
             }
             // These don't need any action, as they don't have sub expressions
-            Expr::Range { lhs: None, rhs: None, range_type: _ }
-            | Expr::Literal(_)
+            Expr::Literal(_)
             | Expr::Path(_)
             | Expr::Continue { .. }
             | Expr::Underscore

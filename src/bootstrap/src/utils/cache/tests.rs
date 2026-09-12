@@ -1,6 +1,4 @@
-use std::path::PathBuf;
-
-use crate::utils::cache::{INTERNER, Internable, Interner, TyIntern};
+use crate::utils::cache::{INTERNER, Interner, TyIntern};
 
 #[test]
 fn test_string_interning() {

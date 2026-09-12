@@ -1,6 +1,5 @@
 #![crate_type = "lib"]
 #![no_std]
-#![feature(c_variadic)]
 
 use core::ffi::VaList;
 

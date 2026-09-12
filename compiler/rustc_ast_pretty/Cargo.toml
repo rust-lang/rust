@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.15"
 rustc_ast = { path = "../rustc_ast" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_span = { path = "../rustc_span" }
@@ -13,5 +12,5 @@ rustc_span = { path = "../rustc_span" }
 
 [dev-dependencies]
 # tidy-alphabetical-start
-thin-vec = "0.2.18"
+thin-vec = "0.2.19"
 # tidy-alphabetical-end

@@ -601,7 +601,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access(place.ptr(), size, CheckInAllocMsg::Dereferenceable)?;
+        this.check_ptr_access(place.ptr(), size, CheckInAllocMsg::Dereferenceable("pointer"))?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'tcx>,
@@ -869,7 +869,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RetagMode::None => return interp_ok(None), // no retagging
         };
         let new_perm = if ty.is_box() {
-            NewPermission::from_box_ty(val.layout.ty, mode, this)
+            if ty.is_box_global(*this.tcx) {
+                NewPermission::from_box_ty(val.layout.ty, mode, this)
+            } else {
+                // Boxes with custom allocator are not retagged.
+                return interp_ok(None);
+            }
         } else {
             NewPermission::from_ref_ty(val.layout.ty, mode, this)
         };

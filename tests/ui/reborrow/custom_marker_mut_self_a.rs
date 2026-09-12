@@ -1,8 +1,11 @@
+//! Test that reborrowing a custom marker type conflicts with an earlier reborrow even if the result
+//! is immediately dropped.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 
+#[derive(Reborrow)]
 struct CustomMarker<'a>(PhantomData<&'a ()>);
-impl<'a> Reborrow for CustomMarker<'a> {}
 
 fn method<'a>(_a: CustomMarker<'a>) -> &'a () {
     &()

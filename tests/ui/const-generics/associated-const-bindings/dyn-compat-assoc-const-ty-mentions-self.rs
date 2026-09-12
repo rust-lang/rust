@@ -14,12 +14,14 @@ trait Trait {
     // NOTE: The `ConstParamTy_` bound is intentionally on the assoc const and not on the trait as
     //       doing the latter would already render the trait dyn incompatible due to it being
     //       bounded by `PartialEq<Self>` and supertrait bounds cannot mention `Self` like this.
-    type const K: Self where Self: std::marker::ConstParamTy_;
+    #[rustc_always_gca]
+    const K: Self where Self: std::marker::ConstParamTy_;
     //~^ NOTE it contains associated const `K` whose type references the `Self` type
 
     // This is not a "`Self` projection" in our sense (which would be allowed)
     // since the trait is not the principal trait or a supertrait thereof.
-    type const Q: <Self as SomeOtherTrait>::Output;
+    #[rustc_always_gca]
+    const Q: <Self as SomeOtherTrait>::Output;
     //~^ NOTE it contains associated const `Q` whose type references the `Self` type
 }
 

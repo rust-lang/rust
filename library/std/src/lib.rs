@@ -276,6 +276,7 @@
 #![feature(asm_experimental_arch)]
 #![feature(autodiff)]
 #![feature(cfg_sanitizer_cfi)]
+#![feature(cfg_target_has_threads)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(const_trait_impl)]
@@ -286,6 +287,7 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(exact_div)]
 #![feature(f16)]
 #![feature(f128)]
 #![feature(ffi_const)]
@@ -300,7 +302,6 @@
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
@@ -320,9 +321,12 @@
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(c_size_t)]
+#![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
+#![feature(const_clone)]
 #![feature(const_convert)]
 #![feature(const_default)]
 #![feature(core_float_math)]
@@ -332,6 +336,7 @@
 #![feature(core_io_internals)]
 #![feature(cstr_display)]
 #![feature(cursor_split)]
+#![feature(derive_const)]
 #![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
@@ -342,7 +347,7 @@
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(fmt_internals)]
-#![feature(fn_ptr_trait)]
+#![feature(fn_static)]
 #![feature(formatting_options)]
 #![feature(funnel_shifts)]
 #![feature(generic_atomic)]
@@ -353,6 +358,7 @@
 #![feature(hint_must_use)]
 #![feature(int_from_ascii)]
 #![feature(io_error_inprogress)]
+#![feature(io_error_input_output_error)]
 #![feature(io_error_more)]
 #![feature(io_error_too_many_open_files)]
 #![feature(io_error_uncategorized)]
@@ -374,6 +380,7 @@
 #![feature(random)]
 #![feature(raw_os_error_ty)]
 #![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
 #![feature(share_trait)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
@@ -383,18 +390,23 @@
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
+#![feature(trim_prefix_suffix)]
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
+#![feature(unsafe_pinned)]
 #![feature(used_with_arg)]
+#![feature(write_all_vectored)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
 // tidy-alphabetical-start
 #![feature(alloc_io)]
 #![feature(allocator_api)]
+#![feature(buf_read_has_data_left)]
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
+#![feature(read_buf)]
 #![feature(slice_concat_trait)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
@@ -416,7 +428,6 @@
 // Only for re-exporting:
 // tidy-alphabetical-start
 #![feature(async_iterator)]
-#![feature(c_variadic)]
 #![feature(cfg_accessible)]
 #![feature(cfg_eval)]
 #![feature(concat_bytes)]
@@ -529,24 +540,24 @@ pub use core::future;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
@@ -567,24 +578,24 @@ pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u128;
 #[unstable(feature = "unsafe_binders", issue = "130516")]
 pub use core::unsafe_binder;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::usize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -640,6 +651,8 @@ pub mod process;
 pub mod random;
 pub mod sync;
 pub mod time;
+#[unstable(feature = "view_type_macro", issue = "155938")]
+pub mod view;
 
 // Pull in `std_float` crate  into std. The contents of
 // `std_float` are in a different repository: rust-lang/portable-simd.
@@ -727,6 +740,7 @@ mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
+#[allow(clippy::len_zero, clippy::needless_borrow, clippy::filter_map_next)] // FIXME
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]
@@ -795,25 +809,6 @@ include!("../../core/src/primitive_docs.rs");
 // is unconditional, so the unstable feature needs to be defined somewhere.
 #[unstable(feature = "restricted_std", issue = "none")]
 mod __restricted_std_workaround {}
-
-// FIXME(jhpratt) This is currently only used by portable SIMD. Once rust-lang/portable-simd#529 is
-// merged, this should be able to be removed.
-mod sealed {
-    /// This trait being unreachable from outside the crate
-    /// prevents outside implementations of our extension traits.
-    /// This allows adding more trait methods in the future.
-    #[unstable(feature = "sealed", issue = "none")]
-    pub trait Sealed {}
-}
-
-macro_rules! impl_sealed {
-    ($($t:ty)*) => {$(
-        /// Allows implementations within `std`.
-        #[unstable(feature = "sealed", issue = "none")]
-        impl crate::sealed::Sealed for $t {}
-    )*}
-}
-impl_sealed! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 f32 f64 }
 
 #[cfg(test)]
 #[allow(dead_code)] // Not used in all configurations.

@@ -1,0 +1,8 @@
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u32, valid_range: (..=1114111) | (4294967295..) })
+ --> $DIR/rustc_dump_layout_largest_niche.rs:7:1
+  |
+7 | type Alias = Option<char>;
+  | ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

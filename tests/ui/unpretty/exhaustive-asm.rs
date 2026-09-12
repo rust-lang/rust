@@ -21,6 +21,12 @@ mod expressions {
             tmp = out(reg) _,
         );
     }
+
+    /// ExprKind::InlineAsm, with the `naked_asm!` macro
+    #[unsafe(naked)]
+    extern "C" fn expr_naked_asm() {
+        core::arch::naked_asm!("ret");
+    }
 }
 
 mod items {

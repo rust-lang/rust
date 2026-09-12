@@ -1,15 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_expr;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::peel_and_count_ty_refs;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
-use rustc_lint::{LateContext, LateLintPass, Lint};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
+use rustc_lint::{LateContext, LateLintPass, Lint, declare_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, GenericArg, Ty, Unnormalized};
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

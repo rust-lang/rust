@@ -36,13 +36,13 @@ pub use self::asm::{
     AsmBuilderMethods, AsmCodegenMethods, GlobalAsmOperandRef, InlineAsmOperandRef,
 };
 pub use self::backend::{BackendTypes, CodegenBackend, ExtraBackendMethods};
-pub use self::builder::{BuilderMethods, OverflowOp};
+pub use self::builder::{BuilderMethods, OverflowOp, ReturnSlot};
 pub use self::consts::ConstCodegenMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
 pub use self::declare::PreDefineCodegenMethods;
 pub use self::intrinsic::IntrinsicCallBuilderMethods;
-pub use self::misc::{AddressDiversity, MiscCodegenMethods, PacMetadata};
+pub use self::misc::MiscCodegenMethods;
 pub use self::statics::{StaticBuilderMethods, StaticCodegenMethods};
 pub use self::type_::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, DerivedTypeCodegenMethods,

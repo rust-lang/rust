@@ -26,6 +26,8 @@ pub(crate) fn target() -> Target {
             atomic_cas: false,
             relocation_model: RelocModel::Static,
             need_explicit_cpu: true,
+            // crates with different `target-cpu`s are not link-compatible for AVR
+            requires_consistent_cpu: true,
             ..TargetOptions::default()
         },
     }

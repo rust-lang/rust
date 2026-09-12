@@ -1,10 +1,10 @@
 use rustc_hir as hir;
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, sym};
 
 use crate::context::LintContext;
-use crate::lints::{EnumIntrinsicsMemDiscriminate, EnumIntrinsicsMemVariant};
+use crate::diagnostics::{EnumIntrinsicsMemDiscriminate, EnumIntrinsicsMemVariant};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {

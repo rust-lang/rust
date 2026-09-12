@@ -1,0 +1,9 @@
+// This test ensures that the `foo` decl macro is present in the module sidebar.
+// Because these items are not generated into the HTML, we can't make them a `rustdoc-html`
+// test, so here we go...
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/details/index.html"
+assert-text: (
+    '//*[@id="rustdoc-modnav"]/ul[@class="block macro"]//a[@href="../macro.decl_macro.html"]',
+    "decl_macro",
+)

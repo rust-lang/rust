@@ -1,5 +1,6 @@
 //@aux-build:proc_macro_derive.rs
-#![allow(clippy::clone_on_copy, unused)]
+//@aux-build:proc_macros.rs
+#![expect(clippy::clone_on_copy)]
 #![allow(clippy::assigning_clones)]
 #![no_main]
 

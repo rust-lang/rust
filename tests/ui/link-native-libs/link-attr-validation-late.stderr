@@ -1,178 +1,178 @@
 error[E0565]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:4:1
+  --> $DIR/link-attr-validation-late.rs:4:3
    |
 LL | #[link(name = "...", "literal")]
-   | ^^^^^^^^^^^^^^^^^^^^^---------^^
+   |   ^^^^^^^^^^^^^^^^^^^---------^
    |                      |
    |                      didn't expect a literal here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:5:1
+  --> $DIR/link-attr-validation-late.rs:5:3
    |
 LL | #[link(name = "...", unknown)]
-   | ^^^^^^^^^^^^^^^^^^^^^-------^^
+   |   ^^^^^^^^^^^^^^^^^^^-------^
    |                      |
    |                      valid arguments are "name", "kind", "modifiers", "cfg", "wasm_import_module" or "import_name_type"
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0538]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:9:1
+  --> $DIR/link-attr-validation-late.rs:9:3
    |
 LL | #[link(name = "foo", name = "bar")]
-   | ^^^^^^^^^^^^^^^^^^^^^------------^^
+   |   ^^^^^^^^^^^^^^^^^^^------------^
    |                      |
    |                      found `name` used as a key more than once
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0538]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:10:1
+  --> $DIR/link-attr-validation-late.rs:10:3
    |
 LL | #[link(name = "...", kind = "dylib", kind = "bar")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------^
    |                                      |
    |                                      found `kind` used as a key more than once
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0538]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:11:1
+  --> $DIR/link-attr-validation-late.rs:11:3
    |
 LL | #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------^
    |                                               |
    |                                               found `modifiers` used as a key more than once
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0538]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:12:1
+  --> $DIR/link-attr-validation-late.rs:12:3
    |
 LL | #[link(name = "...", cfg(false), cfg(false))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------^
    |                                  |
    |                                  found `cfg` used as a key more than once
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0538]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:13:1
+  --> $DIR/link-attr-validation-late.rs:13:3
    |
 LL | #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------^
    |                                    |
    |                                    found `wasm_import_module` used as a key more than once
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:17:1
+  --> $DIR/link-attr-validation-late.rs:17:3
    |
 LL | #[link(name)]
-   | ^^^^^^^----^^
+   |   ^^^^^----^
    |        |
    |        expected this to be of the form `name = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:18:1
+  --> $DIR/link-attr-validation-late.rs:18:3
    |
 LL | #[link(name())]
-   | ^^^^^^^------^^
+   |   ^^^^^------^
    |        |
    |        expected this to be of the form `name = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:19:1
+  --> $DIR/link-attr-validation-late.rs:19:3
    |
 LL | #[link(name = "...", kind)]
-   | ^^^^^^^^^^^^^^^^^^^^^----^^
+   |   ^^^^^^^^^^^^^^^^^^^----^
    |                      |
    |                      expected this to be of the form `kind = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:20:1
+  --> $DIR/link-attr-validation-late.rs:20:3
    |
 LL | #[link(name = "...", kind())]
-   | ^^^^^^^^^^^^^^^^^^^^^------^^
+   |   ^^^^^^^^^^^^^^^^^^^------^
    |                      |
    |                      expected this to be of the form `kind = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:21:1
+  --> $DIR/link-attr-validation-late.rs:21:3
    |
 LL | #[link(name = "...", modifiers)]
-   | ^^^^^^^^^^^^^^^^^^^^^---------^^
+   |   ^^^^^^^^^^^^^^^^^^^---------^
    |                      |
    |                      expected this to be of the form `modifiers = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:22:1
+  --> $DIR/link-attr-validation-late.rs:22:3
    |
 LL | #[link(name = "...", modifiers())]
-   | ^^^^^^^^^^^^^^^^^^^^^-----------^^
+   |   ^^^^^^^^^^^^^^^^^^^-----------^
    |                      |
    |                      expected this to be of the form `modifiers = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:23:1
+  --> $DIR/link-attr-validation-late.rs:23:3
    |
 LL | #[link(name = "...", cfg)]
-   | ^^^^^^^^^^^^^^^^^^^^^---^^
+   |   ^^^^^^^^^^^^^^^^^^^---^
    |                      |
    |                      expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:24:1
+  --> $DIR/link-attr-validation-late.rs:24:3
    |
 LL | #[link(name = "...", cfg = "literal")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^-----------^
    |                          |
    |                          expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0565]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:25:1
+  --> $DIR/link-attr-validation-late.rs:25:3
    |
 LL | #[link(name = "...", cfg("literal"))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^---------^^
    |                          |
    |                          expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:26:1
+  --> $DIR/link-attr-validation-late.rs:26:3
    |
 LL | #[link(name = "...", wasm_import_module)]
-   | ^^^^^^^^^^^^^^^^^^^^^------------------^^
+   |   ^^^^^^^^^^^^^^^^^^^------------------^
    |                      |
    |                      expected this to be of the form `wasm_import_module = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:27:1
+  --> $DIR/link-attr-validation-late.rs:27:3
    |
 LL | #[link(name = "...", wasm_import_module())]
-   | ^^^^^^^^^^^^^^^^^^^^^--------------------^^
+   |   ^^^^^^^^^^^^^^^^^^^--------------------^
    |                      |
    |                      expected this to be of the form `wasm_import_module = "..."`
    |
@@ -191,10 +191,10 @@ LL | #[link(name = "...", modifiers = "no-plus-minus")]
    |                                  ^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/link-attr-validation-late.rs:33:1
+  --> $DIR/link-attr-validation-late.rs:33:3
    |
 LL | #[link(name = "...", modifiers = "+unknown")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------^
    |                                  |
    |                                  valid arguments are "bundle", "export-symbols", "verbatim", "whole-archive" or "as-needed"
    |

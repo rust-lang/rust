@@ -21,9 +21,9 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    Unnormalized, fold_regions,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, PredicateProxy, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, Unnormalized, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
@@ -76,6 +76,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_sigs();
         wbcx.visit_coroutine_interior();
         wbcx.visit_transmutes();
+        wbcx.visit_offloads();
         wbcx.visit_offset_of_container_types();
         wbcx.visit_potentially_region_dependent_goals();
 
@@ -544,6 +545,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_offloads(&mut self) {
+        let tcx = self.tcx();
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for &(kernel_ty, args_ty, ret_ty, hir_id) in
+            self.fcx.deferred_offload_checks.borrow().iter()
+        {
+            let span = tcx.hir_span(hir_id);
+            let kernel_ty = self.resolve(kernel_ty, &span);
+            let args_ty = self.resolve(args_ty, &span);
+            let ret_ty = self.resolve(ret_ty, &span);
+            self.typeck_results.offloads_to_check.push((kernel_ty, args_ty, ret_ty, hir_id));
+        }
+    }
+
     fn visit_opaque_types_next(&mut self) {
         let mut fcx_typeck_results = self.fcx.typeck_results.borrow_mut();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
@@ -791,8 +807,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
         if self.fcx.tainted_by_errors().is_none() {
             for obligation in obligations {
-                let (predicate, mut cause) =
-                    self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));
+                let (predicate, mut cause) = self
+                    .fcx
+                    .deeply_resolve_ignoring_regions((obligation.predicate, obligation.cause));
                 if predicate.has_non_region_infer() {
                     self.fcx.dcx().span_delayed_bug(
                         cause.span,
@@ -817,7 +834,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.fcx.resolve_vars_if_possible(value);
+        let value = self.fcx.deeply_resolve_ignoring_regions(value);
 
         let mut goals = vec![];
         let value =
@@ -831,7 +848,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             goals
                 .into_iter()
                 .map(|pred| {
-                    self.fcx.resolve_vars_if_possible(pred).fold_with(&mut Resolver::new(
+                    self.fcx.deeply_resolve_ignoring_regions(pred).fold_with(&mut Resolver::new(
                         self.fcx,
                         span,
                         self.body,
@@ -860,7 +877,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.fcx.resolve_vars_if_possible(value);
+        let value = self.fcx.deeply_resolve_ignoring_regions(value);
 
         let mut goals = vec![];
         let value =
@@ -948,8 +965,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // We must deeply normalize in the new solver, since later lints expect
         // that types that show up in the typeck are fully normalized.
         let mut value = if self.should_normalize && self.fcx.next_trait_solver() {
-            let body_id = tcx.hir_body_owner_def_id(self.body.id());
-            let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
+            let body_def_id = tcx.hir_body_owner_def_id(self.body.id());
+            let cause = ObligationCause::misc(self.span.to_span(tcx), body_def_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
             let universes = vec![None; outer_exclusive_binder(&value).as_usize()];
             match solve::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
@@ -1016,7 +1033,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
         self.handle_term(ct, ty::Const::outer_exclusive_binder, ty::Const::new_error)
     }
 
-    fn fold_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, predicate: P) -> P {
         assert!(
             !self.should_normalize,
             "normalizing predicates in writeback is not generally sound"

@@ -27,6 +27,8 @@ use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Spanned};
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
+
 /// A `MirPass` for promotion.
 ///
 /// Promotion is the extraction of promotable temps into separate MIR bodies so they can have
@@ -62,8 +64,9 @@ impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
         self.promoted_fragments.set(promoted);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Implements promotion by extracting eligible values into separate constant MIR bodies.
+        PassPolicy::Required
     }
 }
 
@@ -296,7 +299,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
             // Never recurse.
-            ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
+            ProjectionElem::PhantomDeref
+            | ProjectionElem::OpaqueCast(..)
+            | ProjectionElem::Downcast(..) => {
                 return Err(Unpromotable);
             }
 
@@ -318,6 +323,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // can only promote static accesses inside statics.
                     && let Some(hir::ConstContext::Static(..)) = self.const_kind
                     && !self.tcx.is_thread_local_static(did)
+                    // Extern statics can never be read by CTFE, even inside a static.
+                    && !self.tcx.is_foreign_item(did)
                 {
                     // Recurse.
                 } else {
@@ -704,7 +711,10 @@ impl<'tcx> Validator<'_, 'tcx> {
             // const function that uses that constant, again requiring evaluation of the constant.
             // However, this form of cycle renders both the constant and function unusable in
             // general, so we don't need to special-case it here.
-            Const::Unevaluated(uc, _) => self.tcx.def_kind(uc.def) != DefKind::InlineConst,
+            Const::Unevaluated(uc, _) => {
+                self.tcx.def_kind(uc.def) != DefKind::AnonConst
+                    || self.tcx.anon_const_kind(uc.def) != ty::AnonConstKind::NonTypeSystemInline
+            }
         }
     }
 }

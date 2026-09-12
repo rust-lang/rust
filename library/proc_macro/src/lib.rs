@@ -245,7 +245,6 @@ impl !Sync for TokenStream {}
 /// The contained error message is explicitly not guaranteed to be stable in any way,
 /// and may change between Rust versions or across compilations.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
-#[non_exhaustive]
 #[derive(Debug)]
 pub struct LexError(String);
 
@@ -517,7 +516,7 @@ macro_rules! extend_items {
         $(
             #[stable(feature = "token_stream_extend_ts_items", since = "1.92.0")]
             impl Extend<$item> for TokenStream {
-                fn extend<T: IntoIterator<Item = $item>>(&mut self, iter: T) {
+                fn extend<I: IntoIterator<Item = $item>>(&mut self, iter: I) {
                     self.extend(iter.into_iter().map(TokenTree::$item));
                 }
             }
@@ -1911,7 +1910,7 @@ pub mod tracked {
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
     pub fn env_var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
-        let value = BridgeMethods::injected_env_var(key).map_or_else(|| env::var(key), Ok);
+        let value = env::var(key);
         BridgeMethods::track_env_var(key, value.as_deref().ok());
         value
     }

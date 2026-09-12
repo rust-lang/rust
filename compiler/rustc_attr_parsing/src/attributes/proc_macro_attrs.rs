@@ -1,5 +1,5 @@
 use rustc_feature::AttributeStability;
-use rustc_session::lint::builtin::AMBIGUOUS_DERIVE_HELPERS;
+use rustc_lint_defs::builtin::AMBIGUOUS_DERIVE_HELPERS;
 
 use super::prelude::*;
 

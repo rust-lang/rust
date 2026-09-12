@@ -4,14 +4,13 @@ use clippy_utils::sugg::Sugg;
 use hir::Param;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
     CaptureBy, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, intravisit as hir_visit,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 use rustc_span::ExpnKind;
 use std::ops::ControlFlow;
 
@@ -164,10 +163,6 @@ fn get_parent_call_exprs<'tcx>(
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         if let ExprKind::Call(recv, _) = expr.kind
             // don't lint if the receiver is a call, too.
             // we do this in order to prevent linting multiple times; consider:
@@ -175,6 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             //           ^^  we only want to lint for this call (but we walk up the calls to consider both calls).
             // without this check, we'd end up linting twice.
             && !matches!(recv.kind, ExprKind::Call(..))
+            && !expr.span.in_external_macro(cx.sess().source_map())
             // Check if `recv` comes from a macro expansion. If it does, make sure that it's an expansion that is
             // the same as the one the call is in.
             // For instance, let's assume `x!()` returns a closure:

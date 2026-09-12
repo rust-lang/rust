@@ -35,9 +35,9 @@ macro_rules! f {
     };
 }
 
-struct#0:MacroRules[BE8F, 0]@58..64#17408# MyTraitMap2#0:MacroCall[BE8F, 0]@31..42#ROOT2024# {#0:MacroRules[BE8F, 0]@72..73#17408#
-    map#0:MacroRules[BE8F, 0]@86..89#17408#:#0:MacroRules[BE8F, 0]@89..90#17408# #0:MacroRules[BE8F, 0]@89..90#17408#::#0:MacroRules[BE8F, 0]@91..93#17408#std#0:MacroRules[BE8F, 0]@93..96#17408#::#0:MacroRules[BE8F, 0]@96..98#17408#collections#0:MacroRules[BE8F, 0]@98..109#17408#::#0:MacroRules[BE8F, 0]@109..111#17408#HashSet#0:MacroRules[BE8F, 0]@111..118#17408#<#0:MacroRules[BE8F, 0]@118..119#17408#(#0:MacroRules[BE8F, 0]@119..120#17408#)#0:MacroRules[BE8F, 0]@120..121#17408#>#0:MacroRules[BE8F, 0]@121..122#17408#,#0:MacroRules[BE8F, 0]@122..123#17408#
-}#0:MacroRules[BE8F, 0]@132..133#17408#
+struct#0:MacroRules[BE8F, 0]@58..64#1920# MyTraitMap2#0:MacroCall[BE8F, 0]@31..42#ROOT2024# {#0:MacroRules[BE8F, 0]@72..73#1920#
+    map#0:MacroRules[BE8F, 0]@86..89#1920#:#0:MacroRules[BE8F, 0]@89..90#1920# #0:MacroRules[BE8F, 0]@89..90#1920#::#0:MacroRules[BE8F, 0]@91..93#1920#std#0:MacroRules[BE8F, 0]@93..96#1920#::#0:MacroRules[BE8F, 0]@96..98#1920#collections#0:MacroRules[BE8F, 0]@98..109#1920#::#0:MacroRules[BE8F, 0]@109..111#1920#HashSet#0:MacroRules[BE8F, 0]@111..118#1920#<#0:MacroRules[BE8F, 0]@118..119#1920#(#0:MacroRules[BE8F, 0]@119..120#1920#)#0:MacroRules[BE8F, 0]@120..121#1920#>#0:MacroRules[BE8F, 0]@121..122#1920#,#0:MacroRules[BE8F, 0]@122..123#1920#
+}#0:MacroRules[BE8F, 0]@132..133#1920#
 "#]],
     );
 }
@@ -197,7 +197,7 @@ macro_rules! mk_struct {
 #[macro_use]
 mod foo;
 
-struct#1:MacroRules[DB0C, 0]@59..65#17408# Foo#0:MacroCall[DB0C, 0]@32..35#ROOT2024#(#1:MacroRules[DB0C, 0]@70..71#17408#u32#0:MacroCall[DB0C, 0]@41..44#ROOT2024#)#1:MacroRules[DB0C, 0]@74..75#17408#;#1:MacroRules[DB0C, 0]@75..76#17408#
+struct#1:MacroRules[DB0C, 0]@59..65#1920# Foo#0:MacroCall[DB0C, 0]@32..35#ROOT2024#(#1:MacroRules[DB0C, 0]@70..71#1920#u32#0:MacroCall[DB0C, 0]@41..44#ROOT2024#)#1:MacroRules[DB0C, 0]@74..75#1920#;#1:MacroRules[DB0C, 0]@75..76#1920#
 "#]],
     );
 }
@@ -423,10 +423,10 @@ m! { foo, bar }
 macro_rules! m {
     ($($i:ident),*) => ( impl Bar { $(fn $i() {})* } );
 }
-impl#\17408# Bar#\17408# {#\17408#
-    fn#\17408# foo#\ROOT2024#(#\17408#)#\17408# {#\17408#}#\17408#
-    fn#\17408# bar#\ROOT2024#(#\17408#)#\17408# {#\17408#}#\17408#
-}#\17408#
+impl#\1920# Bar#\1920# {#\1920#
+    fn#\1920# foo#\ROOT2024#(#\1920#)#\1920# {#\1920#}#\1920#
+    fn#\1920# bar#\ROOT2024#(#\1920#)#\1920# {#\1920#}#\1920#
+}#\1920#
 "#]],
     );
 }

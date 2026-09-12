@@ -1,11 +1,10 @@
-error[E0423]: expected value, found type parameter `T`
+error[E0423]: cannot find value `T` in this scope
   --> $DIR/issue-69654.rs:5:25
    |
 LL | impl<T> Bar<T> for [u8; T] {}
-   |      -                  ^ not a value
-   |      |
-   |      found this type parameter
+   |                         ^ not found in this scope
    |
+   = note: a type parameter named `T` exists in another namespace
 help: you might have meant to write a const parameter here
    |
 LL | impl<const T: /* Type */> Bar<T> for [u8; T] {}

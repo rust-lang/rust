@@ -7,6 +7,7 @@ use std::hash::Hash;
 use hir_def::ConstParamId;
 use intern::{Interned, InternedRef, impl_internable};
 use macros::{GenericTypeVisitable, TypeFoldable, TypeVisitable};
+use rustc_abi::TargetDataLayout;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_type_ir::{
     BoundVar, BoundVarIndexKind, ConstVid, DebruijnIndex, FlagComputation, Flags,
@@ -92,6 +93,10 @@ impl<'db> Const<'db> {
         Const::new(interner, ConstKind::Value(ValueConst { ty, value: ValTree::new(kind) }))
     }
 
+    pub fn new_value(interner: DbInterner<'db>, valtree: ValTree<'db>, ty: Ty<'db>) -> Self {
+        Const::new(interner, ConstKind::Value(ValueConst { ty, value: valtree }))
+    }
+
     pub fn new_from_allocation(
         interner: DbInterner<'db>,
         allocation: &AllocationData<'db>,
@@ -103,6 +108,21 @@ impl<'db> Const<'db> {
             &allocation.memory,
             &allocation.memory_map,
             param_env,
+        )
+    }
+
+    #[inline]
+    /// Creates an interned usize constant.
+    pub fn from_target_usize(interner: DbInterner<'db>, n: u64) -> Self {
+        let usize_ty = interner.default_types().types.usize;
+        let data_layout = interner.db.target_data_layout_or_default(interner.expect_crate());
+        Const::new_value(
+            interner,
+            ValTree::from_scalar_int(
+                interner,
+                ScalarInt::try_from_target_usize(n, data_layout).unwrap(),
+            ),
+            usize_ty,
         )
     }
 
@@ -123,6 +143,25 @@ impl<'db> Const<'db> {
             | ConstKind::Error(_)
             | ConstKind::Expr(_) => false,
         }
+    }
+
+    /// Attempts to convert to a value.
+    ///
+    /// Note that this does not normalize the constant.
+    pub fn try_to_value(self) -> Option<ValueConst<'db>> {
+        match self.kind() {
+            ConstKind::Value(cv) => Some(cv),
+            _ => None,
+        }
+    }
+
+    /// Convenience method to extract the value of a usize constant,
+    /// useful to get the length of an array type.
+    ///
+    /// Note that this does not evaluate the constant.
+    #[inline]
+    pub fn try_to_target_usize(self, data_layout: &TargetDataLayout) -> Option<u64> {
+        self.try_to_value()?.try_to_target_usize(data_layout)
     }
 }
 

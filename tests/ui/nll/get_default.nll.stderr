@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
-  --> $DIR/get_default.rs:24:17
+  --> $DIR/get_default.rs:25:17
    |
 LL | fn ok(map: &mut Map) -> &String {
    |            - let's call the lifetime of this reference `'1`
@@ -14,7 +14,7 @@ LL |                 map.set(String::new()); // Ideally, this would not error.
    |                 ^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
-  --> $DIR/get_default.rs:35:17
+  --> $DIR/get_default.rs:36:17
    |
 LL | fn err(map: &mut Map) -> &String {
    |             - let's call the lifetime of this reference `'1`
@@ -29,7 +29,7 @@ LL |                 return v;
    |                        - returning this value requires that `*map` is borrowed for `'1`
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
-  --> $DIR/get_default.rs:40:17
+  --> $DIR/get_default.rs:41:17
    |
 LL | fn err(map: &mut Map) -> &String {
    |             - let's call the lifetime of this reference `'1`

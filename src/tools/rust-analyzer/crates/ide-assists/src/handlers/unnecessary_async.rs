@@ -90,9 +90,9 @@ pub(crate) fn unnecessary_async(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
     )
 }
 
-fn find_all_references(
-    ctx: &AssistContext<'_, '_>,
-    def: &Definition,
+fn find_all_references<'db>(
+    ctx: &AssistContext<'_, 'db>,
+    def: &Definition<'db>,
 ) -> impl Iterator<Item = (EditionedFileId, FileReference)> {
     def.usages(&ctx.sema).all().into_iter().flat_map(|(file_id, references)| {
         references.into_iter().map(move |reference| (file_id, reference))

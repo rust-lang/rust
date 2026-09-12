@@ -6,9 +6,8 @@ use clippy_utils::ty::ty_from_hir_ty;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
 use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {
@@ -43,7 +42,7 @@ pub struct ManualIsPowerOfTwo {
 
 impl ManualIsPowerOfTwo {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 
     fn build_sugg(&self, cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {

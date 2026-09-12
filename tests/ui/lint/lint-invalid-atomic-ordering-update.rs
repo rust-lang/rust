@@ -1,4 +1,7 @@
 //@ only-x86_64
+
+#![allow(deprecated)]
+
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 fn main() {

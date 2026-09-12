@@ -1,12 +1,6 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![warn(clippy::unnested_or_patterns)]
-#![allow(
-    clippy::cognitive_complexity,
-    clippy::match_ref_pats,
-    clippy::needless_ifs,
-    clippy::manual_range_patterns
-)]
-#![allow(unreachable_patterns, irrefutable_let_patterns, unused_variables)]
+#![allow(clippy::manual_range_patterns)]
 
 fn main() {
     if let Some(Some(0)) | Some(Some(1)) = None {}
@@ -21,8 +15,8 @@ fn main() {
     //~^ unnested_or_patterns
     if let 0 | (1 | 2) = 0 {}
     //~^ unnested_or_patterns
-    if let box (0 | 1) | (box 2 | box (3 | 4)) = Box::new(0) {}
+    if let deref!(0 | 1) | (deref!(2) | deref!(3 | 4)) = Box::new(0) {}
     //~^ unnested_or_patterns
-    if let box box 0 | box (box 2 | box 4) = Box::new(Box::new(0)) {}
+    if let deref!(deref!(0)) | deref!(deref!(2) | deref!(4)) = Box::new(Box::new(0)) {}
     //~^ unnested_or_patterns
 }

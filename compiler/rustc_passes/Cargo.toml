@@ -9,17 +9,19 @@ rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_privacy = { path = "../rustc_privacy" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_structures = { path = "../rustc_structures" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 tracing = "0.1"

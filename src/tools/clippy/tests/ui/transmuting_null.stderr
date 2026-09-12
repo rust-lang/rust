@@ -1,5 +1,5 @@
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:11:23
+  --> tests/ui/transmuting_null.rs:8:23
    |
 LL |         let _: &u64 = std::mem::transmute(0 as *const u64);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,43 +8,43 @@ LL |         let _: &u64 = std::mem::transmute(0 as *const u64);
    = help: to override `-D warnings` add `#[allow(clippy::transmuting_null)]`
 
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:14:23
+  --> tests/ui/transmuting_null.rs:11:23
    |
 LL |         let _: &u64 = std::mem::transmute(std::ptr::null::<u64>());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:25:23
+  --> tests/ui/transmuting_null.rs:22:23
    |
 LL |         let _: &u64 = std::mem::transmute(ZPTR);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:35:23
+  --> tests/ui/transmuting_null.rs:32:23
    |
 LL |         let _: &u64 = std::mem::transmute(u64::MIN as *const u64);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:42:23
+  --> tests/ui/transmuting_null.rs:39:23
    |
 LL |         let _: &u64 = std::mem::transmute({ 0 as *const u64 });
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:45:23
+  --> tests/ui/transmuting_null.rs:42:23
    |
 LL |         let _: &u64 = std::mem::transmute(const { u64::MIN as *const u64 });
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:52:23
+  --> tests/ui/transmuting_null.rs:49:23
    |
 LL |         let _: &u64 = std::mem::transmute(std::ptr::without_provenance::<u64>(0));
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmuting a known null pointer into a reference
-  --> tests/ui/transmuting_null.rs:55:23
+  --> tests/ui/transmuting_null.rs:52:23
    |
 LL |         let _: &u64 = std::mem::transmute(std::ptr::without_provenance_mut::<u64>(0));
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

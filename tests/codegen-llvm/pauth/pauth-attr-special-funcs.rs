@@ -18,10 +18,10 @@ use std::panic;
 // CHECK-DAG: "ptrauth-returns"
 
 // CHECK: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
-// CHECK-DAG: "ptrauth-auth-traps"
-// CHECK-DAG: "ptrauth-calls"
-// CHECK-DAG: "ptrauth-indirect-gotos"
-// CHECK-DAG: "ptrauth-returns"
+// CHECK-SAME: "ptrauth-auth-traps"
+// CHECK-SAME: "ptrauth-calls"
+// CHECK-SAME: "ptrauth-indirect-gotos"
+// CHECK-SAME: "ptrauth-returns"
 fn main() {
     let _ = panic::catch_unwind(|| {
         panic!("BOOM");

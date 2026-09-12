@@ -102,3 +102,72 @@ fn main() {
         unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
     }
 }
+
+mod issue17349 {
+    pub enum Foo {
+        A,
+        B,
+        C,
+    }
+
+    impl Foo {
+        pub const fn from_u8(value: u8) -> Option<Self> {
+            match value {
+                0 => Some(Self::A),
+                1 => Some(Self::B),
+                2 => Some(Self::C),
+                _ => None,
+            }
+        }
+
+        /// # Safety
+        ///
+        /// The value must be either 0, 1 or 2
+        pub const unsafe fn from_u8_unchecked(value: u8) -> Self {
+            // Don't lint from inside the `_unchecked` associated function itself
+            unsafe { Self::from_u8(value).unwrap_unchecked() }
+        }
+
+        pub const fn to_bool(&self) -> Option<bool> {
+            match self {
+                Self::A => Some(false),
+                Self::B => Some(true),
+                Self::C => None,
+            }
+        }
+
+        /// # Safety
+        ///
+        /// The value must be either `Self::A` or `Self::B`
+        pub const unsafe fn to_bool_unchecked(&self) -> bool {
+            // Don't lint from inside the `_unchecked` method itself
+            unsafe { self.to_bool().unwrap_unchecked() }
+        }
+    }
+
+    pub const fn from_u8(value: u8) -> Option<Foo> {
+        Foo::from_u8(value)
+    }
+
+    /// # Safety
+    ///
+    /// The value must be either 0, 1 or 2
+    pub const unsafe fn from_u8_unchecked(value: u8) -> Foo {
+        // Don't lint from inside the `_unchecked` function itself
+        unsafe { from_u8(value).unwrap_unchecked() }
+    }
+
+    pub fn from_u16(value: u16) -> Option<Foo> {
+        Foo::from_u8(u8::try_from(value).ok()?)
+    }
+
+    /// # Safety
+    ///
+    /// The value must be either 0, 1 or 2
+    pub unsafe fn from_u16_unchecked(value: u16) -> Foo {
+        // Don't lint from inside the `_unchecked` function itself
+        // even in the presence of intermediate bodies.
+        let cl = || unsafe { from_u16(value).unwrap_unchecked() };
+        cl()
+    }
+}

@@ -19,12 +19,14 @@ LL |     const v0: [[usize; v4]; v4] = v6(v8);
 error[E0425]: cannot find type `v18` in this scope
   --> $DIR/unevaluated-const-ice-119731.rs:23:31
    |
-LL |     pub type v11 = [[usize; v4]; v4];
-   |     --------------------------------- similarly named type alias `v11` defined here
-...
 LL |         pub const fn v21() -> v18 {}
-   |                               ^^^
+   |                               ^^^ not found in this scope
    |
+note: similarly named type alias `v11` defined here
+  --> $DIR/unevaluated-const-ice-119731.rs:9:5
+   |
+LL |     pub type v11 = [[usize; v4]; v4];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a type alias with a similar name exists
    |
 LL -         pub const fn v21() -> v18 {}
@@ -34,12 +36,14 @@ LL +         pub const fn v21() -> v11 {}
 error[E0425]: cannot find type `v18` in this scope
   --> $DIR/unevaluated-const-ice-119731.rs:35:31
    |
-LL |     pub type v11 = [[usize; v4]; v4];
-   |     --------------------------------- similarly named type alias `v11` defined here
-...
 LL |         pub const fn v21() -> v18 {
-   |                               ^^^
+   |                               ^^^ not found in this scope
    |
+note: similarly named type alias `v11` defined here
+  --> $DIR/unevaluated-const-ice-119731.rs:9:5
+   |
+LL |     pub type v11 = [[usize; v4]; v4];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a type alias with a similar name exists
    |
 LL -         pub const fn v21() -> v18 {
@@ -49,12 +53,14 @@ LL +         pub const fn v21() -> v11 {
 error[E0422]: cannot find struct, variant or union type `v18` in this scope
   --> $DIR/unevaluated-const-ice-119731.rs:37:13
    |
-LL |     pub type v11 = [[usize; v4]; v4];
-   |     --------------------------------- similarly named type alias `v11` defined here
-...
 LL |             v18 { _p: () }
-   |             ^^^
+   |             ^^^ not found in this scope
    |
+note: similarly named type alias `v11` defined here
+  --> $DIR/unevaluated-const-ice-119731.rs:9:5
+   |
+LL |     pub type v11 = [[usize; v4]; v4];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a type alias with a similar name exists
    |
 LL -             v18 { _p: () }

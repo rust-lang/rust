@@ -3,11 +3,11 @@
 //!
 //! Regression test for <https://github.com/rust-lang/rust/issues/152633>.
 
-#![feature(lazy_type_alias)]
-#![feature(min_generic_const_args)]
+#![feature(checked_type_aliases, min_generic_const_args, macroless_generic_const_args)]
 
 trait Trait {
-    type const ASSOC: ();
+    #[rustc_always_gca]
+    const ASSOC: ();
 }
 type Arr2 = [usize; <Arr2 as Trait>::ASSOC]; //~ ERROR E0275
 

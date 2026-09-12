@@ -1,5 +1,4 @@
 #![warn(clippy::with_capacity_zero)]
-#![allow(unused)]
 #![allow(clippy::eq_op)]
 
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};

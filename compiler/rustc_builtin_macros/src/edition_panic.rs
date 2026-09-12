@@ -53,9 +53,8 @@ fn expand<'cx>(
                     segments: cx
                         .std_path(&[sym::panic, mac])
                         .into_iter()
-                        .map(|ident| PathSegment::from_ident(ident))
+                        .map(PathSegment::from_ident)
                         .collect(),
-                    tokens: None,
                 },
                 args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(sp),

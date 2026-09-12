@@ -16,7 +16,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefIdMap;
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorsMap};
-use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{
     self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
 };
@@ -33,7 +33,7 @@ use tracing::{debug, debug_span, instrument};
 use crate::diagnostics;
 use crate::hir::definitions::PerParentDisambiguatorState;
 
-#[extension(trait RegionExt)]
+#[extension(trait ResolvedArgExt)]
 impl ResolvedArg {
     fn early(param: &GenericParam<'_>) -> ResolvedArg {
         ResolvedArg::EarlyBound(param.def_id)
@@ -649,7 +649,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Union(_, generics, _)
             | hir::ItemKind::Trait { generics, .. }
             | hir::ItemKind::TraitAlias(_, _, generics, ..)
-            | hir::ItemKind::Impl(hir::Impl { generics, .. }) => {
+            | hir::ItemKind::Impl(hir::Impl { generics, .. })
+            | hir::ItemKind::TestBinderConstraints { generics, .. } => {
                 // These kinds of items have only early-bound lifetime parameters.
                 self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));
             }
@@ -1083,6 +1084,99 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_test_binder_forall(
+        &mut self,
+        forall: &'tcx hir::TestBinderForall<'tcx>,
+    ) -> Self::Result {
+        let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = forall
+            .generics
+            .params
+            .iter()
+            .enumerate()
+            .map(|(late_bound_idx, param)| {
+                (
+                    (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                    late_arg_as_bound_arg(param),
+                )
+            })
+            .unzip();
+        self.record_late_bound_vars(forall.hir_id, binders);
+        let scope = Scope::Binder {
+            hir_id: forall.hir_id,
+            bound_vars,
+            s: self.scope,
+            scope_type: BinderScopeType::Normal,
+            where_bound_origin: None,
+        };
+        self.with(scope, |this| {
+            this.visit_generics(forall.generics);
+            this.visit_test_binder_body(forall.body);
+        });
+        // exit assertions don't have the bound vars in scope
+        if let Some(assert_on_exit) = forall.assert_on_exit {
+            self.visit_test_binder_constraint(assert_on_exit);
+        }
+    }
+
+    fn visit_test_binder_exists(
+        &mut self,
+        exists: &'tcx hir::TestBinderExists<'tcx>,
+    ) -> Self::Result {
+        let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = exists
+            .params
+            .iter()
+            .enumerate()
+            .map(|(late_bound_idx, param)| {
+                (
+                    (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                    late_arg_as_bound_arg(param),
+                )
+            })
+            .unzip();
+        self.record_late_bound_vars(exists.hir_id, binders);
+        let scope = Scope::Binder {
+            hir_id: exists.hir_id,
+            bound_vars,
+            s: self.scope,
+            scope_type: BinderScopeType::Normal,
+            where_bound_origin: None,
+        };
+        self.with(scope, |this| {
+            for param in exists.params {
+                this.visit_generic_param(param);
+            }
+            this.visit_test_binder_body(exists.body);
+        });
+    }
+
+    fn visit_test_binder_bound_type_constraint(
+        &mut self,
+        bound_type: &'tcx hir::TestBinderBoundTypeConstraint<'tcx>,
+    ) -> Self::Result {
+        let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = bound_type
+            .params
+            .iter()
+            .enumerate()
+            .map(|(late_bound_idx, param)| {
+                (
+                    (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                    late_arg_as_bound_arg(param),
+                )
+            })
+            .unzip();
+        self.record_late_bound_vars(bound_type.hir_id, binders);
+        let scope = Scope::Binder {
+            hir_id: bound_type.hir_id,
+            bound_vars,
+            s: self.scope,
+            scope_type: BinderScopeType::Normal,
+            where_bound_origin: None,
+        };
+        self.with(scope, |this| {
+            intravisit::walk_test_binder_bound_type_constraint(this, bound_type);
+        });
+    }
 }
 
 fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectLifetimeDefault {
@@ -1310,12 +1404,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait()
                     {
-                        let mut diag: rustc_errors::Diag<'_> = rustc_session::errors::feature_err(
-                            &self.tcx.sess,
-                            sym::anonymous_lifetime_in_impl_trait,
-                            lifetime_ref.ident.span,
-                            "anonymous lifetimes in `impl Trait` are unstable",
-                        );
+                        let mut diag: rustc_errors::Diag<'_> =
+                            rustc_session::diagnostics::feature_err(
+                                &self.tcx.sess,
+                                sym::anonymous_lifetime_in_impl_trait,
+                                lifetime_ref.ident.span,
+                                "anonymous lifetimes in `impl Trait` are unstable",
+                            );
 
                         if let Some(generics) =
                             self.tcx.hir_get_generics(lifetime_ref.hir_id.owner.def_id)
@@ -1841,13 +1936,26 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             .iter()
                             .map(|param| generic_param_def_as_bound_arg(param)),
                     );
-                    bound_vars.extend(
+                    // `resolve_bound_vars` is computed per HIR owner. `visit_early_late`
+                    // records this associated function's binder before walking its signature,
+                    // so reuse that in-progress binder instead of recursively querying `fn_sig`.
+                    let fn_bound_vars = if assoc_fn.def_id == constraint.hir_id.owner.to_def_id() {
+                        let fn_hir_id =
+                            self.tcx.local_def_id_to_hir_id(assoc_fn.def_id.expect_local());
+                        self.rbv
+                            .late_bound_vars
+                            .get(&fn_hir_id.local_id)
+                            .expect("late-bound vars for the current function were not recorded")
+                            .clone()
+                    } else {
                         self.tcx
                             .fn_sig(assoc_fn.def_id)
                             .instantiate_identity()
                             .skip_norm_wip()
-                            .bound_vars(),
-                    );
+                            .bound_vars()
+                            .to_vec()
+                    };
+                    bound_vars.extend(fn_bound_vars);
                     bound_vars
                 } else {
                     self.tcx
@@ -1943,10 +2051,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 _ => None,
             },
             DefKind::AnonConst
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::AssocFn
             | DefKind::Closure
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Ctor(..)
             | DefKind::ExternCrate
@@ -1956,7 +2064,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             | DefKind::ForeignTy
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::InlineConst
             | DefKind::LifetimeParam
             | DefKind::Macro(_)
             | DefKind::Mod
@@ -1964,7 +2071,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             | DefKind::Static { .. }
             | DefKind::SyntheticCoroutineBody
             | DefKind::TyParam
-            | DefKind::Use => None, // see NOTE above!
+            | DefKind::Use
+            | DefKind::TestBinderConstraints => None, // see NOTE above!
         }
     }
 

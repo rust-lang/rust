@@ -79,7 +79,8 @@ impl SocketAddr {
     ///
     /// With a pathname:
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     /// use std::path::Path;
@@ -104,7 +105,8 @@ impl SocketAddr {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::SocketAddr;
     /// use std::path::Path;
@@ -118,7 +120,8 @@ impl SocketAddr {
     ///
     /// Creating a `SocketAddr` with a NULL byte results in an error.
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::SocketAddr;
     ///
@@ -151,7 +154,8 @@ impl SocketAddr {
     ///
     /// A named address:
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///

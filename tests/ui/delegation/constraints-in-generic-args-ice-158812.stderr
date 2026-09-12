@@ -1,0 +1,9 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/constraints-in-generic-args-ice-158812.rs:9:19
+   |
+LL |     reuse Trait::<A = ()>::foo;
+   |                   ^^^^^^ associated item constraint not allowed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0229`.

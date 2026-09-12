@@ -7,7 +7,7 @@
 struct Foo;
 
 #[diagnostic::on_move(
-//~^WARN `#[diagnostic::on_move]` attribute cannot be used on traits
+//~^WARN the `diagnostic::on_move` attribute cannot be used on traits
     message = "Foo",
     label = "Bar",
 )]

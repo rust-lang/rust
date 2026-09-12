@@ -16,7 +16,7 @@ extern crate rustc_span;
 use std::process::ExitCode;
 
 use rustc_driver::Compilation;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_interface::interface::Compiler;
 use rustc_middle::ty::{self, TyCtxt};

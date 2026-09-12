@@ -26,7 +26,8 @@ use tracing::{debug, warn};
 use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
 use crate::{
-    CodeSuggestion, DiagInner, DiagMessage, Level, MultiSpan, Style, Subdiag, SuggestionStyle,
+    CodeSuggestion, DiagInner, DiagMessage, Level, MultiSpan, Style, Subdiag, Sublevel,
+    SuggestionStyle,
 };
 
 /// Describes the way the content of the `rendered` field of the json output is generated
@@ -175,7 +176,7 @@ pub trait Emitter {
                     ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, name) => {
-                        Some((macro_kind, name, expn_data.hide_backtrace))
+                        Some((macro_kind, name, expn_data.diagnostic_opaque))
                     }
                 }
             })
@@ -188,8 +189,7 @@ pub trait Emitter {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            // Skip builtin macros, as their expansion isn't relevant to the end user. This includes
-            // actual intrinsics, like `asm!`.
+            // Skip macros annotated with `#[diagnostic::opaque]`. Builtin macros are "opaque" too.
             if let Some((macro_kind, name, _)) = has_macro_spans.first()
                 && let Some((_, _, false)) = has_macro_spans.last()
             {
@@ -210,7 +210,7 @@ pub trait Emitter {
                 );
 
                 children.push(Subdiag {
-                    level: Level::Note,
+                    level: Sublevel::Note,
                     messages: vec![(DiagMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
                 });
@@ -334,6 +334,13 @@ pub trait Emitter {
     // we move these spans from the external macros to their corresponding use site.
     fn fix_multispan_in_extern_macros(&self, span: &mut MultiSpan) {
         let Some(source_map) = self.source_map() else { return };
+        let should_hide = |span| {
+            source_map.is_imported(span) || {
+                let expn = span.data().ctxt.outer_expn_data();
+                expn.diagnostic_opaque && matches!(expn.kind, ExpnKind::Macro(MacroKind::Bang, _))
+            }
+        };
+
         // First, find all the spans in external macros and point instead at their use site.
         let replacements: Vec<(Span, Span)> = span
             .primary_spans()
@@ -341,11 +348,11 @@ pub trait Emitter {
             .copied()
             .chain(span.span_labels().iter().map(|sp_label| sp_label.span))
             .filter_map(|sp| {
-                if !sp.is_dummy() && source_map.is_imported(sp) {
+                if !sp.is_dummy() && should_hide(sp) {
                     let mut span = sp;
                     while let Some(callsite) = span.parent_callsite() {
                         span = callsite;
-                        if !source_map.is_imported(span) {
+                        if !should_hide(span) {
                             return Some((sp, span));
                         }
                     }
@@ -373,7 +380,7 @@ impl Emitter for EmitterWithNote {
     }
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
-        diag.sub(Level::Note, self.note.clone(), MultiSpan::new());
+        diag.sub(Sublevel::Note, self.note.clone(), MultiSpan::new());
         self.emitter.emit_diagnostic(diag);
     }
 }
@@ -549,33 +556,10 @@ pub fn get_stderr_color_choice(color: ColorConfig, stderr: &std::io::Stderr) -> 
     if matches!(choice, ColorChoice::Auto) { AutoStream::choice(stderr) } else { choice }
 }
 
-/// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.
-///
-/// See #36178.
-const BRIGHT_BLUE: anstyle::Style = if cfg!(windows) {
-    AnsiColor::BrightCyan.on_default()
-} else {
-    AnsiColor::BrightBlue.on_default()
-};
-
 impl Style {
-    pub(crate) fn anstyle(&self, lvl: Level) -> anstyle::Style {
+    pub(crate) fn anstyle(&self) -> anstyle::Style {
         match self {
-            Style::Addition => AnsiColor::BrightGreen.on_default(),
-            Style::Removal => AnsiColor::BrightRed.on_default(),
-            Style::LineAndColumn => anstyle::Style::new(),
-            Style::LineNumber => BRIGHT_BLUE.effects(Effects::BOLD),
-            Style::Quotation => anstyle::Style::new(),
-            Style::MainHeaderMsg => if cfg!(windows) {
-                AnsiColor::BrightWhite.on_default()
-            } else {
-                anstyle::Style::new()
-            }
-            .effects(Effects::BOLD),
-            Style::UnderlinePrimary | Style::LabelPrimary => lvl.color().effects(Effects::BOLD),
-            Style::UnderlineSecondary | Style::LabelSecondary => BRIGHT_BLUE.effects(Effects::BOLD),
-            Style::HeaderMsg | Style::NoStyle => anstyle::Style::new(),
-            Style::Level(lvl) => lvl.color().effects(Effects::BOLD),
+            Style::NoStyle => anstyle::Style::new(),
             Style::Highlight => AnsiColor::Magenta.on_default().effects(Effects::BOLD),
         }
     }

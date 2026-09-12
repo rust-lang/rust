@@ -9,6 +9,7 @@ use hir_def::{
     hir::{ClosureKind, CoroutineKind, CoroutineSource, ExprId, PatId},
     type_ref::TypeRefId,
 };
+use indexmap::IndexMap;
 use rustc_abi::ExternAbi;
 use rustc_type_ir::{
     AliasTyKind, ClosureArgs, ClosureArgsParts, CoroutineArgs, CoroutineArgsParts,
@@ -21,11 +22,11 @@ use tracing::{debug, instrument};
 use crate::{
     Span,
     db::{InternedClosure, InternedClosureId, InternedCoroutineClosureId, InternedCoroutineId},
-    infer::{BreakableKind, Diverges, coerce::CoerceMany, pat::PatOrigin},
+    infer::{BreakableKind, ClosureData, Diverges, coerce::CoerceMany, pat::PatOrigin},
     next_solver::{
         AliasTy, Binder, ClauseKind, DbInterner, ErrorGuaranteed, FnSig, GenericArg, PolyFnSig,
-        PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, TermId, Ty, TyKind,
-        Unnormalized,
+        PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, StoredFnSig, TermId, Ty,
+        TyKind, Unnormalized,
         abi::Safety,
         infer::{
             BoundRegionConversionTime, InferOk, InferResult,
@@ -47,7 +48,7 @@ struct ClosureSignatures<'db> {
     liberated_sig: FnSig<'db>,
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     fn poll_option_ty(&mut self, item_ty: Ty<'db>) -> Ty<'db> {
         let interner = self.interner();
 
@@ -303,8 +304,17 @@ impl<'db> InferenceContext<'_, 'db> {
             }
         };
 
+        self.result.closures_data.insert(
+            closure_expr,
+            ClosureData {
+                liberated_sig: StoredFnSig::new(liberated_sig),
+                fake_reads: Box::default(),
+                min_captures: IndexMap::default(),
+            },
+        );
+
         // Now go through the argument patterns
-        for (arg_pat, arg_ty) in args.iter().zip(bound_sig.skip_binder().inputs()) {
+        for (arg_pat, arg_ty) in args.iter().zip(liberated_sig.inputs()) {
             self.infer_top_pat(*arg_pat, *arg_ty, PatOrigin::Param);
         }
 
@@ -957,7 +967,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let interner = self.interner();
 
         let supplied_return = match decl_output {
-            Some(output) => self.make_body_ty(output),
+            Some(output) => self.make_ty(output),
             None => match closure_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
@@ -995,7 +1005,7 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl_inputs.iter().map(|&input| match input {
-            Some(input) => self.make_body_ty(input),
+            Some(input) => self.make_ty(input),
             None => self.table.next_ty_var(closure_expr.into()),
         });
 
@@ -1124,11 +1134,11 @@ impl<'db> InferenceContext<'_, 'db> {
         let err_ty = Ty::new_error(interner, ErrorGuaranteed);
 
         if let Some(output) = decl_output {
-            self.make_body_ty(output);
+            self.make_ty(output);
         }
         let supplied_arguments = decl_inputs.iter().map(|&input| match input {
             Some(input) => {
-                self.make_body_ty(input);
+                self.make_ty(input);
                 err_ty
             }
             None => err_ty,
@@ -1148,8 +1158,9 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn closure_sigs(&self, bound_sig: PolyFnSig<'db>) -> ClosureSignatures<'db> {
-        let liberated_sig = bound_sig.skip_binder();
-        // FIXME: When we lower HRTB we'll need to actually liberate regions here.
+        // TODO: def id needs to be changed?
+        let liberated_sig =
+            self.interner().liberate_late_bound_regions(self.owner.into(), bound_sig);
         ClosureSignatures { bound_sig, liberated_sig }
     }
 }

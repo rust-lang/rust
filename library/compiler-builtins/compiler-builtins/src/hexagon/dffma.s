@@ -338,10 +338,8 @@ __hexagon_fmadf5:
  {
   p0 = !cmp.eq(r2,#1)
   p0 = !cmp.eq(r3,#2)
- }
- {
-  p0 = dfcmp.eq(r9:8,r9:8)
   if (p0.new) r11:10 = r9:8
+  p0 = dfcmp.eq(r9:8,r9:8)
  }
  {
   r1:0 = insert(r11:10,#63,#0)

@@ -1,0 +1,18 @@
+error: `#[rustc_force_inline]` and `#[inline]` cannot be used together
+  --> $DIR/rustc-force-inline-conflict-with-inline.rs:4:1
+   |
+LL | #[inline]
+   | --------- the inline attribute is specified here
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[rustc_force_inline]` and `#[inline]` cannot be used together
+  --> $DIR/rustc-force-inline-conflict-with-inline.rs:7:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL | #[inline]
+   | --------- the inline attribute is specified here
+
+error: aborting due to 2 previous errors
+

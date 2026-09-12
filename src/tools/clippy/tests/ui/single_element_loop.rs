@@ -69,4 +69,11 @@ fn main() {
         //~^ single_element_loop
         let ptr: *const bool = std::ptr::null();
     }
+
+    for _ in [3..5] {
+        //~^ single_element_loop
+        if true {
+            println!("aaa");
+        }
+    }
 }

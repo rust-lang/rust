@@ -1,5 +1,6 @@
 #![allow(dead_code)] // not used on all platforms
 
+use crate::fs::{create_dir, remove_dir, remove_file, rename};
 use crate::io::{self, Error, ErrorKind};
 use crate::path::{Path, PathBuf};
 use crate::sys::IntoInner;
@@ -70,12 +71,38 @@ impl Dir {
         path.canonicalize().map(|path| Self { path })
     }
 
+    pub fn open_for_traversal(path: &Path) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        Self::open(path, &opts)
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        File::open(&self.path.join(path), &opts)
+        File::open(&self.path.join(path), opts)
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
         self.path.metadata().map(|m| m.into_inner())
+    }
+
+    pub fn remove_file(&self, path: &Path) -> io::Result<()> {
+        remove_file(self.path.join(path))
+    }
+
+    pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
+        rename(self.path.join(from), to_dir.path.join(to))
+    }
+
+    pub fn create_dir(&self, path: &Path) -> io::Result<()> {
+        create_dir(self.path.join(path))
+    }
+
+    pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
+        Self::open(&self.path.join(path), opts)
+    }
+
+    pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
+        remove_dir(path)
     }
 }
 

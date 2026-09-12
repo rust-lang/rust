@@ -10,7 +10,10 @@
 + 
       bb0: {
 +         Coverage::VirtualCounter(bcb0);
+          Coverage::Point(Expr, HirId(DefId(0:4 ~ instrument_coverage[f559]::bar).3);
+          Coverage::Point(Expr, HirId(DefId(0:4 ~ instrument_coverage[f559]::bar).2);
           _0 = const true;
+          Coverage::Point(FunctionEnd, HirId(DefId(0:4 ~ instrument_coverage[f559]::bar).0);
           return;
       }
   }

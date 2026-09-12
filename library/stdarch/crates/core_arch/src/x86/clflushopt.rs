@@ -4,7 +4,7 @@
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.clflushopt"]
     fn clflushopt(p: *const u8);
 }

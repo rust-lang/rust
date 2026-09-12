@@ -76,7 +76,12 @@ impl TestCx<'_> {
 
         let tools_bin = host_build_root.join("bootstrap-tools");
         let support_host_path = tools_bin.join(&self.config.host).join("release");
-        let support_lib_path = support_host_path.join("librun_make_support.rlib");
+        let support_lib_rlib_path = self
+            .config
+            .run_make_support_rlib
+            .as_ref()
+            .expect("run-make-support .rlib has to be passed for run-make tests");
+        let support_lib_rmeta_path = self.config.run_make_support_rmeta.as_ref();
 
         let support_lib_deps = discover_out_dirs(support_host_path.join("build"));
         let support_lib_deps_deps = discover_out_dirs(tools_bin.join("release").join("build"));
@@ -123,16 +128,19 @@ impl TestCx<'_> {
             .arg("-o")
             .arg(&recipe_bin)
             // Specify library search paths for `run_make_support`.
-            .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap()))
             .args(out_dirs_to_args(support_lib_deps))
             .args(out_dirs_to_args(support_lib_deps_deps))
             // Provide `run_make_support` as extern prelude, so test writers don't need to write
             // `extern run_make_support;`.
             .arg("--extern")
-            .arg(format!("run_make_support={}", &support_lib_path))
+            .arg(format!("run_make_support={}", &support_lib_rlib_path))
             .arg("--edition=2024")
             .arg(&self.testpaths.file.join("rmake.rs"))
             .arg("-Cprefer-dynamic");
+
+        if let Some(support_lib_rmeta_path) = support_lib_rmeta_path {
+            rustc.arg("--extern").arg(format!("run_make_support={}", &support_lib_rmeta_path));
+        }
 
         // In test code we want to be very pedantic about values being silently discarded that are
         // annotated with `#[must_use]`.
@@ -194,6 +202,11 @@ impl TestCx<'_> {
             // Provide which LLVM components are available (e.g. which LLVM components are provided
             // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
+
+        if let Some(codegen_backend) = &self.config.override_codegen_backend {
+            // In case it's a different codegen backend than LLVM.
+            cmd.env("RUSTC_CODEGEN_BACKEND", codegen_backend.as_str());
+        }
 
         // The `run-make-cargo` and `build-std` suites need an in-tree `cargo`, `run-make` does not.
         if matches!(self.config.suite, TestSuite::RunMakeCargo | TestSuite::BuildStd) {

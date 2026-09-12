@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![feature(transmutability)]
 
 use std::mem::{Assume, TransmuteFrom};

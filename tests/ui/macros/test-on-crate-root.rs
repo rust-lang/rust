@@ -4,7 +4,7 @@
 // when referring to the attribute with full path specifically.
 #![core::prelude::v1::test]
 //~^ ERROR inner macro attributes are unstable
-//~| ERROR the `#[test]` attribute may only be used on a free function
+//~| ERROR the `test` attribute may only be used on a free function
 
 
 fn main() {}

@@ -11,11 +11,6 @@ LL |     callback(pin!(data));
    |
    = note: expected type parameter `_`
            found mutable reference `&mut _`
-help: the return type of this call is `&mut T` due to the type of the argument passed
-  --> $DIR/dont-deref-coerce-pinned-value.rs:9:14
-   |
-LL |     callback(pin!(data));
-   |              ^^^^^^^^^^ this argument influences the return type of `unreachable_pin_macro_type_constraint`
 note: function defined here
   --> $SRC_DIR/core/src/pin.rs:LL:COL
 

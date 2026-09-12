@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::error::Error;
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 

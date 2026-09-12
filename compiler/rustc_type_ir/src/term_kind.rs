@@ -1,3 +1,5 @@
+use std::debug_assert_matches;
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
@@ -66,8 +68,12 @@ pub enum AliasTermKind<I: Interner> {
     ProjectionConst { def_id: I::TraitAssocConstId },
     /// A top level const item not part of a trait or impl.
     FreeConst { def_id: I::FreeConstAliasId },
-    /// An associated const in an inherent `impl`
-    InherentConst { def_id: I::InherentAssocConstId },
+    /// An associated const in an inherent `impl`. See [`ty::AliasConstKind::InherentSelf`] for a
+    /// description on the difference between `InherentConstSelf` and `InherentConstImpl`.
+    InherentConstSelf { def_id: I::InherentAssocConstId },
+    /// An associated const in an inherent `impl`. See [`ty::AliasConstKind::InherentSelf`] for a
+    /// description on the difference between `InherentConstSelf` and `InherentConstImpl`.
+    InherentConstImpl { def_id: I::InherentAssocConstId },
 }
 
 impl<I: Interner> AliasTermKind<I> {
@@ -76,7 +82,9 @@ impl<I: Interner> AliasTermKind<I> {
             AliasTermKind::ProjectionTy { .. } => "associated type",
             AliasTermKind::ProjectionConst { .. } => "associated const",
             AliasTermKind::InherentTy { .. } => "inherent associated type",
-            AliasTermKind::InherentConst { .. } => "inherent associated const",
+            AliasTermKind::InherentConstSelf { .. } | AliasTermKind::InherentConstImpl { .. } => {
+                "inherent associated const"
+            }
             AliasTermKind::OpaqueTy { .. } => "opaque type",
             AliasTermKind::FreeTy { .. } => "type alias",
             AliasTermKind::FreeConst { .. } => "const alias",
@@ -93,7 +101,8 @@ impl<I: Interner> AliasTermKind<I> {
 
             AliasTermKind::AnonConst { .. }
             | AliasTermKind::ProjectionConst { .. }
-            | AliasTermKind::InherentConst { .. }
+            | AliasTermKind::InherentConstSelf { .. }
+            | AliasTermKind::InherentConstImpl { .. }
             | AliasTermKind::FreeConst { .. } => false,
         }
     }
@@ -106,7 +115,8 @@ impl<I: Interner> AliasTermKind<I> {
             | AliasTermKind::FreeTy { .. }
             | AliasTermKind::AnonConst { .. }
             | AliasTermKind::FreeConst { .. }
-            | AliasTermKind::InherentConst { .. } => false,
+            | AliasTermKind::InherentConstSelf { .. }
+            | AliasTermKind::InherentConstImpl { .. } => false,
         }
     }
 }
@@ -126,7 +136,12 @@ impl<I: Interner> From<ty::AliasConstKind<I>> for AliasTermKind<I> {
     fn from(value: ty::AliasConstKind<I>) -> Self {
         match value {
             ty::AliasConstKind::Projection { def_id } => AliasTermKind::ProjectionConst { def_id },
-            ty::AliasConstKind::Inherent { def_id } => AliasTermKind::InherentConst { def_id },
+            ty::AliasConstKind::InherentSelf { def_id } => {
+                AliasTermKind::InherentConstSelf { def_id }
+            }
+            ty::AliasConstKind::InherentImpl { def_id } => {
+                AliasTermKind::InherentConstImpl { def_id }
+            }
             ty::AliasConstKind::Free { def_id } => AliasTermKind::FreeConst { def_id },
             ty::AliasConstKind::Anon { def_id } => AliasTermKind::AnonConst { def_id },
         }
@@ -140,17 +155,7 @@ impl<I: Interner> AliasTerm<I> {
         args: I::GenericArgs,
     ) -> AliasTerm<I> {
         if cfg!(debug_assertions) {
-            let def_id = match kind {
-                AliasTermKind::ProjectionTy { def_id } => def_id.into(),
-                AliasTermKind::InherentTy { def_id } => def_id.into(),
-                AliasTermKind::OpaqueTy { def_id } => def_id.into(),
-                AliasTermKind::FreeTy { def_id } => def_id.into(),
-                AliasTermKind::AnonConst { def_id } => def_id.into(),
-                AliasTermKind::ProjectionConst { def_id } => def_id.into(),
-                AliasTermKind::FreeConst { def_id } => def_id.into(),
-                AliasTermKind::InherentConst { def_id } => def_id.into(),
-            };
-            interner.debug_assert_args_compatible(def_id, args);
+            interner.debug_assert_alias_term_args_compatible(kind, args);
         }
         AliasTerm { kind, args, _use_alias_new_instead: () }
     }
@@ -164,8 +169,13 @@ impl<I: Interner> AliasTerm<I> {
         Self::new_from_args(interner, kind, args)
     }
 
-    pub fn new_from_def_id(interner: I, def_id: I::DefId, args: I::GenericArgs) -> AliasTerm<I> {
-        let kind = interner.alias_term_kind_from_def_id(def_id);
+    pub fn new_from_def_id(
+        interner: I,
+        def_id: I::DefId,
+        args: I::GenericArgs,
+        inherent_args: ty::AliasConstInherentArgsKind,
+    ) -> AliasTerm<I> {
+        let kind = interner.alias_term_kind_from_def_id(def_id, inherent_args);
         Self::new_from_args(interner, kind, args)
     }
 
@@ -175,7 +185,8 @@ impl<I: Interner> AliasTerm<I> {
             AliasTermKind::InherentTy { def_id } => ty::AliasTyKind::Inherent { def_id },
             AliasTermKind::OpaqueTy { def_id } => ty::AliasTyKind::Opaque { def_id },
             AliasTermKind::FreeTy { def_id } => ty::AliasTyKind::Free { def_id },
-            kind @ (AliasTermKind::InherentConst { .. }
+            kind @ (AliasTermKind::InherentConstSelf { .. }
+            | AliasTermKind::InherentConstImpl { .. }
             | AliasTermKind::FreeConst { .. }
             | AliasTermKind::AnonConst { .. }
             | AliasTermKind::ProjectionConst { .. }) => {
@@ -187,7 +198,12 @@ impl<I: Interner> AliasTerm<I> {
 
     pub fn expect_ct(self) -> ty::AliasConst<I> {
         let kind = match self.kind {
-            AliasTermKind::InherentConst { def_id } => ty::AliasConstKind::Inherent { def_id },
+            AliasTermKind::InherentConstSelf { def_id } => {
+                ty::AliasConstKind::InherentSelf { def_id }
+            }
+            AliasTermKind::InherentConstImpl { def_id } => {
+                ty::AliasConstKind::InherentImpl { def_id }
+            }
             AliasTermKind::FreeConst { def_id } => ty::AliasConstKind::Free { def_id },
             AliasTermKind::AnonConst { def_id } => ty::AliasConstKind::Anon { def_id },
             AliasTermKind::ProjectionConst { def_id } => ty::AliasConstKind::Projection { def_id },
@@ -212,8 +228,11 @@ impl<I: Interner> AliasTerm<I> {
         };
         match self.kind {
             AliasTermKind::FreeConst { def_id } => alias_const(ty::AliasConstKind::Free { def_id }),
-            AliasTermKind::InherentConst { def_id } => {
-                alias_const(ty::AliasConstKind::Inherent { def_id })
+            AliasTermKind::InherentConstSelf { def_id } => {
+                alias_const(ty::AliasConstKind::InherentSelf { def_id })
+            }
+            AliasTermKind::InherentConstImpl { def_id } => {
+                alias_const(ty::AliasConstKind::InherentImpl { def_id })
             }
             AliasTermKind::AnonConst { def_id } => alias_const(ty::AliasConstKind::Anon { def_id }),
             AliasTermKind::ProjectionConst { def_id } => {
@@ -248,11 +267,25 @@ impl<I: Interner> AliasTerm<I> {
 /// The following methods work only with (trait) associated term projections.
 // FIXME: Replace by an impl on Alias<ProjectionAliasTermKind>
 impl<I: Interner> AliasTerm<I> {
+    fn debug_assert_has_self(self) {
+        // InherentConstImpl is deliberately omitted here, it is not self-format args
+        debug_assert_matches!(
+            self.kind,
+            AliasTermKind::ProjectionTy { .. }
+                | AliasTermKind::ProjectionConst { .. }
+                | AliasTermKind::InherentTy { .. }
+                | AliasTermKind::InherentConstSelf { .. },
+            "AliasTerm::self_ty is only valid on projection and inherent aliases"
+        );
+    }
+
     pub fn self_ty(self) -> I::Ty {
+        self.debug_assert_has_self();
         self.args.type_at(0)
     }
 
     pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        self.debug_assert_has_self();
         AliasTerm::new(
             interner,
             self.kind,
@@ -305,7 +338,8 @@ impl<I: Interner> AliasTerm<I> {
     pub fn expect_inherent_def_id(self) -> I::InherentAssocTermId {
         match self.kind {
             AliasTermKind::InherentTy { def_id } => def_id.into(),
-            AliasTermKind::InherentConst { def_id } => def_id.into(),
+            AliasTermKind::InherentConstSelf { def_id } => def_id.into(),
+            AliasTermKind::InherentConstImpl { def_id } => def_id.into(),
             kind => panic!("expected inherent alias, found {kind:?}"),
         }
     }
@@ -327,7 +361,7 @@ impl<I: Interner> AliasTerm<I> {
     ) -> I::GenericArgs {
         debug_assert!(matches!(
             self.kind,
-            AliasTermKind::InherentTy { .. } | AliasTermKind::InherentConst { .. }
+            AliasTermKind::InherentTy { .. } | AliasTermKind::InherentConstSelf { .. }
         ));
         interner.mk_args_from_iter(impl_args.iter().chain(self.args.iter().skip(1)))
     }

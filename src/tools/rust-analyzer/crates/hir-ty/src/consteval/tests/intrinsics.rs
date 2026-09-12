@@ -225,6 +225,28 @@ fn const_eval_select() {
 }
 
 #[test]
+fn const_allocate() {
+    check_number(
+        r#"
+        //- minicore: fn
+        #[rustc_intrinsic]
+        pub const unsafe fn const_allocate(size: usize, align: usize) -> *mut u8;
+        #[rustc_intrinsic]
+        pub const unsafe fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
+
+        const GOAL: u8 = unsafe {
+            let ptr = const_allocate(4, 4);
+            *ptr = 5;
+            let value = *ptr;
+            const_deallocate(ptr, 4, 4);
+            value
+        };
+        "#,
+        5,
+    );
+}
+
+#[test]
 fn wrapping_add() {
     check_number(
         r#"
@@ -444,7 +466,7 @@ fn floating_point() {
         "#,
         i128::from_le_bytes(pad16(
             &f32::to_le_bytes(1.2f32.sqrt() + 3.4f32.powf(5.6) + (-7.8f32).mul_add(1.3, 2.4)),
-            true,
+            IsSigned::Yes,
         )),
     );
     #[allow(unknown_lints, clippy::unnecessary_min_or_max)]
@@ -461,7 +483,7 @@ fn floating_point() {
         "#,
         i128::from_le_bytes(pad16(
             &f64::to_le_bytes(1.2f64.powi(5) + 3.4f64.sin() + (-7.8f64).min(1.3)),
-            true,
+            IsSigned::Yes,
         )),
     );
 }
@@ -690,6 +712,33 @@ fn cttz() {
         const GOAL: i64 = cttz(-24);
         "#,
         3,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: i8 = cttz(0i8);
+        "#,
+        8,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: u32 = cttz(0u32);
+        "#,
+        32,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: u64 = cttz(0u64);
+        "#,
+        64,
     );
 }
 

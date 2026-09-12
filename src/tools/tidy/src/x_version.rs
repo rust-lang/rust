@@ -49,7 +49,7 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
         if let Some(expected) = get_x_wrapper_version(root, cargo) {
             if installed < expected {
                 println!(
-                    "Current version of x is {installed}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
+                    "Current version of x is {installed}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --locked --path src/tools/x`"
                 )
             }
         } else {

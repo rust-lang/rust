@@ -1,415 +1,700 @@
 //! Implementation of applying changes to a syntax tree.
 
-use std::{
-    cmp::Ordering,
-    collections::VecDeque,
-    ops::{Range, RangeInclusive},
-};
+use std::{cmp::Ordering, ops::Range};
 
 use rowan::TextRange;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 
-use crate::{
-    SyntaxElement, SyntaxNode, SyntaxNodePtr,
-    syntax_editor::{Change, ChangeKind, PositionRepr, mapping::MissingMapping},
+use crate::{NodeOrToken, SyntaxElement, SyntaxNode};
+
+use super::{
+    Change, ChangeKind, PositionRepr, SyntaxAnnotation, SyntaxEdit, SyntaxEditor, SyntaxMapping,
+    mapping::MissingMapping,
 };
 
-use super::{SyntaxEdit, SyntaxEditor};
+/// A validated batch of changes in the exact order in which it must execute.
+///
+/// Planning is deliberately separate from tree mutation. Once an `EditPlan`
+/// exists, execution does not need to reason about overlaps, dependencies, or
+/// source ordering.
+struct EditPlan {
+    changes: Vec<PlannedChange>,
+}
 
+/// A change whose target tree and output tracking are fully known.
+struct PlannedChange {
+    tree: SyntaxNode,
+    change: Change,
+    record_as_changed: bool,
+}
+
+impl PlannedChange {
+    /// Returns the immutable source elements that this change will slice in.
+    fn replacement_elements(&self) -> &[SyntaxElement] {
+        match &self.change {
+            Change::Insert(_, element) | Change::Replace(_, Some(element)) => {
+                std::slice::from_ref(element)
+            }
+            Change::InsertAll(_, elements)
+            | Change::ReplaceWithMany(_, elements)
+            | Change::ReplaceAll(_, elements) => elements,
+            Change::Replace(_, None) => &[],
+        }
+    }
+}
+
+/// The dependency info accumulated from one source ordered changes.
+///
+/// `parent` is an edge to the nearest containing node replacement. A discarded
+/// entry has no executable graph node because an ancestor deletion or ambiguous
+/// range replacement has mde its target unavailable.
+#[derive(Clone, Copy, Default)]
+struct PlanEntry {
+    parent: Option<usize>,
+    discarded: bool,
+}
+
+/// Planning failure containing the source-ordered changes use for diag.
+struct InvalidEditPlan {
+    changes: Vec<Change>,
+}
+
+impl EditPlan {
+    /// Validates raw editor changes and turns them into an execution schedule.
+    ///
+    /// The input is first sorted in source order, dependent targets are then
+    /// rewritten from their input trees into ancestor replacement trees. Finally,
+    /// discarded changes are removed and the dependency forest is traversed in
+    /// postorder.
+    /// Independent roots and sibling changes are prioritized right to left.
+    fn build(
+        mut changes: Vec<Change>,
+        mappings: &SyntaxMapping,
+        mut node_depth: impl FnMut(SyntaxNode) -> usize,
+    ) -> Result<Self, InvalidEditPlan> {
+        changes.sort_by(|left, right| {
+            left.target_range()
+                .start()
+                .cmp(&right.target_range().start())
+                .then_with(|| {
+                    let left_target = left.target_parent();
+                    let right_target = right.target_parent();
+                    if left_target == right_target {
+                        Ordering::Equal
+                    } else {
+                        node_depth(left_target).cmp(&node_depth(right_target))
+                    }
+                })
+                .then(left.change_kind().cmp(&right.change_kind()))
+        });
+
+        if !Self::replacements_are_disjoint(&changes, &mut node_depth) {
+            return Err(InvalidEditPlan { changes });
+        }
+
+        let mut entries = vec![PlanEntry::default(); changes.len()];
+        let mut regions_by_tree = FxHashMap::<SyntaxNode, Vec<ChangedRegion>>::default();
+
+        for (index, change) in changes.iter().enumerate() {
+            let target_tree = change.target_parent().tree_top();
+            let regions = regions_by_tree.entry(target_tree).or_default();
+            if let Some(region_index) = regions
+                .iter()
+                .rposition(|region| region.range.contains_range(change.target_range()))
+            {
+                regions.truncate(region_index + 1);
+                match regions[region_index].nested_changes {
+                    NestedChanges::Remap => {
+                        entries[index].parent = Some(regions[region_index].change_index);
+                    }
+                    NestedChanges::Discard => entries[index].discarded = true,
+                }
+            } else {
+                regions.clear();
+            }
+
+            if let Some(region) = ChangedRegion::for_change(change, index, entries[index].discarded)
+            {
+                regions.push(region);
+            }
+        }
+
+        // Work from the innermost dependency towards the outermost one. This
+        // lets a chain A -> B -> C rewrite C into B before B itself is mapped
+        // into A's replacement tree.
+        for (child, entry) in entries.iter().enumerate().rev() {
+            if let Some(parent) = entry.parent {
+                Self::rewrite_dependent_target(&mut changes, parent, child, mappings);
+            }
+        }
+
+        let mut children = vec![Vec::new(); changes.len()];
+        for (child, entry) in entries.iter().enumerate() {
+            if let Some(parent) = entry.parent {
+                children[parent].push(child);
+            }
+        }
+        for siblings in &mut children {
+            siblings.sort_by(|&left, &right| {
+                Self::execution_priority(&changes[left], &changes[right], &mut node_depth)
+            });
+        }
+
+        let mut roots = entries
+            .iter()
+            .enumerate()
+            .filter_map(|(index, entry)| {
+                (!entry.discarded && entry.parent.is_none()).then_some(index)
+            })
+            .collect::<Vec<_>>();
+        roots.sort_by(|&left, &right| {
+            Self::execution_priority(&changes[left], &changes[right], &mut node_depth)
+        });
+
+        let mut planned = changes
+            .into_iter()
+            .zip(entries)
+            .map(|(change, entry)| {
+                (!entry.discarded).then_some(PlannedChange {
+                    tree: change.target_parent().tree_top(),
+                    change,
+                    record_as_changed: entry.parent.is_none(),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let mut ordered = Vec::new();
+        for root in roots {
+            Self::append_postorder(root, &children, &mut planned, &mut ordered);
+        }
+
+        Ok(Self { changes: ordered })
+    }
+
+    /// Orders disjoint changes from right to left, with deeper ties first.
+    fn execution_priority(
+        left: &Change,
+        right: &Change,
+        node_depth: &mut impl FnMut(SyntaxNode) -> usize,
+    ) -> Ordering {
+        right
+            .target_range()
+            .start()
+            .cmp(&left.target_range().start())
+            .then_with(|| node_depth(right.target_parent()).cmp(&node_depth(left.target_parent())))
+            .then(right.change_kind().cmp(&left.change_kind()))
+    }
+
+    /// Appends a dependency subtree in post order fashion.
+    fn append_postorder(
+        index: usize,
+        children: &[Vec<usize>],
+        planned: &mut [Option<PlannedChange>],
+        ordered: &mut Vec<PlannedChange>,
+    ) {
+        for &child in &children[index] {
+            Self::append_postorder(child, children, planned, ordered);
+        }
+        ordered.push(planned[index].take().expect("reachable plan nodes are not discarded"));
+    }
+
+    /// Checks that replacement at the same tree depth do not overlap
+    ///
+    /// `changes` is sorted by range start, so overlap is a single comparison against the
+    /// last range at that key, and `insert` can throw away the range it evicts.
+    fn replacements_are_disjoint(
+        changes: &[Change],
+        mut node_depth: impl FnMut(SyntaxNode) -> usize,
+    ) -> bool {
+        let mut previous = FxHashMap::<(SyntaxNode, usize), TextRange>::default();
+        for change in changes {
+            if !matches!(change.change_kind(), ChangeKind::Replace | ChangeKind::ReplaceRange) {
+                continue;
+            }
+
+            let parent = change.target_parent();
+            let key = (parent.tree_top(), node_depth(parent));
+            if previous
+                .insert(key, change.target_range())
+                .is_some_and(|range| range.end() > change.target_range().start())
+            {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Maps one dependent change into its ancestor replacement tree.
+    fn rewrite_dependent_target(
+        changes: &mut [Change],
+        parent: usize,
+        child: usize,
+        mappings: &SyntaxMapping,
+    ) {
+        let (input_ancestor, output_ancestor) = match &changes[parent] {
+            Change::Replace(
+                SyntaxElement::Node(target),
+                Some(SyntaxElement::Node(replacement)),
+            ) => (target.clone(), replacement.clone()),
+            _ => unreachable!("only node replacements can own dependent changes"),
+        };
+
+        let upmap_node = |target: &SyntaxNode| {
+            mappings.upmap_child(target, &input_ancestor, &output_ancestor).unwrap_or_else(
+                |MissingMapping(current)| {
+                    panic!(
+                        "no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"
+                    )
+                },
+            )
+        };
+        let upmap_element = |target: &SyntaxElement| {
+            mappings.upmap_child_element(target, &input_ancestor, &output_ancestor).unwrap_or_else(
+                |MissingMapping(current)| {
+                    panic!(
+                        "no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"
+                    )
+                },
+            )
+        };
+
+        match &mut changes[child] {
+            Change::Insert(position, _) | Change::InsertAll(position, _) => {
+                match &mut position.repr {
+                    PositionRepr::FirstChild(parent) => *parent = upmap_node(parent),
+                    PositionRepr::After(child) => *child = upmap_element(child),
+                }
+            }
+            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
+                *target = upmap_element(target);
+            }
+            Change::ReplaceAll(range, _) => {
+                *range = upmap_element(range.start())..=upmap_element(range.end());
+            }
+        }
+    }
+}
+
+/// A stable structural address expressed as `children_with_token` indices.
+#[derive(Clone)]
+struct SyntaxPath {
+    child_indices: Vec<usize>,
+}
+
+impl SyntaxPath {
+    /// Builds the root-relative path of element in its current tree.
+    fn new(element: &SyntaxElement) -> Self {
+        let mut child_indices = Vec::new();
+        let mut node = match element {
+            SyntaxElement::Node(node) => node.clone(),
+            SyntaxElement::Token(token) => {
+                child_indices.push(token.index());
+                token.parent().unwrap()
+            }
+        };
+
+        while let Some(parent) = node.parent() {
+            child_indices.push(node.index());
+            node = parent;
+        }
+        child_indices.reverse();
+        Self { child_indices }
+    }
+
+    /// Follows this path from root, returning None if the structure differs.
+    fn resolve(&self, root: &SyntaxNode) -> Option<SyntaxElement> {
+        let mut current = SyntaxElement::Node(root.clone());
+        for &index in &self.child_indices {
+            current = current.into_node()?.children_with_tokens().nth(index)?;
+        }
+        Some(current)
+    }
+
+    /// Removes `ancestor`'s prefix, yielding this path within that subtree.
+    ///
+    /// Could have used LCA?
+    fn relative_to(&self, ancestor: &SyntaxPath) -> Option<SyntaxPath> {
+        self.child_indices
+            .strip_prefix(ancestor.child_indices.as_slice())
+            .map(|relative| SyntaxPath { child_indices: relative.to_vec() })
+    }
+
+    /// Appends an inserted child slot and a path relative to that child.
+    fn in_child(&self, index: usize, relative: &SyntaxPath) -> SyntaxPath {
+        let mut child_indices =
+            Vec::with_capacity(self.child_indices.len() + relative.child_indices.len() + 1);
+        child_indices.extend_from_slice(&self.child_indices);
+        child_indices.push(index);
+        child_indices.extend_from_slice(&relative.child_indices);
+        SyntaxPath { child_indices }
+    }
+
+    /// Updates this path for a splice and reports whether its element survives.
+    fn adjust_for_splice(
+        &mut self,
+        parent: &SyntaxPath,
+        deleted: &Range<usize>,
+        inserted: usize,
+    ) -> bool {
+        let Some(relative) = self.child_indices.strip_prefix(parent.child_indices.as_slice())
+        else {
+            return true;
+        };
+        let Some((&child, _)) = relative.split_first() else { return true };
+
+        if deleted.contains(&child) {
+            return false;
+        }
+        if child >= deleted.end {
+            let new_child = child + inserted;
+            self.child_indices[parent.child_indices.len()] =
+                new_child - (deleted.end - deleted.start);
+        }
+        true
+    }
+}
+
+/// An annotation paired with its structural location and registration order.
+#[derive(Clone)]
+struct TrackedAnnotation {
+    path: SyntaxPath,
+    annotation: SyntaxAnnotation,
+    order: usize,
+}
+
+/// A structural edit used to translate original paths into a current tree.
+enum PathEdit {
+    /// A child-list splice with all coordinates relative to the pre-edit tree.
+    Splice { parent: SyntaxPath, deleted: Range<usize>, inserted: usize },
+    /// A root replacement, after which no path into the old root survives.
+    ReplaceRoot,
+}
+
+/// The evolving immutable root and location metadata for one source tree.
+///
+/// A syntax edit can involve the editor root plus several detached factory
+/// trees. Each receives an independent state so dependent edits can be applied
+/// before a generated tree is inserted elsewhere.
+struct TreeState {
+    root: SyntaxNode,
+    edits: Vec<PathEdit>,
+    changed: Vec<SyntaxPath>,
+    original_annotations: Vec<TrackedAnnotation>,
+    annotations: Vec<TrackedAnnotation>,
+}
+
+impl TreeState {
+    /// Starts tracking an unmodified immutable root.
+    fn new(root: SyntaxNode) -> Self {
+        Self {
+            root,
+            edits: Vec::new(),
+            changed: Vec::new(),
+            original_annotations: Vec::new(),
+            annotations: Vec::new(),
+        }
+    }
+
+    /// Replay structural edits to translate an original path into this state.
+    fn map_original_path(&self, mut path: SyntaxPath) -> Option<SyntaxPath> {
+        for edit in &self.edits {
+            match edit {
+                PathEdit::Splice { parent, deleted, inserted } => {
+                    if !path.adjust_for_splice(parent, deleted, *inserted) {
+                        return None;
+                    }
+                }
+                PathEdit::ReplaceRoot => return None,
+            }
+        }
+        Some(path)
+    }
+
+    /// Finds a change target in the current root.
+    fn map_original_element(&self, element: &SyntaxElement) -> SyntaxElement {
+        self.map_original_path(SyntaxPath::new(element))
+            .and_then(|path| path.resolve(&self.root))
+            .expect("an edit target must still be present")
+    }
+
+    /// Applies one child-list splice and updates tracked structural path.
+    fn splice(
+        &mut self,
+        parent_path: SyntaxPath,
+        deleted: Range<usize>,
+        inserted: Vec<PreparedElement>,
+        track_as_changed: bool,
+    ) {
+        let inserted_count = inserted.len();
+        self.changed
+            .retain_mut(|path| path.adjust_for_splice(&parent_path, &deleted, inserted_count));
+        self.annotations
+            .retain_mut(|it| it.path.adjust_for_splice(&parent_path, &deleted, inserted_count));
+
+        for (offset, element) in inserted.iter().enumerate() {
+            let index = deleted.start + offset;
+            if track_as_changed {
+                self.changed
+                    .push(parent_path.in_child(index, &SyntaxPath { child_indices: Vec::new() }));
+            }
+            self.annotations.extend(element.annotations.iter().map(|annotation| {
+                TrackedAnnotation {
+                    path: parent_path.in_child(index, &annotation.path),
+                    annotation: annotation.annotation,
+                    order: annotation.order,
+                }
+            }));
+        }
+
+        let parent = parent_path.resolve(&self.root).and_then(SyntaxElement::into_node).unwrap();
+        let green = rowan::GreenNodeData::splice_children(
+            parent.green(),
+            deleted.clone(),
+            inserted.into_iter().map(PreparedElement::into_green),
+        );
+        self.root = SyntaxNode::new_root(parent.replace_with(green));
+        self.edits.push(PathEdit::Splice {
+            parent: parent_path,
+            deleted,
+            inserted: inserted_count,
+        });
+    }
+
+    /// Replaces the tree's root with a prepared node payload.
+    fn replace_root(&mut self, replacement: PreparedElement, track_as_changed: bool) {
+        let NodeOrToken::Node(node) = replacement.syntax else {
+            panic!("root node replacement should be a node")
+        };
+        self.root = SyntaxNode::new_root(node.green().to_owned());
+        self.changed.clear();
+        if track_as_changed {
+            self.changed.push(SyntaxPath { child_indices: Vec::new() });
+        }
+        self.annotations = replacement.annotations;
+        self.edits.push(PathEdit::ReplaceRoot);
+    }
+
+    /// Applies a planned change to this tree using already prepared payloads.
+    fn apply(
+        &mut self,
+        change: &Change,
+        replacement: Vec<PreparedElement>,
+        record_as_changed: bool,
+    ) {
+        match change {
+            Change::Insert(position, _) | Change::InsertAll(position, _) => {
+                let (parent, index) = match &position.repr {
+                    PositionRepr::FirstChild(parent) => {
+                        let parent = self.map_original_element(&parent.clone().into());
+                        (parent.into_node().unwrap(), 0)
+                    }
+                    PositionRepr::After(child) => {
+                        let child = self.map_original_element(child);
+                        (child.parent().unwrap(), child.index() + 1)
+                    }
+                };
+                self.splice(
+                    SyntaxPath::new(&parent.into()),
+                    index..index,
+                    replacement,
+                    record_as_changed,
+                );
+            }
+            Change::Replace(SyntaxElement::Node(target), Some(_)) if target.parent().is_none() => {
+                self.replace_root(replacement.into_iter().next().unwrap(), record_as_changed);
+            }
+            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
+                let target = self.map_original_element(target);
+                let parent = target.parent().unwrap();
+                let index = target.index();
+                self.splice(
+                    SyntaxPath::new(&parent.into()),
+                    index..index + 1,
+                    replacement,
+                    record_as_changed,
+                );
+            }
+            Change::ReplaceAll(range, _) => {
+                let start = self.map_original_element(range.start());
+                let end = self.map_original_element(range.end());
+                let parent = start.parent().unwrap();
+                self.splice(
+                    SyntaxPath::new(&parent.into()),
+                    start.index()..end.index() + 1,
+                    replacement,
+                    record_as_changed,
+                );
+            }
+        }
+    }
+}
+
+/// A replacement payload paired with the annotation below it.
+///
+/// The syntax element remains an immutable snapshot of its source tree.
+/// Annotation paths are relative to the payload root and are rebased by
+/// splice
+struct PreparedElement {
+    syntax: SyntaxElement,
+    annotations: Vec<TrackedAnnotation>,
+}
+
+impl PreparedElement {
+    fn into_green(self) -> rowan::NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
+        match self.syntax {
+            SyntaxElement::Node(node) => NodeOrToken::Node(node.green().to_owned()),
+            SyntaxElement::Token(token) => NodeOrToken::Token(token.green().to_owned()),
+        }
+    }
+}
+
+/// Owns all evolving trees involved in executing an edit plan.
+struct TreeStore {
+    states: FxHashMap<SyntaxNode, TreeState>,
+}
+
+impl TreeStore {
+    /// Creates per tree state for annotations after following factory mapping.
+    fn with_annotations(
+        annotations: Vec<(SyntaxElement, SyntaxAnnotation)>,
+        mappings: &SyntaxMapping,
+    ) -> Self {
+        let mut states = FxHashMap::<SyntaxNode, TreeState>::default();
+        for (order, (element, annotation)) in annotations.into_iter().enumerate() {
+            let element = mappings.upmap_element(&element);
+            let tree = element.tree_top();
+            let tracked = TrackedAnnotation { path: SyntaxPath::new(&element), annotation, order };
+            let state = states.entry(tree.clone()).or_insert_with(|| TreeState::new(tree));
+            state.original_annotations.push(tracked.clone());
+            state.annotations.push(tracked);
+        }
+        Self { states }
+    }
+
+    /// Execute an already ordered plan without performing further analysis.
+    fn execute(&mut self, plan: EditPlan) {
+        for planned in plan.changes {
+            self.states
+                .entry(planned.tree.clone())
+                .or_insert_with(|| TreeState::new(planned.tree.clone()));
+            let replacement = planned
+                .replacement_elements()
+                .iter()
+                .map(|element| self.prepare_element(element))
+                .collect();
+            self.states.get_mut(&planned.tree).unwrap().apply(
+                &planned.change,
+                replacement,
+                planned.record_as_changed,
+            );
+        }
+    }
+
+    /// Captures the source element and annotations used by a replacement.
+    fn prepare_element(&self, element: &SyntaxElement) -> PreparedElement {
+        let tree = element.tree_top();
+        let original_path = SyntaxPath::new(element);
+        let (element, annotations) = match self.states.get(&tree) {
+            Some(state) => {
+                let annotations_below =
+                    |annotations: &[TrackedAnnotation], ancestor: &SyntaxPath| {
+                        annotations
+                            .iter()
+                            .filter_map(|annotation| {
+                                annotation.path.relative_to(ancestor).map(|path| {
+                                    TrackedAnnotation {
+                                        path,
+                                        annotation: annotation.annotation,
+                                        order: annotation.order,
+                                    }
+                                })
+                            })
+                            .collect()
+                    };
+                match state.map_original_path(original_path.clone()) {
+                    Some(path) => {
+                        let element = path.resolve(&state.root).unwrap();
+                        let annotations = annotations_below(&state.annotations, &path);
+                        (element, annotations)
+                    }
+                    None => {
+                        let annotations =
+                            annotations_below(&state.original_annotations, &original_path);
+                        (element.clone(), annotations)
+                    }
+                }
+            }
+            None => (element.clone(), Vec::new()),
+        };
+        PreparedElement { syntax: element, annotations }
+    }
+
+    /// Resolves the editor roots tracked paths and constructs the public edit.
+    fn finish(mut self, old_root: SyntaxNode) -> SyntaxEdit {
+        let state =
+            self.states.remove(&old_root).unwrap_or_else(|| TreeState::new(old_root.clone()));
+        let new_root = state.root;
+
+        let mut changed_elements = state
+            .changed
+            .into_iter()
+            .filter_map(|path| path.resolve(&new_root))
+            .collect::<Vec<_>>();
+        changed_elements.sort_by_key(|element| element.text_range().start());
+
+        let mut annotations = FxHashMap::<SyntaxAnnotation, Vec<(usize, SyntaxElement)>>::default();
+        for annotation in state.annotations {
+            if let Some(element) = annotation.path.resolve(&new_root) {
+                annotations
+                    .entry(annotation.annotation)
+                    .or_default()
+                    .push((annotation.order, element));
+            }
+        }
+        let annotations = annotations
+            .into_iter()
+            .map(|(annotation, mut elements)| {
+                elements.sort_by_key(|(order, element)| (*order, element.text_range().start()));
+                (annotation, elements.into_iter().map(|(_, element)| element).collect())
+            })
+            .collect();
+
+        SyntaxEdit { old_root, new_root, changed_elements, annotations }
+    }
+}
+
+/// Plans and executes all changes recorded by a SyntaxEditor.
 pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
-    // Algorithm overview:
-    //
-    // - Sort changes by (range, type)
-    //   - Ensures that parent edits are before child edits
-    //   - Ensures that inserts will be guaranteed to be inserted at the right range
-    // - Validate changes
-    //   - Checking for invalid changes is easy since the changes will be sorted by range
-    // - Fixup change targets
-    //   - standalone change? map to original syntax tree
-    //   - dependent change?
-    //     - try to map to parent change (either independent or another dependent)
-    //     - note: need to keep track of a parent change stack, since a change can be a parent of multiple changes
-    // - Apply changes
-    //   - find changes to apply to real tree by applying nested changes first
-    //   - changed nodes become part of the changed node set (useful for the formatter to only change those parts)
-    // - Propagate annotations
-
     let SyntaxEditor { root, changes, annotations, make } = editor;
-    let mut changes = changes.into_inner();
-    let annotations = annotations.into_inner();
     let mappings = make.take();
-
     let mut node_depths = FxHashMap::<SyntaxNode, usize>::default();
-    let mut get_node_depth = |node: SyntaxNode| {
+    let mut node_depth = |node: SyntaxNode| {
         *node_depths.entry(node).or_insert_with_key(|node| node.ancestors().count())
     };
 
-    // Sort changes by range, then depth, then change kind, so that we can:
-    // - ensure that parent edits are ordered before child edits
-    // - ensure that inserts will be guaranteed to be inserted at the right range
-    // - easily check for disjoint replace ranges
-    changes.sort_by(|a, b| {
-        a.target_range()
-            .start()
-            .cmp(&b.target_range().start())
-            .then_with(|| {
-                let a_target = a.target_parent();
-                let b_target = b.target_parent();
-
-                if a_target == b_target {
-                    return Ordering::Equal;
-                }
-
-                get_node_depth(a_target).cmp(&get_node_depth(b_target))
-            })
-            .then(a.change_kind().cmp(&b.change_kind()))
-    });
-
-    let disjoint_replaces_ranges = changes
-        .iter()
-        .zip(changes.iter().skip(1))
-        .filter(|(l, r)| {
-            // We only care about checking for disjoint replace ranges
-            matches!(
-                (l.change_kind(), r.change_kind()),
-                (
-                    ChangeKind::Replace | ChangeKind::ReplaceRange,
-                    ChangeKind::Replace | ChangeKind::ReplaceRange
-                )
-            )
-        })
-        .all(|(l, r)| {
-            get_node_depth(l.target_parent()) != get_node_depth(r.target_parent())
-                || (l.target_range().end() <= r.target_range().start())
-        });
-
-    if !disjoint_replaces_ranges {
-        report_intersecting_changes(&changes, get_node_depth, &root);
-
-        return SyntaxEdit {
-            old_root: root.clone(),
-            new_root: root,
-            annotations: Default::default(),
-            changed_elements: vec![],
-        };
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-    struct DependentChange {
-        parent: u32,
-        child: u32,
-    }
-
-    // Build change tree
-    let mut changed_ancestors: VecDeque<ChangedAncestor> = VecDeque::new();
-    let mut dependent_changes = vec![];
-    let mut independent_changes = vec![];
-    let mut outdated_changes = vec![];
-
-    for (change_index, change) in changes.iter().enumerate() {
-        // Check if this change is dependent on another change (i.e. it's contained within another range)
-        if let Some(index) = changed_ancestors
-            .iter()
-            .rposition(|ancestor| ancestor.affected_range().contains_range(change.target_range()))
-        {
-            // Pop off any ancestors that aren't applicable
-            changed_ancestors.drain((index + 1)..);
-
-            // FIXME: Resolve changes that depend on a range of elements
-            let ancestor = &changed_ancestors[index];
-
-            if let Change::Replace(_, None) = changes[ancestor.change_index] {
-                outdated_changes.push(change_index as u32);
-            } else {
-                dependent_changes.push(DependentChange {
-                    parent: ancestor.change_index as u32,
-                    child: change_index as u32,
-                });
-            }
-        } else {
-            // This change is independent of any other change
-
-            // Drain the changed ancestors since we're no longer in a set of dependent changes
-            changed_ancestors.drain(..);
-
-            independent_changes.push(change_index as u32);
-        }
-
-        // Add to changed ancestors, if applicable
-        match change {
-            Change::Replace(SyntaxElement::Node(target), _)
-            | Change::ReplaceWithMany(SyntaxElement::Node(target), _) => {
-                changed_ancestors.push_back(ChangedAncestor::single(target, change_index))
-            }
-            Change::ReplaceAll(range, _) => {
-                changed_ancestors.push_back(ChangedAncestor::multiple(range, change_index))
-            }
-            _ => (),
-        }
-    }
-
-    // Map change targets to the correct syntax nodes
-    let tree_mutator = TreeMutator::new(&root);
-    let mut changed_elements = vec![];
-    let mut changed_elements_set = rustc_hash::FxHashSet::default();
-    let mut deduplicate_node = |node_or_token: &mut SyntaxElement| {
-        let node;
-        let node = match node_or_token {
-            SyntaxElement::Token(token) => match token.parent() {
-                None => return,
-                Some(parent) => {
-                    node = parent;
-                    &node
-                }
-            },
-            SyntaxElement::Node(node) => node,
-        };
-        if changed_elements_set.contains(node) {
-            let new_node = node.clone_subtree().clone_for_update();
-            match node_or_token {
-                SyntaxElement::Node(node) => *node = new_node,
-                SyntaxElement::Token(token) => {
-                    *token = new_node
-                        .children_with_tokens()
-                        .filter_map(SyntaxElement::into_token)
-                        .find(|it| it.kind() == token.kind() && it.text() == token.text())
-                        .unwrap();
-                }
-            }
-        } else {
-            changed_elements_set.insert(node.clone());
+    let plan = match EditPlan::build(changes.into_inner(), &mappings, &mut node_depth) {
+        Ok(plan) => plan,
+        Err(InvalidEditPlan { changes }) => {
+            report_intersecting_changes(&changes, &mut node_depth, &root);
+            return SyntaxEdit {
+                old_root: root.clone(),
+                new_root: root,
+                annotations: FxHashMap::default(),
+                changed_elements: Vec::new(),
+            };
         }
     };
 
-    for index in independent_changes {
-        match &mut changes[index as usize] {
-            Change::Insert(target, _) | Change::InsertAll(target, _) => {
-                match &mut target.repr {
-                    PositionRepr::FirstChild(parent) => {
-                        *parent = tree_mutator.make_syntax_mut(parent);
-                    }
-                    PositionRepr::After(child) => {
-                        *child = tree_mutator.make_element_mut(child);
-                    }
-                };
-            }
-            Change::Replace(SyntaxElement::Node(target), Some(SyntaxElement::Node(_))) => {
-                *target = tree_mutator.make_syntax_mut(target);
-            }
-            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
-                *target = tree_mutator.make_element_mut(target);
-            }
-            Change::ReplaceAll(range, _) => {
-                let start = tree_mutator.make_element_mut(range.start());
-                let end = tree_mutator.make_element_mut(range.end());
-
-                *range = start..=end;
-            }
-        }
-
-        match &mut changes[index as usize] {
-            Change::Insert(_, SyntaxElement::Node(node))
-            | Change::Replace(_, Some(SyntaxElement::Node(node))) => {
-                if node.parent().is_some() {
-                    *node = node.clone_subtree().clone_for_update();
-                } else if !node.is_mutable() {
-                    *node = node.clone_for_update();
-                }
-            }
-            Change::Insert(_, SyntaxElement::Token(token))
-            | Change::Replace(_, Some(SyntaxElement::Token(token))) => {
-                if let Some(parent) = token.parent() {
-                    let idx = token.index();
-                    let new_parent = parent.clone_subtree().clone_for_update();
-                    *token = new_parent
-                        .children_with_tokens()
-                        .nth(idx)
-                        .and_then(SyntaxElement::into_token)
-                        .unwrap();
-                }
-            }
-            Change::InsertAll(_, elements)
-            | Change::ReplaceWithMany(_, elements)
-            | Change::ReplaceAll(_, elements) => {
-                for element in elements {
-                    match element {
-                        SyntaxElement::Node(node) => {
-                            if node.parent().is_some() {
-                                *node = node.clone_subtree().clone_for_update();
-                            } else if !node.is_mutable() {
-                                *node = node.clone_for_update();
-                            }
-                        }
-                        SyntaxElement::Token(token) => {
-                            if let Some(parent) = token.parent() {
-                                let idx = token.index();
-                                let new_parent = parent.clone_subtree().clone_for_update();
-                                *token = new_parent
-                                    .children_with_tokens()
-                                    .nth(idx)
-                                    .and_then(SyntaxElement::into_token)
-                                    .unwrap();
-                            }
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        match &mut changes[index as usize] {
-            Change::Insert(_, element) | Change::Replace(_, Some(element)) => {
-                deduplicate_node(element);
-            }
-            Change::InsertAll(_, elements)
-            | Change::ReplaceWithMany(_, elements)
-            | Change::ReplaceAll(_, elements) => {
-                elements.iter_mut().for_each(&mut deduplicate_node);
-            }
-            Change::Replace(_, None) => (),
-        }
-
-        // Collect changed elements
-        match &changes[index as usize] {
-            Change::Insert(_, element) => changed_elements.push(element.clone()),
-            Change::InsertAll(_, elements) => changed_elements.extend(elements.iter().cloned()),
-            Change::Replace(_, Some(element)) => changed_elements.push(element.clone()),
-            Change::Replace(_, None) => {}
-            Change::ReplaceWithMany(_, elements) => {
-                changed_elements.extend(elements.iter().cloned())
-            }
-            Change::ReplaceAll(_, elements) => changed_elements.extend(elements.iter().cloned()),
-        }
-    }
-
-    for DependentChange { parent, child } in dependent_changes.into_iter().rev() {
-        let (input_ancestor, output_ancestor) = match &changes[parent as usize] {
-            // No change will depend on an insert since changes can only depend on nodes in the root tree
-            Change::Insert(_, _) | Change::InsertAll(_, _) => unreachable!(),
-            Change::Replace(target, Some(new_target)) => {
-                (to_owning_node(target), to_owning_node(new_target))
-            }
-            Change::Replace(_, None) => {
-                unreachable!("deletions should not generate dependent changes")
-            }
-            Change::ReplaceAll(_, _) | Change::ReplaceWithMany(_, _) => {
-                unimplemented!("cannot resolve changes that depend on replacing many elements")
-            }
-        };
-
-        let upmap_target_node = |target: &SyntaxNode| match mappings.upmap_child(
-            target,
-            &input_ancestor,
-            &output_ancestor,
-        ) {
-            Ok(it) => it,
-            Err(MissingMapping(current)) => unreachable!(
-                "no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"
-            ),
-        };
-
-        let upmap_target = |target: &SyntaxElement| match mappings.upmap_child_element(
-            target,
-            &input_ancestor,
-            &output_ancestor,
-        ) {
-            Ok(it) => it,
-            Err(MissingMapping(current)) => unreachable!(
-                "no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"
-            ),
-        };
-
-        match &mut changes[child as usize] {
-            Change::Insert(target, _) | Change::InsertAll(target, _) => match &mut target.repr {
-                PositionRepr::FirstChild(parent) => {
-                    *parent = upmap_target_node(parent);
-                }
-                PositionRepr::After(child) => {
-                    *child = upmap_target(child);
-                }
-            },
-            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
-                *target = upmap_target(target);
-            }
-            Change::ReplaceAll(range, _) => {
-                *range = upmap_target(range.start())..=upmap_target(range.end());
-            }
-        }
-    }
-
-    // We reverse here since we pushed to this in ascending order,
-    // and we want to remove elements in descending order
-    for idx in outdated_changes.into_iter().rev() {
-        changes.remove(idx as usize);
-    }
-
-    // Apply changes
-    let mut root = tree_mutator.mutable_clone;
-
-    for change in changes {
-        match change {
-            Change::Insert(position, element) => {
-                let (parent, index) = position.place();
-                parent.splice_children(index..index, vec![element]);
-            }
-            Change::InsertAll(position, elements) => {
-                let (parent, index) = position.place();
-                parent.splice_children(index..index, elements);
-            }
-            Change::Replace(target, None) => {
-                target.detach();
-            }
-            Change::Replace(SyntaxElement::Node(target), Some(new_target)) if target == root => {
-                root = new_target.into_node().expect("root node replacement should be a node");
-            }
-            Change::Replace(target, Some(new_target)) => {
-                let parent = target.parent().unwrap();
-                parent.splice_children(target.index()..target.index() + 1, vec![new_target]);
-            }
-            Change::ReplaceWithMany(target, elements) => {
-                let parent = target.parent().unwrap();
-                parent.splice_children(target.index()..target.index() + 1, elements);
-            }
-            Change::ReplaceAll(range, elements) => {
-                let start = range.start().index();
-                let end = range.end().index();
-                let parent = range.start().parent().unwrap();
-                parent.splice_children(start..end + 1, elements);
-            }
-        }
-    }
-
-    // Propagate annotations
-    let annotations = annotations.into_iter().filter_map(|(element, annotation)| {
-        match mappings.upmap_element(&element, &root) {
-            // Needed to follow the new tree to find the resulting element
-            Some(Ok(mapped)) => Some((mapped, annotation)),
-            // Element did not need to be mapped
-            None => Some((element, annotation)),
-            // Element did not make it to the final tree
-            Some(Err(_)) => None,
-        }
-    });
-
-    let mut annotation_groups = FxHashMap::default();
-
-    for (element, annotation) in annotations {
-        annotation_groups.entry(annotation).or_insert(vec![]).push(element);
-    }
-
-    SyntaxEdit {
-        old_root: tree_mutator.immutable,
-        new_root: root,
-        changed_elements,
-        annotations: annotation_groups,
-    }
+    let mut trees = TreeStore::with_annotations(annotations.into_inner(), &mappings);
+    trees.execute(plan);
+    trees.finish(root)
 }
 
 fn report_intersecting_changes(
     changes: &[Change],
-    mut get_node_depth: impl FnMut(rowan::SyntaxNode<crate::RustLanguage>) -> usize,
-    root: &rowan::SyntaxNode<crate::RustLanguage>,
+    mut get_node_depth: impl FnMut(SyntaxNode) -> usize,
+    root: &SyntaxNode,
 ) {
     let intersecting_changes = changes
         .iter()
@@ -478,77 +763,49 @@ fn report_intersecting_changes(
     stdx::always!(false, "{}", error_msg);
 }
 
-fn to_owning_node(element: &SyntaxElement) -> SyntaxNode {
-    match element {
-        SyntaxElement::Node(node) => node.clone(),
-        SyntaxElement::Token(token) => token.parent().unwrap(),
-    }
-}
-
-struct ChangedAncestor {
-    kind: ChangedAncestorKind,
+/// A replacement region that can contain later source ordered changeds
+struct ChangedRegion {
+    range: TextRange,
     change_index: usize,
+    nested_changes: NestedChanges,
 }
 
-enum ChangedAncestorKind {
-    Single { node: SyntaxNode },
-    Range { _changed_elements: RangeInclusive<SyntaxElement>, _in_parent: SyntaxNode },
+/// How changes nested within a replacement region are handled.
+enum NestedChanges {
+    /// Map nested targets into a one-to-one node replacement.
+    Remap,
+    /// Drop nested changes because the replacement has no unique counterpart.
+    Discard,
 }
 
-impl ChangedAncestor {
-    fn single(node: &SyntaxNode, change_index: usize) -> Self {
-        let kind = ChangedAncestorKind::Single { node: node.clone() };
-
-        Self { kind, change_index }
-    }
-
-    fn multiple(range: &RangeInclusive<SyntaxElement>, change_index: usize) -> Self {
-        Self {
-            kind: ChangedAncestorKind::Range {
-                _changed_elements: range.clone(),
-                _in_parent: range.start().parent().unwrap(),
-            },
-            change_index,
+impl ChangedRegion {
+    /// Describes a region replaced by change, if it can contain changes.
+    fn for_change(change: &Change, change_index: usize, discarded: bool) -> Option<Self> {
+        match change {
+            Change::Replace(SyntaxElement::Node(target), replacement) => Some(Self {
+                range: target.text_range(),
+                change_index,
+                nested_changes: if !discarded && matches!(replacement, Some(SyntaxElement::Node(_)))
+                {
+                    NestedChanges::Remap
+                } else {
+                    NestedChanges::Discard
+                },
+            }),
+            Change::ReplaceWithMany(SyntaxElement::Node(target), _) => Some(Self {
+                range: target.text_range(),
+                change_index,
+                nested_changes: NestedChanges::Discard,
+            }),
+            Change::ReplaceAll(elements, _) => Some(Self {
+                range: TextRange::new(
+                    elements.start().text_range().start(),
+                    elements.end().text_range().end(),
+                ),
+                change_index,
+                nested_changes: NestedChanges::Discard,
+            }),
+            _ => None,
         }
-    }
-
-    fn affected_range(&self) -> TextRange {
-        match &self.kind {
-            ChangedAncestorKind::Single { node } => node.text_range(),
-            ChangedAncestorKind::Range { _changed_elements: changed_nodes, _in_parent: _ } => {
-                TextRange::new(
-                    changed_nodes.start().text_range().start(),
-                    changed_nodes.end().text_range().end(),
-                )
-            }
-        }
-    }
-}
-
-struct TreeMutator {
-    immutable: SyntaxNode,
-    mutable_clone: SyntaxNode,
-}
-
-impl TreeMutator {
-    fn new(immutable: &SyntaxNode) -> TreeMutator {
-        let immutable = immutable.clone();
-        let mutable_clone = immutable.clone_for_update();
-        TreeMutator { immutable, mutable_clone }
-    }
-
-    fn make_element_mut(&self, element: &SyntaxElement) -> SyntaxElement {
-        match element {
-            SyntaxElement::Node(node) => SyntaxElement::Node(self.make_syntax_mut(node)),
-            SyntaxElement::Token(token) => {
-                let parent = self.make_syntax_mut(&token.parent().unwrap());
-                parent.children_with_tokens().nth(token.index()).unwrap()
-            }
-        }
-    }
-
-    fn make_syntax_mut(&self, node: &SyntaxNode) -> SyntaxNode {
-        let ptr = SyntaxNodePtr::new(node);
-        ptr.to_node(&self.mutable_clone)
     }
 }

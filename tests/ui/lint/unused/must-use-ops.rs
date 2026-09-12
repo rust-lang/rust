@@ -3,7 +3,6 @@
 //@ check-pass
 
 #![warn(unused_must_use)]
-#![feature(never_type)]
 
 fn deref_never(x: &!) {
     // Don't lint for uninhabited types

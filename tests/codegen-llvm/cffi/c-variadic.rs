@@ -6,7 +6,6 @@
 //@ ignore-pauthtest
 
 #![crate_type = "lib"]
-#![feature(c_variadic)]
 #![no_std]
 use core::ffi::VaList;
 

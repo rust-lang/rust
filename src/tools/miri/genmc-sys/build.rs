@@ -178,7 +178,7 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
     // These are all the C++ files we need to compile, which needs to be updated if more C++ files are added to Miri.
     // We use absolute paths since relative paths can confuse IDEs when attempting to go-to-source on a path in a compiler error.
     let cpp_files_base_path = Path::new("cpp/src/");
-    let cpp_files = ["MiriInterface/Exploration.cpp", "MiriInterface/Setup.cpp"]
+    let cpp_files = ["Exploration.cpp", "Setup.cpp"]
         .map(|file| std::path::absolute(cpp_files_base_path.join(file)).unwrap());
 
     let mut bridge = cxx_build::bridge("src/lib.rs");

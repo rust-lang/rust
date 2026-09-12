@@ -1,0 +1,14 @@
+error: expected `;` or `]`, found `,`
+  --> $DIR/array-type-no-semi-turbofish-81097.rs:4:15
+   |
+LL |     drop::<[(), 0]>([]);
+   |               ^ expected `;` or `]`
+   |
+help: you might have meant to use `;` as the separator
+   |
+LL -     drop::<[(), 0]>([]);
+LL +     drop::<[(); 0]>([]);
+   |
+
+error: aborting due to 1 previous error
+

@@ -3,7 +3,7 @@
 //! This module contains a set of macros which are exported from the standard
 //! library. Each macro is available for use when linking against the standard
 //! library.
-// ignore-tidy-dbg
+// ignore-tidy-file-dbg
 
 #[cfg(test)]
 mod tests;
@@ -82,6 +82,7 @@ macro_rules! panic {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "print_macro")]
 #[allow_internal_unstable(print_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! print {
     ($($arg:tt)*) => {{
         $crate::io::_print($crate::format_args!($($arg)*));
@@ -138,6 +139,7 @@ macro_rules! print {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "println_macro")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
+#[rustc_diagnostic_opaque]
 macro_rules! println {
     () => {
         $crate::print!("\n")
@@ -352,6 +354,7 @@ macro_rules! eprintln {
 #[macro_export]
 #[cfg_attr(not(test), rustc_diagnostic_item = "dbg_macro")]
 #[stable(feature = "dbg_macro", since = "1.32.0")]
+#[rustc_diagnostic_opaque]
 macro_rules! dbg {
     // NOTE: We cannot use `concat!` to make a static string as a format argument
     // of `eprintln!` because `file!` could contain a `{` or

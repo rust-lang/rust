@@ -40,7 +40,7 @@ pub enum SelectionError<'db> {
     /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
     /// We can thus not know whether the hidden type implements an auto trait, so
     /// we should not presume anything about it.
-    OpaqueTypeAutoTraitLeakageUnknown(InternedOpaqueTyId),
+    OpaqueTypeAutoTraitLeakageUnknown(InternedOpaqueTyId<'db>),
     /// Error for a `ConstArgHasType` goal
     ConstArgHasWrongType { ct: Const<'db>, ct_ty: Ty<'db>, expected_ty: Ty<'db> },
 }

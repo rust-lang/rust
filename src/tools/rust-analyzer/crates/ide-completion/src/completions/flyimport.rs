@@ -262,6 +262,7 @@ fn import_on_the_fly<'db>(
         }
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
+    let mut import_name_buffer = String::new();
 
     let import_cfg = ctx.config.import_path_config();
 
@@ -276,9 +277,13 @@ fn import_on_the_fly<'db>(
         })
         .filter(|import| filter_excluded_flyimport(ctx, import))
         .sorted_by(|a, b| {
-            let key = |import_path| {
+            let mut key = |import_path| {
                 (
-                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    compute_fuzzy_completion_order_key(
+                        import_path,
+                        &user_input_lowercased,
+                        &mut import_name_buffer,
+                    ),
                     import_path,
                 )
             };
@@ -310,6 +315,7 @@ fn import_on_the_fly_pat_<'db>(
         ItemInNs::Values(def) => matches!(def, hir::ModuleDef::Const(_)),
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
+    let mut import_name_buffer = String::new();
     let cfg = ctx.config.import_path_config();
 
     import_assets
@@ -322,9 +328,13 @@ fn import_on_the_fly_pat_<'db>(
                 && ctx.check_stability(original_item.attrs(ctx.db).as_ref())
         })
         .sorted_by(|a, b| {
-            let key = |import_path| {
+            let mut key = |import_path| {
                 (
-                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    compute_fuzzy_completion_order_key(
+                        import_path,
+                        &user_input_lowercased,
+                        &mut import_name_buffer,
+                    ),
                     import_path,
                 )
             };
@@ -351,6 +361,7 @@ fn import_on_the_fly_method<'db>(
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let user_input_lowercased = potential_import_name.to_lowercase();
+    let mut import_name_buffer = String::new();
 
     let cfg = ctx.config.import_path_config();
 
@@ -362,9 +373,13 @@ fn import_on_the_fly_method<'db>(
         })
         .filter(|import| filter_excluded_flyimport(ctx, import))
         .sorted_by(|a, b| {
-            let key = |import_path| {
+            let mut key = |import_path| {
                 (
-                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    compute_fuzzy_completion_order_key(
+                        import_path,
+                        &user_input_lowercased,
+                        &mut import_name_buffer,
+                    ),
                     import_path,
                 )
             };
@@ -437,15 +452,15 @@ fn import_assets_for_path<'db>(
 fn compute_fuzzy_completion_order_key(
     proposed_mod_path: &hir::ModPath,
     user_input_lowercased: &str,
+    import_name_buffer: &mut String,
 ) -> usize {
     cov_mark::hit!(certain_fuzzy_order_test);
-    let import_name = match proposed_mod_path.segments().last() {
-        // FIXME: nasty alloc, this is a hot path!
-        Some(name) => name.as_str().to_ascii_lowercase(),
-        None => return usize::MAX,
+    let Some(import_name) = proposed_mod_path.segments().last() else {
+        return usize::MAX;
     };
-    match import_name.match_indices(user_input_lowercased).next() {
-        Some((first_matching_index, _)) => first_matching_index,
-        None => usize::MAX,
-    }
+
+    import_name_buffer.clear();
+    import_name_buffer.push_str(import_name.as_str());
+    import_name_buffer.make_ascii_lowercase();
+    import_name_buffer.find(user_input_lowercased).unwrap_or(usize::MAX)
 }

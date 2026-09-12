@@ -5,7 +5,6 @@
 //@ revisions: normal exhaustive_patterns
 //@ edition:2021
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
-#![feature(never_type)]
 
 pub fn main() {
     let mut r = Result::<!, (u32, u32)>::Err((0, 0));

@@ -691,6 +691,7 @@ pub trait BuildHasher {
     /// );
     /// ```
     #[stable(feature = "build_hasher_simple_hash_one", since = "1.71.0")]
+    #[expect(clippy::manual_hash_one, reason = "implements hash_one")]
     fn hash_one<T: Hash>(&self, x: T) -> u64
     where
         Self: Sized,

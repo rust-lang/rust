@@ -1,10 +1,10 @@
 // We're testing loongarch64-specific intrinsics
 //@only-target: loongarch64
-#![feature(abi_unadjusted, link_llvm_intrinsics, stdarch_loongarch)]
+#![feature(link_llvm_intrinsics, stdarch_loongarch)]
 
 use std::arch::loongarch64::*;
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.loongarch.crc.w.b.w"]
     fn _crc_w_b_w(a: i32, b: i32) -> i32;
     #[link_name = "llvm.loongarch.crc.w.h.w"]

@@ -1,11 +1,11 @@
 //@ stderr-per-bitwidth
 //@ ignore-endian-big
-// ignore-tidy-linelength
 //@ dont-require-annotations: NOTE
+// ignore-tidy-file-linelength
 
 #![allow(invalid_value, unnecessary_transmutes)]
-#![feature(never_type, rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 #![feature(pattern_types, pattern_type_macro)]
+#![feature(rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 
 use std::mem;
 use std::alloc::Layout;

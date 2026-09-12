@@ -8,23 +8,26 @@ use std::str;
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
-use rustc_codegen_ssa::errors as ssa_errors;
+use rustc_codegen_ssa::diagnostics as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
+    codegen_handle_fn_abi_err,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
+use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
+    BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_session::{PointerAuthSchema, Session};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_structures::CrateType;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
     Target, TlsModel,
@@ -91,6 +94,7 @@ pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
 
 pub(crate) struct FullCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub bitcode_needed: bool,
     pub scx: SimpleCx<'ll>,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
@@ -132,6 +136,7 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
     pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
+    pub sanitizer_ignorelist: Option<SanitizerIgnoreList>,
 
     eh_personality: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
@@ -141,6 +146,9 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
+
+    /// A counter that is used for generating global symbol names
+    global_gen_sym_counter: Cell<usize>,
 
     /// `codegen_static` will sometimes create a second global variable with a
     /// different type and clear the symbol name of the original global.
@@ -235,7 +243,7 @@ pub(crate) unsafe fn create_module<'ll>(
                 .expect("got a non-UTF8 data-layout from LLVM");
 
         if target_data_layout != llvm_data_layout {
-            tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
+            tcx.dcx().emit_err(crate::diagnostics::MismatchedDataLayout {
                 rustc_target: sess.opts.target_triple.to_string().as_str(),
                 rustc_layout: target_data_layout.as_str(),
                 llvm_target: sess.target.llvm_target.borrow(),
@@ -277,6 +285,12 @@ pub(crate) unsafe fn create_module<'ll>(
     // See https://reviews.llvm.org/D52322 and https://reviews.llvm.org/D52323.
     unsafe {
         llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(sess.code_model()));
+    }
+
+    if let Some(large_data_threshold) = sess.opts.unstable_opts.large_data_threshold {
+        unsafe {
+            llvm::LLVMRustSetModuleLargeDataThreshold(llmod, large_data_threshold);
+        }
     }
 
     // If skipping the PLT is enabled, we need to add some module metadata
@@ -402,8 +416,7 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
-    {
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.branch_protection() {
         if sess.target.arch == Arch::AArch64 {
             llvm::add_module_flag_u32(
                 llmod,
@@ -417,7 +430,11 @@ pub(crate) unsafe fn create_module<'ll>(
                 "sign-return-address",
                 pac_ret.is_some().into(),
             );
-            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, pc: false, key: PAuthKey::A });
+            let pac_opts = pac_ret.unwrap_or_else(|| {
+                // Windows on Arm only supports PAC key B.
+                let key = if sess.target.os == Os::Windows { PAuthKey::B } else { PAuthKey::A };
+                PacRet { leaf: false, pc: false, key }
+            });
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Min,
@@ -557,6 +574,17 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
+    if llvm_version >= (24, 0, 0)
+        && let Some(floatabi) = sess.target.llvm_floatabi
+    {
+        llvm::add_module_flag_str(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "float-abi",
+            floatabi.desc(),
+        );
+    }
+
     // Add module flags specified via -Z llvm_module_flag
     for (key, value, merge_behavior) in &sess.opts.unstable_opts.llvm_module_flag {
         let merge_behavior = match merge_behavior.as_str() {
@@ -582,6 +610,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
+        bitcode_needed: bool,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -656,9 +685,28 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             None
         };
 
+        // FIXME: This parses the ignorelist files for each CGU, which adds a performance overhead.
+        // Clang parses it once per frontend invocation. LLVM's `SpecialCaseList::inSection`
+        // mutates an internal `LazyInit` cache and is not thread-safe. We either need to wrap
+        // the queries in a lock or wait for LLVM to expose a thread-safe way to query it.
+        let sanitizer_ignorelist = if !tcx.sess.opts.unstable_opts.sanitizer_ignorelist.is_empty() {
+            for path in &tcx.sess.opts.unstable_opts.sanitizer_ignorelist {
+                let _ = tcx.sess.source_map().load_file(std::path::Path::new(path));
+            }
+            match SanitizerIgnoreList::new(&tcx.sess.opts.unstable_opts.sanitizer_ignorelist) {
+                Ok(list) => Some(list),
+                Err(err) => {
+                    tcx.dcx().fatal(format!("failed to parse sanitizer ignorelist: {}", err));
+                }
+            }
+        } else {
+            None
+        };
+
         GenericCx(
             FullCx {
                 tcx,
+                bitcode_needed,
                 scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size()),
                 use_dll_storage_attrs,
                 tls_model,
@@ -675,10 +723,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 scalar_lltypes: Default::default(),
                 coverage_cx,
                 dbg_cx,
+                sanitizer_ignorelist,
                 eh_personality: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: Default::default(),
                 local_gen_sym_counter: Cell::new(0),
+                global_gen_sym_counter: Cell::new(0),
                 renamed_statics: Default::default(),
                 objc_class_t: Cell::new(None),
                 objc_classrefs: Default::default(),
@@ -743,6 +793,29 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         );
     }
 
+    pub(crate) fn add_ptrauth_pauthabi_version_and_platform_flags(
+        &self,
+        aarch64_elf_pauthabi_version: u32,
+    ) {
+        // NOTE: This must correspond to llvm's AARCH64_PAUTH_PLATFORM_LLVM_LINUX, as defined in
+        // <llvm_root>/llvm/include/llvm/BinaryFormat/ELF.h.
+        // FIXME (jchlanda) extend possible values once we start supporting other platforms (for
+        // example: AARCH64_PAUTH_PLATFORM_BAREMETAL = 0x1);
+        const AARCH64_PAUTH_PLATFORM_LLVM_LINUX: u32 = 0x10000002;
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "aarch64-elf-pauthabi-platform",
+            AARCH64_PAUTH_PLATFORM_LLVM_LINUX,
+        );
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "aarch64-elf-pauthabi-version",
+            aarch64_elf_pauthabi_version,
+        );
+    }
+
     // We do our best here to match what Clang does when compiling Objective-C natively.
     // See Clang's `CGObjCCommonMac::EmitImageInfo`:
     // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L5085
@@ -790,6 +863,17 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             1 << 6,
         );
     }
+
+    pub(crate) fn is_sanitizer_type_ignored(
+        &self,
+        sanitizer: &std::ffi::CStr,
+        fn_abi: &rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>,
+    ) -> bool {
+        self.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
+            let type_name = typename_for_ignore_list(self.tcx, fn_abi);
+            ignorelist.contains_prefix(sanitizer, c"type", &type_name)
+        })
+    }
 }
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
@@ -833,11 +917,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
     pub(crate) fn get_const_i8(&self, n: u64) -> &'ll Value {
         self.get_const_int(self.type_i8(), n)
-    }
-
-    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
-        let name = SmallCStr::new(name);
-        unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
     }
 
     pub(crate) fn get_md_kind_id(&self, name: &str) -> llvm::MetadataKindId {
@@ -887,7 +966,11 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>, pac: Option<PacMetadata>) -> &'ll Value {
+    fn get_fn_addr(
+        &self,
+        instance: Instance<'tcx>,
+        pointer_auth_schema: Option<&PointerAuthSchema>,
+    ) -> &'ll Value {
         // When pointer authentication metadata is provided, `get_fn_addr` will
         // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
         // expression.
@@ -901,8 +984,8 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // <https://github.com/rust-lang/rust/issues/152532>, and comment in
         // builder's `ptrauth_operand_bundle`.
         let llfn = get_fn(self, instance);
-        match pac {
-            Some(pac) => common::maybe_sign_fn_ptr(self, instance, llfn, pac),
+        match pointer_auth_schema {
+            Some(schema) => common::maybe_sign_fn_ptr(self, instance, llfn, schema),
             None => llfn,
         }
     }
@@ -954,7 +1037,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     ty::List::empty(),
                     DUMMY_SP,
                 ),
-                Some(PacMetadata::default()),
+                tcx.sess.pointer_authentication_functions(),
             ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
@@ -1095,6 +1178,20 @@ impl CodegenCx<'_, '_> {
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
+
+    /// Generates a new global symbol name with the given prefix.
+    pub(crate) fn generate_global_symbol_name(&self) -> String {
+        let idx = self.global_gen_sym_counter.get();
+        self.global_gen_sym_counter.set(idx + 1);
+
+        let sym = self.codegen_unit.symbol_name();
+        let prefix = sym.as_str();
+        let mut name = String::with_capacity(prefix.len() + 6);
+        name.push_str(prefix);
+        name.push('.');
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
+        name
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
@@ -1220,21 +1317,6 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        match err {
-            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
-                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
-            }
-            _ => match fn_abi_request {
-                FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
-                }
-                FnAbiRequest::OfInstance { instance, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
-                    );
-                }
-            },
-        }
+        codegen_handle_fn_abi_err(self.tcx, err, span, fn_abi_request).raise_fatal()
     }
 }

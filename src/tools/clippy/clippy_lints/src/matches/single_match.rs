@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{
-    SpanExt, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
+    SpanExt as _, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
 };
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
 use clippy_utils::{is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs, sym};
@@ -375,7 +375,6 @@ impl<'a> PatState<'a> {
             // Patterns for things which can only contain a single sub-pattern.
             PatKind::Binding(_, _, _, Some(pat))
             | PatKind::Ref(pat, _, _)
-            | PatKind::Box(pat)
             | PatKind::Deref(pat) => {
                 self.add_pat(cx, pat)
             },

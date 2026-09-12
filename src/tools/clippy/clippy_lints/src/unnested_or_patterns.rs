@@ -1,4 +1,4 @@
-#![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
+#![allow(clippy::enum_glob_use, clippy::wildcard_imports)]
 
 use clippy_config::Conf;
 use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
@@ -11,8 +11,7 @@ use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind, Pinnedness
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, impl_lint_pass};
 use rustc_span::DUMMY_SP;
 // import needed to shadow `PatKind::Box` glob-imported above
 use std::boxed::Box;
@@ -56,9 +55,7 @@ pub struct UnnestedOrPatterns {
 
 impl UnnestedOrPatterns {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: MsrvStack::new(conf.msrv),
-        }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -150,8 +147,8 @@ fn insert_necessary_parens(pat: &mut Pat) {
             use ast::BindingMode;
             walk_pat(self, pat);
             let target = match &mut pat.kind {
-                // `i @ a | b`, `box a | b`, and `& mut? a | b`.
-                Ident(.., Some(p)) | Box(p) | Ref(p, _, _)
+                // `i @ a | b` and `& mut? a | b`.
+                Ident(.., Some(p)) | Ref(p, _, _)
                     if let Or(ps) = &p.kind
                         && ps.len() > 1 =>
                 {
@@ -250,16 +247,15 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
         // FIXME(pin_ergonomics): handle pinned patterns
         | Ref(_, _, Mutability::Not)
         // Dealt with elsewhere.
-        | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
-        // Transform `box x | ... | box y` into `box (x | y)`.
-        //
+        | Or(_) | Paren(_) | Guard(..) => false,
+        // Transform `deref!(x) | ... | deref!(y)` into `deref!(x | y)`.
+        Deref(target) => extend_with_matching(
+            target, start, alternatives,
+            |k| matches!(k, Deref(_)),
+            |k| always_pat!(k, Deref(p) => *p),
+        ),
         // The cases below until `Slice(...)` deal with *singleton* products.
         // These patterns have the shape `C(p)`, and not e.g., `C(p0, ..., pn)`.
-        Box(target) => extend_with_matching(
-            target, start, alternatives,
-            |k| matches!(k, Box(_)),
-            |k| always_pat!(k, Box(p) => *p),
-        ),
         // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
         Ref(target, _, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
@@ -382,7 +378,6 @@ fn take_pat(from: &mut Pat) -> Pat {
         id: DUMMY_NODE_ID,
         kind: Wild,
         span: DUMMY_SP,
-        tokens: None,
     };
     mem::replace(from, dummy)
 }

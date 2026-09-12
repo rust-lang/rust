@@ -1,5 +1,5 @@
 // exact-check
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 const EXPECTED = [
     // should match (substring)
     {

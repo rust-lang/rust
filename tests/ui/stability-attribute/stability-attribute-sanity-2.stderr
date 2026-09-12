@@ -1,8 +1,8 @@
 error[E0538]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity-2.rs:7:1
+  --> $DIR/stability-attribute-sanity-2.rs:7:3
    |
 LL | #[stable(feature = "a", feature = "b", since = "1.0.0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^^^^^^
    |                         |
    |                         found `feature` used as a key more than once
    |
@@ -13,10 +13,10 @@ LL + #[stable(feature = "name", since = "version")]
    |
 
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity-2.rs:10:1
+  --> $DIR/stability-attribute-sanity-2.rs:10:3
    |
 LL | #[stable(feature = "a", sinse = "1.0.0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^---------------^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^---------------^
    |                         |
    |                         valid arguments are `feature` or `since`
    |

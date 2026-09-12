@@ -2,12 +2,12 @@ use std::iter;
 
 use rustc_abi::ExternAbi;
 use rustc_hir::{self as hir, find_attr};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
-use crate::lints::{ImproperGpuKernelArg, MissingGpuKernelExportName};
+use crate::diagnostics::{ImproperGpuKernelArg, MissingGpuKernelExportName};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

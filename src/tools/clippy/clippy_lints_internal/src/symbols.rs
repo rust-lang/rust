@@ -5,10 +5,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Lit, Node, Pat, PatExprKind, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_tool_lint, impl_lint_pass};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
 
@@ -113,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
                 }
 
                 for item in cx.tcx.module_children(*def_id) {
-                    if let Res::Def(DefKind::Const { .. }, item_def_id) = item.res
+                    if let Res::Def(DefKind::Const, item_def_id) = item.res
                         && let ty = cx.tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip()
                         && internal_paths::SYMBOL.matches_ty(cx, ty)
                         && let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id)

@@ -1,5 +1,5 @@
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:39:29
+  --> tests/ui/transmute_ptr_to_ptr.rs:38:29
    |
 LL |         let _: *const f32 = transmute(ptr);
    |                             ^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +         let _: *const f32 = ptr.cast::<f32>();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:42:27
+  --> tests/ui/transmute_ptr_to_ptr.rs:41:27
    |
 LL |         let _: *mut f32 = transmute(mut_ptr);
    |                           ^^^^^^^^^^^^^^^^^^
@@ -25,37 +25,37 @@ LL +         let _: *mut f32 = mut_ptr.cast::<f32>();
    |
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ptr_to_ptr.rs:46:23
+  --> tests/ui/transmute_ptr_to_ptr.rs:45:23
    |
 LL |         let _: &f32 = transmute(&1u32);
    |                       ^^^^^^^^^^^^^^^^ help: try: `&*(&1u32 as *const u32 as *const f32)`
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ptr_to_ptr.rs:49:23
+  --> tests/ui/transmute_ptr_to_ptr.rs:48:23
    |
 LL |         let _: &f32 = transmute(&1f64);
    |                       ^^^^^^^^^^^^^^^^ help: try: `&*(&1f64 as *const f64 as *const f32)`
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ptr_to_ptr.rs:54:27
+  --> tests/ui/transmute_ptr_to_ptr.rs:53:27
    |
 LL |         let _: &mut f32 = transmute(&mut 1u32);
    |                           ^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(&mut 1u32 as *mut u32 as *mut f32)`
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ptr_to_ptr.rs:57:37
+  --> tests/ui/transmute_ptr_to_ptr.rs:56:37
    |
 LL |         let _: &GenericParam<f32> = transmute(&GenericParam { t: 1u32 });
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ptr_to_ptr.rs:61:27
+  --> tests/ui/transmute_ptr_to_ptr.rs:60:27
    |
 LL |         let u8_ref: &u8 = transmute(u64_ref);
    |                           ^^^^^^^^^^^^^^^^^^ help: try: `&*(u64_ref as *const u64 as *const u8)`
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:64:29
+  --> tests/ui/transmute_ptr_to_ptr.rs:63:29
    |
 LL |         let _: *const u32 = transmute(mut_ptr);
    |                             ^^^^^^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL +         let _: *const u32 = mut_ptr.cast_const();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:67:27
+  --> tests/ui/transmute_ptr_to_ptr.rs:66:27
    |
 LL |         let _: *mut u32 = transmute(ptr);
    |                           ^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL +         let _: *mut u32 = ptr.cast_mut();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:81:29
+  --> tests/ui/transmute_ptr_to_ptr.rs:80:29
    |
 LL |         let _: *const f32 = transmute(Ptr(ptr));
    |                             ^^^^^^^^^^^^^^^^^^^
@@ -91,7 +91,7 @@ LL +         let _: *const f32 = Ptr(ptr).0.cast::<f32>();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:83:29
+  --> tests/ui/transmute_ptr_to_ptr.rs:82:29
    |
 LL |         let _: *const f32 = transmute(PtrNamed { ptr });
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL +         let _: *const f32 = PtrNamed { ptr }.ptr.cast::<f32>();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:85:27
+  --> tests/ui/transmute_ptr_to_ptr.rs:84:27
    |
 LL |         let _: *mut u32 = transmute(Ptr(ptr));
    |                           ^^^^^^^^^^^^^^^^^^^
@@ -115,7 +115,7 @@ LL +         let _: *mut u32 = Ptr(ptr).0.cast_mut();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:91:14
+  --> tests/ui/transmute_ptr_to_ptr.rs:90:14
    |
 LL |     unsafe { transmute(v) }
    |              ^^^^^^^^^^^^
@@ -127,7 +127,7 @@ LL +     unsafe { v as *const &() }
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:108:28
+  --> tests/ui/transmute_ptr_to_ptr.rs:107:28
    |
 LL |         let _: *const i8 = transmute(ptr);
    |                            ^^^^^^^^^^^^^^
@@ -139,7 +139,7 @@ LL +         let _: *const i8 = ptr as *const i8;
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:110:28
+  --> tests/ui/transmute_ptr_to_ptr.rs:109:28
    |
 LL |         let _: *const i8 = transmute(Ptr8(ptr));
    |                            ^^^^^^^^^^^^^^^^^^^^
@@ -151,7 +151,7 @@ LL +         let _: *const i8 = Ptr8(ptr).0 as *const i8;
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:118:28
+  --> tests/ui/transmute_ptr_to_ptr.rs:117:28
    |
 LL |         let _: *const i8 = transmute(ptr);
    |                            ^^^^^^^^^^^^^^
@@ -163,7 +163,7 @@ LL +         let _: *const i8 = ptr.cast::<i8>();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:126:26
+  --> tests/ui/transmute_ptr_to_ptr.rs:125:26
    |
 LL |         let _: *mut u8 = transmute(ptr);
    |                          ^^^^^^^^^^^^^^
@@ -175,7 +175,7 @@ LL +         let _: *mut u8 = ptr as *mut u8;
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:128:28
+  --> tests/ui/transmute_ptr_to_ptr.rs:127:28
    |
 LL |         let _: *const u8 = transmute(mut_ptr);
    |                            ^^^^^^^^^^^^^^^^^^
@@ -187,7 +187,7 @@ LL +         let _: *const u8 = mut_ptr as *const u8;
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:136:26
+  --> tests/ui/transmute_ptr_to_ptr.rs:135:26
    |
 LL |         let _: *mut u8 = transmute(ptr);
    |                          ^^^^^^^^^^^^^^
@@ -199,7 +199,7 @@ LL +         let _: *mut u8 = ptr.cast_mut();
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ptr_to_ptr.rs:138:28
+  --> tests/ui/transmute_ptr_to_ptr.rs:137:28
    |
 LL |         let _: *const u8 = transmute(mut_ptr);
    |                            ^^^^^^^^^^^^^^^^^^

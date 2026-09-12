@@ -14,13 +14,13 @@ pub trait NumBufferTrait {
 macro_rules! impl_NumBufferTrait {
     ($($signed:ident, $unsigned:ident,)*) => {
         $(
-            #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_format_into", since = "1.98.0")]
             impl NumBufferTrait for $signed {
                 // `+ 2` and not `+ 1` to include the `-` character.
                 const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $signed::MAX.ilog10() as usize + 2];
                 type Buf = [MaybeUninit<u8>; $signed::MAX.ilog10() as usize + 2];
             }
-            #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_format_into", since = "1.98.0")]
             impl NumBufferTrait for $unsigned {
                 const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $unsigned::MAX.ilog10() as usize + 1];
                 type Buf = [MaybeUninit<u8>; $unsigned::MAX.ilog10() as usize + 1];
@@ -38,8 +38,15 @@ impl_NumBufferTrait! {
     i128, u128,
 }
 
-/// A buffer wrapper of which the internal size is based on the maximum
-/// number of digits the associated integer can have.
+/// Memory for formatting numbers using [`T::format_into()`][u8::format_into].
+///
+/// This type consists of enough memory to hold the longest decimal string representation
+/// a number of type `T` could have.
+/// It is used only by calling `format_into()`; there is no other way to access its contents.
+/// Its purpose is to allow formatting numbers without involving the dynamic dispatch of the
+/// [`fmt`] system, which may be more efficient when [`fmt`] is not otherwise used.
+///
+/// [`fmt`]: crate::fmt
 ///
 /// # Examples
 ///
@@ -55,24 +62,24 @@ impl_NumBufferTrait! {
 /// let n2 = -1972i32;
 /// assert_eq!(n2.format_into(&mut buf), "-1972");
 /// ```
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 pub struct NumBuffer<T: NumBufferTrait> {
     pub(crate) buf: T::Buf,
     phantom: core::marker::PhantomData<T>,
 }
 
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 impl<T: NumBufferTrait> core::fmt::Debug for NumBuffer<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("NumBuffer").finish()
     }
 }
 
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 impl<T: NumBufferTrait> NumBuffer<T> {
     /// Initializes internal buffer.
-    #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "int_format_into", since = "1.98.0")]
+    #[rustc_const_stable(feature = "int_format_into", since = "1.98.0")]
     pub const fn new() -> Self {
         NumBuffer { buf: T::DEFAULT, phantom: core::marker::PhantomData }
     }

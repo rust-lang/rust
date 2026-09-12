@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, intravisit};
+use rustc_hir_pretty::PpAnn;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
 use std::iter;
 
 declare_clippy_lint! {
@@ -46,18 +46,27 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
 
         match e.kind {
             ExprKind::Call(fn_expr, arguments) => {
-                if let ExprKind::Path(ref path) = fn_expr.kind {
+                if let ExprKind::Path(ref path) = fn_expr.kind
+                    && arguments.iter().any(is_mut_ref_arg)
+                {
                     check_arguments(
                         cx,
                         &mut arguments.iter(),
                         cx.typeck_results().expr_ty(fn_expr),
-                        &rustc_hir_pretty::qpath_to_string(&cx.tcx, path),
+                        #[allow(trivial_casts)]
+                        &|| {
+                            rustc_hir_pretty::qpath_to_string(
+                                &(&cx.tcx as &dyn intravisit::HirTyCtxt<'_>) as &dyn PpAnn,
+                                path,
+                            )
+                        },
                         "function",
                     );
                 }
             },
             ExprKind::MethodCall(path, receiver, arguments, _)
-                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id) =>
+                if iter::once(receiver).chain(arguments.iter()).any(is_mut_ref_arg)
+                    && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id) =>
             {
                 let args = cx.typeck_results().node_args(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args).skip_norm_wip();
@@ -65,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                     cx,
                     &mut iter::once(receiver).chain(arguments.iter()),
                     method_type,
-                    path.ident.as_str(),
+                    &|| path.ident.as_str().to_owned(),
                     "method",
                 );
             },
@@ -74,11 +83,16 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
     }
 }
 
+/// Only `&mut ...` arguments can lint, so the type and path lookups run only after one is found.
+fn is_mut_ref_arg(argument: &Expr<'_>) -> bool {
+    matches!(argument.kind, ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _))
+}
+
 fn check_arguments<'tcx>(
     cx: &LateContext<'tcx>,
     arguments: &mut dyn Iterator<Item = &'tcx Expr<'tcx>>,
     type_definition: Ty<'tcx>,
-    name: &str,
+    name: &dyn Fn() -> String,
     fn_kind: &str,
 ) {
     if type_definition.is_fn() {
@@ -110,7 +124,7 @@ fn check_arguments<'tcx>(
                     cx,
                     UNNECESSARY_MUT_PASSED,
                     argument.span,
-                    format!("the {fn_kind} `{name}` doesn't need a mutable reference"),
+                    format!("the {fn_kind} `{}` doesn't need a mutable reference", name()),
                     |diag| {
                         diag.span_suggestion_verbose(span_to_remove, "remove this `mut`", String::new(), applicability);
                     },

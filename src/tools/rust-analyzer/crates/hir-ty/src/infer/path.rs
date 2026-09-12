@@ -3,6 +3,7 @@
 use hir_def::{
     AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
     expr_store::path::{Path, PathSegment},
+    hir::ExprOrPatIdPacked,
     resolver::{ResolveValueResult, TypeNs, ValueNs},
     signatures::{ConstSignature, FunctionSignature},
 };
@@ -15,7 +16,7 @@ use crate::{
     infer::{
         InferenceTyLoweringVarsCtx, diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     },
-    lower::{GenericPredicates, LifetimeElisionKind},
+    lower::{GenericPredicates, LifetimeElisionKind, LifetimeLoweringMode},
     method_resolution::{self, CandidateId, MethodError},
     next_solver::{
         GenericArg, GenericArgs, TraitRef, Ty, Unnormalized, infer::traits::ObligationCause,
@@ -23,13 +24,13 @@ use crate::{
     },
 };
 
-use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
+use super::InferenceContext;
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn infer_path(
         &mut self,
         path: &Path,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     ) -> Option<(ValueNs, Ty<'db>)> {
         let (value, self_subst) = self.resolve_value_path_inner(path, id, false)?;
 
@@ -60,7 +61,7 @@ impl<'db> InferenceContext<'_, 'db> {
     fn resolve_value_path(
         &mut self,
         path: &Path,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         value: ValueNs,
         self_subst: Option<GenericArgs<'db>>,
     ) -> Option<ValuePathResolution<'db>> {
@@ -121,7 +122,7 @@ impl<'db> InferenceContext<'_, 'db> {
             // to the type alias and they may have different generics.
             self.types.empty.generic_args
         } else {
-            self.with_body_ty_lowering(|ctx| {
+            self.with_ty_lowering(|ctx| {
                 let mut path_ctx = ctx.at_path(path, id);
                 let last_segment = path.segments().len().checked_sub(1);
                 if let Some(last_segment) = last_segment {
@@ -145,7 +146,7 @@ impl<'db> InferenceContext<'_, 'db> {
     pub(super) fn resolve_value_path_inner(
         &mut self,
         path: &Path,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         no_diagnostics: bool,
     ) -> Option<(ValueNs, Option<GenericArgs<'db>>)> {
         // Don't use `self.make_ty()` here as we need `orig_ns`.
@@ -158,14 +159,14 @@ impl<'db> InferenceContext<'_, 'db> {
             &self.resolver,
             self.store,
             &self.diagnostics,
-            InferenceTyDiagnosticSource::Body,
             self.store_owner,
             self.generic_def,
             &self.generics,
             LifetimeElisionKind::Infer,
             self.allow_using_generic_params,
-            Some(&mut vars_ctx),
+            &mut vars_ctx,
             &self.defined_anon_consts,
+            LifetimeLoweringMode::LateParam,
         );
         let mut path_ctx = if no_diagnostics {
             ctx.at_path_forget_diagnostics(path)
@@ -184,7 +185,7 @@ impl<'db> InferenceContext<'_, 'db> {
             let ty = self.table.process_user_written_ty(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
-            let hygiene = self.store.expr_or_pat_path_hygiene(id);
+            let hygiene = self.store.expr_or_pat_path_hygiene(id.unpack());
             // FIXME: report error, unresolved first path segment
             let value_or_partial = path_ctx.resolve_path_in_value_ns(hygiene)?;
 
@@ -272,7 +273,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
     pub(super) fn add_required_obligations_for_value_path(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         def: GenericDefId,
         subst: GenericArgs<'db>,
     ) {
@@ -292,7 +293,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         trait_ref: TraitRef<'db>,
         segment: PathSegment<'_>,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     ) -> Option<(ValueNs, GenericArgs<'db>)> {
         let trait_ = trait_ref.def_id.0;
         let item =
@@ -329,7 +330,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         ty: Ty<'db>,
         name: &Name,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     ) -> Option<(ValueNs, GenericArgs<'db>)> {
         if ty.is_ty_error() {
             return None;
@@ -398,7 +399,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         ty: Ty<'db>,
         name: &Name,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     ) -> Option<(ValueNs, GenericArgs<'db>)> {
         let ty = self.table.try_structurally_resolve_type(id.into(), ty);
         let (enum_id, subst) = match ty.as_adt() {

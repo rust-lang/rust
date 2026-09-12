@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `From<_>` for type `Either<_, _>`
+  --> $DIR/default-impl-coherence-overlap-issue-77026.rs:20:1
+   |
+LL | default impl<L, R> From<L> for Either<L, R> {
+   | ------------------------------------------- first implementation here
+...
+LL | impl<L, R> From<R> for Either<L, R> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Either<_, _>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

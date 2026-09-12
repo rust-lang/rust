@@ -251,6 +251,6 @@ pub(crate) fn is_absolute_exact(path: &[u16]) -> bool {
         unsafe {
             new_path.set_len((result as usize) + 1);
         }
-        path == &new_path
+        path == new_path
     }
 }

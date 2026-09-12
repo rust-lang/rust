@@ -70,14 +70,14 @@ unsafe extern "Rust" {
 
 #[inline]
 fn tls_ptr_addr() -> *mut *mut u8 {
-    let mut tp: usize;
+    let tp: *mut *mut u8;
     unsafe {
         asm!(
             "mv {}, tp",
             out(reg) tp,
         );
     }
-    core::ptr::with_exposed_provenance_mut::<*mut u8>(tp)
+    tp
 }
 
 /// Creates an area of memory that's unique per thread. This area will
@@ -97,25 +97,25 @@ fn tls_table() -> &'static mut [*mut u8] {
 fn tls_table_slow() -> &'static mut [*mut u8] {
     // If the TP register is `0`, then this thread hasn't initialized
     // its TLS yet. Allocate a new page to store this memory.
-    let tp = unsafe {
+    let tp: &mut [*mut u8] = unsafe {
         map_memory(
             None,
             None,
             TLS_MEMORY_SIZE / size_of::<*mut u8>(),
             MemoryFlags::R | MemoryFlags::W,
         )
-        .expect("Unable to allocate memory for thread local storage")
+        .unwrap_or_else(|_| rtabort!("Unable to allocate memory for thread local storage"))
     };
 
     for val in tp.iter() {
-        assert!(*val as usize == 0);
+        rtassert!((*val).is_null());
     }
 
     unsafe {
         // Set the thread's `$tp` register
         asm!(
             "mv tp, {}",
-            in(reg) tp.as_mut_ptr() as usize,
+            in(reg) tp.as_mut_ptr(),
         );
     }
     tp
@@ -134,15 +134,16 @@ pub fn create(dtor: Option<Dtor>) -> Key {
 
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    assert!((key < 1022) && (key >= 1));
+    rtassert!((key < 1022) && (key >= 1));
     let table = tls_table();
-    table[key] = value;
+    *rtunwrap!(Some, table.get_mut(key)) = value;
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    assert!((key < 1022) && (key >= 1));
-    tls_table()[key]
+    rtassert!((key < 1022) && (key >= 1));
+    let table = tls_table();
+    *rtunwrap!(Some, table.get(key))
 }
 
 #[inline]
@@ -186,10 +187,10 @@ pub unsafe fn destroy_tls() {
     unsafe { run_dtors() };
 
     // Finally, free the TLS array
-    unsafe {
+    let result = unsafe {
         unmap_memory(core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / size_of::<usize>()))
-            .unwrap()
     };
+    rtunwrap!(Ok, result);
 }
 
 // This is marked inline(never) to prevent dealloc calls from being reordered

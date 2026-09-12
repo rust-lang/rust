@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
+//@ compile-flags: -Zassumptions-on-binders
 
 // Regression test for an ICE in the `MaxUniverse` region visitor. When computing
 // the max universe of a region constraint, a `ReVar` term could already have been
@@ -15,7 +15,7 @@ struct Parent<'a> {
 }
 
 impl<'a> Parent<'a> {
-    type const CT<T: 'a>: usize = 0;
+    const CT<T: 'a>: usize = core::direct_const_arg!(0);
 }
 
 fn check()

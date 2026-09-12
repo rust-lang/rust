@@ -2160,7 +2160,7 @@ _x.py() {
             return 0
             ;;
         x.py__fix)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+            opts="-v -q -i -j -h --allow-dirty --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3113,7 +3113,7 @@ _x.py() {
                     return 0
                     ;;
                 --profiles)
-                    COMPREPLY=($(compgen -W "Check Debug Doc Opt Clippy" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "Check Debug Doc DocJson Opt Clippy" -- "${cur}"))
                     return 0
                     ;;
                 --config)
@@ -3311,7 +3311,7 @@ _x.py() {
                     return 0
                     ;;
                 --profiles)
-                    COMPREPLY=($(compgen -W "Check Debug Doc Opt Clippy" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "Check Debug Doc DocJson Opt Clippy" -- "${cur}"))
                     return 0
                     ;;
                 --config)
@@ -3695,7 +3695,7 @@ _x.py() {
                     return 0
                     ;;
                 --profiles)
-                    COMPREPLY=($(compgen -W "Check Debug Doc Opt Clippy" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "Check Debug Doc DocJson Opt Clippy" -- "${cur}"))
                     return 0
                     ;;
                 --config)
@@ -3893,7 +3893,7 @@ _x.py() {
                     return 0
                     ;;
                 --profiles)
-                    COMPREPLY=($(compgen -W "Check Debug Doc Opt Clippy" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "Check Debug Doc DocJson Opt Clippy" -- "${cur}"))
                     return 0
                     ;;
                 --config)

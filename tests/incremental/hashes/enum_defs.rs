@@ -412,9 +412,9 @@ enum EnumChangeNameOfTypeParameter<S> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumChangeNameOfTypeParameter<T> {
     Variant1(T),
@@ -430,9 +430,9 @@ enum EnumAddTypeParameter<S> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumAddTypeParameter<S, T> {
     Variant1(S),
@@ -485,9 +485,9 @@ enum EnumAddLifetimeParameterBound<'a, 'b> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumAddLifetimeParameterBound<'a, 'b: 'a> {
     Variant1(&'a u32),
@@ -502,9 +502,9 @@ enum EnumAddLifetimeBoundToParameter<'a, T> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumAddLifetimeBoundToParameter<'a, T: 'a> {
     Variant1(T),
@@ -520,9 +520,9 @@ enum EnumAddTraitBound<S> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumAddTraitBound<T: Sync> {
     Variant1(T),
@@ -538,9 +538,9 @@ enum EnumAddLifetimeParameterBoundWhere<'a, 'b> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumAddLifetimeParameterBoundWhere<'a, 'b> where 'b: 'a {
     Variant1(&'a u32),
@@ -557,9 +557,9 @@ enum EnumAddLifetimeBoundToParameterWhere<'a, T> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,predicates_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,clauses_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumAddLifetimeBoundToParameterWhere<'a, T> where T: 'a {
     Variant1(T),
@@ -575,9 +575,9 @@ enum EnumAddTraitBoundWhere<S> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,predicates_of,type_of")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,generics_of,clauses_of,type_of")]
 #[rustc_clean(cfg="bpass6")]
 enum EnumAddTraitBoundWhere<T> where T: Sync {
     Variant1(T),
@@ -688,9 +688,9 @@ mod change_trait_bound_indirectly {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="bpass2", except="hir_owner,predicates_of")]
+    #[rustc_clean(cfg="bpass2", except="hir_owner,clauses_of")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="hir_owner,predicates_of")]
+    #[rustc_clean(cfg="bpass5", except="hir_owner,clauses_of")]
     #[rustc_clean(cfg="bpass6")]
     enum Enum<T: Trait> {
         Variant1(T)
@@ -706,9 +706,9 @@ mod change_trait_bound_indirectly_where {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="bpass2", except="hir_owner,predicates_of")]
+    #[rustc_clean(cfg="bpass2", except="hir_owner,clauses_of")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="hir_owner,predicates_of")]
+    #[rustc_clean(cfg="bpass5", except="hir_owner,clauses_of")]
     #[rustc_clean(cfg="bpass6")]
     enum Enum<T> where T: Trait {
         Variant1(T)

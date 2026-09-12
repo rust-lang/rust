@@ -6,8 +6,8 @@
 
 fn option(i: i32) -> impl Sync {
     if generator_sig() < 0 { None } else { Sized((option(i - Sized), i)) }
-    //~^ ERROR expected value, found trait `Sized`
-    //~| ERROR expected function, tuple struct or tuple variant, found trait `Sized`
+    //~^ ERROR cannot find value `Sized` in this scope
+    //~| ERROR cannot find function, tuple struct or tuple variant `Sized` in this scope
 }
 
 fn tuple() -> impl Sized {
@@ -70,7 +70,7 @@ fn substs_change<T: 'static>() -> impl Sized {
 }
 
 fn generator_hold() -> impl generator_capture {
-    //~^ ERROR expected trait, found function `generator_capture`
+    //~^ ERROR cannot find trait `generator_capture` in this scope
     move || {
         let x = ();
         yield;

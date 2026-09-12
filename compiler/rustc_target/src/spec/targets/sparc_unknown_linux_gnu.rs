@@ -1,6 +1,8 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, RustcAbi, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -16,6 +18,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Sparc,
         options: TargetOptions {
             features: "+v8plus".into(),
+            rustc_abi: Some(RustcAbi::SparcV8Plus),
             cpu: "v9".into(),
             endian: Endian::Big,
             late_link_args: TargetOptions::link_args(
@@ -23,6 +26,7 @@ pub(crate) fn target() -> Target {
                 &["-mcpu=v9", "-m32"],
             ),
             max_atomic_width: Some(32),
+            cfg_abi: CfgAbi::V8Plus,
             ..base::linux_gnu::opts()
         },
     }

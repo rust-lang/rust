@@ -1,6 +1,12 @@
 error[E0046]: not all trait items implemented, missing one of: `eq`, `neq`
   --> $DIR/rustc_must_implement_one_of.rs:41:1
    |
+LL |     fn eq(&self, other: &Self) -> bool {
+   |     ---------------------------------- `eq` from trait
+...
+LL |     fn neq(&self, other: &Self) -> bool {
+   |     ----------------------------------- `neq` from trait
+...
 LL | impl Equal for T3 {}
    | ^^^^^^^^^^^^^^^^^ missing one of `eq`, `neq` in implementation
    |

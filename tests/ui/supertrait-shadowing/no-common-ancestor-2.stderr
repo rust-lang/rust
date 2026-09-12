@@ -1,5 +1,5 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/no-common-ancestor-2.rs:58:8
+  --> $DIR/no-common-ancestor-2.rs:60:8
    |
 LL |     ().hello();
    |        ^^^^^ multiple `hello` found
@@ -20,7 +20,7 @@ note: candidate #3 is defined in an impl of the trait `C` for the type `T`
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: candidate #4 is defined in an impl of the trait `D` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:46:5
+  --> $DIR/no-common-ancestor-2.rs:47:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ LL +     D::hello(&());
    |
 
 error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
-  --> $DIR/no-common-ancestor-2.rs:64:23
+  --> $DIR/no-common-ancestor-2.rs:66:23
    |
 LL |     type Assoc;
    |     ---------- ambiguous `Assoc` from `A`
@@ -85,7 +85,7 @@ LL +     let _ = size_of::<<T as D>::Assoc>();
    |
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/no-common-ancestor-2.rs:66:16
+  --> $DIR/no-common-ancestor-2.rs:68:16
    |
 LL |     let _ = T::CONST;
    |                ^^^^^ multiple `CONST` found
@@ -101,15 +101,15 @@ note: candidate #2 is defined in the trait `B`
 LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
 note: candidate #3 is defined in the trait `C`
-  --> $DIR/no-common-ancestor-2.rs:35:5
+  --> $DIR/no-common-ancestor-2.rs:36:5
    |
-LL |     type const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
 note: candidate #4 is defined in the trait `D`
-  --> $DIR/no-common-ancestor-2.rs:50:5
+  --> $DIR/no-common-ancestor-2.rs:52:5
    |
-LL |     type const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
 LL -     let _ = T::CONST;

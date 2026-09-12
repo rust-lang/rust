@@ -1,18 +1,18 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_infer::infer::TyCtxtInferExt as _;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt, TypeckResults,
+    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt as _,
+    TypeckResults,
 };
-use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
@@ -206,7 +206,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                     .type_implements_fn_trait(
                         cx.param_env,
                         Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                        ty::PredicatePolarity::Positive,
+                        ty::ClausePolarity::Positive,
                     )
             {
                 span_lint_hir_and_then(

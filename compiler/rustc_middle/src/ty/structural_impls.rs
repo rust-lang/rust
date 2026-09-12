@@ -9,14 +9,14 @@ use rustc_abi::TyAndLayout;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Spanned;
-use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
+use rustc_type_ir::{ConstKind, PredicateProxy, TypeFolder, Upcast, VisitorResult, try_visit};
 
-use super::{GenericArg, GenericArgKind, Pattern, Region};
+use super::{GenericArg, GenericArgKind, Pattern};
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::{
-    self, FallibleTypeFolder, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, Binder, FallibleTypeFolder, Lift, ProjectionClause, Term, TermKind, Ty, TyCtxt,
+    TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 impl fmt::Debug for ty::TraitDef {
@@ -61,12 +61,6 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl<'tcx> fmt::Debug for ty::adjustment::PatAdjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} -> {:?}", self.source, self.kind)
-    }
-}
-
-impl fmt::Debug for ty::LateParamRegion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.kind)
     }
 }
 
@@ -169,12 +163,6 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for Region<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind())
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
@@ -198,7 +186,7 @@ TrivialLiftImpls! {
     rustc_middle::mir::ConstValue,
     rustc_span::Symbol,
     rustc_type_ir::BoundConstness,
-    rustc_type_ir::PredicatePolarity,
+    rustc_type_ir::ClausePolarity,
     // tidy-alphabetical-end
 }
 
@@ -250,6 +238,7 @@ TrivialTypeTraversalImpls! {
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,
+    rustc_span::def_id::ModId,
     rustc_target::asm::InlineAsmRegOrRegClass,
     // tidy-alphabetical-end
 }
@@ -267,6 +256,11 @@ TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-end
 }
 
+TrivialLiftImpls! {
+    rustc_span::ErrorGuaranteed,
+    ty::EarlyParamRegion,
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
@@ -274,7 +268,7 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for ty::ParamEnv<'a> {
     type Lifted = ty::ParamEnv<'tcx>;
 
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
-        ty::ParamEnv::new(tcx.lift(self.caller_bounds()))
+        ty::ParamEnv { caller_bounds: tcx.lift(self.caller_bounds) }
     }
 }
 
@@ -484,25 +478,6 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        folder.try_fold_region(self)
-    }
-
-    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        folder.fold_region(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        visitor.visit_region(*self)
-    }
-}
-
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
@@ -516,17 +491,84 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
+impl<'tcx> PredicateProxy<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
+    fn allow_normalization(&self) -> bool {
+        rustc_type_ir::inherent::Predicate::allow_normalization(*self)
+    }
+
+    fn map_projection(
+        self,
+        tcx: TyCtxt<'tcx>,
+        f: impl FnOnce(Binder<'tcx, ProjectionClause<'tcx>>) -> Binder<'tcx, ProjectionClause<'tcx>>,
+    ) -> Option<Self> {
+        self.as_projection_clause().map(|kind| f(kind).upcast(tcx))
+    }
+
+    fn clause_kind_unchecked(&self) -> Option<ty::Binder<'tcx, ty::ClauseKind<'tcx>>> {
+        self.as_clause().map(|clause| clause.kind())
+    }
+}
+
 // FIXME(clause): This is wonky
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(folder.try_fold_predicate(self.as_predicate())?.expect_clause())
+        Ok(folder.try_fold_predicate(self)?)
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        folder.fold_predicate(self.as_predicate()).expect_clause()
+        folder.fold_predicate(self)
+    }
+}
+
+// follow `Predicate`'s implementation (by deferring to it)
+impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        <ty::Predicate<'_> as TypeSuperFoldable<TyCtxt<'tcx>>>::try_super_fold_with(
+            self.as_predicate(),
+            folder,
+        )
+        .map(|i| i.expect_clause())
+    }
+
+    fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        <ty::Predicate<'_> as TypeSuperFoldable<TyCtxt<'tcx>>>::super_fold_with(
+            self.as_predicate(),
+            folder,
+        )
+        .expect_clause()
+    }
+}
+
+impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        <ty::Predicate<'_> as TypeSuperVisitable<TyCtxt<'tcx>>>::super_visit_with(
+            &self.as_predicate(),
+            visitor,
+        )
+    }
+}
+
+impl<'tcx> PredicateProxy<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    fn allow_normalization(&self) -> bool {
+        self.as_predicate().allow_normalization()
+    }
+
+    fn map_projection(
+        self,
+        tcx: TyCtxt<'tcx>,
+        f: impl FnOnce(Binder<'tcx, ProjectionClause<'tcx>>) -> Binder<'tcx, ProjectionClause<'tcx>>,
+    ) -> Option<Self> {
+        self.as_projection_clause().map(|kind| f(kind).upcast(tcx))
+    }
+
+    fn clause_kind_unchecked(&self) -> Option<ty::Binder<'tcx, ty::ClauseKind<'tcx>>> {
+        Some(self.kind())
     }
 }
 
@@ -806,6 +848,6 @@ list_fold! {
     &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>: mk_predefined_opaques_in_body,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
-    &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> : mk_outlives,
+    &'tcx ty::List<ty::ArgOutlivesClause<'tcx>> : mk_outlives,
     &'tcx ty::List<ty::Const<'tcx>> : mk_const_list,
 }

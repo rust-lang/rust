@@ -1,5 +1,5 @@
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects_never_pattern.rs:7:5
+  --> tests/ui/zero_repeat_side_effects_never_pattern.rs:6:5
    |
 LL |     let _data = [panic!(); 0];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

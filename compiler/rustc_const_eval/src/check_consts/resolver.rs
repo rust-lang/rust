@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use rustc_index::bit_set::MixedBitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
+    self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind,
 };
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, JoinSemiLattice};
@@ -247,7 +247,7 @@ impl<'mir, 'tcx, Q> FlowSensitiveAnalysis<'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    pub(super) fn new(_: Q, ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
+    pub(super) fn new(ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
         FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
@@ -309,7 +309,7 @@ impl<C> DebugWithContext<C> for State {
 
         if self.borrow != old.borrow {
             f.write_str("borrow: ")?;
-            self.qualif.fmt_diff_with(&old.borrow, ctxt, f)?;
+            self.borrow.fmt_diff_with(&old.borrow, ctxt, f)?;
             f.write_str("\n")?;
         }
 
@@ -351,14 +351,13 @@ where
         self.transfer_function(state).visit_statement(statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         self.transfer_function(state).visit_terminator(terminator, location);
-        terminator.edges()
     }
 
     fn apply_call_return_effect(

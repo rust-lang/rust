@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: aarch64_be_unknown_hermit
 //@ [aarch64_be_unknown_hermit] compile-flags: --target aarch64_be-unknown-hermit
 //@ [aarch64_be_unknown_hermit] needs-llvm-components: aarch64
@@ -46,6 +46,9 @@
 //@ revisions: aarch64_unknown_illumos
 //@ [aarch64_unknown_illumos] compile-flags: --target aarch64-unknown-illumos
 //@ [aarch64_unknown_illumos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_l4re_uclibc
+//@ [aarch64_unknown_l4re_uclibc] compile-flags: --target aarch64-unknown-l4re-uclibc
+//@ [aarch64_unknown_l4re_uclibc] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_linux_gnu
 //@ [aarch64_unknown_linux_gnu] compile-flags: --target aarch64-unknown-linux-gnu
 //@ [aarch64_unknown_linux_gnu] needs-llvm-components: aarch64
@@ -229,9 +232,9 @@
 //@ revisions: armv7a_nuttx_eabihf
 //@ [armv7a_nuttx_eabihf] compile-flags: --target armv7a-nuttx-eabihf
 //@ [armv7a_nuttx_eabihf] needs-llvm-components: arm
-//@ revisions: armv7a_vex_v5
-//@ [armv7a_vex_v5] compile-flags: --target armv7a-vex-v5
-//@ [armv7a_vex_v5] needs-llvm-components: arm
+//@ revisions: thumbv7a_vex_v5
+//@ [thumbv7a_vex_v5] compile-flags: --target thumbv7a-vex-v5
+//@ [thumbv7a_vex_v5] needs-llvm-components: arm
 //@ revisions: armv7r_none_eabi
 //@ [armv7r_none_eabi] compile-flags: --target armv7r-none-eabi
 //@ [armv7r_none_eabi] needs-llvm-components: arm
@@ -400,6 +403,9 @@
 //@ revisions: msp430_none_elf
 //@ [msp430_none_elf] compile-flags: --target msp430-none-elf
 //@ [msp430_none_elf] needs-llvm-components: msp430
+//@ revisions: powerpc64_sony_ps3
+//@ [powerpc64_sony_ps3] compile-flags: --target powerpc64-sony-ps3
+//@ [powerpc64_sony_ps3] needs-llvm-components: powerpc
 //@ revisions: powerpc64_unknown_freebsd
 //@ [powerpc64_unknown_freebsd] compile-flags: --target powerpc64-unknown-freebsd
 //@ [powerpc64_unknown_freebsd] needs-llvm-components: powerpc
@@ -508,6 +514,9 @@
 //@ revisions: riscv32imc_unknown_none_elf
 //@ [riscv32imc_unknown_none_elf] compile-flags: --target riscv32imc-unknown-none-elf
 //@ [riscv32imc_unknown_none_elf] needs-llvm-components: riscv
+//@ revisions: riscv32imfc_unknown_none_elf
+//@ [riscv32imfc_unknown_none_elf] compile-flags: --target riscv32imfc-unknown-none-elf
+//@ [riscv32imfc_unknown_none_elf] needs-llvm-components: riscv
 //@ revisions: riscv64_linux_android
 //@ [riscv64_linux_android] compile-flags: --target riscv64-linux-android
 //@ [riscv64_linux_android] needs-llvm-components: riscv

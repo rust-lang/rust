@@ -4,9 +4,9 @@
 
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_middle::bug;
 use rustc_middle::thir::*;
@@ -17,7 +17,14 @@ pub(crate) fn thir_body<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: LocalDefId,
 ) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
-    debug_assert!(!tcx.is_type_const(owner_def.to_def_id()), "thir_body queried for type_const");
+    if cfg!(debug_assertions)
+        && matches!(tcx.def_kind(owner_def), DefKind::Const | DefKind::AssocConst)
+    {
+        debug_assert!(
+            tcx.const_of_item(owner_def.to_def_id()).is_none(),
+            "thir_body queried for directly represented const item: {owner_def:?}"
+        );
+    }
 
     let body = tcx.hir_body_owned_by(owner_def);
     let mut cx: ThirBuildCx<'tcx> = ThirBuildCx::new(tcx, owner_def);
@@ -99,9 +106,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         Self {
             tcx,
             thir: Thir::new(body_type),
-            // FIXME(#132279): We're in a body, we should use a typing
-            // mode which reveals the opaque types defined by that body.
-            typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+            typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
             typeck_results,
             body_owner: def.to_def_id(),
             apply_adjustments: !find_attr!(tcx, hir_id, CustomMir(..)),

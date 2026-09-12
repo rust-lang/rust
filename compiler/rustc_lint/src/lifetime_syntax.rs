@@ -1,12 +1,12 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, LifetimeSource};
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use tracing::instrument;
 
-use crate::{LateContext, LateLintPass, LintContext, lints};
+use crate::{LateContext, LateLintPass, LintContext, diagnostics};
 
 declare_lint! {
     /// The `mismatched_lifetime_syntaxes` lint detects when the same
@@ -397,7 +397,7 @@ fn emit_mismatch_diagnostic<'tcx>(
             &suggest_change_to_mixed_explicit_anonymous,
         );
 
-        lints::MismatchedLifetimeSyntaxesSuggestion::Mixed {
+        diagnostics::MismatchedLifetimeSyntaxesSuggestion::Mixed {
             implicit_suggestions,
             explicit_anonymous_suggestions,
             optional_alternative: false,
@@ -421,7 +421,7 @@ fn emit_mismatch_diagnostic<'tcx>(
     let implicit_suggestion = should_suggest_implicit.then(|| {
         let suggestions = make_implicit_suggestions(&suggest_change_to_implicit);
 
-        lints::MismatchedLifetimeSyntaxesSuggestion::Implicit {
+        diagnostics::MismatchedLifetimeSyntaxesSuggestion::Implicit {
             suggestions,
             optional_alternative: false,
         }
@@ -464,19 +464,19 @@ fn emit_mismatch_diagnostic<'tcx>(
     cx.emit_span_lint(
         MISMATCHED_LIFETIME_SYNTAXES,
         inputs.iter_unnamed().chain(outputs.iter_unnamed()).copied().collect::<Vec<_>>(),
-        lints::MismatchedLifetimeSyntaxes { inputs, outputs, suggestions },
+        diagnostics::MismatchedLifetimeSyntaxes { inputs, outputs, suggestions },
     );
 }
 
 fn build_mismatch_suggestion(
     lifetime_name: &str,
     infos: &[&Info<'_>],
-) -> lints::MismatchedLifetimeSyntaxesSuggestion {
+) -> diagnostics::MismatchedLifetimeSyntaxesSuggestion {
     let lifetime_name = lifetime_name.to_owned();
 
     let suggestions = build_mismatch_suggestions_for_lifetime(&lifetime_name, infos);
 
-    lints::MismatchedLifetimeSyntaxesSuggestion::Explicit {
+    diagnostics::MismatchedLifetimeSyntaxesSuggestion::Explicit {
         lifetime_name,
         suggestions,
         optional_alternative: false,

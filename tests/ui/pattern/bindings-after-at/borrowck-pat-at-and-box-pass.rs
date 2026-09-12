@@ -1,11 +1,11 @@
 //@ check-pass
 
-// Test `@` patterns combined with `box` patterns.
+// Test `@` patterns combined with `deref!` patterns.
 
 #![allow(dropping_references)]
 #![allow(dropping_copy_types)]
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 #[derive(Copy, Clone)]
 struct C;
@@ -17,47 +17,47 @@ struct NC;
 fn nc() -> NC { NC }
 
 fn main() {
-    let ref a @ box b = Box::new(C); // OK; the type is `Copy`.
+    let ref a @ deref!(b) = Box::new(C); // OK; the type is `Copy`.
     drop(b);
     drop(b);
     drop(a);
 
-    let ref a @ box b = Box::new(c()); // OK; the type is `Copy`.
+    let ref a @ deref!(b) = Box::new(c()); // OK; the type is `Copy`.
     drop(b);
     drop(b);
     drop(a);
 
-    fn f3(ref a @ box b: Box<C>) { // OK; the type is `Copy`.
+    fn f3(ref a @ deref!(b): Box<C>) { // OK; the type is `Copy`.
         drop(b);
         drop(b);
         drop(a);
     }
     match Box::new(c()) {
-        ref a @ box b => { // OK; the type is `Copy`.
+        ref a @ deref!(b) => { // OK; the type is `Copy`.
             drop(b);
             drop(b);
             drop(a);
         }
     }
 
-    let ref a @ box ref b = Box::new(NC); // OK.
+    let ref a @ deref!(ref b) = Box::new(NC); // OK.
     drop(a);
     drop(b);
 
-    fn f4(ref a @ box ref b: Box<NC>) { // OK.
+    fn f4(ref a @ deref!(ref b): Box<NC>) { // OK.
         drop(a);
         drop(b)
     }
 
     match Box::new(nc()) {
-        ref a @ box ref b => { // OK.
+        ref a @ deref!(ref b) => { // OK.
             drop(a);
             drop(b);
         }
     }
 
     match Box::new([Ok(c()), Err(nc()), Ok(c())]) {
-        box [Ok(a), ref xs @ .., Err(ref b)] => {
+        deref!([Ok(a), ref xs @ .., Err(ref b)]) => {
             let _: C = a;
             let _: &[Result<C, NC>; 1] = xs;
             let _: &NC = b;
@@ -66,7 +66,7 @@ fn main() {
     }
 
     match [Ok(Box::new(c())), Err(Box::new(nc())), Ok(Box::new(c())), Ok(Box::new(c()))] {
-        [Ok(box a), ref xs @ .., Err(box ref b), Err(box ref c)] => {
+        [Ok(deref!(a)), ref xs @ .., Err(deref!(ref b)), Err(deref!(ref c))] => {
             let _: C = a;
             let _: &[Result<Box<C>, Box<NC>>; 1] = xs;
             let _: &NC = b;
@@ -76,12 +76,12 @@ fn main() {
     }
 
     match Box::new([Ok(c()), Err(nc()), Ok(c())]) {
-        box [Ok(a), ref xs @ .., Err(b)] => {}
+        deref!([Ok(a), ref xs @ .., Err(b)]) => {}
         _ => {}
     }
 
     match [Ok(Box::new(c())), Err(Box::new(nc())), Ok(Box::new(c())), Ok(Box::new(c()))] {
-        [Ok(box ref a), ref xs @ .., Err(box b), Err(box ref mut c)] => {}
+        [Ok(deref!(ref a)), ref xs @ .., Err(deref!(b)), Err(deref!(ref mut c))] => {}
         _ => {}
     }
 }

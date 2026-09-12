@@ -93,4 +93,75 @@ export async function getTests(ctx: Context) {
             );
         });
     });
+
+    await ctx.suite("Bootstrap/Detect RA component in toolchain file", (suite) => {
+        suite.addTest("Single line components array", async () => {
+            assert.ok(
+                _private.declaresRaComponent(
+                    `[toolchain]
+channel = "1.88"
+components = ["cargo", "rust-analyzer", "rustfmt"]
+`,
+                ),
+            );
+        });
+
+        suite.addTest("Multi line components array", async () => {
+            assert.ok(
+                _private.declaresRaComponent(
+                    `[toolchain]
+channel = "1.88"
+components = [
+    "cargo",
+    "rust-analyzer",
+    "rustfmt",
+]
+profile = "default"
+`,
+                ),
+            );
+        });
+
+        suite.addTest("Components array with literal strings", async () => {
+            assert.ok(_private.declaresRaComponent(`components = ['cargo', 'rust-analyzer']`));
+        });
+
+        suite.addTest("Components array without RA", async () => {
+            assert.ok(
+                !_private.declaresRaComponent(
+                    `[toolchain]
+channel = "1.88"
+components = [
+    "cargo",
+    "rustfmt",
+]
+`,
+                ),
+            );
+        });
+
+        suite.addTest("No components array", async () => {
+            assert.ok(
+                !_private.declaresRaComponent(
+                    `[toolchain]
+channel = "1.88"
+`,
+                ),
+            );
+        });
+
+        suite.addTest("RA mentioned outside the components array", async () => {
+            assert.ok(
+                !_private.declaresRaComponent(
+                    `[toolchain]
+channel = "1.88"
+components = [
+    "cargo",
+]
+# add "rust-analyzer" here to use the matching server
+`,
+                ),
+            );
+        });
+    });
 }

@@ -19,8 +19,6 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
         scope 2 {
             debug x => _9;
         }
-        scope 5 (inlined iter::range::<impl Iterator for std::ops::RangeInclusive<u32>>::next) {
-        }
     }
     scope 3 (inlined std::ops::RangeInclusive::<u32>::new) {
     }
@@ -38,7 +36,7 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
         StorageLive(_7);
         StorageLive(_6);
         _6 = &mut _5;
-        _7 = <std::ops::RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(move _6) -> [return: bb2, unwind unreachable];
+        _7 = <std::ops::RangeInclusive<u32> as Iterator>::next(move _6) -> [return: bb2, unwind unreachable];
     }
 
     bb2: {

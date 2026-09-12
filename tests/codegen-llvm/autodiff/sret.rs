@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable,NoTT -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zautodiff=Enable,NoTT -Zautodiff_post_passes=function(mem2reg,instsimplify,simplifycfg) -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 
@@ -18,17 +18,21 @@ fn primal(x: f32, y: f32) -> f64 {
     (x * x * y) as f64
 }
 
-// CHECK: define internal fastcc { double, float, float } @diffeprimal(float noundef %x, float noundef %y)
-// CHECK-NEXT: invertstart:
+// CHECK: define internal { double, float, float } @diffeprimal(float noundef %x, float noundef %y, double %differeturn)
+// CHECK-NEXT: start:
 // CHECK-NEXT: %_4 = fmul float %x, %x
 // CHECK-NEXT: %_3 = fmul float %_4, %y
 // CHECK-NEXT: %_0 = fpext float %_3 to double
-// CHECK-NEXT: %0 = fadd fast float %y, %y
-// CHECK-NEXT: %1 = fmul fast float %0, %x
-// CHECK-NEXT: %2 = insertvalue { double, float, float } undef, double %_0, 0
-// CHECK-NEXT: %3 = insertvalue { double, float, float } %2, float %1, 1
-// CHECK-NEXT: %4 = insertvalue { double, float, float } %3, float %_4, 2
-// CHECK-NEXT: ret { double, float, float } %4
+// CHECK-NEXT: %0 = fptrunc fast double %differeturn to float
+// CHECK-NEXT: %1 = fmul fast float %0, %y
+// CHECK-NEXT: %2 = fmul fast float %0, %_4
+// CHECK-NEXT: %3 = fmul fast float %1, %x
+// CHECK-NEXT: %4 = fmul fast float %1, %x
+// CHECK-NEXT: %5 = fadd fast float %3, %4
+// CHECK-NEXT: %6 = insertvalue { double, float, float } undef, double %_0, 0
+// CHECK-NEXT: %7 = insertvalue { double, float, float } %6, float %5, 1
+// CHECK-NEXT: %8 = insertvalue { double, float, float } %7, float %2, 2
+// CHECK-NEXT: ret { double, float, float } %8
 // CHECK-NEXT: }
 
 fn main() {

@@ -6,141 +6,141 @@ LL | #[sanitize(thread = "off")]
    |
    = help: `#[sanitize]` can be used on statics if only the address is sanitized
 
-error: `#[sanitize]` attribute cannot be used on type aliases
-  --> $DIR/valid-sanitize.rs:18:1
+error: the `sanitize` attribute cannot be used on type aliases
+  --> $DIR/valid-sanitize.rs:18:3
    |
 LL | #[sanitize(address = "off")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on traits
-  --> $DIR/valid-sanitize.rs:21:1
+error: the `sanitize` attribute cannot be used on traits
+  --> $DIR/valid-sanitize.rs:21:3
    |
 LL | #[sanitize(address = "off")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on associated consts
-  --> $DIR/valid-sanitize.rs:23:5
+error: the `sanitize` attribute cannot be used on associated consts
+  --> $DIR/valid-sanitize.rs:23:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on associated types
-  --> $DIR/valid-sanitize.rs:26:5
+error: the `sanitize` attribute cannot be used on associated types
+  --> $DIR/valid-sanitize.rs:26:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on required trait methods
-  --> $DIR/valid-sanitize.rs:29:5
+error: the `sanitize` attribute cannot be used on required trait methods
+  --> $DIR/valid-sanitize.rs:29:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions with a body, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions with a body, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on required trait methods
-  --> $DIR/valid-sanitize.rs:35:5
+error: the `sanitize` attribute cannot be used on required trait methods
+  --> $DIR/valid-sanitize.rs:35:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions with a body, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions with a body, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on associated types
-  --> $DIR/valid-sanitize.rs:43:5
+error: the `sanitize` attribute cannot be used on associated types
+  --> $DIR/valid-sanitize.rs:43:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on associated types
-  --> $DIR/valid-sanitize.rs:60:5
+error: the `sanitize` attribute cannot be used on associated types
+  --> $DIR/valid-sanitize.rs:60:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on structs
-  --> $DIR/valid-sanitize.rs:65:1
+error: the `sanitize` attribute cannot be used on structs
+  --> $DIR/valid-sanitize.rs:65:3
    |
 LL | #[sanitize(address = "off")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on struct fields
-  --> $DIR/valid-sanitize.rs:67:5
+error: the `sanitize` attribute cannot be used on struct fields
+  --> $DIR/valid-sanitize.rs:67:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on foreign statics
-  --> $DIR/valid-sanitize.rs:80:5
+error: the `sanitize` attribute cannot be used on foreign statics
+  --> $DIR/valid-sanitize.rs:80:7
    |
 LL |     #[sanitize(address = "off", thread = "on")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on foreign types
-  --> $DIR/valid-sanitize.rs:83:5
+error: the `sanitize` attribute cannot be used on foreign types
+  --> $DIR/valid-sanitize.rs:83:7
    |
 LL |     #[sanitize(address = "off", thread = "on")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on foreign functions
-  --> $DIR/valid-sanitize.rs:86:5
+error: the `sanitize` attribute cannot be used on foreign functions
+  --> $DIR/valid-sanitize.rs:86:7
    |
 LL |     #[sanitize(address = "off", thread = "on")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions with a body, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions with a body, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on statements
-  --> $DIR/valid-sanitize.rs:92:5
+error: the `sanitize` attribute cannot be used on statements
+  --> $DIR/valid-sanitize.rs:92:7
    |
 LL |     #[sanitize(address = "off", thread = "on")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on statements
-  --> $DIR/valid-sanitize.rs:98:5
+error: the `sanitize` attribute cannot be used on statements
+  --> $DIR/valid-sanitize.rs:98:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on match arms
-  --> $DIR/valid-sanitize.rs:109:9
+error: the `sanitize` attribute cannot be used on match arms
+  --> $DIR/valid-sanitize.rs:109:11
    |
 LL |         #[sanitize(address = "off")]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
-error: `#[sanitize]` attribute cannot be used on expressions
-  --> $DIR/valid-sanitize.rs:113:5
+error: the `sanitize` attribute cannot be used on expressions
+  --> $DIR/valid-sanitize.rs:113:7
    |
 LL |     #[sanitize(address = "off")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
+   = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
 error: aborting due to 18 previous errors
 

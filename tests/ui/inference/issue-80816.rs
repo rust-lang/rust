@@ -49,6 +49,7 @@ pub fn foo() {
     let s: Arc<ArcSwapAny<Arc<usize>>> = unimplemented!();
     let guard: Guard<Arc<usize>> = s.load();
     //~^ ERROR: type annotations needed
+    //~| NOTE: cannot satisfy `<ArcSwapAny<Arc<usize>> as Access<_>>::Guard == Guard<Arc<usize>>`
     //~| HELP: try using a fully qualified path to specify the expected types
 }
 

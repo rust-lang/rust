@@ -157,7 +157,7 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn typeck_results(&self) -> Self::TypeckResults<'_>;
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
 
     fn structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
@@ -188,8 +188,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
         self.typeck_results.borrow()
     }
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
-        self.infcx.resolve_vars_if_possible(t)
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+        self.infcx.deeply_resolve_ignoring_regions(t)
     }
 
     fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -217,7 +217,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
-        self.body_id
+        self.body_def_id
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -234,7 +234,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     type Error = !;
 
     fn typeck_results(&self) -> Self::TypeckResults<'_> {
-        self.0.maybe_typeck_results().expect("expected typeck results")
+        self.0.typeck_results()
     }
 
     fn structurally_resolve_type(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -242,7 +242,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
         ty
     }
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         t
     }
 
@@ -451,7 +451,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             hir::ExprKind::Let(hir::LetExpr { pat, init, .. }) => {
-                self.walk_local(init, pat, None, || self.borrow_expr(init, BorrowKind::Immutable))?;
+                self.walk_local(init, pat, None)?;
             }
 
             hir::ExprKind::Match(discr, arms, _) => {
@@ -577,7 +577,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_stmt(&self, stmt: &hir::Stmt<'_>) -> Result<(), Cx::Error> {
         match stmt.kind {
             hir::StmtKind::Let(hir::LetStmt { pat, init: Some(expr), els, .. }) => {
-                self.walk_local(expr, pat, *els, || Ok(()))?;
+                self.walk_local(expr, pat, *els)?;
             }
 
             hir::StmtKind::Let(_) => {}
@@ -617,19 +617,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
-    fn walk_local<F>(
+    fn walk_local(
         &self,
         expr: &hir::Expr<'_>,
         pat: &hir::Pat<'_>,
         els: Option<&hir::Block<'_>>,
-        mut f: F,
-    ) -> Result<(), Cx::Error>
-    where
-        F: FnMut() -> Result<(), Cx::Error>,
-    {
+    ) -> Result<(), Cx::Error> {
         self.walk_expr(expr)?;
         let expr_place = self.cat_expr(expr)?;
-        f()?;
         self.fake_read_scrutinee(&expr_place, els.is_some())?;
         self.walk_pat(&expr_place, pat, false)?;
         if let Some(els) = els {
@@ -910,8 +905,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
                     let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
                     match res {
-                        Res::Def(DefKind::Const { .. }, _)
-                        | Res::Def(DefKind::AssocConst { .. }, _) => {
+                        Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                             // Named constants have to be equated with the value
                             // being matched, so that's a read of the value being matched.
                             //
@@ -958,7 +952,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     }
                 }
                 PatKind::Or(_)
-                | PatKind::Box(_)
                 | PatKind::Ref(..)
                 | PatKind::Guard(..)
                 | PatKind::Tuple(..)
@@ -1133,7 +1126,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> Result<Ty<'tcx>, Cx::Error> {
         match ty {
             Some(ty) => {
-                let ty = self.cx.resolve_vars_if_possible(ty);
+                let ty = self.cx.deeply_resolve_ignoring_regions(ty);
                 self.cx.error_reported_in_ty(ty)?;
                 Ok(ty)
             }
@@ -1272,7 +1265,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     where
         F: FnOnce() -> Result<PlaceWithHirId<'tcx>, Cx::Error>,
     {
-        let target = self.cx.resolve_vars_if_possible(adjustment.target);
+        let target = self.cx.deeply_resolve_ignoring_regions(adjustment.target);
         match adjustment.kind {
             adjustment::Adjust::Deref(deref_kind) => {
                 // Equivalent to *expr or something similar.
@@ -1408,9 +1401,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         match res {
             Res::Def(
                 DefKind::Ctor(..)
-                | DefKind::Const { .. }
+                | DefKind::Const
                 | DefKind::ConstParam
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Fn
                 | DefKind::AssocFn,
                 _,
@@ -1768,8 +1761,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 
-            PatKind::Box(subpat) | PatKind::Ref(subpat, _, _) => {
-                // box p1, &p1, &mut p1. we can ignore the mutability of
+            PatKind::Ref(subpat, _, _) => {
+                // &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subplace = self.cat_deref(pat.hir_id, place_with_id)?;

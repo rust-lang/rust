@@ -30,7 +30,8 @@ It is often beneficial to specify the target SM architecture, such as `-C target
 One can use `-C target-feature=+ptx80` to choose a later PTX version without changing the target SM architecture (the default in this case, `ptx78`, requires CUDA driver version 11.8, while `ptx80` would require driver version 12.0).
 Later PTX versions may allow more efficient code generation.
 
-Although Rust follows LLVM in representing `ptx*` and `sm_*` as target features, they should be thought of as having crate granularity, set via (either via `-Ctarget-cpu` and optionally `-Ctarget-feature`).
+For this target, the compiler enforces that all crates built into a binary use the same value for `-C target-cpu`. Therefore, if specifying a value different from the current default (`sm_70`), it is necessary to also build `core` manually with this value. This is possible by invoking cargo with `-Z build-std=core` using a nightly toolchain.
+Although Rust follows LLVM in representing `ptx*` and `sm_*` as target features, they should also be thought of as having binary granularity. However, this is not enforced by the compiler. When building crates together, the same value for all crates should be set via `-C target-feature`.
 While the compiler accepts `#[target_feature(enable = "ptx80", enable = "sm_89")]`, it is not supported, may not behave as intended, and may become erroneous in the future.
 
 ## Minimum SM and PTX support by Rust version

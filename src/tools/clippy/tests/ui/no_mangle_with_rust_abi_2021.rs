@@ -3,7 +3,6 @@
 // Edition 2024 requires the use of #[unsafe(no_mangle)]
 
 //@no-rustfix: overlapping suggestions
-#![allow(unused)]
 #![warn(clippy::no_mangle_with_rust_abi)]
 
 #[no_mangle]

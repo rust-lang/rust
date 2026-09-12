@@ -1,8 +1,8 @@
 error[E0658]: associated type defaults are unstable
-  --> $DIR/type-const-associated-default.rs:4:5
+  --> $DIR/type-const-associated-default.rs:5:5
    |
-LL |     type const N: usize = 10;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const N: usize = core::direct_const_arg!(10);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #29661 <https://github.com/rust-lang/rust/issues/29661> for more information
    = help: add `#![feature(associated_type_defaults)]` to the crate attributes to enable

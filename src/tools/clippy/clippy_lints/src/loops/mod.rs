@@ -27,12 +27,11 @@ mod while_let_on_iterator;
 
 use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::{higher, sym};
 use rustc_ast::Label;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 use utils::{IncrementVisitor, InitializeVisitor, make_iterator_snippet};
 
@@ -850,7 +849,7 @@ pub struct Loops {
 impl Loops {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             enforce_iter_loop_reborrow: conf.enforce_iter_loop_reborrow,
         }
     }

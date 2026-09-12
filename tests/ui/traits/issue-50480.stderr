@@ -41,10 +41,13 @@ error[E0425]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:12:18
    |
 LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
-   |            -     ^
-   |            |
-   |            similarly named type parameter `T` defined here
+   |                  ^ not found in this scope
    |
+note: similarly named type parameter `T` defined here
+  --> $DIR/issue-50480.rs:12:12
+   |
+LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |            ^
 help: a type parameter with a similar name exists
    |
 LL - struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);

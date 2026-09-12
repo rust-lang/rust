@@ -162,7 +162,7 @@ endian-sensitive code.
 ### Controlling target features
 
 Controlling target features works similar to regular rustc invocations:
-`RUSTFLAGS="-Ctarget-features=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
+`RUSTFLAGS="-Ctarget-feature=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
 only supports very few AVX512 intrinsics at the moment.) `-Ctarget-cpu` also works. If target
 features are also relevant for doctests, you have to also set `RUSTDOCFLAGS`.
 
@@ -461,9 +461,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   disables the randomization of the next thread to be picked, instead fixing a round-robin schedule.
   Note however that other aspects of Miri's concurrency behavior are still randomize; use
   `-Zmiri-deterministic-concurrency` to disable them all.
-* `-Zmiri-force-intrinsic-fallback` forces the use of the "fallback" body for all intrinsics that
-  have one. This is useful to test the fallback bodies, but should not be used otherwise. It is
-  **unsound** since the fallback body might not be checking for all UB.
 * `-Zmiri-native-lib=<path to a shared object file or folder>` is an experimental flag for providing
   support for calling native functions from inside the interpreter via FFI. The flag is supported
   only on Unix systems. Functions not provided by that file are still executed via the usual Miri
@@ -534,10 +531,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   track interior mutable data on the level of references instead of on the
   byte-level as is done by default.  Therefore, with this flag, Tree
   Borrows will be more permissive.
-* `-Zmiri-tree-borrows-relax-custom-allocator-uniqueness` disables uniqueness assumptions for
-  `Box<T, A>` where `A` is not `Global`. The exact aliasing rules for such custom allocators are
-  still up in the air, and by default Miri is conservative and rejects some allocator
-  implementations that incur relevant aliasing between the allocation and the allocator.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 
@@ -655,6 +648,7 @@ Definite bugs found:
 * [`VecDeque::splice` confusing physical and logical indices](https://github.com/rust-lang/rust/issues/151758)
 * [Data race in `oneshot` channel](https://github.com/faern/oneshot/issues/69)
 * [Memory leak in serde-yaml-bw](https://github.com/bourumir-wyngs/serde-yaml-bw/issues/197)
+* [Incorrect use of SSE4.1 intrinsic in SSE2 backend in chacha20](https://github.com/RustCrypto/stream-ciphers/issues/579)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

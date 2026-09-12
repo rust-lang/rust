@@ -3,10 +3,14 @@
 use std::path::Path;
 
 use rustc_span::{Span, Symbol};
+use rustc_structures::CrateType;
 
 use crate::Session;
-use crate::config::{CrateType, OutFileName, OutputFilenames, OutputType};
-use crate::errors::{CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
+use crate::config::{OutFileName, OutputFilenames, OutputType};
+use crate::diagnostics::{
+    CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName,
+    InvalidCharacterInCrateNameSuggestion,
+};
 
 pub fn out_filename(
     sess: &Session,
@@ -68,6 +72,10 @@ pub fn validate_crate_name(sess: &Session, crate_name: Symbol, span: Option<Span
             span,
             character: c,
             crate_name,
+            suggestion: span.is_none().then(|| InvalidCharacterInCrateNameSuggestion {
+                suggested_name:
+                    crate_name.as_str().replace(|c: char| c != '_' && !c.is_alphanumeric(), "_"),
+            }),
         }));
     }
 
@@ -128,6 +136,13 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
         }
         if sess.crt_static(Some(crate_type)) && !sess.target.crt_static_allows_dylibs {
             return true;
+        }
+    }
+    if crate_type == CrateType::ProcMacro {
+        if sess.opts.target_triple == sess.wasm_proc_macro_tuple
+            && sess.opts.unstable_opts.wasm_proc_macros
+        {
+            return false;
         }
     }
     if let CrateType::ProcMacro | CrateType::Dylib = crate_type

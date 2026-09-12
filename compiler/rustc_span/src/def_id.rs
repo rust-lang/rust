@@ -4,7 +4,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::{
-    RawDefId, RawDefPathHash, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
+    RawDefId, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
@@ -40,8 +40,8 @@ impl CrateNum {
     }
 
     #[inline]
-    pub fn as_mod_def_id(self) -> ModDefId {
-        ModDefId::new_unchecked(DefId { krate: self, index: CRATE_DEF_INDEX })
+    pub fn as_mod_id(self) -> ModId {
+        ModId::new_unchecked(DefId { krate: self, index: CRATE_DEF_INDEX })
     }
 }
 
@@ -115,16 +115,6 @@ impl DefPathHash {
     #[inline]
     pub fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> DefPathHash {
         DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
-    }
-
-    #[inline]
-    pub fn to_raw_def_path_hash(self) -> RawDefPathHash {
-        RawDefPathHash(self.0.to_le_bytes())
-    }
-
-    #[inline]
-    pub fn from_raw_def_path_hash(RawDefPathHash(a): RawDefPathHash) -> DefPathHash {
-        DefPathHash(Fingerprint::from_le_bytes(a))
     }
 }
 
@@ -377,6 +367,7 @@ impl !Ord for LocalDefId {}
 impl !PartialOrd for LocalDefId {}
 
 pub const CRATE_DEF_ID: LocalDefId = LocalDefId { local_def_index: CRATE_DEF_INDEX };
+pub const CRATE_MOD_ID: LocalModId = LocalModId::new_unchecked(CRATE_DEF_ID);
 
 impl Idx for LocalDefId {
     #[inline]
@@ -452,7 +443,7 @@ impl ToStableHashKey for DefId {
 
     #[inline]
     fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        DefPathHash::from_raw_def_path_hash(hcx.def_path_hash(self.to_raw_def_id()))
+        DefPathHash(hcx.def_path_hash(self.to_raw_def_id()))
     }
 }
 
@@ -465,102 +456,98 @@ impl ToStableHashKey for LocalDefId {
     }
 }
 
-macro_rules! typed_def_id {
-    ($Name:ident, $LocalName:ident) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-        pub struct $Name(DefId);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
+pub struct ModId(DefId);
 
-        impl $Name {
-            #[inline]
-            pub const fn new_unchecked(def_id: DefId) -> Self {
-                Self(def_id)
-            }
+impl ModId {
+    #[inline]
+    pub const fn new_unchecked(def_id: DefId) -> Self {
+        Self(def_id)
+    }
 
-            #[inline]
-            pub fn to_def_id(self) -> DefId {
-                self.into()
-            }
+    #[inline]
+    pub fn to_def_id(self) -> DefId {
+        self.into()
+    }
 
-            #[inline]
-            pub fn is_local(self) -> bool {
-                self.0.is_local()
-            }
+    #[inline]
+    pub fn is_local(self) -> bool {
+        self.0.is_local()
+    }
 
-            #[inline]
-            pub fn as_local(self) -> Option<$LocalName> {
-                self.0.as_local().map($LocalName::new_unchecked)
-            }
-        }
+    #[inline]
+    pub fn as_local(self) -> Option<LocalModId> {
+        self.0.as_local().map(LocalModId::new_unchecked)
+    }
 
-        impl From<$LocalName> for $Name {
-            #[inline]
-            fn from(local: $LocalName) -> Self {
-                Self(local.0.to_def_id())
-            }
-        }
+    pub fn expect_local(self) -> LocalModId {
+        LocalModId::new_unchecked(self.0.expect_local())
+    }
 
-        impl From<$Name> for DefId {
-            #[inline]
-            fn from(typed: $Name) -> Self {
-                typed.0
-            }
-        }
+    pub fn is_crate_root(self) -> bool {
+        self.0.is_crate_root()
+    }
 
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-        pub struct $LocalName(LocalDefId);
-
-        impl !Ord for $LocalName {}
-        impl !PartialOrd for $LocalName {}
-
-        impl $LocalName {
-            #[inline]
-            pub const fn new_unchecked(def_id: LocalDefId) -> Self {
-                Self(def_id)
-            }
-
-            #[inline]
-            pub fn to_def_id(self) -> DefId {
-                self.0.into()
-            }
-
-            #[inline]
-            pub fn to_local_def_id(self) -> LocalDefId {
-                self.0
-            }
-        }
-
-        impl From<$LocalName> for LocalDefId {
-            #[inline]
-            fn from(typed: $LocalName) -> Self {
-                typed.0
-            }
-        }
-
-        impl From<$LocalName> for DefId {
-            #[inline]
-            fn from(typed: $LocalName) -> Self {
-                typed.0.into()
-            }
-        }
-    };
-}
-
-// N.B.: when adding new typed `DefId`s update the corresponding trait impls in
-// `rustc_middle::dep_graph::dep_node_key` for `DepNodeKey`.
-typed_def_id! { ModDefId, LocalModDefId }
-
-impl LocalModDefId {
-    pub const CRATE_DEF_ID: Self = Self::new_unchecked(CRATE_DEF_ID);
-}
-
-impl ModDefId {
     pub fn is_top_level_module(self) -> bool {
         self.0.is_top_level_module()
     }
 }
 
-impl LocalModDefId {
+impl From<LocalModId> for ModId {
+    #[inline]
+    fn from(local: LocalModId) -> Self {
+        Self(local.0.to_def_id())
+    }
+}
+
+impl From<ModId> for DefId {
+    #[inline]
+    fn from(typed: ModId) -> Self {
+        typed.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
+pub struct LocalModId(LocalDefId);
+
+impl !Ord for LocalModId {}
+impl !PartialOrd for LocalModId {}
+
+impl LocalModId {
+    #[inline]
+    pub const fn new_unchecked(def_id: LocalDefId) -> Self {
+        Self(def_id)
+    }
+
     pub fn is_top_level_module(self) -> bool {
         self.0.is_top_level_module()
+    }
+
+    #[inline]
+    pub fn to_def_id(self) -> DefId {
+        self.0.into()
+    }
+
+    pub fn to_mod_id(self) -> ModId {
+        ModId::new_unchecked(self.0.to_def_id())
+    }
+
+    #[inline]
+    pub fn to_local_def_id(self) -> LocalDefId {
+        self.0
+    }
+}
+
+impl From<LocalModId> for LocalDefId {
+    #[inline]
+    fn from(typed: LocalModId) -> Self {
+        typed.0
+    }
+}
+
+impl From<LocalModId> for DefId {
+    #[inline]
+    fn from(typed: LocalModId) -> Self {
+        typed.0.into()
     }
 }

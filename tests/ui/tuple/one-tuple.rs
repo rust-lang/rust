@@ -1,4 +1,8 @@
 //@ run-pass
+//@ reference: expr.tuple.unary-tuple-restriction
+//@ reference: patterns.tuple.syntax
+//@ reference: statement.let.syntax
+//@ reference: type.tuple.restriction
 // Why one-tuples? Because macros.
 
 

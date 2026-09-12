@@ -1,5 +1,4 @@
 #![warn(clippy::ptr_eq)]
-#![allow(function_casts_as_integer)]
 
 macro_rules! mac {
     ($a:expr, $b:expr) => {

@@ -368,6 +368,7 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::Instance<'tcx> {
         match self.def {
             ty::InstanceKind::Item(_) => {}
             ty::InstanceKind::Intrinsic(_) => cx.write_str(" - intrinsic")?,
+            ty::InstanceKind::LlvmIntrinsic(_) => cx.write_str(" - LLVM intrinsic")?,
             ty::InstanceKind::Virtual(_, num) => cx.write_str(&format!(" - virtual#{num}"))?,
             ty::InstanceKind::Shim(shim) => {
                 cx.write_str(" - ")?;
@@ -396,7 +397,8 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::ShimKind<'tcx> {
             ty::ShimKind::DropGlue(_, None) => cx.write_str("shim(None)"),
             ty::ShimKind::DropGlue(_, Some(ty)) => cx.write_str(&format!("shim(Some({ty}))")),
             ty::ShimKind::Clone(_, ty) => cx.write_str(&format!("shim({ty})")),
-            ty::ShimKind::FnPtrAddr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FnPtrAsPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FnPtrFromPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
             ty::ShimKind::FutureDropPoll(_, proxy_ty, impl_ty) => {
                 cx.write_str(&format!("dropshim({proxy_ty}-{impl_ty})"))
             }

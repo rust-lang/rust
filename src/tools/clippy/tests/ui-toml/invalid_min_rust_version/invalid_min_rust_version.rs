@@ -1,4 +1,4 @@
-//@error-in-other-file: not a valid Rust version
+//@error-in-other-file: failed to parse rust version
 
 #![allow(clippy::redundant_clone)]
 

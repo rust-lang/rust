@@ -2,7 +2,7 @@
 //@ check-pass
 //@ check-stdout
 //
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //
 //@ normalize-stdout: "( +name  default  meaning\n +----  -------  -------\n)?( *[[:word:]:-]+  (allow  |warn   |deny   |forbid )  [^\n]+\n)+" -> "    $$NAMES  $$LEVELS  $$MEANINGS"
 //@ normalize-stdout: " +name  sub-lints\n +----  ---------\n( *[[:word:]:-]+  [^\n]+\n)+" -> "    $$NAMES  $$SUB_LINTS"

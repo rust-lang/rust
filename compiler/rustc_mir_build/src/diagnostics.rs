@@ -679,6 +679,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             diag.span_suggestion_verbose(
                 braces_span,
                 msg!("ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown"),
+                // ignore-tidy-todo
                 format!(" {{{indentation}{more}_ => todo!(),{indentation}}}"),
                 Applicability::HasPlaceholders,
             );
@@ -1296,6 +1297,7 @@ pub(crate) enum SuggestLet {
     If {
         #[suggestion_part(code = "if ")]
         start_span: Span,
+        // ignore-tidy-todo
         #[suggestion_part(code = " {{ todo!() }}")]
         semi_span: Span,
         count: usize,
@@ -1305,6 +1307,7 @@ pub(crate) enum SuggestLet {
             [one] variant that isn't
             *[other] variants that aren't
         } matched",
+        // ignore-tidy-todo
         code = " else {{ todo!() }}",
         applicability = "has-placeholders"
     )]

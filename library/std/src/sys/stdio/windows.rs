@@ -1,5 +1,6 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
+use core::ffi::c_void;
 use core::str::utf8_char_width;
 
 use crate::mem::MaybeUninit;
@@ -109,7 +110,7 @@ fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> i
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
             let _ = handle.into_raw_handle(); // Don't close the handle
-            return ret;
+            ret
         }
     } else {
         write_console_utf16(data, incomplete_utf8, handle)
@@ -199,7 +200,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         let result = c::MultiByteToWideChar(
             c::CP_UTF8,                          // CodePage
             c::MB_ERR_INVALID_CHARS,             // dwFlags
-            utf8.as_ptr(),                       // lpMultiByteStr
+            utf8.as_ptr().cast::<i8>(),          // lpMultiByteStr
             utf8.len() as i32,                   // cbMultiByte
             utf16.as_mut_ptr() as *mut c::WCHAR, // lpWideCharStr
             utf16.len() as i32,                  // cchWideChar
@@ -247,7 +248,13 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
     debug_assert!(data.len() < u32::MAX as usize);
     let mut written = 0;
     cvt(unsafe {
-        c::WriteConsoleW(handle, data.as_ptr(), data.len() as u32, &mut written, ptr::null_mut())
+        c::WriteConsoleW(
+            handle,
+            data.as_ptr().cast::<c_void>(),
+            data.len() as u32,
+            &mut written,
+            ptr::null_mut(),
+        )
     })?;
     Ok(written as usize)
 }
@@ -278,7 +285,7 @@ impl io::Read for Stdin {
             Ok(bytes_copied)
         } else if buf.len() - bytes_copied < 4 {
             // Not enough space to get a UTF-8 byte. We will use the incomplete UTF8.
-            let mut utf16_buf = [MaybeUninit::new(0); 1];
+            let mut utf16_buf = [MaybeUninit::new(0); 2];
             // Read one u16 character.
             let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, 1, &mut self.surrogate)?;
             // Read bytes, using the (now-empty) self.incomplete_utf8 as extra space.
@@ -305,8 +312,8 @@ impl io::Read for Stdin {
             // initialized.
             let utf16s = unsafe { utf16_buf[..read].assume_init_ref() };
             match utf16_to_utf8(utf16s, buf) {
-                Ok(value) => return Ok(bytes_copied + value),
-                Err(e) => return Err(e),
+                Ok(value) => Ok(bytes_copied + value),
+                Err(e) => Err(e),
             }
         }
     }

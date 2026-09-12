@@ -44,7 +44,7 @@
 +         _10 = std::future::ResumeTy(move _11);
 +         _9 = copy (_1.0: &mut {async block@$DIR/async_fn.rs:67:15: 67:20});
 +         _8 = discriminant((*_9));
-+         switchInt(move _8) -> [0: bb5, 1: bb3, otherwise: bb4];
++         switchInt(move _8) -> [0: bb4, 1: bb2, otherwise: bb3];
       }
   
       bb1: {
@@ -56,18 +56,14 @@
 -     bb2 (cleanup): {
 -         resume;
 +     bb2: {
-+         goto -> bb1;
++         assert(const false, "`async fn` resumed after completion") -> [success: bb2, unwind continue];
 +     }
 + 
 +     bb3: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb3, unwind continue];
-+     }
-+ 
-+     bb4: {
 +         unreachable;
 +     }
 + 
-+     bb5: {
++     bb4: {
 +         StorageLive(_3);
 +         _5 = no_retag copy ((*_9).0: &u32);
 +         _3 = copy (*_5);
@@ -77,7 +73,7 @@
 +         _7 = Add(move _3, move _4);
 +         StorageDead(_4);
 +         StorageDead(_3);
-+         goto -> bb2;
++         goto -> bb1;
       }
   }
   

@@ -1,4 +1,6 @@
-//@ check-fail
+//@ check-pass
+
+//! Test that CoerceShared in const contexts can convert a 'static source into a 'static target.
 
 #![feature(reborrow)]
 
@@ -16,6 +18,5 @@ const fn coerce(x: MyRef<'_>) -> MyRef<'_> {
 }
 
 static BAD: &'static MyRef<'static> = &coerce(MyMut(&1));
-//~^ ERROR temporary value dropped while borrowed
 
 fn main() {}

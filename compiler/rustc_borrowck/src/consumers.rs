@@ -125,8 +125,13 @@ pub fn get_bodies_with_borrowck_facts(
     root_def_id: LocalDefId,
     options: ConsumerOptions,
 ) -> FxHashMap<LocalDefId, BodyWithBorrowckFacts<'_>> {
-    let mut root_cx =
-        BorrowCheckRootCtxt::new(tcx, root_def_id, Some(BorrowckConsumer::new(options)));
+    let tainted_by_errors = Default::default();
+    let mut root_cx = BorrowCheckRootCtxt::new(
+        tcx,
+        root_def_id,
+        Some(BorrowckConsumer::new(options)),
+        &tainted_by_errors,
+    );
     root_cx.do_mir_borrowck();
     root_cx.consumer.unwrap().bodies
 }

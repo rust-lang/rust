@@ -86,4 +86,5 @@ fn foo<T: Typed>() {}
 fn main() {
     foo::<&_>();
     //~^ ERROR overflow evaluating the requirement `&_: Typed`
+    //~| ERROR: type annotations needed: cannot satisfy `_: '_`
 }

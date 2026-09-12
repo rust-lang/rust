@@ -98,17 +98,16 @@ use crate::fmt;
 ///    run on the thread that causes the process to exit. This is because the
 ///    other threads may be forcibly terminated.
 ///
-///    If a thread is [converted into a fiber], destructors will not be run unless
-///    the fiber is [converted back into a thread] before the underlying thread exits.
+///    TLS destructors may be leaked if a thread exits while [converted into a fiber],
+///    or if Rust TLS destructor support is first needed while running in a fiber.
 ///
 ///    If a process loads a Rust `cdylib`, it must not cause the Rust TLS destructor support
-//     to be initialized for the first time during process shutdown.
+///    to be initialized for the first time during process shutdown.
 ///
 ///    When dynamically unloading a Rust `cdylib`, pending TLS destructors may run
-//     during the unload or may be leaked.
+///    during the unload or may be leaked.
 ///
 /// [converted into a fiber]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertthreadtofiber
-/// [converted back into a thread]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertfibertothread
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`with`]: LocalKey::with
 #[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
@@ -346,6 +345,7 @@ pub macro thread_local_process_attrs {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! thread_local {
     () => {};
 
@@ -434,7 +434,7 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// This will lazily initialize the value if this thread has not referenced
     /// this key yet. If the key has been destroyed (which may happen if this is called
-    /// in a destructor), this function will return an [`AccessError`].
+    /// in a destructor), this function may return an [`AccessError`].
     ///
     /// # Panics
     ///
@@ -620,10 +620,17 @@ impl<T: 'static> LocalKey<Cell<T>> {
 
     /// Updates the contained value using a function.
     ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_update)]
     /// use std::cell::Cell;
     ///
     /// thread_local! {
@@ -633,7 +640,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// X.update(|x| x + 1);
     /// assert_eq!(X.get(), 6);
     /// ```
-    #[unstable(feature = "local_key_cell_update", issue = "143989")]
+    #[stable(feature = "local_key_cell_update", since = "1.99.0")]
     pub fn update(&'static self, f: impl FnOnce(T) -> T)
     where
         T: Copy,

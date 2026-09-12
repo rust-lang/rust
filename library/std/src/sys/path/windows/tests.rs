@@ -83,6 +83,9 @@ fn verbatim() {
     // Make sure opening a drive will work.
     check("Z:", "Z:");
 
+    // Verbatim drive paths begin with `LETTER:\`. `/` is just a regular character here
+    check(r"\\?\C:/path\somewhere", r"\\?\C:/path\somewhere");
+
     // A path that contains null is not a valid path.
     assert!(maybe_verbatim(Path::new("\0")).is_err());
 }
@@ -93,9 +96,23 @@ fn parse_prefix(path: &str) -> Option<Prefix<'_>> {
 
 #[test]
 fn test_parse_prefix_verbatim() {
-    let prefix = Some(Prefix::VerbatimDisk(b'C'));
-    assert_eq!(prefix, parse_prefix(r"\\?\C:/windows/system32/notepad.exe"));
-    assert_eq!(prefix, parse_prefix(r"\\?\C:\windows\system32\notepad.exe"));
+    assert_eq!(
+        parse_prefix(r"\\?\C:\windows\system32\notepad.exe"),
+        Some(Prefix::VerbatimDisk(b'C')),
+    );
+}
+
+#[test]
+fn test_verbatim_disk_issue_161651() {
+    use crate::path::Path;
+
+    // This is not a `VerbatimDisk` path, because `/` is not a separator in verbatim paths!
+    assert_eq!(
+        parse_prefix(r"\\?\C:/windows\system32"),
+        Some(Prefix::Verbatim(OsStr::new("C:/windows"))),
+    );
+
+    assert_ne!(Path::new(r"\\?\C:/foo"), Path::new(r"\\?\C:\foo"));
 }
 
 #[test]

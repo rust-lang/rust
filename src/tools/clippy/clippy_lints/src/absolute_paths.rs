@@ -5,8 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc_hir::{HirId, ItemKind, Node, Path};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Symbol;
 use rustc_span::symbol::kw;
 
@@ -56,19 +55,15 @@ declare_clippy_lint! {
 impl_lint_pass!(AbsolutePaths => [ABSOLUTE_PATHS]);
 
 pub struct AbsolutePaths {
-    pub absolute_paths_max_segments: u64,
-    pub absolute_paths_allowed_crates: FxHashSet<Symbol>,
+    absolute_paths_max_segments: u64,
+    absolute_paths_allowed_crates: &'static FxHashSet<Symbol>,
 }
 
 impl AbsolutePaths {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             absolute_paths_max_segments: conf.absolute_paths_max_segments,
-            absolute_paths_allowed_crates: conf
-                .absolute_paths_allowed_crates
-                .iter()
-                .map(|x| Symbol::intern(x))
-                .collect(),
+            absolute_paths_allowed_crates: &conf.absolute_paths_allowed_crates,
         }
     }
 }

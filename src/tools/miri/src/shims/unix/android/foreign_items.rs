@@ -30,10 +30,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pread64" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, count, offset] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *mut _, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
+                    shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
@@ -44,10 +42,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pwrite64" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, n, offset] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *const _, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
+                    shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
@@ -60,9 +56,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, offset, whence] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, i32) -> libc::off64_t),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
@@ -72,9 +66,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "ftruncate64" => {
                 let [fd, length] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let length = this.read_scalar(length)?.to_int(length.layout.size)?;
@@ -84,36 +76,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // epoll, eventfd
             "epoll_create1" => {
-                let [flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [flag] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_create1(flag)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_ctl" => {
                 let [epfd, op, fd, event] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_wait" => {
                 let [epfd, events, maxevents, timeout] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
-                let [val, flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [val, flag] =
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
             }
 
             // Miscellaneous
             "__errno" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
 
             "gettid" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }

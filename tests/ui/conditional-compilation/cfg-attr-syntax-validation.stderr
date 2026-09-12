@@ -1,8 +1,8 @@
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:1:1
+  --> $DIR/cfg-attr-syntax-validation.rs:1:3
    |
 LL | #[cfg]
-   | ^^^^^^ expected this to be a list
+   |   ^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
@@ -11,10 +11,10 @@ LL | #[cfg(predicate)]
    |      +++++++++++
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:7:1
+  --> $DIR/cfg-attr-syntax-validation.rs:7:3
    |
 LL | #[cfg = 10]
-   | ^^^^^^----^
+   |   ^^^^----
    |       |
    |       expected this to be a list
    |
@@ -26,10 +26,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0805]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:13:1
+  --> $DIR/cfg-attr-syntax-validation.rs:13:3
    |
 LL | #[cfg()]
-   | ^^^^^--^
+   |   ^^^--
    |      |
    |      expected an argument here
    |
@@ -40,10 +40,10 @@ LL | #[cfg(false)]
    |       +++++
 
 error[E0805]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:19:1
+  --> $DIR/cfg-attr-syntax-validation.rs:19:3
    |
 LL | #[cfg(a, b)]
-   | ^^^^^------^
+   |   ^^^------
    |      |
    |      expected a single argument here
    |
@@ -60,10 +60,10 @@ LL + #[cfg(any(a, b))]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:25:1
+  --> $DIR/cfg-attr-syntax-validation.rs:25:3
    |
 LL | #[cfg("str")]
-   | ^^^^^^-----^^
+   |   ^^^^-----^
    |       |
    |       expected a valid identifier here
    |
@@ -75,10 +75,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:31:1
+  --> $DIR/cfg-attr-syntax-validation.rs:31:3
    |
 LL | #[cfg(a::b)]
-   | ^^^^^^----^^
+   |   ^^^^----^
    |       |
    |       expected a valid identifier here
    |
@@ -90,10 +90,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:37:1
+  --> $DIR/cfg-attr-syntax-validation.rs:37:3
    |
 LL | #[cfg(a())]
-   | ^^^^^^---^^
+   |   ^^^^---^
    |       |
    |       valid arguments are `any`, `all`, `not` or `target`
    |
@@ -105,10 +105,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:42:1
+  --> $DIR/cfg-attr-syntax-validation.rs:42:3
    |
 LL | #[cfg(a = 10)]
-   | ^^^^^^^^^^--^^
+   |   ^^^^^^^^--^
    |           |
    |           expected a string literal here
    |
@@ -120,10 +120,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:47:1
+  --> $DIR/cfg-attr-syntax-validation.rs:47:3
    |
 LL | #[cfg(a = b"hi")]
-   | ^^^^^^^^^^-^^^^^^
+   |   ^^^^^^^^-^^^^^
    |           |
    |           help: consider removing the prefix
    |

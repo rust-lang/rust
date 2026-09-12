@@ -6,7 +6,7 @@
 #![feature(generic_const_items)]
 
 // FIXME(generic_const_items): Try to get rid of error "entering unreachable error", it's
-// unnecessary and actually caused by MIR pass `ImpossiblePredicates` replacing the body with the
+// unnecessary and actually caused by MIR pass `ImpossibleClauses` replacing the body with the
 // terminator `Unreachable` due to the unsatisfied bound which is subsequently reached.
 //
 // NOTE(#142293): However, don't think about suppressing the evaluation of the initializer if the

@@ -1,4 +1,5 @@
 //@ edition:2015
+//@ reference: lex.keywords.strict.edition2018
 
 #![deny(rust_2018_compatibility)]
 

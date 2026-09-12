@@ -1,8 +1,8 @@
 use either::Either;
 use itertools::Itertools;
 use syntax::{
-    AstToken, TextRange,
-    ast::{self, CommentPlacement, Whitespace, edit::IndentLevel},
+    AstNode, AstToken, TextRange,
+    ast::{self, AttrKind, Whitespace, edit::IndentLevel},
 };
 
 use crate::{
@@ -25,22 +25,22 @@ use crate::{
 // comment"]
 // ```
 pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
-    let comment = ctx.find_token_at_offset::<ast::Comment>()?;
+    let comment = ctx.find_node_at_offset::<ast::DocComment>()?;
     // Only allow doc comments
-    let placement = comment.kind().doc?;
+    let placement = comment.kind();
 
     // Only allow comments which are alone on their line
-    if let Some(prev) = comment.syntax().prev_token() {
+    if let Some(prev) = comment.syntax().first_token().and_then(|it| it.prev_token()) {
         Whitespace::cast(prev).filter(|w| w.text().contains('\n'))?;
     }
 
-    let indentation = IndentLevel::from_token(comment.syntax()).to_string();
+    let indentation = IndentLevel::from_node(comment.syntax()).to_string();
 
-    let (target, comments) = match comment.kind().shape {
+    let (target, comments) = match comment.shape() {
         ast::CommentShape::Block => (comment.syntax().text_range(), Either::Left(comment)),
         ast::CommentShape::Line => {
             // Find all the comments we'll be desugaring
-            let comments = relevant_line_comments(&comment);
+            let comments = relevant_line_comments(&comment.token());
 
             // Establish the target of our edit based on the comments we found
             (
@@ -59,26 +59,22 @@ pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_, '_>
         target,
         |edit| {
             let text = match comments {
-                Either::Left(comment) => {
-                    let text = comment.text();
-                    text[comment.prefix().len()..(text.len() - "*/".len())]
-                        .trim()
-                        .lines()
-                        .map(|l| l.strip_prefix(&indentation).unwrap_or(l))
-                        .join("\n")
-                }
-                Either::Right(comments) => comments
-                    .into_iter()
-                    .map(|cm| line_comment_text(IndentLevel(0), cm))
-                    .collect::<Vec<_>>()
+                Either::Left(comment) => comment
+                    .text()
+                    .trim()
+                    .lines()
+                    .map(|l| l.strip_prefix(&indentation).unwrap_or(l))
                     .join("\n"),
+                Either::Right(comments) => {
+                    comments.into_iter().map(|cm| line_comment_text(IndentLevel(0), cm)).join("\n")
+                }
             };
 
             let hashes = "#".repeat(required_hashes(&text));
 
             let prefix = match placement {
-                CommentPlacement::Inner => "#!",
-                CommentPlacement::Outer => "#",
+                AttrKind::Inner => "#!",
+                AttrKind::Outer => "#",
             };
 
             let output = format!(r#"{prefix}[doc = r{hashes}"{text}"{hashes}]"#);

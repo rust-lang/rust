@@ -260,3 +260,66 @@ fn test_reverse_on_zip() {
         assert_eq!((1, 0), (one, zero));
     }
 }
+
+#[test]
+fn test_iterator_take_count() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+
+    // take shorter than, equal to, and longer than the underlying iterator
+    assert_eq!(xs.iter().take(0).count(), 0);
+    assert_eq!(xs.iter().take(5).count(), 5);
+    assert_eq!(xs.iter().take(10).count(), 10);
+    assert_eq!(xs.iter().take(11).count(), 10);
+    assert_eq!(xs.iter().take(usize::MAX).count(), 10);
+
+    // partially consumed
+    let mut it = xs.iter().take(5);
+    it.next();
+    it.next();
+    assert_eq!(it.count(), 3);
+
+    let mut it = xs.iter().take(20);
+    it.next();
+    assert_eq!(it.count(), 9);
+
+    // `count` must observe the same elements `next` would have yielded:
+    // a side-effecting inner iterator sees exactly min(n, len) closure calls.
+    let mut calls = 0;
+    let count = (0..10)
+        .map(|x| {
+            calls += 1;
+            x
+        })
+        .take(3)
+        .count();
+    assert_eq!(count, 3);
+    assert_eq!(calls, 3);
+
+    // stateful filter: count agrees with the number of elements actually yielded
+    let mut budget = 7;
+    let yielded: Vec<u32> = (1..100)
+        .filter(|&x| {
+            if x <= budget {
+                budget -= 1;
+                true
+            } else {
+                false
+            }
+        })
+        .take(10)
+        .collect();
+
+    let mut budget = 7;
+    let counted = (1..100)
+        .filter(|&x| {
+            if x <= budget {
+                budget -= 1;
+                true
+            } else {
+                false
+            }
+        })
+        .take(10)
+        .count();
+    assert_eq!(counted, yielded.len());
+}

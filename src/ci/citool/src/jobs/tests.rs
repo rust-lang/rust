@@ -159,7 +159,7 @@ envs:
   optional:
 
 pr:
-    - name: pr-ci-a
+    - name: test-pr-ci-a
       os: ubuntu
       env: {}
 try:
@@ -169,7 +169,10 @@ optional:
     )
     .unwrap();
 
-    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["pr-ci-a"])
+    assert_eq!(
+        db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(),
+        vec!["test-pr-ci-a"]
+    )
 }
 
 #[test]
@@ -183,7 +186,7 @@ envs:
   optional:
 
 pr:
-    - name: tidy
+    - name: test-tidy
       env:
         DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
       continue_on_error: true
@@ -195,7 +198,7 @@ optional:
     )
     .unwrap();
 
-    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["tidy"]);
+    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["test-tidy"]);
     assert_eq!(db.auto_jobs[0].continue_on_error, Some(false));
     assert_eq!(
         db.auto_jobs[0].env,
@@ -218,10 +221,10 @@ envs:
 
 
 pr:
-    - name: pr-ci-a
+    - name: test-pr-ci-a
       os: ubuntu
       env: {}
-    - name: pr-ci-a
+    - name: test-pr-ci-a
       os: ubuntu
       env: {}
 try:
@@ -243,12 +246,12 @@ envs:
   optional:
 
 pr:
-    - name: tidy
+    - name: test-tidy
       os: ubuntu
       env: {}
 try:
 auto:
-    - name: tidy
+    - name: test-tidy
       env:
         DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
       continue_on_error: false
@@ -258,7 +261,7 @@ optional:
     )
     .unwrap();
 
-    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["tidy"]);
+    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["test-tidy"]);
     assert_eq!(db.auto_jobs[0].continue_on_error, Some(false));
     assert_eq!(
         db.auto_jobs[0].env,
@@ -280,14 +283,14 @@ envs:
   optional:
 
 pr:
-    - name: tidy
+    - name: test-tidy
       continue_on_error: true
       env:
         ENV_ALLOWED_TO_DIFFER: "hello world"
       os: ubuntu
 try:
 auto:
-    - name: tidy
+    - name: test-tidy
       continue_on_error: false
       env:
         ENV_ALLOWED_TO_DIFFER: "goodbye world"
@@ -300,7 +303,7 @@ optional:
     // `continue_on_error` and `env` are carve-outs *allowed* to diverge between PR and Auto job of
     // the same name. Should load successfully.
 
-    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["tidy"]);
+    assert_eq!(db.auto_jobs.iter().map(|j| j.name.as_str()).collect::<Vec<_>>(), vec!["test-tidy"]);
     assert_eq!(db.auto_jobs[0].continue_on_error, Some(false));
     assert_eq!(
         db.auto_jobs[0].env,
@@ -324,14 +327,14 @@ envs:
   optional:
 
 pr:
-    - name: tidy
+    - name: test-tidy
       continue_on_error: true
       env:
         ENV_ALLOWED_TO_DIFFER: "hello world"
       os: ubuntu
 try:
 auto:
-    - name: tidy
+    - name: test-tidy
       continue_on_error: false
       env:
         ENV_ALLOWED_TO_DIFFER: "goodbye world"
@@ -357,8 +360,31 @@ envs:
 pr:
 try:
 auto:
-    - name: tidy
+    - name: test-tidy
       continue_on_error: true
+      os: windows
+      env: {}
+optional:
+"#,
+    )
+    .unwrap();
+}
+
+#[test]
+#[should_panic = "must start with test-"]
+fn missing_test_job_prefix() {
+    let _ = load_job_db(
+        r#"
+envs:
+  pr:
+  try:
+  auto:
+  optional:
+
+pr:
+try:
+auto:
+    - name: tidy
       os: windows
       env: {}
 optional:

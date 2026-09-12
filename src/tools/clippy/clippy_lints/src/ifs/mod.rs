@@ -2,9 +2,8 @@ use clippy_config::Conf;
 use clippy_utils::ty::InteriorMut;
 use clippy_utils::{if_sequence, is_else_clause, is_lint_allowed};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 
 mod branches_sharing_code;
 mod if_same_then_else;
@@ -13,8 +12,8 @@ mod same_functions_in_if_cond;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks if the `if` and `else` block contain shared code that can be
-    /// moved out of the blocks.
+    /// Checks if the blocks of an `if`/`else`, or the arms of a `match`, contain shared code that
+    /// can be moved out of the branches.
     ///
     /// ### Why is this bad?
     /// Duplicate code is less maintainable.
@@ -38,6 +37,24 @@ declare_clippy_lint! {
     /// } else {
     ///     42
     /// };
+    /// ```
+    ///
+    /// For a `match`, when every arm ends with the same expression it can be moved after the
+    /// `match`:
+    /// ```ignore
+    /// match mode {
+    ///     Mode::A => { a(); Ok(()) }
+    ///     Mode::B => { b(); Ok(()) }
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```ignore
+    /// match mode {
+    ///     Mode::A => { a(); }
+    ///     Mode::B => { b(); }
+    /// }
+    /// Ok(())
     /// ```
     #[clippy::version = "1.53.0"]
     pub BRANCHES_SHARING_CODE,
@@ -168,7 +185,10 @@ impl<'tcx> CopyAndPaste<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !expr.span.from_expansion() && matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {
+        if expr.span.from_expansion() {
+            return;
+        }
+        if matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {
             let (conds, blocks) = if_sequence(expr);
             ifs_same_cond::check(cx, &conds, &mut self.interior_mut);
             same_functions_in_if_cond::check(cx, &conds);
@@ -177,6 +197,8 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
             if !all_same && conds.len() != blocks.len() {
                 branches_sharing_code::check(cx, &conds, &blocks, expr);
             }
+        } else if let ExprKind::Match(_, arms, _) = expr.kind {
+            branches_sharing_code::check_match(cx, expr, arms);
         }
     }
 }

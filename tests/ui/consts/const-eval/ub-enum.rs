@@ -5,7 +5,6 @@
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
 //@ dont-require-annotations: NOTE
 
-#![feature(never_type)]
 #![allow(invalid_value, unnecessary_transmutes)]
 
 use std::mem;

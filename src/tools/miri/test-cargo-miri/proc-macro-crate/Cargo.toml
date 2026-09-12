@@ -10,3 +10,6 @@ proc-macro = true
 [dependencies]
 # A common dependency of proc macros, let's make sure that works.
 proc-macro2 = "1.0"
+
+[lints.cargo]
+unused_dependencies = "allow"

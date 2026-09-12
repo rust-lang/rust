@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "loongarch32-unknown-none".into(),
         metadata: TargetMetadata {
             description: Some("Freestanding/bare-metal LoongArch32 softfloat".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
         },

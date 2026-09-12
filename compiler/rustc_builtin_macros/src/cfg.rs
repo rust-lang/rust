@@ -4,14 +4,14 @@
 
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, token};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_attr_parsing::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use rustc_attr_parsing::{
     self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, ParsedDescription, ShouldEmit,
     parse_cfg_entry,
 };
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::Recovery;
 use rustc_span::{ErrorGuaranteed, Span, sym};

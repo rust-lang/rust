@@ -22,10 +22,6 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata, ignore_publish: b
                 missing_warning(cx, package, "package.repository");
             }
 
-            if is_empty_str(package.readme.as_ref()) {
-                missing_warning(cx, package, "package.readme");
-            }
-
             if is_empty_vec(package.keywords.as_ref()) {
                 missing_warning(cx, package, "package.keywords");
             }

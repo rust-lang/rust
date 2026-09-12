@@ -27,7 +27,8 @@ pub impl(self) trait UnixSocketExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "netbsd", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "netbsd"), doc = "```ignore (needs netbsd)")]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::netbsd::net::UnixSocketExt;
     /// use std::os::unix::net::UnixDatagram;

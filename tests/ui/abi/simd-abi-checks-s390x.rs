@@ -12,29 +12,21 @@
 //[z13_soft_float]~? WARN must be disabled to ensure that the ABI of the current target can be implemented correctly
 //[z13_soft_float]~? WARN target feature `soft-float` cannot be enabled with `-Ctarget-feature`
 
-#![feature(no_core, repr_simd)]
+#![feature(no_core)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
-#[repr(simd)]
-pub struct i8x8([i8; 8]);
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-#[repr(simd)]
-pub struct i8x32([i8; 32]);
 #[repr(C)]
 pub struct Wrapper<T>(T);
+impl<T: Copy> Copy for Wrapper<T> {}
+
 #[repr(transparent)]
 pub struct TransparentWrapper<T>(T);
-
-impl Copy for i8x8 {}
-impl Copy for i8x16 {}
-impl Copy for i8x32 {}
-impl<T: Copy> Copy for Wrapper<T> {}
 impl<T: Copy> Copy for TransparentWrapper<T> {}
 
 #[no_mangle]

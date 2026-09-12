@@ -4,10 +4,11 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
+use rustc_data_structures::hash_table::HashTable;
+use rustc_data_structures::sharded::Sharded;
 use rustc_span::Span;
 
-use crate::query::Cycle;
-use crate::ty::TyCtxt;
+use crate::queries::TaggedQueryKey;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -51,12 +52,67 @@ impl<'tcx> QueryJob<'tcx> {
     }
 }
 
+/// For a particular query and key, tracks the status of a query evaluation
+/// that has started, but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
+pub enum ActiveKeyStatus<'tcx> {
+    /// Some thread is already evaluating the query for this key.
+    ///
+    /// The enclosed [`QueryJob`] can be used to wait for it to finish.
+    Started(QueryJob<'tcx>),
+
+    /// The query panicked. Queries trying to wait on this will raise a fatal error which will
+    /// silently panic.
+    Poisoned,
+}
+
+/// For a particular query, keeps track of "active" keys, i.e. keys whose
+/// evaluation has started but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
+pub struct QueryState<'tcx, K> {
+    pub active: Sharded<HashTable<(K, ActiveKeyStatus<'tcx>)>>,
+}
+
+impl<'tcx, K> Default for QueryState<'tcx, K> {
+    fn default() -> QueryState<'tcx, K> {
+        QueryState { active: Default::default() }
+    }
+}
+
+/// Description of a frame in the query stack.
+///
+/// This is mostly used in case of cycles for error reporting.
+#[derive(Debug)]
+pub struct QueryStackFrame<'tcx> {
+    pub span: Span,
+
+    /// The query and key of the query method call that this stack frame
+    /// corresponds to.
+    ///
+    /// Code that doesn't care about the specific key can still use this to
+    /// check which query it's for, or obtain the query's name.
+    pub tagged_key: TaggedQueryKey<'tcx>,
+}
+
+#[derive(Debug)]
+pub struct QueryCycle<'tcx> {
+    /// The query and related span that uses the cycle.
+    pub usage: Option<QueryStackFrame<'tcx>>,
+
+    /// The span here corresponds to the reason for which this query was required.
+    pub frames: Vec<QueryStackFrame<'tcx>>,
+}
+
 #[derive(Debug)]
 pub struct QueryWaiter<'tcx> {
     pub parent: Option<QueryJobId>,
     pub condvar: Condvar,
     pub span: Span,
-    pub cycle: Mutex<Option<Cycle<'tcx>>>,
+    pub cycle: Mutex<Option<QueryCycle<'tcx>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -71,12 +127,7 @@ impl<'tcx> QueryLatch<'tcx> {
     }
 
     /// Awaits for the query job to complete.
-    pub fn wait_on(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        query: Option<QueryJobId>,
-        span: Span,
-    ) -> Result<(), Cycle<'tcx>> {
+    pub fn wait_on(&self, query: Option<QueryJobId>, span: Span) -> Result<(), QueryCycle<'tcx>> {
         let mut waiters_guard = self.waiters.lock();
         let Some(waiters) = &mut *waiters_guard else {
             return Ok(()); // already complete
@@ -99,12 +150,11 @@ impl<'tcx> QueryLatch<'tcx> {
         // If this detects a deadlock and the deadlock handler wants to resume this thread
         // we have to be in the `wait` call. This is ensured by the deadlock handler
         // getting the self.info lock.
-        rustc_thread_pool::mark_blocked();
-        tcx.jobserver_proxy.release_thread();
-        waiter.condvar.wait(&mut waiters_guard);
-        // Release the lock before we potentially block in `acquire_thread`
-        drop(waiters_guard);
-        tcx.jobserver_proxy.acquire_thread();
+        rustc_thread_pool::mark_blocked_and_wait(|| {
+            waiter.condvar.wait(&mut waiters_guard);
+            // Release the lock before we potentially block when acquiring jobserver token.
+            drop(waiters_guard);
+        });
 
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot

@@ -10,6 +10,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 pub(super) struct UnreachableEnumBranching;
@@ -77,8 +78,8 @@ fn variant_discriminants<'tcx>(
 }
 
 impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -168,9 +169,5 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
         }
 
         patch.apply(body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }

@@ -141,7 +141,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let file_metadata = file_metadata(self, &loc.file);
 
         let function_type_metadata =
-            create_subroutine_type(self, &get_function_signature(self, fn_abi));
+            create_subroutine_type(self, &get_function_signature(self, fn_abi, span));
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -233,6 +233,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+            span: Span,
         ) -> Vec<Option<&'ll llvm::Metadata>> {
             if cx.sess().opts.debuginfo != DebugInfo::Full {
                 return vec![];
@@ -244,7 +245,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             signature.push(if fn_abi.ret.is_ignore() {
                 None
             } else {
-                Some(type_di_node(cx, fn_abi.ret.layout.ty))
+                Some(spanned_type_di_node(cx, fn_abi.ret.layout.ty, span))
             });
 
             // Arguments types
@@ -269,11 +270,15 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         }
                         _ => t,
                     };
-                    Some(type_di_node(cx, t))
+                    Some(spanned_type_di_node(cx, t, span))
                 }));
             } else {
-                signature
-                    .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
+                signature.extend(
+                    fn_abi
+                        .args
+                        .iter()
+                        .map(|arg| Some(spanned_type_di_node(cx, arg.layout.ty, span))),
+                );
             }
 
             signature
@@ -284,7 +289,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             generics: &ty::Generics,
             args: GenericArgsRef<'tcx>,
         ) -> &'ll DIArray {
-            if args.types().next().is_none() {
+            if args.terms().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
             }
 
@@ -293,6 +298,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let names = get_parameter_names(cx, generics);
                 iter::zip(args, names)
                     .filter_map(|(kind, name)| {
+                        // FIXME: debug info for consts (using `createTemplateValueParameter`?)
                         kind.as_type().map(|ty| {
                             let actual_type = cx.tcx.normalize_erasing_regions(
                                 cx.typing_env(),

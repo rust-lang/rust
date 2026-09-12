@@ -4,7 +4,12 @@
 //! See https://github.com/rust-lang/rust/pull/153557
 
 #![allow(incomplete_features)]
-#![feature(adt_const_params, min_generic_const_args, generic_const_parameter_types)]
+#![feature(
+    adt_const_params,
+    min_generic_const_args,
+    macroless_generic_const_args,
+    generic_const_parameter_types
+)]
 
 fn main() {
     foo::<_, { 2 }>();
@@ -14,7 +19,7 @@ fn main() {
 }
 
 struct PC<T, const N: T> {
-//~^ ERROR: `T` can't be used as a const parameter type [E0741]
+    //~^ ERROR: `T` can't be used as a const parameter type [E0741]
     a: T,
 }
 

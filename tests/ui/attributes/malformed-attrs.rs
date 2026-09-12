@@ -40,6 +40,8 @@
 //~^ ERROR malformed
 #[doc]
 //~^ ERROR
+#[doc()]
+//~^ ERROR
 #[rustc_macro_transparency]
 //~^ ERROR malformed
 //~| ERROR attribute cannot be used on
@@ -76,8 +78,6 @@
 #[crate_name]
 //~^ ERROR malformed
 //~| WARN crate-level attribute should be an inner attribute
-#[doc]
-//~^ ERROR
 #[target_feature]
 //~^ ERROR malformed
 #[export_stable = 1]
@@ -105,7 +105,7 @@
 //~| WARN previously accepted
 #[proc_macro = 18]
 //~^ ERROR malformed
-//~| ERROR the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
+//~| ERROR the `proc_macro` attribute is only usable with crates of the `proc-macro` crate type
 #[cfg]
 //~^ ERROR malformed
 #[cfg_attr]
@@ -122,14 +122,14 @@ fn test() {
 
 #[proc_macro_attribute = 19]
 //~^ ERROR malformed
-//~| ERROR the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
+//~| ERROR the `proc_macro_attribute` attribute is only usable with crates of the `proc-macro` crate type
 #[must_use = 1]
 //~^ ERROR malformed
 fn test2() { }
 
 #[proc_macro_derive]
 //~^ ERROR malformed `proc_macro_derive` attribute
-//~| ERROR the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+//~| ERROR the `proc_macro_derive` attribute is only usable with crates of the `proc-macro` crate type
 pub fn test3() {}
 
 #[must_not_suspend()]
@@ -217,7 +217,7 @@ extern crate wloop;
 //~^ ERROR malformed
 #[allow_internal_unsafe = 1]
 //~^ ERROR malformed
-//~| ERROR allow_internal_unsafe side-steps the unsafe_code lint
+//~| ERROR the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint
 macro_rules! slump {
     () => {}
 }

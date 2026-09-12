@@ -1,5 +1,6 @@
 #![warn(clippy::or_then_unwrap)]
-#![allow(clippy::map_identity, clippy::let_unit_value, clippy::unnecessary_literal_unwrap)]
+#![allow(clippy::unnecessary_literal_unwrap)]
+#![expect(clippy::let_unit_value, clippy::map_identity)]
 
 struct SomeStruct;
 impl SomeStruct {

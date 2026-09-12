@@ -6,16 +6,16 @@ use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_span::sym;
+use rustc_structures::Limit;
+use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -28,7 +28,7 @@ use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -165,7 +165,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Impl { .. },
                 def_id,
             ) => Some(def_id),
@@ -268,7 +268,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Limit(0) => Limit(2),
                     limit => limit * 2,
                 };
-                let reported = self.dcx().emit_err(crate::error::RecursionLimitReached {
+                let reported = self.dcx().emit_err(crate::diagnostics::RecursionLimitReached {
                     span: cause.span,
                     ty,
                     suggested_limit,
@@ -598,7 +598,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// type-checking context, i.e. closure, coroutine or inline const.
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
         match self.def_kind(def_id) {
-            DefKind::InlineConst => !self.is_type_system_inline_const(def_id),
+            DefKind::AnonConst => {
+                self.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline
+            }
             DefKind::Closure | DefKind::SyntheticCoroutineBody => true,
             DefKind::Mod
             | DefKind::Struct
@@ -612,22 +614,22 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::AssocTy
             | DefKind::TyParam
             | DefKind::Fn
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(_, _)
             | DefKind::AssocFn
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::Macro(_)
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod
-            | DefKind::AnonConst
             | DefKind::OpaqueTy
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
-            | DefKind::Impl { .. } => false,
+            | DefKind::Impl { .. }
+            | DefKind::TestBinderConstraints => false,
         }
     }
 
@@ -866,7 +868,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// be shown in `impl` suggestions.
     ///
     /// [public]: TyCtxt::is_private_dep
-    /// [direct]: rustc_session::cstore::ExternCrate::is_direct
+    /// [direct]: rustc_crate_store::ExternCrate::is_direct
     pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
         // `#![rustc_private]` overrides defaults to make private dependencies usable.
         if self.features().enabled(sym::rustc_private) {
@@ -961,7 +963,8 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::OpaqueTy { def_id } => Some(self.variances_of(def_id)),
             ty::AliasTermKind::InherentTy { .. }
-            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::FreeTy { .. }
             | ty::AliasTermKind::FreeConst { .. }
             | ty::AliasTermKind::AnonConst { .. }
@@ -1035,24 +1038,23 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
-            && let ty::ClauseKind::Projection(projection_pred) = clause
-        {
-            p.kind()
-                .rebind(ty::ProjectionPredicate {
-                    projection_term: projection_pred.projection_term.fold_with(self),
-                    // Don't fold the term on the RHS of the projection predicate.
-                    // This is because for default trait methods with RPITITs, we
-                    // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
-                    // predicate, which would trivially cause a cycle when we do
-                    // anything that requires `TypingEnv::with_post_analysis_normalized`.
-                    term: projection_pred.term,
-                })
-                .upcast(self.tcx)
-        } else {
-            p.super_fold_with(self)
-        }
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
+        // We use `map_projection` to execute the closure only if `p` is a projection clause,
+        // to implement the logic described below (i.e. avoid folding the `term`).
+        // In all other cases, fold recursively, as normal.
+        p.map_projection(self.tcx, |bound_clause| {
+            let projection_clause = bound_clause.skip_binder();
+            bound_clause.rebind(ty::ProjectionClause {
+                projection_term: projection_clause.projection_term.fold_with(self),
+                // Don't fold the term on the RHS of the projection predicate.
+                // This is because for default trait methods with RPITITs, we
+                // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
+                // predicate, which would trivially cause a cycle when we do
+                // anything that requires `TypingEnv::with_post_analysis_normalized`.
+                term: projection_clause.term,
+            })
+        })
+        .unwrap_or_else(|| p.super_fold_with(self))
     }
 }
 
@@ -1079,13 +1081,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        let ty = ensure_sufficient_stack(|| {
-            self.tcx
-                .type_of(def_id)
-                .instantiate(self.tcx, args)
-                .skip_normalization()
-                .fold_with(self)
-        });
+        let ty = self
+            .tcx
+            .type_of(def_id)
+            .instantiate(self.tcx, args)
+            .skip_normalization()
+            .fold_with(self);
         self.depth -= 1;
         ty
     }
@@ -1302,7 +1303,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(..) => true,
             // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => todo!(),
+            ty::UnsafeBinder(_) => unimplemented!(),
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_not_async_drop),
             ty::Pat(elem_ty, _) | ty::Slice(elem_ty) | ty::Array(elem_ty, _) => {
                 elem_ty.is_trivially_not_async_drop()

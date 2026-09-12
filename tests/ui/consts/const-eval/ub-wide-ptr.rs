@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 #![allow(unused, unnecessary_transmutes)]
 #![feature(ptr_metadata)]
 

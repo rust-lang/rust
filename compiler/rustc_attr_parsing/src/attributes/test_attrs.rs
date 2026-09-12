@@ -1,6 +1,6 @@
+use rustc_attr_ir::RustcAbiAttrKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::RustcAbiAttrKind;
-use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
 

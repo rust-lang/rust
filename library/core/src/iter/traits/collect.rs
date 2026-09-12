@@ -97,41 +97,41 @@ use super::TrustedLen;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        Self = "&[{A}]",
+        Self = "&[{T}]",
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        all(A = "{integer}", any(Self = "&[{integral}]",)),
+        all(T = "{integer}", any(Self = "&[{integral}]",)),
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        Self = "[{A}]",
+        Self = "[{T}]",
         message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        all(A = "{integer}", any(Self = "[{integral}]",)),
+        all(T = "{integer}", any(Self = "[{integral}]",)),
         message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        Self = "[{A}; _]",
+        Self = "[{T}; _]",
         message = "an array of type `{Self}` cannot be built directly from an iterator",
-        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
+        label = "try collecting into a `Vec<{T}>`, then using `.try_into()`",
     ),
     on(
-        all(A = "{integer}", any(Self = "[{integral}; _]",)),
+        all(T = "{integer}", any(Self = "[{integral}; _]",)),
         message = "an array of type `{Self}` cannot be built directly from an iterator",
-        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
+        label = "try collecting into a `Vec<{T}>`, then using `.try_into()`",
     ),
     message = "a value of type `{Self}` cannot be built from an iterator \
-               over elements of type `{A}`",
-    label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
+               over elements of type `{T}`",
+    label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={T}>`"
 )]
 #[rustc_diagnostic_item = "FromIterator"]
-pub trait FromIterator<A>: Sized {
+pub trait FromIterator<T>: Sized {
     /// Creates a value from an iterator.
     ///
     /// See the [module-level documentation] for more.
@@ -149,7 +149,7 @@ pub trait FromIterator<A>: Sized {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "from_iter_fn"]
-    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self;
 }
 
 /// Conversion into an [`Iterator`].
@@ -371,7 +371,7 @@ const impl<I: [const] Iterator> IntoIterator for I {
 ///     // This is a bit simpler with the concrete type signature: we can call
 ///     // extend on anything which can be turned into an Iterator which gives
 ///     // us i32s. Because we need i32s to put into MyCollection.
-///     fn extend<T: IntoIterator<Item=i32>>(&mut self, iter: T) {
+///     fn extend<I: IntoIterator<Item=i32>>(&mut self, iter: I) {
 ///
 ///         // The implementation is very straightforward: loop through the
 ///         // iterator, and add() each element to ourselves.
@@ -394,7 +394,7 @@ const impl<I: [const] Iterator> IntoIterator for I {
 /// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{c:?}"));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Extend<A> {
+pub trait Extend<T> {
     /// Extends a collection with the contents of an iterator.
     ///
     /// As this is the only required method for this trait, the [trait-level] docs
@@ -413,11 +413,11 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I);
 
     /// Extends a collection with exactly one element.
     #[unstable(feature = "extend_one", issue = "72631")]
-    fn extend_one(&mut self, item: A) {
+    fn extend_one(&mut self, item: T) {
         self.extend(Some(item));
     }
 
@@ -442,7 +442,7 @@ pub trait Extend<A> {
     // This method is for internal usage only. It is only on the trait because of specialization's limitations.
     #[unstable(feature = "extend_one_unchecked", issue = "none")]
     #[doc(hidden)]
-    unsafe fn extend_one_unchecked(&mut self, item: A)
+    unsafe fn extend_one_unchecked(&mut self, item: T)
     where
         Self: Sized,
     {
@@ -452,7 +452,7 @@ pub trait Extend<A> {
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
 impl Extend<()> for () {
-    fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = ()>>(&mut self, iter: I) {
         iter.into_iter().for_each(drop)
     }
     fn extend_one(&mut self, _item: ()) {}
@@ -620,7 +620,7 @@ macro_rules! impl_extend_tuple {
         where
             $($extend_ty: Extend<$ty>,)+
         {
-            fn extend<T: IntoIterator<Item = ($($ty,)+)>>(&mut self, iter: T) {
+            fn extend<Iter: IntoIterator<Item = ($($ty,)+)>>(&mut self, iter: Iter) {
                 default_extend(self, iter)
             }
 

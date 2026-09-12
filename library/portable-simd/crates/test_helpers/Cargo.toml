@@ -6,4 +6,3 @@ publish = false
 
 [dependencies]
 proptest = { workspace = true, features = ["alloc", "std"] }
-float-cmp = "0.10"

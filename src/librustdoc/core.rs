@@ -14,17 +14,19 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
+use rustc_lint as lint;
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_session::Session;
 use rustc_session::config::{
-    self, CrateType, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
+    self, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
 };
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
-use rustc_session::{Session, lint};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use tracing::{debug, info};
+use rustc_structures::CrateType;
+use tracing::debug;
 
 use crate::clean::inline::build_trait;
 use crate::clean::{self, ItemId};
@@ -32,8 +34,6 @@ use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
 use crate::passes;
-use crate::passes::Condition::*;
-use crate::passes::collect_intra_doc_links::LinkCollector;
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -75,8 +75,6 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     pub(crate) output_format: OutputFormat,
-    /// Used by `strip_private`.
-    pub(crate) show_coverage: bool,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -89,7 +87,15 @@ impl<'tcx> DocContext<'tcx> {
         def_id: DefId,
         f: F,
     ) -> T {
-        let old_param_env = mem::replace(&mut self.param_env, self.tcx.param_env(def_id));
+        self.with_exact_param_env(self.tcx.param_env(def_id), f)
+    }
+
+    pub(crate) fn with_exact_param_env<T, F: FnOnce(&mut Self) -> T>(
+        &mut self,
+        param_env: ParamEnv<'tcx>,
+        f: F,
+    ) -> T {
+        let old_param_env = mem::replace(&mut self.param_env, param_env);
         let ret = f(self);
         self.param_env = old_param_env;
         ret
@@ -139,7 +145,7 @@ impl<'tcx> DocContext<'tcx> {
     ///
     /// If another option like `--show-coverage` is enabled, it will return `false`.
     pub(crate) fn is_json_output(&self) -> bool {
-        self.output_format.is_json() && !self.show_coverage
+        self.output_format == OutputFormat::IrJson
     }
 
     /// If `--document-private-items` was passed to rustdoc.
@@ -218,6 +224,7 @@ pub(crate) fn create_config(
         lint_opts,
         describe_lints,
         lint_cap,
+        prints,
         scrape_examples_options,
         remap_path_prefix,
         remap_path_scope,
@@ -278,6 +285,7 @@ pub(crate) fn create_config(
         diagnostic_width,
         edition,
         describe_lints,
+        prints,
         crate_name,
         test,
         remap_path_prefix,
@@ -385,7 +393,6 @@ pub(crate) fn run_global_ctxt(
         cache: Cache::new(render_options.document_private, render_options.document_hidden),
         inlined: FxHashSet::default(),
         output_format,
-        show_coverage,
     };
 
     for cnum in tcx.crates(()) {
@@ -421,30 +428,14 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    info!("Executing passes");
+    let store;
+    (krate, store) = passes::run(krate, &mut ctxt, show_coverage);
 
-    let mut visited = FxHashMap::default();
-    let mut ambiguous = FxIndexMap::default();
-
-    for p in passes::defaults(show_coverage) {
-        let run = match p.condition {
-            Always => true,
-            WhenDocumentPrivate => ctxt.document_private(),
-            WhenNotDocumentPrivate => !ctxt.document_private(),
-            WhenNotDocumentHidden => !ctxt.document_hidden(),
-        };
-        if run {
-            debug!("running pass {}", p.pass.name);
-            if let Some(run_fn) = p.pass.run {
-                krate = tcx.sess.time(p.pass.name, || run_fn(krate, &mut ctxt));
-            } else {
-                let (k, LinkCollector { visited_links, ambiguous_links, .. }) =
-                    passes::collect_intra_doc_links::collect_intra_doc_links(krate, &mut ctxt);
-                krate = k;
-                visited = visited_links;
-                ambiguous = ambiguous_links;
-            }
-        }
+    if show_coverage
+        && let Err(error) = crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)
+    {
+        eprintln!("{error}");
+        std::process::exit(1);
     }
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
@@ -452,9 +443,7 @@ pub(crate) fn run_global_ctxt(
     krate =
         tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate, &render_options));
 
-    let mut collector =
-        LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
-    collector.resolve_ambiguities();
+    passes::finalize(&mut ctxt, store);
 
     tcx.dcx().abort_if_errors();
 

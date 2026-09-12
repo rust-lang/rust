@@ -1,5 +1,5 @@
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:15:5
+  --> tests/ui/while_let_on_iterator.rs:10:5
    |
 LL |     while let Option::Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
@@ -8,193 +8,193 @@ LL |     while let Option::Some(x) = iter.next() {
    = help: to override `-D warnings` add `#[allow(clippy::while_let_on_iterator)]`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:21:5
+  --> tests/ui/while_let_on_iterator.rs:16:5
    |
 LL |     while let Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:27:5
+  --> tests/ui/while_let_on_iterator.rs:22:5
    |
 LL |     while let Some(_) = iter.next() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in iter`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:104:9
+  --> tests/ui/while_let_on_iterator.rs:99:9
    |
 LL |         while let Some([..]) = it.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [..] in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:112:9
+  --> tests/ui/while_let_on_iterator.rs:107:9
    |
 LL |         while let Some([_x]) = it.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [_x] in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:126:9
+  --> tests/ui/while_let_on_iterator.rs:121:9
    |
 LL |         while let Some(x @ [_]) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x @ [_] in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:147:9
+  --> tests/ui/while_let_on_iterator.rs:142:9
    |
 LL |         while let Some(_) = y.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in y`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:205:9
+  --> tests/ui/while_let_on_iterator.rs:200:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:217:5
+  --> tests/ui/while_let_on_iterator.rs:212:5
    |
 LL |     while let Some(n) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:220:9
+  --> tests/ui/while_let_on_iterator.rs:215:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:230:9
+  --> tests/ui/while_let_on_iterator.rs:225:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:240:9
+  --> tests/ui/while_let_on_iterator.rs:235:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:258:9
+  --> tests/ui/while_let_on_iterator.rs:253:9
    |
 LL |         while let Some(m) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:274:13
+  --> tests/ui/while_let_on_iterator.rs:269:13
    |
 LL |             while let Some(i) = self.0.next() {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in self.0.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:307:13
+  --> tests/ui/while_let_on_iterator.rs:302:13
    |
 LL |             while let Some(i) = self.0.0.0.next() {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in self.0.0.0.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:337:5
+  --> tests/ui/while_let_on_iterator.rs:332:5
    |
 LL |     while let Some(n) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:350:9
+  --> tests/ui/while_let_on_iterator.rs:345:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:365:5
+  --> tests/ui/while_let_on_iterator.rs:360:5
    |
 LL |     while let Some(x) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:377:5
+  --> tests/ui/while_let_on_iterator.rs:372:5
    |
 LL |     while let Some(x) = it.0.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.0.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:413:5
+  --> tests/ui/while_let_on_iterator.rs:408:5
    |
 LL |     while let Some(x) = s.x.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in s.x.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:421:5
+  --> tests/ui/while_let_on_iterator.rs:416:5
    |
 LL |     while let Some(x) = x[0].next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in x[0].by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:430:9
+  --> tests/ui/while_let_on_iterator.rs:425:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:441:9
+  --> tests/ui/while_let_on_iterator.rs:436:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:452:9
+  --> tests/ui/while_let_on_iterator.rs:447:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:463:9
+  --> tests/ui/while_let_on_iterator.rs:458:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:476:9
+  --> tests/ui/while_let_on_iterator.rs:471:9
    |
 LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:487:5
+  --> tests/ui/while_let_on_iterator.rs:482:5
    |
 LL |     'label: while let Some(n) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'label: for n in it`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:499:13
+  --> tests/ui/while_let_on_iterator.rs:494:13
    |
 LL |             while let Some(r) = self.next() {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for r in &mut *self`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:515:13
+  --> tests/ui/while_let_on_iterator.rs:510:13
    |
 LL |             while let Some(r) = self.next() {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for r in self.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:541:9
+  --> tests/ui/while_let_on_iterator.rs:536:9
    |
 LL |         while let Some(_) = x.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in &mut ***x`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:563:9
+  --> tests/ui/while_let_on_iterator.rs:558:9
    |
 LL |         while let Some(_) = x.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in &mut **x`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:594:9
+  --> tests/ui/while_let_on_iterator.rs:589:9
    |
 LL |         while let Some(_) = x.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in x.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> tests/ui/while_let_on_iterator.rs:601:5
+  --> tests/ui/while_let_on_iterator.rs:596:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`

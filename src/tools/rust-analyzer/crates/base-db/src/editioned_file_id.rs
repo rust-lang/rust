@@ -10,63 +10,31 @@ use vfs::FileId;
 
 use crate::SourceDatabase;
 
-#[salsa::interned(debug, constructor = from_span_file_id, no_lifetime)]
+#[salsa::interned(debug, constructor = from_span_file_id, unsafe(no_lifetime), revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct EditionedFileId {
+    #[returns(copy)]
     field: span::EditionedFileId,
 }
 
-// Currently does not work due to a salsa bug
-// #[salsa::tracked]
-// impl EditionedFileId {
-//     #[salsa::tracked(lru = 128)]
-//     pub fn parse(self, db: &dyn SourceDatabase) -> syntax::Parse<ast::SourceFile> {
-//         let _p = tracing::info_span!("parse", ?self).entered();
-//         let (file_id, edition) = self.unpack(db);
-//         let text = db.file_text(file_id).text(db);
-//         ast::SourceFile::parse(text, edition)
-//     }
-
-//     // firewall query
-//     #[salsa::tracked(returns(as_deref))]
-//     pub fn parse_errors(self, db: &dyn SourceDatabase) -> Option<Box<[SyntaxError]>> {
-//         let errors = self.parse(db).errors();
-//         match &*errors {
-//             [] => None,
-//             [..] => Some(errors.into()),
-//         }
-//     }
-// }
-
+#[salsa::tracked]
 impl EditionedFileId {
+    #[salsa::tracked(lru = 128, returns(clone))]
     pub fn parse(self, db: &dyn SourceDatabase) -> syntax::Parse<ast::SourceFile> {
-        #[salsa::tracked(lru = 128)]
-        pub fn parse(
-            db: &dyn SourceDatabase,
-            file_id: EditionedFileId,
-        ) -> syntax::Parse<ast::SourceFile> {
-            let _p = tracing::info_span!("parse", ?file_id).entered();
-            let (file_id, edition) = file_id.unpack(db);
-            let text = db.file_text(file_id).text(db);
-            ast::SourceFile::parse(text, edition)
-        }
-        parse(db, self)
+        let _p = tracing::info_span!("parse", ?self).entered();
+        let (file_id, edition) = self.unpack(db);
+        let text = db.file_text(file_id).text(db);
+        ast::SourceFile::parse(text, edition)
     }
 
     // firewall query
-    pub fn parse_errors(self, db: &dyn SourceDatabase) -> Option<&[SyntaxError]> {
-        #[salsa::tracked(returns(as_deref))]
-        pub fn parse_errors(
-            db: &dyn SourceDatabase,
-            file_id: EditionedFileId,
-        ) -> Option<Box<[SyntaxError]>> {
-            let errors = file_id.parse(db).errors();
-            match &*errors {
-                [] => None,
-                [..] => Some(errors.into()),
-            }
+    #[salsa::tracked(returns(as_deref))]
+    pub fn parse_errors(self, db: &dyn SourceDatabase) -> Option<Box<[SyntaxError]>> {
+        let errors = self.parse(db).errors();
+        match &*errors {
+            [] => None,
+            [..] => Some(errors.into()),
         }
-        parse_errors(db, self)
     }
 }
 

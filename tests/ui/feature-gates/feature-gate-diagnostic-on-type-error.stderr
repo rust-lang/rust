@@ -1,14 +1,15 @@
 warning: unknown diagnostic attribute
-  --> $DIR/feature-gate-diagnostic-on-type-error.rs:3:15
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:3:1
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: expected {Expected}, found {Found}")]
-   |               ^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: this is an experimental diagnostic attribute
    = help: add `#![feature(diagnostic_on_type_error)]` to the crate attributes to enable
    = note: `#[warn(unknown_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 error[E0308]: mismatched types
-  --> $DIR/feature-gate-diagnostic-on-type-error.rs:14:15
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:15:15
    |
 LL |     takes_foo(foo);
    |     --------- ^^^ expected `Foo<i32>`, found `Foo<String>`
@@ -18,7 +19,7 @@ LL |     takes_foo(foo);
    = note: expected struct `Foo<i32>`
               found struct `Foo<String>`
 note: function defined here
-  --> $DIR/feature-gate-diagnostic-on-type-error.rs:9:4
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:10:4
    |
 LL | fn takes_foo(_: Foo<i32>) {}
    |    ^^^^^^^^^ -----------

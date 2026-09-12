@@ -335,6 +335,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--allow-dirty[Pass \`--allow-dirty\` to \`cargo fix\`, allowing it to run even if the current git checkout has uncommitted changes]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1121,7 +1122,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
-'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
+'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1170,7 +1171,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
-'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
+'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1219,7 +1220,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
-'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
+'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1268,7 +1269,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--include=[Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed]:INCLUDE:_default' \
 '*--exclude=[Select the benchmarks matching a prefix in this comma-separated list that you don'\''t want to run]:EXCLUDE:_default' \
 '*--scenarios=[Select the scenarios that should be benchmarked]:SCENARIOS:(Full IncrFull IncrUnchanged IncrPatched)' \
-'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
+'*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc DocJson Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
 '--build=[host target of the stage0 compiler]:BUILD:' \
@@ -1456,7 +1457,7 @@ _x__miri_commands() {
 _x__perf_commands() {
     local commands; commands=(
 'eprintln:Run \`profile_local eprintln\`. This executes the compiler on the given benchmarks and stores its stderr output' \
-'samply:Run \`profile_local samply\` This executes the compiler on the given benchmarks and profiles it with \`samply\`. You need to install \`samply\`, e.g. using \`cargo install samply\`' \
+'samply:Run \`profile_local samply\` This executes the compiler on the given benchmarks and profiles it with \`samply\`. You need to install \`samply\`, e.g. using \`cargo install --locked samply\`' \
 'cachegrind:Run \`profile_local cachegrind\`. This executes the compiler on the given benchmarks under \`Cachegrind\`' \
 'benchmark:Run compile benchmarks with a locally built compiler' \
 'compare:Compare the results of two previously executed benchmark runs' \

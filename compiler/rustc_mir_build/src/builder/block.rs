@@ -166,25 +166,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // should never be used to take values at the end of the failure
                     // block.
                     let dummy_place = this.temp(this.tcx.types.never, else_block_span);
-                    let failure_entry = this.cfg.start_new_block();
-                    let failure_block;
-                    failure_block = this
+                    // An unsuccessful match will jump to this block.
+                    let failure_entry_block = this.cfg.start_new_block();
+                    let failure_end_block = this
                         .ast_block(
                             dummy_place,
-                            failure_entry,
+                            failure_entry_block,
                             *else_block,
                             this.source_info(else_block_span),
                         )
                         .into_block();
                     this.cfg.terminate(
-                        failure_block,
+                        failure_end_block,
                         this.source_info(else_block_span),
                         TerminatorKind::Unreachable,
                     );
 
                     // Declare the bindings, which may create a source scope.
                     let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
-                    this.push_scope((*remainder_scope, source_info));
+                    this.push_scope(*remainder_scope);
                     let_scope_stack.push(remainder_scope);
 
                     let visibility_scope =
@@ -193,7 +193,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let initializer_span = this.thir[*initializer].span;
                     let scope = (*init_scope, source_info);
                     let lint_level = LintLevel::Explicit(*hir_id);
-                    let failure_and_block = this.in_scope(scope, lint_level, |this| {
+
+                    // Lower the initializer and test it against the pattern, leading to a
+                    // true path (successful match) and a false path (failure).
+                    let true_and_false_blocks = this.in_scope(scope, lint_level, |this| {
                         this.declare_bindings(
                             visibility_scope,
                             remainder_span,
@@ -202,21 +205,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Some((Some(&destination), initializer_span)),
                         );
                         let else_block_span = this.thir[*else_block].span;
-                        let (matching, failure) =
+                        let (true_block, false_block) =
                             this.in_if_then_scope(last_remainder_scope, else_block_span, |this| {
-                                this.lower_let_expr(
+                                // Bypass `lower_if_condition` and call `lower_fallible_let` directly,
+                                // since we don't have an actual THIR let-expression here.
+                                this.lower_fallible_let(
                                     block,
-                                    *initializer,
                                     pattern,
+                                    *initializer,
                                     None,
                                     initializer_span,
                                     DeclareLetBindings::No,
                                 )
                             });
-                        matching.and(failure)
+                        // Pack `(true_block, false_block)` into `BlockAnd<BasicBlock>`.
+                        true_block.and(false_block)
                     });
-                    let failure = unpack!(block = failure_and_block);
-                    this.cfg.goto(failure, source_info, failure_entry);
+                    // Unpack `BlockAnd<BasicBlock>` into `(true_block, false_block)`.
+                    let (true_block, false_block);
+                    false_block = unpack!(true_block = true_and_false_blocks);
+
+                    // Proceed along the successful path, or jump to the failure path.
+                    block = true_block;
+                    this.cfg.goto(false_block, source_info, failure_entry_block);
 
                     if let Some(source_scope) = visibility_scope {
                         this.source_scope = source_scope;
@@ -242,7 +253,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
-                    this.push_scope((*remainder_scope, source_info));
+                    this.push_scope(*remainder_scope);
                     let_scope_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a source scope.
@@ -346,7 +357,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Finally, we pop all the let scopes before exiting out from the scope of block
         // itself.
         for scope in let_scope_stack.into_iter().rev() {
-            block = this.pop_scope((*scope, source_info), block).into_block();
+            block = this.pop_scope(*scope, block).into_block();
         }
         // Restore the original source scope.
         this.source_scope = outer_source_scope;

@@ -1,6 +1,5 @@
-#![warn(clippy::unwrap_used, clippy::expect_used)]
-#![allow(clippy::unnecessary_literal_unwrap)]
-#![feature(never_type)]
+#![warn(clippy::expect_used, clippy::unwrap_used)]
+#![expect(clippy::unnecessary_literal_unwrap)]
 
 use std::convert::Infallible;
 

@@ -1,0 +1,77 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/syntax-errors.rs:12:49
+   |
+LL |     fn not_a_field(self: &mut view_type!(Self.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
+   |                                                 ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/syntax-errors.rs:12:80
+   |
+LL |     fn not_a_field(self: &mut view_type!(Self.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
+   |                                                                                ^ expected identifier, found reserved identifier
+
+error: expected identifier, found keyword `where`
+  --> $DIR/syntax-errors.rs:18:44
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                            ^^^^^ expected identifier, found keyword
+   |
+help: escape `where` to use it as an identifier
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ r#where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                            ++
+
+error: expected identifier, found keyword `for`
+  --> $DIR/syntax-errors.rs:18:79
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                                                               ^^^ expected identifier, found keyword
+   |
+help: escape `for` to use it as an identifier
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ r#for })) {}
+   |                                                                               ++
+
+error: expected one of `,` or `}`, found `baz`
+  --> $DIR/syntax-errors.rs:24:49
+   |
+LL |     fn no_comma(self: &mut view_type!(Foo.{ bar baz }), _: &mut view_type!(Foo.{ bar baz })) {}
+   |                                                -^^^ expected one of `,` or `}`
+   |                                                |
+   |                                                help: missing `,`
+
+error: expected one of `,` or `}`, found `baz`
+  --> $DIR/syntax-errors.rs:24:86
+   |
+LL |     fn no_comma(self: &mut view_type!(Foo.{ bar baz }), _: &mut view_type!(Foo.{ bar baz })) {}
+   |                                                                                     -^^^ expected one of `,` or `}`
+   |                                                                                     |
+   |                                                                                     help: missing `,`
+
+error[E0609]: no field `_` on type `Foo`
+  --> $DIR/syntax-errors.rs:12:49
+   |
+LL |     fn not_a_field(self: &mut view_type!(Self.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
+   |                                                 ^
+
+error[E0609]: no field `_` on type `Foo`
+  --> $DIR/syntax-errors.rs:12:80
+   |
+LL |     fn not_a_field(self: &mut view_type!(Self.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
+   |                                                                                ^
+
+error[E0609]: no field `r#where` on type `Foo`
+  --> $DIR/syntax-errors.rs:18:44
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                            ^^^^^
+
+error[E0609]: no field `r#for` on type `Foo`
+  --> $DIR/syntax-errors.rs:18:79
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
+   |                                                                               ^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

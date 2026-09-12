@@ -26,7 +26,6 @@ LL |         drop(unwrap_binder!(binder));
    |              ^^^^^^^^^^^^^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `binder` has type `ManuallyDrop<NotCopyInner>`, which does not implement the `Copy` trait
-   = note: this error originates in the macro `unwrap_binder` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0382]: use of moved value: `binder.0`
   --> $DIR/moves.rs:35:14

@@ -1,42 +1,40 @@
-error[E0658]: `type const` syntax is experimental
-  --> $DIR/bad-type_const-syntax.rs:2:5
+error[E0658]: use of unstable library feature `min_generic_const_args`
+  --> $DIR/bad-type_const-syntax.rs:10:22
    |
-LL |     type const N: usize;
-   |     ^^^^^^^^^^
-   |
-   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
-   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `type const` syntax is experimental
-  --> $DIR/bad-type_const-syntax.rs:11:5
-   |
-LL |     type const N: usize = 0;
-   |     ^^^^^^^^^^
+LL |     const N: usize = core::direct_const_arg!(0);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: associated `type const` are unstable
-  --> $DIR/bad-type_const-syntax.rs:2:5
+error[E0658]: the `rustc_always_gca` attribute is an experimental feature
+  --> $DIR/bad-type_const-syntax.rs:2:7
    |
-LL |     type const N: usize;
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_always_gca]
+   |       ^^^^^^^^^^^^^^^^
    |
    = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: associated `type const` are unstable
-  --> $DIR/bad-type_const-syntax.rs:11:5
+error: expected expression, found `direct_const_arg!()` constant
+  --> $DIR/bad-type_const-syntax.rs:10:22
    |
-LL |     type const N: usize = 0;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const N: usize = core::direct_const_arg!(0);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS
+  --> $DIR/bad-type_const-syntax.rs:10:5
    |
-   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
-   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+LL |     const N: usize = core::direct_const_arg!(0);
+   |     ^^^^^^^^^^^^^^
+   |
+note: trait declaration of const is marked as `#[rustc_always_gca]`
+  --> $DIR/bad-type_const-syntax.rs:4:5
+   |
+LL |     const N: usize;
+   |     ^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

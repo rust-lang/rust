@@ -1,8 +1,8 @@
 error[E0539]: malformed `crate_type` attribute input
-  --> $DIR/crate-type-empty.rs:2:1
+  --> $DIR/crate-type-empty.rs:2:4
    |
 LL | #![crate_type]
-   | ^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
 help: must be of the form

@@ -1,15 +1,16 @@
-//! This modules implements a function to resolve a path `foo::bar::baz` to a
-//! def, which is used within the name resolution.
+//! This module implements a function to resolve a path `foo::bar::baz` to a
+//! def, which is used within name resolution.
 //!
 //! When name resolution is finished, the result of resolving a path is either
-//! `Some(def)` or `None`. However, when we are in process of resolving imports
+//! `Some(def)` or `None`. However, when we are in the process of resolving imports
 //! or macros, there's a third possibility:
 //!
-//!   I can't resolve this path right now, but I might be resolve this path
+//!   I can't resolve this path right now, but I might be able to resolve this path
 //!   later, when more macros are expanded.
 //!
 //! `ReachedFixedPoint` signals about this.
 
+use base_db::SourceDatabase;
 use either::Either;
 use hir_expand::{
     mod_path::{ModPath, PathKind},
@@ -20,9 +21,7 @@ use stdx::TupleExt;
 
 use crate::{
     AdtId, ModuleDefId, ModuleId,
-    db::DefDatabase,
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
-    item_tree::FieldsShape,
     nameres::{
         BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, assoc::TraitItems,
         crate_def_map, sub_namespace_match,
@@ -82,7 +81,7 @@ impl ResolvePathResult {
 impl PerNs {
     pub(super) fn filter_macro(
         mut self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         expected: Option<MacroSubNs>,
     ) -> Self {
         self.macros = self.macros.filter(|def| sub_namespace_match(db, def.def, expected));
@@ -95,7 +94,7 @@ impl DefMap {
     pub(crate) fn resolve_visibility(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         // module to import to
         original_module: ModuleId,
         // pub(path)
@@ -155,7 +154,7 @@ impl DefMap {
     pub(super) fn resolve_path_fp_with_macro(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         // module to import to
         mut original_module: ModuleId,
@@ -243,7 +242,7 @@ impl DefMap {
     pub(super) fn resolve_path_fp_with_macro_single(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         original_module: ModuleId,
         path: &ModPath,
@@ -371,7 +370,7 @@ impl DefMap {
     pub(super) fn resolve_path_fp_in_all_preludes(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         original_module: ModuleId,
         path: &ModPath,
@@ -448,7 +447,7 @@ impl DefMap {
 
     fn resolve_remaining_segments<'a>(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         mode: ResolveMode,
         mut segments: impl Iterator<Item = (usize, &'a Name)>,
         mut curr_per_ns: PerNs,
@@ -504,12 +503,10 @@ impl DefMap {
                         );
                     }
 
-                    let def_map;
                     let module_data = if module.block(db) == self.block_id() {
                         &self[module]
                     } else {
-                        def_map = module.def_map(db);
-                        &def_map[module]
+                        &module.def_map(db)[module]
                     };
 
                     // Since it is a qualified path here, it should not contains legacy macros
@@ -520,16 +517,10 @@ impl DefMap {
                     cov_mark::hit!(can_import_enum_variant);
 
                     let res = e.enum_variants(db).variants.get(segment).map(|&(variant, shape)| {
-                        match shape {
-                            FieldsShape::Record => {
-                                PerNs::types(variant.into(), Visibility::Public, None)
-                            }
-                            FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
-                                variant.into(),
-                                variant.into(),
-                                Visibility::Public,
-                                None,
-                            ),
+                        if shape.has_value_ns_ctor() {
+                            PerNs::both(variant.into(), variant.into(), curr.vis, None)
+                        } else {
+                            PerNs::types(variant.into(), curr.vis, None)
                         }
                     });
                     // FIXME: Need to filter visibility here and below? Not sure.
@@ -632,7 +623,7 @@ impl DefMap {
     fn resolve_name_in_module(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         module: ModuleId,
         name: &Name,
         shadow: BuiltinShadowMode,
@@ -693,7 +684,7 @@ impl DefMap {
     fn resolve_name_in_all_preludes(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         name: &Name,
     ) -> PerNs {
         // Resolve in:
@@ -729,7 +720,7 @@ impl DefMap {
     fn resolve_name_in_crate_root_or_extern_prelude(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         module: ModuleId,
         name: &Name,
     ) -> PerNs {
@@ -751,16 +742,9 @@ impl DefMap {
         from_crate_root.or_else(from_extern_prelude)
     }
 
-    fn resolve_in_prelude(&self, db: &dyn DefDatabase, name: &Name) -> PerNs {
+    fn resolve_in_prelude(&self, db: &dyn SourceDatabase, name: &Name) -> PerNs {
         if let Some((prelude, _use)) = self.prelude {
-            let keep;
-            let def_map = if prelude.krate(db) == self.krate {
-                self
-            } else {
-                // Extend lifetime
-                keep = prelude.def_map(db);
-                keep
-            };
+            let def_map = if prelude.krate(db) == self.krate { self } else { prelude.def_map(db) };
             def_map[prelude].scope.get(name)
         } else {
             PerNs::none()
@@ -771,7 +755,7 @@ impl DefMap {
 /// Given a block module, returns its nearest non-block module and the `DefMap` it belongs to.
 #[inline]
 fn adjust_to_nearest_non_block_module<'db>(
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     mut def_map: &'db DefMap,
     mut local_id: ModuleId,
 ) -> (&'db DefMap, ModuleId) {

@@ -40,7 +40,7 @@ fn main() {
     let _: field_of!(*const Struct, field); //~ ERROR: type `*const Struct` doesn't have fields
     let _: field_of!(fn() -> Struct, field); //~ ERROR: type `fn() -> Struct` doesn't have fields
     let _: field_of!(dyn Trait, field); //~ ERROR: type `dyn Trait` doesn't have fields
-    let _: field_of!(main, field); //~ ERROR: expected type, found function `main`
+    let _: field_of!(main, field); //~ ERROR: cannot find type `main` in this scope
     let _: field_of!(_, field); //~ ERROR: cannot use `_` in this position
 }
 

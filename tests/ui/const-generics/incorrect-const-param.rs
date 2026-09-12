@@ -13,11 +13,11 @@ where
 }
 
 // Forgot const
-impl<T, N: usize> From<[T; N]> for VecWrapper<T> //~ ERROR expected value, found type parameter `N`
+impl<T, N: usize> From<[T; N]> for VecWrapper<T> //~ ERROR cannot find value `N` in this scope
 where //~^ ERROR expected trait, found builtin type `usize`
     T: Clone,
 {
-    fn from(slice: [T; N]) -> Self { //~ ERROR expected value, found type parameter `N`
+    fn from(slice: [T; N]) -> Self { //~ ERROR cannot find value `N` in this scope
         VecWrapper(slice.to_vec())
     }
 }
@@ -33,11 +33,11 @@ where
 }
 
 // Forgot const and type
-impl<T, N> From<[T; N]> for VecWrapper<T> //~ ERROR expected value, found type parameter `N`
+impl<T, N> From<[T; N]> for VecWrapper<T> //~ ERROR cannot find value `N` in this scope
 where
     T: Clone,
 {
-    fn from(slice: [T; N]) -> Self { //~ ERROR expected value, found type parameter `N`
+    fn from(slice: [T; N]) -> Self { //~ ERROR cannot find value `N` in this scope
         VecWrapper(slice.to_vec())
     }
 }

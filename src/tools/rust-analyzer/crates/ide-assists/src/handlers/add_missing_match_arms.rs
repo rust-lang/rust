@@ -573,7 +573,7 @@ fn resolve_tuple_of_enum_def(
             })
         })
         .collect::<Option<Vec<ExtendedEnum>>>()
-        .and_then(|list| if list.is_empty() { None } else { Some(list) })
+        .filter(|list| !list.is_empty())
 }
 
 fn resolve_array_of_enum_def(

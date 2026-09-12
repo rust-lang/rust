@@ -2,8 +2,6 @@
 
 // Regression test for #54378.
 
-#![feature(never_type)]
-
 use std::marker::PhantomData;
 
 pub trait Machine<'a, 'mir, 'tcx>: Sized {

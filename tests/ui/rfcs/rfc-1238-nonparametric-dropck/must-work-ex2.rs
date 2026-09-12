@@ -1,6 +1,6 @@
 //! Test for <https://github.com/rust-lang/rust/issues/28498>.
 //! Example taken from RFC 1238 text
-//! <https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md>.
+//! <https://rust-lang.github.io/rfcs/1238-nonparametric-dropck.html>.
 //@ run-pass
 
 use std::cell::Cell;

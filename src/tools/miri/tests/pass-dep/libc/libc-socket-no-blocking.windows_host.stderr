@@ -19,3 +19,5 @@ LL |         libc::getsockname(client_sockfd, storage, len)
            4: main
                at tests/pass-dep/libc/libc-socket-no-blocking.rs:LL:CC
 
+warning: 1 warning emitted
+

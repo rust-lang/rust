@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 /* global addClass, getNakedUrl, getVar, getSettingValue, hasClass, nonnull */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi */
 
@@ -5301,7 +5301,7 @@ async function showResults(docSearch, results, goToFirst, filterCrates) {
     }
     const crateSearch = document.getElementById("crate-search");
     if (crateSearch) {
-        // #crate-search is an input element
+        // #crate-search is a `<select>` element.
         // @ts-expect-error
         crateSearch.addEventListener("input", updateCrate);
     }

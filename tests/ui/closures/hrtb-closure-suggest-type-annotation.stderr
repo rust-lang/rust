@@ -1,0 +1,29 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:33:5
+   |
+LL |     inner(buf, outer_closure)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 mut [u8]) -> Result<usize, isize>` must implement `FnOnce<(&'1 mut [u8],)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 mut [u8],)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     let outer_closure = |buf: &mut [u8]| {
+   |                             +++++++++++
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:33:5
+   |
+LL |     inner(buf, outer_closure)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 mut [u8]) -> Result<usize, isize>` must implement `FnOnce<(&'1 mut [u8],)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 mut [u8],)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     let outer_closure = |buf: &mut [u8]| {
+   |                             +++++++++++
+
+error: aborting due to 2 previous errors
+

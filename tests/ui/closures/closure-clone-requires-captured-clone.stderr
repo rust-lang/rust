@@ -7,11 +7,11 @@ LL |     let closure = move || {
 LL |     closure.clone();
    |             ^^^^^ within `{closure@$DIR/closure-clone-requires-captured-clone.rs:14:19: 14:26}`, the trait `Clone` is not implemented for `NonClone`
    |
-note: required because it's used within this closure
-  --> $DIR/closure-clone-requires-captured-clone.rs:14:19
+note: required because `captured_value` is used within this closure
+  --> $DIR/closure-clone-requires-captured-clone.rs:15:17
    |
-LL |     let closure = move || {
-   |                   ^^^^^^^
+LL |         let _ = captured_value.0;
+   |                 ^^^^^^^^^^^^^^
 help: consider annotating `NonClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

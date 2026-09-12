@@ -8,15 +8,16 @@ mod suggestions;
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
+pub(crate) use inspect_obligations::UseSubtyping;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir::attrs::{DivergingBlockBehavior, DivergingFallbackBehavior};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, HirId, ItemLocalMap, find_attr};
+use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{
     HirTyLowerer, InherentAssocCandidate, RegionInferReason,
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
-use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
+use rustc_infer::traits::{DynCompatibilityViolation, Obligation, TraitErrors};
 use rustc_middle::ty::{
     self, CantBeErased, Const, Flags, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
 };
@@ -42,7 +43,7 @@ use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 ///
 /// [`InferCtxt`]: infer::InferCtxt
 pub(crate) struct FnCtxt<'a, 'tcx> {
-    pub(super) body_id: LocalDefId,
+    pub(super) body_def_id: LocalDefId,
 
     /// The parameter environment used for proving trait obligations
     /// in this function. This can change when we descend into
@@ -119,9 +120,6 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// of never type fallback. This is only used for diagnostics.
     pub(super) diverging_fallback_has_occurred: Cell<bool>,
 
-    pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
-    pub(super) diverging_block_behavior: DivergingBlockBehavior,
-
     /// Clauses that we lowered as part of the `impl_trait_in_bindings` feature.
     ///
     /// These are stored here so we may collect them when canonicalizing user
@@ -137,12 +135,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn new(
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: LocalDefId,
+        body_def_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
-        let (diverging_fallback_behavior, diverging_block_behavior) =
-            never_type_behavior(root_ctxt.tcx);
         FnCtxt {
-            body_id,
+            body_def_id,
             param_env,
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
@@ -156,8 +152,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }),
             root_ctxt,
             diverging_fallback_has_occurred: Cell::new(false),
-            diverging_fallback_behavior,
-            diverging_block_behavior,
             trait_ascriptions: Default::default(),
             has_rustc_attrs: root_ctxt.tcx.features().rustc_attrs(),
         }
@@ -178,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, self.body_id, code)
+        ObligationCause::new(span, self.body_def_id, code)
     }
 
     pub(crate) fn misc(&self, span: Span) -> ObligationCause<'tcx> {
@@ -208,6 +202,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 steps
             }),
+            infer_closure_kind: Box::new(|closure_def_id| {
+                self.infer_closure_kind_for_diagnostic(closure_def_id)
+            }),
         }
     }
 }
@@ -216,6 +213,16 @@ impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     type Target = TypeckRootCtxt<'tcx>;
     fn deref(&self) -> &Self::Target {
         self.root_ctxt
+    }
+}
+
+impl<'tcx> rustc_hir_pretty::PpAnn for FnCtxt<'_, 'tcx> {
+    fn nested(&self, state: &mut rustc_hir_pretty::State<'_>, nested: rustc_hir_pretty::Nested) {
+        rustc_hir_pretty::PpAnn::nested(
+            &(&self.tcx as &dyn rustc_hir::intravisit::HirTyCtxt<'_>),
+            state,
+            nested,
+        )
     }
 }
 
@@ -229,7 +236,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     }
 
     fn item_def_id(&self) -> LocalDefId {
-        self.body_id
+        self.body_def_id
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
@@ -295,13 +302,11 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         let span = tcx.def_span(def_id);
 
         ty::EarlyBinder::bind_iter(tcx.arena.alloc_from_iter(
-            self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                match predicate.kind().skip_binder() {
-                    ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                        Some((predicate, span))
-                    }
-                    _ => None,
+            self.param_env.caller_bounds().filter_map(|clause| match clause.kind().skip_binder() {
+                ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
+                    Some((ty::set_aliases_to_non_rigid(tcx, clause).skip_norm_wip(), span))
                 }
+                _ => None,
             }),
         ))
     }
@@ -311,10 +316,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         span: Span,
         self_ty: Ty<'tcx>,
         candidates: Vec<InherentAssocCandidate>,
-    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>) {
+    ) -> (Vec<InherentAssocCandidate>, ThinVec<FulfillmentError<'tcx>>) {
         let tcx = self.tcx();
         let infcx = &self.infcx;
-        let mut fulfillment_errors = vec![];
+        let mut fulfillment_errors = thin_vec![];
 
         let mut filter_iat_candidate = |self_ty, impl_| {
             let ocx = ObligationCtxt::new_with_diagnostics(self);
@@ -334,17 +339,17 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             }
 
             // Check whether the impl imposes obligations we have to worry about.
-            let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
+            let impl_bounds = tcx.clauses_of(impl_).instantiate(tcx, impl_args);
             let impl_obligations = traits::predicates_for_generics(
                 |_, _| ObligationCause::dummy(),
-                |pred| ocx.normalize(&ObligationCause::dummy(), self.param_env, pred),
+                |clause| ocx.normalize(&ObligationCause::dummy(), self.param_env, clause),
                 self.param_env,
                 impl_bounds,
             );
             ocx.register_obligations(impl_obligations);
 
-            let mut errors = ocx.try_evaluate_obligations();
-            if !errors.is_empty() {
+            let errors = ocx.try_evaluate_obligations();
+            if let TraitErrors::HasErrors(mut errors) = errors {
                 fulfillment_errors.append(&mut errors);
                 return false;
             }
@@ -375,7 +380,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &rustc_hir::PathSegment<'tcx>,
+        item_segment: &rustc_hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
@@ -440,7 +445,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn lower_fn_sig(
         &self,
-        decl: &rustc_hir::FnDecl<'tcx>,
+        decl: &rustc_hir::FnDecl<'_>,
         _generics: Option<&rustc_hir::Generics<'_>>,
         _hir_id: rustc_hir::HirId,
         _hir_ty: Option<&hir::Ty<'_>>,
@@ -478,32 +483,4 @@ impl<'tcx> LoweredTy<'tcx> {
         let normalized = fcx.normalize(span, Unnormalized::new_wip(raw));
         LoweredTy { raw, normalized }
     }
-}
-
-fn never_type_behavior(tcx: TyCtxt<'_>) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
-    let (fallback, block) = parse_never_type_options_attr(tcx);
-    let fallback = fallback.unwrap_or_else(|| default_fallback(tcx));
-    let block = block.unwrap_or_default();
-
-    (fallback, block)
-}
-
-/// Returns the default fallback which is used when there is no explicit override via `#![never_type_options(...)]`.
-fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
-    // Edition 2024: fallback to `!`
-    if tcx.sess.edition().at_least_rust_2024() {
-        return DivergingFallbackBehavior::ToNever;
-    }
-
-    // Otherwise: fallback to `()`
-    DivergingFallbackBehavior::ToUnit
-}
-
-fn parse_never_type_options_attr(
-    tcx: TyCtxt<'_>,
-) -> (Option<DivergingFallbackBehavior>, Option<DivergingBlockBehavior>) {
-    // Error handling is dubious here (unwraps), but that's probably fine for an internal attribute.
-    // Just don't write incorrect attributes <3
-
-    find_attr!(tcx, crate, RustcNeverTypeOptions {fallback, diverging_block_default} => (*fallback, *diverging_block_default)).unwrap_or_default()
 }

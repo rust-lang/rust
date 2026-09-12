@@ -9,7 +9,7 @@ use stdx::never;
 use crate::{
     MemoryMap, ParamEnvAndCrate, consteval,
     db::HirDatabase,
-    mir::pad16,
+    mir::{IsSigned, pad16},
     next_solver::{Const, Consts, TyKind, WorldExposer},
 };
 
@@ -61,6 +61,13 @@ impl<'db> ValueConst<'db> {
         let size = db.layout_of_ty(self.ty.store(), param_env.store()).ok()?.size;
         Some(scalar.to_bits(size))
     }
+
+    pub fn try_to_target_usize(self, data_layout: &TargetDataLayout) -> Option<u64> {
+        if !self.ty.is_usize() {
+            return None;
+        }
+        self.try_to_leaf().map(|s| s.to_target_usize(data_layout))
+    }
 }
 
 pub(super) fn allocation_to_const<'db>(
@@ -76,20 +83,20 @@ pub(super) fn allocation_to_const<'db>(
     let valtree = match ty.kind() {
         TyKind::Bool => ValTreeKind::Leaf(ScalarInt::from(memory[0] != 0)),
         TyKind::Char => {
-            let it = u128::from_le_bytes(pad16(memory, false)) as u32;
+            let it = u128::from_le_bytes(pad16(memory, IsSigned::No)) as u32;
             let Ok(c) = char::try_from(it) else {
                 return Const::error(interner);
             };
             ValTreeKind::Leaf(ScalarInt::from(c))
         }
         TyKind::Int(int) => {
-            let it = i128::from_le_bytes(pad16(memory, true));
+            let it = i128::from_le_bytes(pad16(memory, IsSigned::Yes));
             let size = int.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
             let scalar = ScalarInt::try_from_int(it, size).unwrap();
             ValTreeKind::Leaf(scalar)
         }
         TyKind::Uint(uint) => {
-            let it = u128::from_le_bytes(pad16(memory, false));
+            let it = u128::from_le_bytes(pad16(memory, IsSigned::No));
             let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
             let scalar = ScalarInt::try_from_uint(it, size).unwrap();
             ValTreeKind::Leaf(scalar)
@@ -219,7 +226,7 @@ pub(super) fn allocation_to_const<'db>(
             return Const::error(interner);
         }
         TyKind::FnPtr(_, _) | TyKind::RawPtr(_, _) => {
-            let it = u128::from_le_bytes(pad16(memory, false));
+            let it = u128::from_le_bytes(pad16(memory, IsSigned::No));
             // FIXME: Unsized pointers.
             let scalar = ScalarInt::try_from_uint(it, data_layout.pointer_size()).unwrap();
             ValTreeKind::Leaf(scalar)
@@ -342,6 +349,10 @@ impl<'db> ValTree<'db> {
     pub fn inner(&self) -> &ValTreeKind<'db> {
         let inner = &self.interned.0;
         unsafe { std::mem::transmute::<&ValTreeKind<'static>, &ValTreeKind<'db>>(inner) }
+    }
+
+    pub fn from_scalar_int(_interner: DbInterner<'db>, i: ScalarInt) -> Self {
+        ValTree::new(ValTreeKind::Leaf(i))
     }
 }
 

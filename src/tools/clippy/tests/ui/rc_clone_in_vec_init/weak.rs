@@ -1,6 +1,6 @@
 //@no-rustfix: overlapping suggestions
 #![warn(clippy::rc_clone_in_vec_init)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 use std::rc::{Rc, Weak as UnSyncWeak};
 use std::sync::{Arc, Mutex, Weak as SyncWeak};
 

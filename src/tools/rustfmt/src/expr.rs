@@ -23,6 +23,7 @@ use crate::macros::{MacroPosition, rewrite_macro};
 use crate::matches::rewrite_match;
 use crate::overflow::{self, IntoOverflowableItem, OverflowableItem};
 use crate::pairs::{PairParts, rewrite_all_pairs, rewrite_pair};
+use crate::range::rewrite_range;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
@@ -270,7 +271,7 @@ pub(crate) fn format_expr(
             &cl.binder,
             cl.constness,
             cl.capture_clause,
-            &cl.coroutine_kind,
+            &cl.coroutine_marker,
             cl.movability,
             &cl.fn_decl,
             &cl.body,
@@ -325,78 +326,13 @@ pub(crate) fn format_expr(
             shape,
             SeparatorPlace::Back,
         ),
-        ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
-            let delim = match limits {
-                ast::RangeLimits::HalfOpen => "..",
-                ast::RangeLimits::Closed => "..=",
-            };
-
-            fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
-                match lhs.kind {
-                    ast::ExprKind::Lit(token_lit) => lit_ends_in_dot(&token_lit, context),
-                    ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, expr),
-                    ast::ExprKind::Binary(_, _, ref rhs_expr) => {
-                        needs_space_before_range(context, rhs_expr)
-                    }
-                    _ => false,
-                }
-            }
-
-            fn needs_space_after_range(rhs: &ast::Expr) -> bool {
-                // Don't format `.. ..` into `....`, which is invalid.
-                //
-                // This check is unnecessary for `lhs`, because a range
-                // starting from another range needs parentheses as `(x ..) ..`
-                // (`x .. ..` is a range from `x` to `..`).
-                matches!(rhs.kind, ast::ExprKind::Range(None, _, _))
-            }
-
-            let default_sp_delim = |lhs: Option<&ast::Expr>, rhs: Option<&ast::Expr>| {
-                let space_if = |b: bool| if b { " " } else { "" };
-
-                format!(
-                    "{}{}{}",
-                    lhs.map_or("", |lhs| space_if(needs_space_before_range(context, lhs))),
-                    delim,
-                    rhs.map_or("", |rhs| space_if(needs_space_after_range(rhs))),
-                )
-            };
-
-            match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
-                (Some(lhs), Some(rhs)) => {
-                    let sp_delim = if context.config.spaces_around_ranges() {
-                        format!(" {delim} ")
-                    } else {
-                        default_sp_delim(Some(lhs), Some(rhs))
-                    };
-                    rewrite_pair(
-                        &*lhs,
-                        &*rhs,
-                        PairParts::infix(&sp_delim),
-                        context,
-                        shape,
-                        context.config.binop_separator(),
-                    )
-                }
-                (None, Some(rhs)) => {
-                    let sp_delim = if context.config.spaces_around_ranges() {
-                        format!("{delim} ")
-                    } else {
-                        default_sp_delim(None, Some(rhs))
-                    };
-                    rewrite_unary_prefix(context, &sp_delim, &*rhs, shape)
-                }
-                (Some(lhs), None) => {
-                    let sp_delim = if context.config.spaces_around_ranges() {
-                        format!(" {delim}")
-                    } else {
-                        default_sp_delim(Some(lhs), None)
-                    };
-                    rewrite_unary_suffix(context, &sp_delim, &*lhs, shape)
-                }
-                (None, None) => Ok(delim.to_owned()),
-            }
-        }
+        ast::ExprKind::Range(ref lhs, ref rhs, limits) => rewrite_range(
+            context,
+            shape,
+            lhs.as_deref(),
+            rhs.as_deref(),
+            limits.as_str(),
+        ),
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
         // Style Guide RFC for InlineAsm variant pending
@@ -486,7 +422,8 @@ pub(crate) fn format_expr(
         | ast::ExprKind::Type(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::OffsetOf(..)
-        | ast::ExprKind::UnsafeBinderCast(..) => {
+        | ast::ExprKind::UnsafeBinderCast(..)
+        | ast::ExprKind::DirectConstArg(..) => {
             // These don't normally occur in the AST because macros aren't expanded. However,
             // rustfmt tries to parse macro arguments when formatting macros, so it's not totally
             // impossible for rustfmt to come across one of these nodes when formatting a file.
@@ -741,6 +678,7 @@ pub(crate) fn rewrite_cond(
 // Abstraction over control flow expressions
 #[derive(Debug)]
 struct ControlFlow<'a> {
+    inner_attributes: Option<Vec<ast::Attribute>>,
     cond: Option<&'a ast::Expr>,
     block: &'a ast::Block,
     else_block: Option<&'a ast::Expr>,
@@ -765,6 +703,7 @@ fn extract_pats_and_cond(expr: &ast::Expr) -> (Option<&ast::Pat>, &ast::Expr) {
 
 // FIXME: Refactor this.
 fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'_>> {
+    let inner_attributes = inner_attributes(&expr.attrs);
     match expr.kind {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
             let (pat, cond) = extract_pats_and_cond(cond);
@@ -778,21 +717,31 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
                 expr.span,
             ))
         }
-        ast::ExprKind::ForLoop {
-            ref pat,
-            ref iter,
-            ref body,
-            label,
-            kind,
-        } => Some(ControlFlow::new_for(
-            pat, iter, body, label, expr.span, kind,
+        ast::ExprKind::ForLoop(ref f) => Some(ControlFlow::new_for(
+            inner_attributes,
+            &f.pat,
+            &f.iter,
+            &f.body,
+            f.label,
+            expr.span,
+            f.kind,
         )),
-        ast::ExprKind::Loop(ref block, label, _) => {
-            Some(ControlFlow::new_loop(block, label, expr.span))
-        }
+        ast::ExprKind::Loop(ref block, label, _) => Some(ControlFlow::new_loop(
+            inner_attributes,
+            block,
+            label,
+            expr.span,
+        )),
         ast::ExprKind::While(ref cond, ref block, label) => {
             let (pat, cond) = extract_pats_and_cond(cond);
-            Some(ControlFlow::new_while(pat, cond, block, label, expr.span))
+            Some(ControlFlow::new_while(
+                inner_attributes,
+                pat,
+                cond,
+                block,
+                label,
+                expr.span,
+            ))
         }
         _ => None,
     }
@@ -814,6 +763,7 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         let matcher = choose_matcher(pat);
         ControlFlow {
+            inner_attributes: None,
             cond: Some(cond),
             block,
             else_block,
@@ -829,8 +779,14 @@ impl<'a> ControlFlow<'a> {
         }
     }
 
-    fn new_loop(block: &'a ast::Block, label: Option<ast::Label>, span: Span) -> ControlFlow<'a> {
+    fn new_loop(
+        inner_attributes: Vec<ast::Attribute>,
+        block: &'a ast::Block,
+        label: Option<ast::Label>,
+        span: Span,
+    ) -> ControlFlow<'a> {
         ControlFlow {
+            inner_attributes: Some(inner_attributes),
             cond: None,
             block,
             else_block: None,
@@ -847,6 +803,7 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_while(
+        inner_attributes: Vec<ast::Attribute>,
         pat: Option<&'a ast::Pat>,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
@@ -855,6 +812,7 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         let matcher = choose_matcher(pat);
         ControlFlow {
+            inner_attributes: Some(inner_attributes),
             cond: Some(cond),
             block,
             else_block: None,
@@ -871,6 +829,7 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_for(
+        inner_attributes: Vec<ast::Attribute>,
         pat: &'a ast::Pat,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
@@ -879,6 +838,7 @@ impl<'a> ControlFlow<'a> {
         kind: ForLoopKind,
     ) -> ControlFlow<'a> {
         ControlFlow {
+            inner_attributes: Some(inner_attributes),
             cond: Some(cond),
             block,
             else_block: None,
@@ -1030,8 +990,50 @@ impl<'a> ControlFlow<'a> {
         };
 
         let label_string = rewrite_label(context, self.label);
+
+        // Do not include the label in the span.
+        let lo = self
+            .label
+            .map_or(self.span.lo(), |label| label.ident.span.hi());
+
+        // `for await` is spelled with two tokens, and the source is free to
+        // separate them with any whitespace or comments. Locate each token in
+        // turn rather than searching for the rendered keyword, and keep
+        // whatever sits in the gap.
+        let (keyword, after_kwd) = if self.keyword == "for await" {
+            let after_for = context
+                .snippet_provider
+                .span_after(mk_sp(lo, self.span.hi()), "for");
+            let before_await = context
+                .snippet_provider
+                .opt_span_before(mk_sp(after_for, self.span.hi()), "await")
+                .unknown_error()?;
+            let after_await = context
+                .snippet_provider
+                .opt_span_after(mk_sp(after_for, self.span.hi()), "await")
+                .unknown_error()?;
+
+            // "for" + whatever is in the gap + "await"
+            let kwd = combine_strs_with_missing_comments(
+                context,
+                "for",
+                "await",
+                mk_sp(after_for, before_await),
+                shape,
+                true,
+            )?;
+            (kwd, after_await)
+        } else {
+            (
+                self.keyword.to_owned(),
+                context
+                    .snippet_provider
+                    .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
+            )
+        };
+
         // 1 = space after keyword.
-        let offset = self.keyword.len() + label_string.len() + 1;
+        let offset = last_line_width(&keyword) + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
             Some(cond) => self.rewrite_pat_expr(context, cond, constr_shape, offset)?,
@@ -1049,10 +1051,15 @@ impl<'a> ControlFlow<'a> {
             .config
             .max_width()
             .saturating_sub(constr_shape.used_width() + offset + brace_overhead);
+        let first_line_indent = if context.config.style_edition() >= StyleEdition::Edition2027 {
+            shape.indent.width()
+        } else {
+            shape.used_width()
+        };
         let force_newline_brace = (pat_expr_string.contains('\n')
             || pat_expr_string.len() > one_line_budget)
             && (!last_line_extendable(&pat_expr_string)
-                || last_line_offsetted(shape.used_width(), &pat_expr_string));
+                || last_line_offsetted(first_line_indent, &pat_expr_string));
 
         // Try to format if-else on single line.
         if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
@@ -1072,14 +1079,8 @@ impl<'a> ControlFlow<'a> {
         };
 
         // `for event in event`
-        // Do not include label in the span.
-        let lo = self
-            .label
-            .map_or(self.span.lo(), |label| label.ident.span.hi());
         let between_kwd_cond = mk_sp(
-            context
-                .snippet_provider
-                .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
+            after_kwd,
             if self.pat.is_none() {
                 cond_span.lo()
             } else if self.matcher.is_empty() {
@@ -1110,14 +1111,14 @@ impl<'a> ControlFlow<'a> {
             last_line_width(&pat_expr_string)
         } else {
             // 2 = spaces after keyword and condition.
-            label_string.len() + self.keyword.len() + pat_expr_string.len() + 2
+            label_string.len() + last_line_width(&keyword) + pat_expr_string.len() + 2
         };
 
         Ok((
             format!(
                 "{}{}{}{}{}",
                 label_string,
-                self.keyword,
+                keyword,
                 between_kwd_cond_comment.as_ref().map_or(
                     if pat_expr_string.is_empty() || pat_expr_string.starts_with('\n') {
                         ""
@@ -1207,8 +1208,15 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let block_str = {
             let old_val = context.is_if_else_block.replace(self.else_block.is_some());
             let old_is_loop = context.is_loop_block.replace(self.is_loop);
-            let result =
-                rewrite_block_with_visitor(context, "", self.block, None, None, block_shape, true);
+            let result = rewrite_block_with_visitor(
+                context,
+                "",
+                self.block,
+                self.inner_attributes.as_deref(),
+                None,
+                block_shape,
+                true,
+            );
             context.is_loop_block.replace(old_is_loop);
             context.is_if_else_block.replace(old_val);
             result?
@@ -1961,8 +1969,13 @@ pub(crate) fn rewrite_field(
         let expr = field.expr.rewrite_result(context, expr_shape);
         let is_lit = matches!(field.expr.kind, ast::ExprKind::Lit(_));
         match expr {
+            // A macro can give `Field: value` its own meaning, so shortening `a: a` to `a` may
+            // change what it expands to. In `winnow::seq!` the result no longer compiles.
             Ok(ref e)
-                if !is_lit && e.as_str() == name && context.config.use_field_init_shorthand() =>
+                if !is_lit
+                    && e.as_str() == name
+                    && context.config.use_field_init_shorthand()
+                    && !context.inside_macro() =>
             {
                 Ok(attrs_str + name)
             }

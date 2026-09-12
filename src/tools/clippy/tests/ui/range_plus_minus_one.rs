@@ -1,6 +1,4 @@
 #![warn(clippy::range_minus_one, clippy::range_plus_one)]
-#![allow(unused_parens)]
-#![allow(clippy::iter_with_drain)]
 
 use std::ops::{Index, IndexMut, Range, RangeBounds, RangeInclusive};
 

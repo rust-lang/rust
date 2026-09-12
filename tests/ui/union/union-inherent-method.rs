@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: items.impl.inherent.associated-items.allowed-items
 
 union U {
     a: u8,

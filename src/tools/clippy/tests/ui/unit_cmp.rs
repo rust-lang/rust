@@ -1,10 +1,5 @@
 #![warn(clippy::unit_cmp)]
-#![allow(
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::derive_partial_eq_without_eq,
-    clippy::needless_ifs
-)]
+#![expect(clippy::needless_ifs, clippy::no_effect)]
 
 #[derive(PartialEq)]
 pub struct ContainsUnit(()); // should be fine

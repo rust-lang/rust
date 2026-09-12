@@ -1,7 +1,7 @@
 //! This module contains functions for editing syntax trees. As the trees are
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
-use parser::T;
+use parser::{SyntaxKind::DOC_COMMENT, T};
 use std::{
     fmt,
     iter::{self, once},
@@ -165,7 +165,7 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
         let mut remove_next_ws = false;
         for child in self.syntax().children_with_tokens() {
             match child.kind() {
-                ATTR | COMMENT => {
+                ATTR | COMMENT | DOC_COMMENT => {
                     remove_next_ws = true;
                     editor.delete(child);
                     continue;
@@ -200,7 +200,7 @@ impl ast::IdentPat {
                     if let Some(last) =
                         self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
                     {
-                        last.detach();
+                        editor.delete(last);
                     }
                 }
             }
@@ -360,7 +360,7 @@ impl ast::RecordExprField {
             // shorthand `{ x }` → expand to `{ x: expr }`
             let new_field = editor
                 .make()
-                .record_expr_field(editor.make().name_ref(&name_ref.text()), Some(expr));
+                .record_expr_field(editor.make().name_ref(name_ref.text()), Some(expr));
             editor.replace(self.syntax(), new_field.syntax());
         }
     }

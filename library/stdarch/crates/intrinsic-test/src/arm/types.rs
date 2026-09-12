@@ -1,5 +1,8 @@
 use super::intrinsic::ArmType;
-use crate::common::intrinsic_helpers::{IntrinsicType, Sign, SimdLen, TypeDefinition, TypeKind};
+use crate::common::intrinsic_helpers::{
+    IntrinsicType, Sign, SimdLen, TypeDefinition, TypeKind, default_fixed_vector_comparison,
+};
+use itertools::Itertools;
 
 impl TypeDefinition for ArmType {
     /// Gets a string containing the typename for this type in C format.
@@ -70,32 +73,96 @@ impl TypeDefinition for ArmType {
         }
     }
 
+    fn rust_scalar_type_for_test_value_array(&self) -> String {
+        if self.kind() == TypeKind::Bool && self.num_lanes() == SimdLen::Scalable {
+            let mut ty = self.clone();
+            ty.kind = TypeKind::Int(Sign::Signed);
+            ty.rust_scalar_type()
+        } else {
+            self.rust_scalar_type()
+        }
+    }
+
     /// Determines the load function for this type.
     fn load_function(&self) -> String {
-        if let IntrinsicType {
-            kind: k,
-            bit_len: Some(bl),
-            vec_len,
-            ..
-        } = **self
-        {
-            let quad = if self.num_lanes() * bl > 64 { "q" } else { "" };
-
-            format!(
-                "vld{len}{quad}_{type}{size}",
-                type = match k {
-                    TypeKind::Int(Sign::Unsigned) => "u",
-                    TypeKind::Int(Sign::Signed) => "s",
-                    TypeKind::Float => "f",
-                    TypeKind::Poly => "p",
-                    x => todo!("get_load_function TypeKind: {x:#?}"),
-                },
-                size = bl,
-                quad = quad,
-                len = vec_len.unwrap_or(1),
-            )
+        if let Some(bl) = self.bit_len {
+            match self.num_lanes() {
+                SimdLen::Scalable => {
+                    format!(
+                        "svld{len}_{type}{bl}",
+                        len = self.num_vectors(),
+                        type = self.rust_intrinsic_name_prefix(),
+                    )
+                }
+                SimdLen::Fixed(num_lanes) => {
+                    format!(
+                        "vld{len}{quad}_{type}{bl}",
+                        quad = if num_lanes * bl > 64 { "q" } else { "" },
+                        len = self.num_vectors(),
+                        type = self.rust_intrinsic_name_prefix(),
+                    )
+                }
+            }
         } else {
             todo!("load_function IntrinsicType: {self:#?}")
+        }
+    }
+
+    fn comparison_function(&self) -> String {
+        if let SimdLen::Fixed(num_lanes) = self.num_lanes() {
+            return default_fixed_vector_comparison(self, num_lanes);
+        }
+
+        // Returns `of` when `num_vectors == 1` otherwise returns the appropriate `svget` invocation
+        // for `of`.
+        let get = |num_vectors: u32, idx: u32, from: &'static str| -> String {
+            if num_vectors == 1 {
+                return from.to_string();
+            }
+
+            format!(
+                "svget{num_vectors}_{ty}{bl}::<{idx}>({from})",
+                ty = self.rust_intrinsic_name_prefix(),
+                bl = self.inner_size(),
+            )
+        };
+
+        let prefix = match self.kind {
+            TypeKind::Bool => "svbool".to_owned(),
+            kind => format!("sv{}{}", kind.c_prefix(), self.inner_size()),
+        };
+
+        let n = self.num_vectors();
+        (0..n)
+            .format_with("\n", |i, fmt| {
+                fmt(&format_args!(
+                    r#"
+assert_eq!(
+    {prefix}_to_slice(&{rust_return_value}),
+    {prefix}_to_slice(&{c_return_value}),
+    "{{id}}-({i_plus_one}/{n})"
+);
+"#,
+                    rust_return_value = get(n, i, "__rust_return_value"),
+                    c_return_value = get(n, i, "__c_return_value"),
+                    i_plus_one = i + 1, // so that the output is "1/2" and "2/2"
+                ))
+            })
+            .to_string()
+    }
+}
+
+impl ArmType {
+    /// Returns the Rust prefix for the name of an intrinsic with this type kind (i.e. `s` for
+    /// `i16`, or `u` for `u16`). For type kinds without any bit length at the end (e.g. `bool`),
+    /// returns the whole type name.
+    pub fn rust_intrinsic_name_prefix(&self) -> &str {
+        match self.kind() {
+            TypeKind::Char(Sign::Signed) => "s",
+            TypeKind::Int(Sign::Signed) => "s",
+            TypeKind::Poly => "p",
+            TypeKind::Bool => "s",
+            _ => self.kind.rust_prefix(),
         }
     }
 }

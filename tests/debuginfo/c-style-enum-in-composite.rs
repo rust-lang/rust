@@ -57,18 +57,21 @@
 use self::AnEnum::{OneHundred, OneThousand, OneMillion};
 use self::AnotherEnum::{MountainView, Toronto, Vienna};
 
+#[repr(u32)]
 enum AnEnum {
     OneHundred = 100,
     OneThousand = 1000,
     OneMillion = 1000000
 }
 
+#[repr(u8)]
 enum AnotherEnum {
     MountainView,
     Toronto,
     Vienna
 }
 
+#[repr(C)]
 struct PaddedStruct {
     a: i16,
     b: AnEnum,
@@ -77,7 +80,7 @@ struct PaddedStruct {
     e: i16
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedStruct {
     a: i16,
     b: AnEnum,
@@ -86,6 +89,7 @@ struct PackedStruct {
     e: i16
 }
 
+#[repr(C)]
 struct NonPaddedStruct {
     a: AnEnum,
     b: AnotherEnum,

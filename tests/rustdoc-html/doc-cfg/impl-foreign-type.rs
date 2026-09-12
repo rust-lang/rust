@@ -1,13 +1,13 @@
 // This test ensures that the `doc_cfg` feature works on foreign types impl.
 // Regression test for <https://github.com/rust-lang/rust/issues/150268>.
 
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![feature(doc_cfg)]
 #![crate_name = "foo"]
 
-//@has 'foo/trait.Blob.html'
-//@has - '//*[@id="impl-Blob-for-Box%3CR%3E"]//*[@class="stab portability"]' 'Available on non-crate feature alloc only.'
+//@ has 'foo/trait.Blob.html'
+//@ has - '//*[@id="impl-Blob-for-Box%3CR%3E"]//*[@class="stab portability"]' 'Available on non-crate feature alloc only.'
 
 pub trait Blob {}
 

@@ -419,9 +419,11 @@ mod tests {
     }
 
     fn check_subtree_eq(a: &tt::TopSubtree, b: &tt::TopSubtree) -> bool {
-        let a = a.view().as_token_trees().iter_flat_tokens();
-        let b = b.view().as_token_trees().iter_flat_tokens();
-        a.len() == b.len() && std::iter::zip(a, b).all(|(a, b)| check_tt_eq(&a, &b))
+        let a = a.view().as_token_trees();
+        let b = b.view().as_token_trees();
+        a.len() == b.len()
+            && std::iter::zip(a.iter_flat_tokens(), b.iter_flat_tokens())
+                .all(|(a, b)| check_tt_eq(&a, &b))
     }
 
     fn check_tt_eq(a: &tt::TokenTree, b: &tt::TokenTree) -> bool {

@@ -6,6 +6,10 @@ LL |     baz(|_| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     baz(|_: &()| ());
+   |           +++++
 
 error: implementation of `Fn` is not general enough
   --> $DIR/closure-mismatch.rs:12:5
@@ -15,6 +19,10 @@ LL |     baz(|_| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     baz(|_: &()| ());
+   |           +++++
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/closure-mismatch.rs:16:5
@@ -24,6 +32,10 @@ LL |     baz(|x| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     baz(|x: &()| ());
+   |           +++++
 
 error: implementation of `Fn` is not general enough
   --> $DIR/closure-mismatch.rs:16:5
@@ -33,6 +45,10 @@ LL |     baz(|x| ());
    |
    = note: closure with signature `fn(&'2 ())` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
    = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     baz(|x: &()| ());
+   |           +++++
 
 error: aborting due to 4 previous errors
 

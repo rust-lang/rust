@@ -326,10 +326,8 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     // Make sure dot is a part of call chain
     let receiver = if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
         field_expr.expr()?
-    } else if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent.clone()) {
-        method_call_expr.receiver()?
     } else {
-        return None;
+        ast::MethodCallExpr::cast(parent.clone())?.receiver()?
     };
 
     let receiver_is_multiline = receiver.syntax().text().find_char('\n').is_some();
@@ -367,7 +365,7 @@ fn on_left_angle_typed(
 ) -> Option<TextEdit> {
     let file_text = reparsed.syntax().text();
 
-    // Find the next non-whitespace char in the line, check if its a `>`
+    // Find the next non-whitespace char in the line, check if it's a `>`
     let mut next_offset = offset;
     while file_text.char_at(next_offset) == Some(' ') {
         next_offset += TextSize::of(' ')

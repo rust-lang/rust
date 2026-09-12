@@ -1,13 +1,15 @@
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, msg, struct_span_code_err};
 use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_lint_defs::builtin::{
+    BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
+};
 use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -17,9 +19,6 @@ use rustc_pattern_analysis::diagnostics::Uncovered;
 use rustc_pattern_analysis::rustc::{
     Constructor, DeconstructedPat, MatchArm, RedundancyExplanation, RevealedTy,
     RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport, WitnessPat,
-};
-use rustc_session::lint::builtin::{
-    BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
@@ -39,8 +38,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         tcx,
         thir: &*thir,
         typeck_results,
-        // FIXME(#132279): We're in a body, should handle opaques.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def_id),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def_id),
         hir_source: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
@@ -201,7 +199,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     fn with_let_source(&mut self, let_source: LetSource, f: impl FnOnce(&mut Self)) {
         let old_let_source = self.let_source;
         self.let_source = let_source;
-        ensure_sufficient_stack(|| f(self));
+        f(self);
         self.let_source = old_let_source;
     }
 
@@ -316,7 +314,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // Casts don't cause a load.
             NeverToAny { source }
             | Cast { source }
-            | Use { source }
+            | ValueExpr { source }
             | PointerCoercion { source, .. }
             | PlaceTypeAscription { source, .. }
             | ValueTypeAscription { source, .. }
@@ -386,7 +384,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             tcx: self.tcx,
             typeck_results: self.typeck_results,
             typing_env: self.typing_env,
-            module: self.tcx.parent_module(self.hir_source).to_def_id(),
+            module: self.tcx.parent_module(self.hir_source),
             dropless_arena: self.dropless_arena,
             match_lint_level: self.hir_source,
             whole_match_span,
@@ -735,7 +733,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         {
             let variant_inhabited = adt
                 .variant(*variant_index)
-                .inhabited_predicate(self.tcx, *adt)
+                .inhabited_predicate(self.tcx)
                 .instantiate(self.tcx, args);
             variant_inhabited.apply(self.tcx, cx.typing_env, cx.module)
                 && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env)
@@ -1076,7 +1074,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
-                    && let Res::Def(DefKind::Const { .. }, id) = value_ns
+                    && let Res::Def(DefKind::Const, id) = value_ns
                     && infcx.can_eq(
                         param_env,
                         ty,
@@ -1097,7 +1095,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                 }
             }
-            if let DefKind::Const { .. } = cx.tcx.def_kind(item.owner_id)
+            if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
                 && infcx.can_eq(
                     param_env,
                     ty,
@@ -1240,7 +1238,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
     if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+        && tcx.def_kind(def_id) == DefKind::Const
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
     {
@@ -1376,9 +1374,11 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             // Arms with a never pattern don't take a body.
             pattern
         } else {
+            // ignore-tidy-todo
             format!("{pattern} => todo!()")
         }
     } else {
+        // ignore-tidy-todo
         format!("_ => todo!()")
     };
     let mut suggestion = None;

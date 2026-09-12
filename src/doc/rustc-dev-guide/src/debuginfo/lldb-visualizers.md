@@ -116,8 +116,7 @@ The bool returned from this function is somewhat complicated, see:
 [`update` caching](#update-caching) below for more info.
 When in doubt, return `False`/`None`.
 As of <!-- date-check --> Nov 2025,
-none of the visualizers return `True`, but that may change as the debug info
-test suite is improved.
+none of the visualizers return `True`, but that may change as the debug info test suite is improved.
 
 #### `update` caching
 
@@ -330,7 +329,7 @@ of the synthetic.
 By implementing an instance summary, we can retrieve the variant name via
 `self.variant.GetTypeName()` and some string manipulation.
 
-# Writing Visualizer Scripts
+# Writing visualizer scripts
 
 > IMPORTANT: Unlike GDB and CDB, LLDB can debug executables with either DWARF or PDB debug info.
 >Visualizers must be written to account for both formats whenever possible. See:
@@ -347,12 +346,10 @@ The category we use will be called `Rust`.
 > TIP: all LLDB commands can be prefixed with `help` (e.g. `help type synthetic add`) for a brief
 description, list of arguments, and examples.
 
-As of <!-- date-check --> Nov 2025,
-we use `command source ...`, which executes a series of CLI commands from the
-file [`lldb_commands`](https://github.com/rust-lang/rust/blob/main/src/etc/lldb_commands) to add
-providers.
-This file is somewhat unwieldy, and will soon be supplanted by the Python API equivalent
-outlined below.
+In the past, we used `command source ...`, which executes a series of CLI commands from the
+file `lldb_commands` to add providers.
+This file was somewhat unwieldy,
+and has been supplanted by the Python API equivalent outlined below.
 
 ## `__lldb_init_module`
 
@@ -373,7 +370,7 @@ use depending on what version of LLDB the script detects.
 This is vital for backwards compatibility
 once we begin using recognizer functions, as recognizers were added in lldb 19.0.
 
-## Visualizer Resolution
+## Visualizer resolution
 
 The order that visualizers resolve in is listed [here][formatters_101].
 In short:

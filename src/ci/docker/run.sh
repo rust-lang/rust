@@ -149,25 +149,39 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
             --username ${REGISTRY_USERNAME} \
             --password-stdin
 
-        # Enable a new Docker driver so that --cache-from/to works with a registry backend
-        # Use a custom image to avoid DockerHub rate limits
-        docker buildx create --use --driver docker-container \
-          --driver-opt image=${GHCR_BUILDKIT_IMAGE}
+        # If we find an image with the same hash, then simply download it, and do not even
+        # attempt the build. This will prevent needless pushing of the locally built image back to
+        # the registry when nothing changed. It also avoid Docker cache thrashing, where the final
+        # image is actually built in the image registry, but if we attempt a local rebuild, the
+        # intermediate caches might be missing, which unnecessarily causes a rebuild.
+        if docker pull "${IMAGE_TAG}"; then
+            echo "Downloaded Docker image ${IMAGE_TAG} from CI, image did not change"
+            docker tag "${IMAGE_TAG}" rust-ci
+        else
+            # Rebuild the image from scratch, while using additional caching.
 
-        # Build the image using registry caching backend
-        retry docker \
-          buildx \
-          "${build_args[@]}" \
-          --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
-          --cache-to type=registry,ref=${CACHE_IMAGE_TAG},compression=zstd \
-          --output=type=docker
+            # Enable a new Docker driver so that --cache-from/to works with a registry backend
+            # Use a custom image to avoid DockerHub rate limits
+            docker buildx create --use --driver docker-container \
+              --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
-        # Print images for debugging purposes
-        docker images
+            # Build the image using registry caching backend
+            retry docker \
+              buildx \
+              "${build_args[@]}" \
+              --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
+              --cache-to type=registry,ref=${CACHE_IMAGE_TAG},compression=zstd \
+              --output=type=docker
 
-        # Tag the built image and push it to the registry
-        docker tag rust-ci "${IMAGE_TAG}"
-        docker push "${IMAGE_TAG}"
+            # Print images for debugging purposes
+            docker images
+
+            # Tag the built image and push it to the registry
+            docker tag rust-ci "${IMAGE_TAG}"
+            docker push "${IMAGE_TAG}"
+
+            echo "To download the image, run docker pull ${IMAGE_TAG}"
+        fi
 
         # Record the container registry tag/url for reuse, e.g. by rustup.rs builds
         # It should be possible to run `docker pull <$IMAGE_TAG>` to download the image
@@ -175,8 +189,6 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         mkdir -p "$dist"
         echo "${IMAGE_TAG}" > "$info"
         cat "$info"
-
-        echo "To download the image, run docker pull ${IMAGE_TAG}"
     fi
     echo "::endgroup::"
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
@@ -354,6 +366,7 @@ docker \
   --env PR_CI_JOB \
   --env OBJDIR_ON_HOST="$objdir" \
   --env CODEGEN_BACKENDS \
+  --env LLVM_VERSION \
   --env DISABLE_CI_RUSTC_IF_INCOMPATIBLE="$DISABLE_CI_RUSTC_IF_INCOMPATIBLE" \
   --init \
   --rm \

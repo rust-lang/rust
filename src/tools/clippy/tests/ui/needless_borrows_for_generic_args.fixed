@@ -1,8 +1,8 @@
 #![warn(clippy::needless_borrows_for_generic_args)]
-#![allow(
-    clippy::unnecessary_to_owned,
+#![expect(
+    clippy::needless_borrow,
     clippy::unnecessary_literal_unwrap,
-    clippy::needless_borrow
+    clippy::unnecessary_to_owned
 )]
 
 use core::ops::Deref;
@@ -128,7 +128,6 @@ fn main() {
         fn dont_warn(mut x: Iter) {
             takes_iter(&mut x);
         }
-        #[allow(unused_mut)]
         fn warn(mut x: &mut Iter) {
             takes_iter(x)
             //~^ needless_borrows_for_generic_args

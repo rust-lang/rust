@@ -1,23 +1,24 @@
 use crate::support::{Project, Server};
 use crate::testdir::TestDir;
 use lsp_types::{
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem, Url,
+    DidChangeTextDocumentNotification, DidChangeTextDocumentParams,
+    DidOpenTextDocumentNotification, DidOpenTextDocumentParams, DidSaveTextDocumentNotification,
+    DidSaveTextDocumentParams, TextDocumentContentChangeEvent,
+    TextDocumentContentChangeWholeDocument, TextDocumentIdentifier, TextDocumentItem, Uri,
     VersionedTextDocumentIdentifier,
-    notification::{DidChangeTextDocument, DidOpenTextDocument, DidSaveTextDocument},
 };
 use paths::Utf8PathBuf;
 
 use rust_analyzer::config::Config;
 use rust_analyzer::lsp::ext::{
-    InternalTestingFetchConfig, InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
-    InternalTestingFetchConfigResponse,
+    InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
+    InternalTestingFetchConfigRequest, InternalTestingFetchConfigResponse,
 };
 use serde_json::json;
 use test_utils::skip_slow_tests;
 
 struct RatomlTest {
-    urls: Vec<Url>,
+    urls: Vec<Uri>,
     server: Server,
     tmp_path: Utf8PathBuf,
 }
@@ -54,7 +55,7 @@ impl RatomlTest {
         case
     }
 
-    fn fixture_path(&self, fixture: &str) -> Url {
+    fn fixture_path(&self, fixture: &str) -> Uri {
         let mut lines = fixture.trim().split('\n');
 
         let mut path =
@@ -81,7 +82,7 @@ impl RatomlTest {
             path = path.join(piece);
         }
 
-        Url::parse(
+        Uri::parse(
             format!("file://{}", path.into_string().replace("C:\\", "/c:/").replace('\\', "/"))
                 .as_str(),
         )
@@ -89,65 +90,75 @@ impl RatomlTest {
     }
 
     fn create(&mut self, fixture_path: &str, text: String) {
-        let url = self.fixture_path(fixture_path);
+        let uri = self.fixture_path(fixture_path);
 
-        self.server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        self.server.notification::<DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
-                uri: url.clone(),
-                language_id: "rust".to_owned(),
+                uri: uri.clone(),
+                language_id: lsp_types::LanguageKind::Rust,
                 version: 0,
                 text: String::new(),
             },
         });
 
-        self.server.notification::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier { uri: url, version: 0 },
-            content_changes: vec![TextDocumentContentChangeEvent {
-                range: None,
-                range_length: None,
-                text,
-            }],
-        });
+        self.server.notification::<DidChangeTextDocumentNotification>(
+            DidChangeTextDocumentParams {
+                text_document: VersionedTextDocumentIdentifier {
+                    text_document_identifier: TextDocumentIdentifier { uri },
+                    version: 0,
+                },
+
+                content_changes: vec![
+                    TextDocumentContentChangeEvent::TextDocumentContentChangeWholeDocument(
+                        TextDocumentContentChangeWholeDocument { text },
+                    ),
+                ],
+            },
+        );
     }
 
     fn delete(&mut self, file_idx: usize) {
-        self.server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        self.server.notification::<DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: self.urls[file_idx].clone(),
-                language_id: "rust".to_owned(),
+                language_id: lsp_types::LanguageKind::Rust,
                 version: 0,
                 text: "".to_owned(),
             },
         });
 
         // See if deleting ratoml file will make the config of interest to return to its default value.
-        self.server.notification::<DidSaveTextDocument>(DidSaveTextDocumentParams {
+        self.server.notification::<DidSaveTextDocumentNotification>(DidSaveTextDocumentParams {
             text_document: TextDocumentIdentifier { uri: self.urls[file_idx].clone() },
             text: Some("".to_owned()),
         });
     }
 
     fn edit(&mut self, file_idx: usize, text: String) {
-        self.server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        self.server.notification::<DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: self.urls[file_idx].clone(),
-                language_id: "rust".to_owned(),
+                language_id: lsp_types::LanguageKind::Rust,
                 version: 0,
                 text: String::new(),
             },
         });
 
-        self.server.notification::<DidChangeTextDocument>(DidChangeTextDocumentParams {
-            text_document: VersionedTextDocumentIdentifier {
-                uri: self.urls[file_idx].clone(),
-                version: 0,
+        self.server.notification::<DidChangeTextDocumentNotification>(
+            DidChangeTextDocumentParams {
+                text_document: VersionedTextDocumentIdentifier {
+                    text_document_identifier: TextDocumentIdentifier {
+                        uri: self.urls[file_idx].clone(),
+                    },
+                    version: 0,
+                },
+                content_changes: vec![
+                    TextDocumentContentChangeEvent::TextDocumentContentChangeWholeDocument(
+                        TextDocumentContentChangeWholeDocument { text },
+                    ),
+                ],
             },
-            content_changes: vec![TextDocumentContentChangeEvent {
-                range: None,
-                range_length: None,
-                text,
-            }],
-        });
+        );
     }
 
     fn query(
@@ -156,7 +167,7 @@ impl RatomlTest {
         source_file_idx: usize,
         expected: InternalTestingFetchConfigResponse,
     ) {
-        let res = self.server.send_request::<InternalTestingFetchConfig>(
+        let res = self.server.send_request::<InternalTestingFetchConfigRequest>(
             InternalTestingFetchConfigParams {
                 text_document: Some(TextDocumentIdentifier {
                     uri: self.urls[source_file_idx].clone(),

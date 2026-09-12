@@ -4,26 +4,25 @@ use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    pat_and_expr_can_be_question_mark, peel_blocks, peel_blocks_with_stmt, span_contains_cfg, span_contains_comment,
-    sym,
+    is_none_expr, is_none_pattern, pat_and_expr_can_be_question_mark, peel_blocks, peel_blocks_with_stmt,
+    span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::attrs::lang_items::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::Res;
 use rustc_hir::{
     Arm, BindingMode, Block, Body, ByRef, Expr, ExprKind, FnRetTy, HirId, LetStmt, MatchSource, Mutability, Node, Pat,
     PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 
@@ -71,7 +70,7 @@ pub struct QuestionMark {
 impl QuestionMark {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             matches_behaviour: conf.matches_for_let_else,
             try_block_depth_stack: Vec::new(),
             inferred_ret_closure_stack: 0,
@@ -223,11 +222,13 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                         // We only need to check `if let Some(x) = option` not `if let None = option`,
                         // because the later one will be suggested as `if option.is_none()` thus causing conflict.
                         res.ctor_parent(cx).is_lang_item(cx, OptionSome)
-                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, None))
+                            && if_else.is_some_and(|inner| expr_return_none_or_err(smbl, cx, inner, let_expr, None))
                     },
                     sym::Result => {
                         (res.ctor_parent(cx).is_lang_item(cx, ResultOk)
-                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, Some(let_pat_sym))))
+                            && if_else.is_some_and(|inner| {
+                                expr_return_none_or_err(smbl, cx, inner, let_expr, Some(let_pat_sym))
+                            }))
                             || res.ctor_parent(cx).is_lang_item(cx, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
                                 && if_else.is_none()
@@ -418,10 +419,10 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
         },
         TryMode::Option => {
             // Check the pat is `None`
-            if arm.pat.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+            if is_none_pattern(cx, arm.pat)
                 // Check `=> return None`
                 && let ExprKind::Ret(Some(ret_expr)) = arm_body.kind
-                && ret_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+                && is_none_expr(cx, ret_expr)
                 && !ret_expr.span.from_expansion()
             {
                 true

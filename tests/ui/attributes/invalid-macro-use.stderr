@@ -11,10 +11,10 @@ LL | #[macro_use(b)]
    |             ^
 
 error[E0539]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:4:1
+  --> $DIR/invalid-macro-use.rs:4:3
    |
 LL | #[macro_use = 5]
-   | ^^^^^^^^^^^^---^
+   |   ^^^^^^^^^^---
    |             |
    |             expected a list or no arguments here
    |
@@ -22,17 +22,17 @@ LL | #[macro_use = 5]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use = 5]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use = 5]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:10:1
+  --> $DIR/invalid-macro-use.rs:10:3
    |
 LL | #[macro_use(5)]
-   | ^^^^^^^^^^^^-^^
+   |   ^^^^^^^^^^-^
    |             |
    |             expected a valid identifier here
    |
@@ -40,17 +40,17 @@ LL | #[macro_use(5)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(5)]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(5)]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:16:1
+  --> $DIR/invalid-macro-use.rs:16:3
    |
 LL | #[macro_use(a = "b")]
-   | ^^^^^^^^^^^^^^-----^^
+   |   ^^^^^^^^^^^^-----^
    |               |
    |               didn't expect any arguments here
    |
@@ -58,17 +58,17 @@ LL | #[macro_use(a = "b")]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a = "b")]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(a = "b")]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:22:1
+  --> $DIR/invalid-macro-use.rs:22:3
    |
 LL | #[macro_use(a(b))]
-   | ^^^^^^^^^^^^^---^^
+   |   ^^^^^^^^^^^---^
    |              |
    |              didn't expect any arguments here
    |
@@ -76,17 +76,17 @@ LL | #[macro_use(a(b))]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a(b))]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(a(b))]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
-  --> $DIR/invalid-macro-use.rs:28:1
+  --> $DIR/invalid-macro-use.rs:28:3
    |
 LL | #[macro_use(a::b)]
-   | ^^^^^^^^^^^^----^^
+   |   ^^^^^^^^^^----^
    |             |
    |             expected a valid identifier here
    |
@@ -94,10 +94,10 @@ LL | #[macro_use(a::b)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a::b)]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(a::b)]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error: unused attribute

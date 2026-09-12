@@ -10,6 +10,6 @@ fn main() {
     let f = FooB { x: 3, y: 4 };
     match f {
         FooB(a, b) => println!("{} {}", a, b),
-        //~^ ERROR expected tuple struct or tuple variant, found variant `FooB`
+        //~^ ERROR cannot find tuple struct or tuple variant `FooB` in this scope
     }
 }

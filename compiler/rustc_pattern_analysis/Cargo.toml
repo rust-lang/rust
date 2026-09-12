@@ -9,13 +9,12 @@ rustc-hash = "2.0.0"
 rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena", optional = true }
-rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_errors = { path = "../rustc_errors", optional = true }
 rustc_hir = { path = "../rustc_hir", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
+rustc_lint_defs = { path = "../rustc_lint_defs", optional = true }
 rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_middle = { path = "../rustc_middle", optional = true }
-rustc_session = { path = "../rustc_session", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 smallvec = { version = "1.8.1", features = ["union"] }
 tracing = "0.1"
@@ -24,7 +23,7 @@ tracing = "0.1"
 [dev-dependencies]
 # tidy-alphabetical-start
 tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
-tracing-tree = "0.3.0"
+tracing-tree = "0.4.1"
 # tidy-alphabetical-end
 
 [features]
@@ -33,12 +32,11 @@ default = ["rustc"]
 rustc = [
     "dep:rustc_abi",
     "dep:rustc_arena",
-    "dep:rustc_data_structures",
     "dep:rustc_errors",
     "dep:rustc_hir",
+    "dep:rustc_lint_defs",
     "dep:rustc_macros",
     "dep:rustc_middle",
-    "dep:rustc_session",
     "dep:rustc_span",
     "smallvec/may_dangle",
     "rustc_index/nightly",

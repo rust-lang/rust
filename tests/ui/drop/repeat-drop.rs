@@ -3,7 +3,7 @@
 
 #![allow(dropping_references, dropping_copy_types)]
 
-// FIXME(static_mut_refs): this could use an atomic
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 static mut CHECK: usize = 0;

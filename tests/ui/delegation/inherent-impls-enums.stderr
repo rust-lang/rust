@@ -1,0 +1,70 @@
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-enums.rs:35:32
+   |
+LL | trait Trait<'a, AA, BB>
+   | ----------------------- found this type parameter
+...
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                                ^^^^^^^^
+   |                                |
+   |                                expected `S<'_, (), 1>`, found type parameter `Self`
+   |                                arguments to this function are incorrect
+   |
+   = note:        expected enum `S<'_, (), 1>`
+           found type parameter `Self`
+note: method defined here
+  --> $DIR/inherent-impls-enums.rs:10:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-enums.rs:44:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                                ^^^^^^^^^^ cannot infer the value of const parameter `B` declared on the associated function `foo_static`
+   |
+note: required by a const generic parameter in `S::<'a, A, C>::foo_static`
+  --> $DIR/inherent-impls-enums.rs:9:34
+   |
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<'a, A, C>::foo_static`
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-enums.rs:49:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                                ^^^^^^^^
+   |                                |
+   |                                expected `S<'_, (), 1>`, found `X`
+   |                                arguments to this function are incorrect
+   |
+   = note: expected enum `S<'_, (), 1>`
+            found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-enums.rs:10:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-enums.rs:64:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                                ^^^^^^^^
+   |                                |
+   |                                expected `S<'_, (), 1>`, found `X`
+   |                                arguments to this function are incorrect
+   |
+   = note: expected enum `S<'_, (), 1>`
+            found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-enums.rs:10:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0284, E0308.
+For more information about an error, try `rustc --explain E0284`.

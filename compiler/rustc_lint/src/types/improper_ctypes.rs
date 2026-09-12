@@ -6,21 +6,21 @@ use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{DiagMessage, msg};
 use rustc_hir::def::CtorKind;
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, Unnormalized,
 };
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
 use rustc_target::spec::Os;
 use tracing::debug;
 
 use super::repr_nullable_ptr;
-use crate::lints::{ImproperCTypes, UsesPowerAlignment};
+use crate::diagnostics::{ImproperCTypes, UsesPowerAlignment};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -1257,7 +1257,8 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Use(..)
-            | hir::ItemKind::ExternCrate(..) => {}
+            | hir::ItemKind::ExternCrate(..)
+            | hir::ItemKind::TestBinderConstraints { .. } => {}
         }
     }
 

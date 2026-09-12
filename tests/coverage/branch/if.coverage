@@ -29,8 +29,7 @@
   |  Branch (LL:8): [True: 2, False: 1]
   ------------------
    LL|      2|        say("not not a");
-   LL|      2|    }
-                  ^1
+   LL|      1|    }
    LL|      3|    if !!!a {
   ------------------
   |  Branch (LL:8): [True: 1, False: 2]
@@ -53,8 +52,7 @@
   |  Branch (LL:8): [True: 2, False: 1]
   ------------------
    LL|      2|        say("not not (a as bool)");
-   LL|      2|    }
-                  ^1
+   LL|      1|    }
    LL|      3|    if !!!(a as bool) {
   ------------------
   |  Branch (LL:8): [True: 1, False: 2]
@@ -73,9 +71,9 @@
   |  Branch (LL:13): [True: 8, False: 4]
   ------------------
    LL|      8|        say("both");
-   LL|      8|    } else {
+   LL|       |    } else {
    LL|      7|        say("not both");
-   LL|      7|    }
+   LL|       |    }
    LL|     15|}
    LL|       |
    LL|     15|fn branch_or(a: bool, b: bool) {
@@ -88,9 +86,9 @@
   |  Branch (LL:13): [True: 2, False: 1]
   ------------------
    LL|     14|        say("either");
-   LL|     14|    } else {
+   LL|       |    } else {
    LL|      1|        say("neither");
-   LL|      1|    }
+   LL|       |    }
    LL|     15|}
    LL|       |
    LL|       |#[coverage(off)]

@@ -1,5 +1,5 @@
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/issue-41073.rs:2:5
+  --> $DIR/issue-41073.rs:4:5
    |
 LL |     a: A,
    |     ^^^^

@@ -43,14 +43,14 @@ pub(crate) fn build_backend(
 
     cmd.arg("--release");
 
-    cmd.arg("-Zno-embed-metadata");
+    cmd.arg("-Zembed-metadata=no");
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
     crate::utils::spawn_and_wait(cmd);
 
     CG_CLIF
         .target_dir(dirs)
-        .join(&bootstrap_host_compiler.triple)
+        .join(&bootstrap_host_compiler.target)
         .join("release")
         .join(get_file_name(&bootstrap_host_compiler.rustc, "rustc_codegen_cranelift", "dylib"))
 }

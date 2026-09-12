@@ -147,6 +147,14 @@ pub fn prettify_macro_expansion(
             T![!] if is_last(|it| it == MACRO_RULES_KW, false) && is_next(is_text, false) => {
                 mods.push(do_ws(after, tok));
             }
+            T![,] if tok.parent().is_some_and(|it| it.kind() != MATCH_ARM) => {
+                if is_next(
+                    |it| !matches!(it, R_BRACK | R_PAREN | R_CURLY | T![,] | WHITESPACE),
+                    false,
+                ) {
+                    mods.push(do_ws(after, tok));
+                }
+            }
             _ => (),
         }
 
@@ -229,8 +237,8 @@ mod tests {
                 macro_rules! foo {
                     () => {
                         $crate::foo::bar!();
-                        (1..2,1..=2);
-                        (a==b,a!=b,a<=b,a>=b,x+=2,x<<=2);
+                        (1..2, 1..=2);
+                        (a==b, a!=b, a<=b, a>=b, x+=2, x<<=2);
                     };
                 }
             "#]],
@@ -280,11 +288,11 @@ mod tests {
                     let mut y = 3;
                     let ref mut z@0..5 = 4;
                     let ref mut t@0..=5 = 4;
-                    let (x,ref y) = (5,6);
+                    let (x, ref y) = (5, 6);
                     let (Foo {
-                        x,y
-                    },Bar(z,t));
-                    let (&mut x,(y|y));
+                        x, y
+                    }, Bar(z, t));
+                    let (&mut x, (y|y));
                     match (){}
                 };
             "#]],
@@ -324,6 +332,9 @@ mod tests {
             fn foo() {}
             struct Foo {}
             struct Foo;
+            struct Bar {
+                x: i32,
+            }
             enum Foo {}
             impl Foo {}
             const _: () = {};
@@ -341,6 +352,9 @@ mod tests {
                 struct Foo {}
                 struct Foo;
 
+                struct Bar {
+                    x: i32,
+                }
                 enum Foo {}
                 impl Foo {}
                 const _: () = {};
@@ -352,7 +366,7 @@ mod tests {
                 type X = 2;
                 use a;
                 use b::{
-                    c,d
+                    c, d
                 };
                 macro_rules! foo {
                     () => {};
@@ -373,6 +387,7 @@ mod tests {
                 let _ = async move {};
                 let _ = x.await;
                 let _ = (1..2, 1..=2);
+                let _ = (3,);
                 'lab: for _ in 0..5 {
                     loop { }
                     break 'lab expr;
@@ -394,7 +409,8 @@ mod tests {
                     let _ = async move||{};
                     let _ = async move {};
                     let _ = x.await;
-                    let _ = (1..2,1..=2);
+                    let _ = (1..2, 1..=2);
+                    let _ = (3,);
                     'lab: for _ in 0..5 {
                         loop {}
                         break 'lab expr;

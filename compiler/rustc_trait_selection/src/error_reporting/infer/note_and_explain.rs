@@ -1,7 +1,8 @@
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -385,8 +386,7 @@ impl<T> Trait<T> for X {
                             .iter()
                             .any(|(pred, _span)| match pred.kind().skip_binder() {
                                 ty::ClauseKind::Trait(trait_predicate)
-                                    if trait_predicate.polarity
-                                        == ty::PredicatePolarity::Positive =>
+                                    if trait_predicate.polarity == ty::ClausePolarity::Positive =>
                                 {
                                     trait_predicate.def_id() == def_id
                                 }
@@ -444,9 +444,9 @@ impl<T> Trait<T> for X {
                                 tcx.def_kind(body_owner_def_id),
                                 DefKind::Fn
                                     | DefKind::Static { .. }
-                                    | DefKind::Const { .. }
+                                    | DefKind::Const
                                     | DefKind::AssocFn
-                                    | DefKind::AssocConst { .. }
+                                    | DefKind::AssocConst
                             )
                             && matches!(
                                 tcx.opaque_ty_origin(def_id),
@@ -523,7 +523,7 @@ impl<T> Trait<T> for X {
                             else {
                                 continue;
                             };
-                            if trait_predicate.polarity != ty::PredicatePolarity::Positive {
+                            if trait_predicate.polarity != ty::ClausePolarity::Positive {
                                 continue;
                             }
                             let def_id = trait_predicate.def_id();
@@ -621,9 +621,9 @@ impl<T> Trait<T> for X {
             TypeError::TargetFeatureCast(def_id) => {
                 let target_spans = find_attr!(tcx, def_id, TargetFeature{attr_span: span, was_forced: false, ..} => *span);
                 diag.note(
-                    "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
+                    "functions with `#[target_feature(..)]` can only be coerced to `unsafe` function pointers"
                 );
-                diag.span_labels(target_spans, "`#[target_feature]` added here");
+                diag.span_labels(target_spans, "`#[target_feature(..)]` added here");
             }
             _ => {}
         }
@@ -990,7 +990,7 @@ fn foo(&self) -> Self::T { String::new() }
         msg: impl Fn() -> String,
         is_bound_surely_present: bool,
     ) -> bool {
-        // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
+        // FIXME: we would want to call `deeply_resolve_ignoring_regions` on `ty` before suggesting.
 
         let trait_bounds = bounds.iter().filter_map(|bound| match bound {
             hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifiers::NONE => {

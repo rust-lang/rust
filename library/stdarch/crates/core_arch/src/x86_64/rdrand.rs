@@ -5,7 +5,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.rdrand.64"]
     fn x86_rdrand64_step() -> (u64, i32);
     #[link_name = "llvm.x86.rdseed.64"]

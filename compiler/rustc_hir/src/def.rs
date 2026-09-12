@@ -4,15 +4,15 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::DefId;
 use rustc_span::hygiene::MacroKind;
 
+use crate as hir;
 use crate::definitions::DefPathData;
-use crate::hir;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
@@ -119,9 +119,7 @@ pub enum DefKind {
 
     // Value namespace
     Fn,
-    Const {
-        is_type_const: bool,
-    },
+    Const,
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
     Static {
@@ -153,9 +151,7 @@ pub enum DefKind {
     /// or `trait Foo { fn associated() {} }`
     AssocFn,
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
-    AssocConst {
-        is_type_const: bool,
-    },
+    AssocConst,
 
     // Macro namespace
     Macro(MacroKinds),
@@ -165,7 +161,8 @@ pub enum DefKind {
     Use,
     /// An `extern` block.
     ForeignMod,
-    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]` or `enum E { A = 1 + 2 }`, or an
+    /// inline constant, e.g. `const { 1 + 2 }`.
     ///
     /// Not all anon-consts are actually still relevant in the HIR. We lower
     /// trivial const-arguments directly to `hir::ConstArgKind::Path`, at which
@@ -176,8 +173,6 @@ pub enum DefKind {
     /// constants should only be reachable by iterating all definitions of a
     /// given crate, you should not have to worry about this.
     AnonConst,
-    /// An inline constant, e.g. `const { 1 + 2 }`
-    InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
     /// A field in a struct, enum or union. e.g.
@@ -201,6 +196,8 @@ pub enum DefKind {
     /// The definition of a synthetic coroutine body created by the lowering of a
     /// coroutine-closure, such as an async closure.
     SyntheticCoroutineBody,
+    /// Perma-unstable. Used for test infrastructure for binders.
+    TestBinderConstraints,
 }
 
 impl DefKind {
@@ -230,8 +227,8 @@ impl DefKind {
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
             DefKind::AssocFn => "associated function",
-            DefKind::Const { .. } => "constant",
-            DefKind::AssocConst { .. } => "associated constant",
+            DefKind::Const => "constant",
+            DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
             DefKind::Macro(kinds) => kinds.descr(),
@@ -239,13 +236,13 @@ impl DefKind {
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
             DefKind::AnonConst => "constant expression",
-            DefKind::InlineConst => "inline constant",
             DefKind::Field => "field",
             DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
             DefKind::SyntheticCoroutineBody => "synthetic mir body",
+            DefKind::TestBinderConstraints => "test_binder_constraints!",
         }
     }
 
@@ -257,13 +254,12 @@ impl DefKind {
     pub fn article(&self) -> &'static str {
         match *self {
             DefKind::AssocTy
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy
             | DefKind::Impl { .. }
             | DefKind::Use
-            | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
             DefKind::Macro(kinds) => kinds.article(),
             _ => "a",
@@ -285,18 +281,17 @@ impl DefKind {
             | DefKind::TyParam => Some(Namespace::TypeNS),
 
             DefKind::Fn
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(..)
             | DefKind::AssocFn
-            | DefKind::AssocConst { .. } => Some(Namespace::ValueNS),
+            | DefKind::AssocConst => Some(Namespace::ValueNS),
 
             DefKind::Macro(..) => Some(Namespace::MacroNS),
 
             // Not namespaced.
             DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
@@ -306,7 +301,8 @@ impl DefKind {
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::OpaqueTy
-            | DefKind::SyntheticCoroutineBody => None,
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TestBinderConstraints => None,
         }
     }
 
@@ -331,11 +327,11 @@ impl DefKind {
             DefKind::AssocTy => DefPathData::TypeNs(name.unwrap()),
 
             DefKind::Fn
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::AssocFn
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::Field => DefPathData::ValueNs(name.unwrap()),
             DefKind::Macro(..) => DefPathData::MacroNs(name.unwrap()),
             DefKind::LifetimeParam => DefPathData::LifetimeNs(name.unwrap()),
@@ -343,17 +339,17 @@ impl DefKind {
             DefKind::Use => DefPathData::Use,
             DefKind::ForeignMod => DefPathData::ForeignMod,
             DefKind::AnonConst => DefPathData::AnonConst,
-            DefKind::InlineConst => DefPathData::AnonConst,
             DefKind::OpaqueTy => DefPathData::OpaqueTy,
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
             DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
+            DefKind::TestBinderConstraints => DefPathData::TestBinderConstraints,
         }
     }
 
     pub fn is_assoc(self) -> bool {
-        matches!(self, DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy)
+        matches!(self, DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy)
     }
 
     /// This is a "module" in name resolution sense.
@@ -379,18 +375,17 @@ impl DefKind {
     pub fn has_generics(self) -> bool {
         match self {
             DefKind::AnonConst
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::AssocFn
             | DefKind::AssocTy
             | DefKind::Closure
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::Ctor(..)
             | DefKind::Enum
             | DefKind::Field
             | DefKind::Fn
             | DefKind::ForeignTy
             | DefKind::Impl { .. }
-            | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::Static { .. }
             | DefKind::Struct
@@ -399,7 +394,8 @@ impl DefKind {
             | DefKind::TraitAlias
             | DefKind::TyAlias
             | DefKind::Union
-            | DefKind::Variant => true,
+            | DefKind::Variant
+            | DefKind::TestBinderConstraints => true,
             DefKind::ConstParam
             | DefKind::ExternCrate
             | DefKind::ForeignMod
@@ -431,8 +427,8 @@ impl DefKind {
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
-            | DefKind::Const { .. }
-            | DefKind::AssocConst { .. }
+            | DefKind::Const
+            | DefKind::AssocConst
             | DefKind::Macro(..)
             | DefKind::Use
             | DefKind::ForeignMod
@@ -443,9 +439,9 @@ impl DefKind {
             | DefKind::ConstParam
             | DefKind::LifetimeParam
             | DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::GlobalAsm
-            | DefKind::ExternCrate => false,
+            | DefKind::ExternCrate
+            | DefKind::TestBinderConstraints => false,
         }
     }
 }
@@ -479,7 +475,7 @@ impl DefKind {
 ///   pointing to the definition of `str_to_string` in the current crate.
 //
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
-pub enum Res<Id = hir::HirId> {
+pub enum Res<Id = HirId> {
     /// Definition having a unique ID (`DefId`), corresponds to something defined in user code.
     ///
     /// **Not bound to a specific namespace.**
@@ -583,63 +579,6 @@ pub enum Res<Id = hir::HirId> {
 impl<Id> IntoDiagArg for Res<Id> {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))
-    }
-}
-
-/// The result of resolving a path before lowering to HIR,
-/// with "module" segments resolved and associated item
-/// segments deferred to type checking.
-/// `base_res` is the resolution of the resolved part of the
-/// path, `unresolved_segments` is the number of unresolved
-/// segments.
-///
-/// ```text
-/// module::Type::AssocX::AssocY::MethodOrAssocType
-/// ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/// base_res      unresolved_segments = 3
-///
-/// <T as Trait>::AssocX::AssocY::MethodOrAssocType
-///       ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
-///       base_res        unresolved_segments = 2
-/// ```
-#[derive(Copy, Clone, Debug)]
-pub struct PartialRes {
-    base_res: Res<NodeId>,
-    unresolved_segments: usize,
-}
-
-impl PartialRes {
-    #[inline]
-    pub fn new(base_res: Res<NodeId>) -> Self {
-        PartialRes { base_res, unresolved_segments: 0 }
-    }
-
-    #[inline]
-    pub fn with_unresolved_segments(base_res: Res<NodeId>, mut unresolved_segments: usize) -> Self {
-        if base_res == Res::Err {
-            unresolved_segments = 0
-        }
-        PartialRes { base_res, unresolved_segments }
-    }
-
-    #[inline]
-    pub fn base_res(&self) -> Res<NodeId> {
-        self.base_res
-    }
-
-    #[inline]
-    pub fn unresolved_segments(&self) -> usize {
-        self.unresolved_segments
-    }
-
-    #[inline]
-    pub fn full_res(&self) -> Option<Res<NodeId>> {
-        (self.unresolved_segments == 0).then_some(self.base_res)
-    }
-
-    #[inline]
-    pub fn expect_full_res(&self) -> Res<NodeId> {
-        self.full_res().expect("unexpected unresolved segments")
     }
 }
 
@@ -932,41 +871,3 @@ impl<Id> Res<Id> {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..))
     }
 }
-
-/// Resolution for a lifetime appearing in a type.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum LifetimeRes {
-    /// Successfully linked the lifetime to a generic parameter.
-    Param {
-        /// Id of the generic parameter that introduced it.
-        param: LocalDefId,
-        /// Id of the introducing place. That can be:
-        /// - an item's id, for the item's generic parameters;
-        /// - a TraitRef's ref_id, identifying the `for<...>` binder;
-        /// - a FnPtr type's id.
-        ///
-        /// This information is used for impl-trait lifetime captures, to know when to or not to
-        /// capture any given lifetime.
-        binder: NodeId,
-    },
-    /// Created a generic parameter for an anonymous lifetime.
-    Fresh {
-        /// Id of the generic parameter that introduced it.
-        ///
-        /// Creating the associated `LocalDefId` is the responsibility of lowering.
-        param: NodeId,
-        /// Kind of elided lifetime
-        kind: hir::MissingLifetimeKind,
-    },
-    /// This variant is used for anonymous lifetimes that we did not resolve during
-    /// late resolution. Those lifetimes will be inferred by typechecking.
-    Infer,
-    /// `'static` lifetime.
-    Static,
-    /// Resolution failure.
-    Error(rustc_span::ErrorGuaranteed),
-    /// HACK: This is used to recover the NodeId of an elided lifetime.
-    ElidedAnchor { start: NodeId, end: NodeId },
-}
-
-pub type DocLinkResMap = UnordMap<(Symbol, Namespace), Option<Res<NodeId>>>;

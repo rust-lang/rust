@@ -1,11 +1,10 @@
 //@ run-pass
 
-
 use std::mem::transmute;
 
 mod a {
     extern "C" {
-        pub fn free(x: *const u8);
+        pub fn free(x: *mut std::ffi::c_void);
     }
 }
 

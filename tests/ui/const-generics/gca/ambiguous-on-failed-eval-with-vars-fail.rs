@@ -4,10 +4,12 @@
 // runs on the old solver, just in case someone attempts to implement GCA for the old solver and
 // removes the restriction that -Znext-solver must be enabled)
 
-#![feature(generic_const_items)]
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
+#![feature(
+    min_generic_const_args,
+    generic_const_args,
 //[old]~^ ERROR next-solver
+    generic_const_items
+)]
 #![expect(incomplete_features)]
 
 const FREE<const A: usize>: usize = 10;
@@ -21,7 +23,7 @@ impl Trait for S {
     const PROJ<const A: usize>: usize = 10;
 }
 
-fn free<const N: usize>() -> ([(); N], [(); FREE::<N>]) {
+fn free<const N: usize>() -> ([(); N], [(); core::direct_const_arg!(FREE::<N>)]) {
     loop {}
 }
 
@@ -38,7 +40,7 @@ fn test_free_mismatch() {
     arr = [(); 10];
 }
 
-fn proj<const N: usize>() -> ([(); N], [(); <S as Trait>::PROJ::<N>]) {
+fn proj<const N: usize>() -> ([(); N], [(); core::direct_const_arg!(<S as Trait>::PROJ::<N>)]) {
     loop {}
 }
 

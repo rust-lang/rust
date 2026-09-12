@@ -15,3 +15,5 @@ LL |     unsafe { print_pointer(&x) };
            1: main
                at tests/native-lib/pass/ptr_read_access.rs:LL:CC
 
+warning: 1 warning emitted
+

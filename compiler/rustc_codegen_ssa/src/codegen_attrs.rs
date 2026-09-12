@@ -1,24 +1,24 @@
 use rustc_abi::{Align, ExternAbi};
-use rustc_hir::attrs::{
-    AttributeKind, EiiImplResolution, InlineAttr, InstrumentFnAttr as HirInstrumentFnAttr, Linkage,
-    RtsanSetting, UsedBy,
+use rustc_attr_ir::{
+    Attribute, AttributeKind, EiiImplResolution, InlineAttr, Linkage, OptimizeAttr, RtsanSetting,
+    UsedBy, find_attr,
 };
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{self as hir, Attribute, find_attr};
+use rustc_lint_defs::builtin::{INLINE_NO_SANITIZE, RTSAN_NONBLOCKING_ASYNC};
 use rustc_macros::Diagnostic;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, InstrumentFnAttr, PatchableFunctionEntry, SanitizerFnAttrs,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_session::errors::feature_err;
-use rustc_session::lint;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 use rustc_target::spec::Os;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
@@ -63,7 +63,7 @@ fn process_builtin_attrs(
     codegen_fn_attrs: &mut CodegenFnAttrs,
 ) -> InterestingAttributeDiagnosticSpans {
     let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
-    let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
+    let rust_target_features = tcx.all_rust_target_features(LOCAL_CRATE);
 
     let parsed_attrs = attrs
         .iter()
@@ -154,18 +154,6 @@ fn process_builtin_attrs(
                     // This error is already reported in `rustc_ast_passes/src/ast_validation.rs`.
                     tcx.dcx().delayed_bug("`#[track_caller]` requires the Rust ABI");
                 }
-                if is_closure
-                    && !tcx.features().closure_track_caller()
-                    && !attr_span.allows_unstable(sym::closure_track_caller)
-                {
-                    feature_err(
-                        &tcx.sess,
-                        sym::closure_track_caller,
-                        *attr_span,
-                        "`#[track_caller]` on closures is currently unstable",
-                    )
-                    .emit();
-                }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
             }
             AttributeKind::Used { used_by } => match used_by {
@@ -197,16 +185,10 @@ fn process_builtin_attrs(
                     codegen_fn_attrs.import_linkage = linkage;
 
                     if tcx.is_mutable_static(did.into()) {
-                        let mut diag = tcx.dcx().struct_span_err(
+                        tcx.dcx().span_delayed_bug(
                             *span,
-                            "extern mutable statics are not allowed with `#[linkage]`",
+                            "`extern { #[linkage] static mut ...` is checked in check_attr}",
                         );
-                        diag.note(
-                            "marking the extern static mutable would allow changing which \
-                            symbol the static references rather than make the target of the \
-                            symbol mutable",
-                        );
-                        diag.emit();
                     }
                 } else {
                     codegen_fn_attrs.linkage = linkage;
@@ -224,46 +206,59 @@ fn process_builtin_attrs(
             AttributeKind::RustcEiiForeignItem => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
             }
-            AttributeKind::EiiImpls(impls) => {
-                for i in impls {
-                    let foreign_item = match i.resolution {
-                        EiiImplResolution::Macro(def_id) => {
-                            let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
-                            ) else {
-                                tcx.dcx().span_delayed_bug(
-                                    i.span,
-                                    "resolved to something that's not an EII",
-                                );
-                                continue;
-                            };
-                            extern_item
-                        }
-                        EiiImplResolution::Known(decl) => decl.foreign_item,
-                        EiiImplResolution::Error(_eg) => continue,
-                    };
+            AttributeKind::EiiImpl(i) => {
+                let foreign_item = match i.resolution {
+                    EiiImplResolution::Macro(def_id) => {
+                        let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
+                        ) else {
+                            tcx.dcx().span_delayed_bug(
+                                i.span,
+                                "resolved to something that's not an EII",
+                            );
+                            continue;
+                        };
+                        extern_item
+                    }
+                    EiiImplResolution::Known(def_id) => def_id,
+                    EiiImplResolution::Error(_eg) => continue,
+                };
 
-                    // this is to prevent a bug where a single crate defines both the default and explicit implementation
-                    // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
-                    // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
-                    // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
-                    // the default implementation is used while an explicit implementation is given.
-                    if
-                    // if this is a default impl
-                    i.is_default
+                // this is to prevent a bug where a single crate defines both the default and explicit implementation
+                // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
+                // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
+                // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
+                // the default implementation is used while an explicit implementation is given.
+                if
+                // if this is a default impl
+                i.is_default
                         // iterate over all implementations *in the current crate*
                         // (this is ok since we generate codegen fn attrs in the local crate)
                         // if any of them is *not default* then don't emit the alias.
-                        && tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).expect("at least one").1.iter().any(|(_, imp)| !imp.is_default)
-                    {
-                        continue;
-                    }
+                        && {
+                            let (_, impls) = tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).unwrap_or_else(|| bug!("EII impl should have an entry"));
+                            impls.iter().any(|(_, imp)| !imp.is_default)
+                        }
+                {
+                    continue;
+                }
 
-                    codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                        foreign_item,
-                        if i.is_default { Linkage::WeakAny } else { Linkage::External },
-                        Visibility::Default,
-                    ));
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+                codegen_fn_attrs.foreign_item_symbol_aliases.push((
+                    foreign_item,
+                    if i.is_default { Linkage::WeakAny } else { Linkage::External },
+                    Visibility::Default,
+                ));
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+
+                // If the declaration is `#[track_caller]`, derive it onto the implementation
+                // too. The shim that forwards to this impl (see `add_function_aliases`) takes
+                // its ABI from the impl's `fn_abi`, so every impl must agree on whether the
+                // caller-location argument is present, otherwise it would be silently dropped.
+                if tcx
+                    .codegen_fn_attrs(foreign_item)
+                    .flags
+                    .contains(CodegenFnAttrFlags::TRACK_CALLER)
+                {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
                 }
             }
             AttributeKind::ThreadLocal => {
@@ -297,10 +292,7 @@ fn process_builtin_attrs(
                     ));
             }
             AttributeKind::InstrumentFn(instrument_fn) => {
-                codegen_fn_attrs.instrument_fn = match instrument_fn {
-                    HirInstrumentFnAttr::On => InstrumentFnAttr::On,
-                    HirInstrumentFnAttr::Off => InstrumentFnAttr::Off,
-                };
+                codegen_fn_attrs.instrument_fn = Some(*instrument_fn);
             }
             _ => {}
         }
@@ -351,6 +343,17 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             codegen_fn_attrs
                 .target_features
                 .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+        }
+    }
+
+    // Closures inherit `#[optimize]` annotations.
+    if tcx.is_closure_like(did.to_def_id()) {
+        let owner_id = tcx.parent(did.to_def_id());
+        if tcx.def_kind(owner_id).has_codegen_attrs() {
+            let owner_attrs = tcx.codegen_fn_attrs(owner_id);
+            if codegen_fn_attrs.optimize == OptimizeAttr::Default {
+                codegen_fn_attrs.optimize = owner_attrs.optimize;
+            }
         }
     }
 
@@ -448,7 +451,7 @@ fn check_result(
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
         tcx.emit_node_span_lint(
-            lint::builtin::INLINE_NO_SANITIZE,
+            INLINE_NO_SANITIZE,
             hir_id,
             sanitize_span,
             SanitizeOnInline { inline_span },
@@ -469,12 +472,7 @@ fn check_result(
                     != rustc_hir::ClosureKind::Closure))
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.emit_node_span_lint(
-            lint::builtin::RTSAN_NONBLOCKING_ASYNC,
-            hir_id,
-            sanitize_span,
-            AsyncBlocking,
-        );
+        tcx.emit_node_span_lint(RTSAN_NONBLOCKING_ASYNC, hir_id, sanitize_span, AsyncBlocking);
     }
 
     // error when specifying link_name together with link_ordinal
@@ -501,10 +499,10 @@ fn check_result(
             .unwrap_or_else(|| tcx.def_span(did));
 
         tcx.dcx()
-            .create_err(errors::TargetFeatureDisableOrEnable {
+            .create_err(diagnostics::TargetFeatureDisableOrEnable {
                 features,
                 span: Some(span),
-                missing_features: Some(errors::MissingFeatures),
+                missing_features: Some(diagnostics::MissingFeatures),
             })
             .emit();
     }

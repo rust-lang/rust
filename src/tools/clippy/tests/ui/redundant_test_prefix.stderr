@@ -1,5 +1,5 @@
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:17:4
+  --> tests/ui/redundant_test_prefix.rs:16:4
    |
 LL | fn test_f3() {
    |    ^^^^^^^ help: consider removing the `test_` prefix: `f3`
@@ -8,109 +8,109 @@ LL | fn test_f3() {
    = help: to override `-D warnings` add `#[allow(clippy::redundant_test_prefix)]`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:26:4
+  --> tests/ui/redundant_test_prefix.rs:25:4
    |
 LL | fn test_f4() {
    |    ^^^^^^^ help: consider removing the `test_` prefix: `f4`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:39:4
+  --> tests/ui/redundant_test_prefix.rs:38:4
    |
 LL | fn test_f6() {
    |    ^^^^^^^ help: consider removing the `test_` prefix: `f6`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:54:8
+  --> tests/ui/redundant_test_prefix.rs:53:8
    |
 LL |     fn test_foo() {
    |        ^^^^^^^^ help: consider removing the `test_` prefix: `foo`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:59:8
+  --> tests/ui/redundant_test_prefix.rs:58:8
    |
 LL |     fn test_foo_with_call() {
    |        ^^^^^^^^^^^^^^^^^^ help: consider removing the `test_` prefix: `foo_with_call`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:66:8
+  --> tests/ui/redundant_test_prefix.rs:65:8
    |
 LL |     fn test_f1() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f1`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:71:8
+  --> tests/ui/redundant_test_prefix.rs:70:8
    |
 LL |     fn test_f2() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f2`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:76:8
+  --> tests/ui/redundant_test_prefix.rs:75:8
    |
 LL |     fn test_f3() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f3`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:81:8
+  --> tests/ui/redundant_test_prefix.rs:80:8
    |
 LL |     fn test_f4() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f4`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:86:8
+  --> tests/ui/redundant_test_prefix.rs:85:8
    |
 LL |     fn test_f5() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f5`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:91:8
+  --> tests/ui/redundant_test_prefix.rs:90:8
    |
 LL |     fn test_f6() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f6`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:100:8
+  --> tests/ui/redundant_test_prefix.rs:99:8
    |
 LL |     fn test_foo() {
    |        ^^^^^^^^ help: consider removing the `test_` prefix: `foo`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:105:8
+  --> tests/ui/redundant_test_prefix.rs:104:8
    |
 LL |     fn test_foo_with_call() {
    |        ^^^^^^^^^^^^^^^^^^ help: consider removing the `test_` prefix: `foo_with_call`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:112:8
+  --> tests/ui/redundant_test_prefix.rs:111:8
    |
 LL |     fn test_f1() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f1`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:117:8
+  --> tests/ui/redundant_test_prefix.rs:116:8
    |
 LL |     fn test_f2() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f2`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:122:8
+  --> tests/ui/redundant_test_prefix.rs:121:8
    |
 LL |     fn test_f3() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f3`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:127:8
+  --> tests/ui/redundant_test_prefix.rs:126:8
    |
 LL |     fn test_f4() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f4`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:132:8
+  --> tests/ui/redundant_test_prefix.rs:131:8
    |
 LL |     fn test_f5() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f5`
 
 error: redundant `test_` prefix in test function name
-  --> tests/ui/redundant_test_prefix.rs:137:8
+  --> tests/ui/redundant_test_prefix.rs:136:8
    |
 LL |     fn test_f6() {
    |        ^^^^^^^ help: consider removing the `test_` prefix: `f6`

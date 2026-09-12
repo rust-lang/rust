@@ -16,19 +16,21 @@ fn known_command() -> Command {
     }
 }
 
-#[cfg(target_os = "android")]
 fn shell_cmd() -> Command {
-    Command::new("/system/bin/sh")
-}
-
-#[cfg(not(target_os = "android"))]
-fn shell_cmd() -> Command {
-    Command::new("/bin/sh")
+    if cfg!(target_os = "android") || cfg!(target_os = "motor") {
+        Command::new("/system/bin/sh")
+    } else {
+        Command::new("/bin/sh")
+    }
 }
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn smoke() {
@@ -53,7 +55,11 @@ fn smoke_failure() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn exit_reported_right() {
@@ -71,7 +77,11 @@ fn exit_reported_right() {
 #[test]
 #[cfg(unix)]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn signal_reported_right() {
@@ -98,7 +108,11 @@ pub fn run_output(mut cmd: Command) -> String {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn stdout_works() {
@@ -116,7 +130,11 @@ fn stdout_works() {
 #[test]
 #[cfg_attr(windows, ignore)]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn set_current_dir_works() {
@@ -142,7 +160,11 @@ fn set_current_dir_works() {
 #[test]
 #[cfg_attr(windows, ignore)]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn stdin_works() {
@@ -163,7 +185,11 @@ fn stdin_works() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn child_stdout_read_buf() {
@@ -197,7 +223,11 @@ fn child_stdout_read_buf() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_process_status() {
@@ -217,6 +247,7 @@ fn test_process_status() {
 }
 
 #[test]
+#[cfg_attr(any(target_os = "l4re"), ignore = "no fork/exec available")]
 fn test_process_output_fail_to_start() {
     match Command::new("/no-binary-by-this-name-should-exist").output() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::NotFound),
@@ -226,7 +257,11 @@ fn test_process_output_fail_to_start() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_process_output_output() {
@@ -244,7 +279,11 @@ fn test_process_output_output() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_process_output_error() {
@@ -262,7 +301,11 @@ fn test_process_output_error() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_finish_once() {
@@ -276,7 +319,11 @@ fn test_finish_once() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_finish_twice() {
@@ -291,7 +338,11 @@ fn test_finish_twice() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_wait_with_output_once() {
@@ -329,7 +380,11 @@ pub fn env_cmd() -> Command {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_override_env() {
@@ -355,7 +410,11 @@ fn test_override_env() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_add_to_env() {
@@ -370,7 +429,11 @@ fn test_add_to_env() {
 
 #[test]
 #[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
+    any(
+        target_os = "vxworks",
+        all(target_vendor = "apple", not(target_os = "macos")),
+        target_os = "l4re"
+    ),
     ignore = "no shell available"
 )]
 fn test_capture_env_at_spawn() {
@@ -654,6 +717,7 @@ fn run_canonical_bat_script() {
 }
 
 #[test]
+#[cfg_attr(target_os = "l4re", ignore = "no shell available")]
 fn terminate_exited_process() {
     let mut cmd = if cfg!(target_os = "android") {
         let mut p = shell_cmd();

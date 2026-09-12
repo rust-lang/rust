@@ -48,9 +48,7 @@ fn opaque<T>() -> impl Project2 {
 fn check<T: Project1>() {
     unsafe {
         std::mem::transmute::<_, ()>(opaque::<T>().get());
-        //~^ ERROR: cannot transmute
-        //~| NOTE: source type: `{type error}` (the type has an unknown layout)
-        //~| NOTE: target type: `()` (0 bits)
+        //~^ ERROR: unable to determine layout
     }
 }
 

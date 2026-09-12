@@ -7,8 +7,8 @@ use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 #[cfg(feature = "master")]
-use rustc_codegen_ssa::errors::ExpectedPointerMutability;
-use rustc_codegen_ssa::errors::InvalidMonomorphization;
+use rustc_codegen_ssa::diagnostics::ExpectedPointerMutability;
+use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};

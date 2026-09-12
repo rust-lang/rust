@@ -46,7 +46,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     ) -> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
-                let ety = fcx.resolve_vars_with_obligations(ety);
+                let ety = fcx.deeply_resolve_ignoring_regions_with_obligations(ety);
                 if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
             }
             ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),
@@ -76,9 +76,9 @@ impl<'a, 'tcx> Expectation<'tcx> {
     pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         let span = match ty.kind() {
             ty::Adt(adt_def, _) => fcx.tcx.def_span(adt_def.did()),
-            _ => fcx.tcx.def_span(fcx.body_id),
+            _ => fcx.tcx.def_span(fcx.body_def_id),
         };
-        let cause = ObligationCause::misc(span, fcx.body_id);
+        let cause = ObligationCause::misc(span, fcx.body_def_id);
 
         // FIXME(#155345): Missing normalization call
         match fcx.tcx.struct_tail_raw(ty, &cause, |ty| ty.skip_normalization(), || {}).kind() {
@@ -93,9 +93,11 @@ impl<'a, 'tcx> Expectation<'tcx> {
     fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
         match self {
             NoExpectation => NoExpectation,
-            ExpectCastableToType(t) => ExpectCastableToType(fcx.resolve_vars_if_possible(t)),
-            ExpectHasType(t) => ExpectHasType(fcx.resolve_vars_if_possible(t)),
-            ExpectRvalueLikeUnsized(t) => ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(t)),
+            ExpectCastableToType(t) => ExpectCastableToType(fcx.deeply_resolve_ignoring_regions(t)),
+            ExpectHasType(t) => ExpectHasType(fcx.deeply_resolve_ignoring_regions(t)),
+            ExpectRvalueLikeUnsized(t) => {
+                ExpectRvalueLikeUnsized(fcx.deeply_resolve_ignoring_regions(t))
+            }
         }
     }
 
@@ -112,7 +114,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// such a constraint, if it exists.
     pub(super) fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self {
-            ExpectHasType(ty) => Some(fcx.resolve_vars_if_possible(ty)),
+            ExpectHasType(ty) => Some(fcx.deeply_resolve_ignoring_regions(ty)),
             NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) => None,
         }
     }

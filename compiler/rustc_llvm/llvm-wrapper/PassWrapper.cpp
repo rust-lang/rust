@@ -49,6 +49,9 @@
 #include "llvm/Transforms/Instrumentation/RealtimeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
+#if LLVM_VERSION_GE(23, 0)
+#include "llvm/Transforms/Utils/AssignGUID.h"
+#endif
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
@@ -63,10 +66,8 @@ using namespace llvm;
 
 static codegen::RegisterCodeGenFlags CGF;
 
-typedef struct LLVMOpaquePass *LLVMPassRef;
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
-DEFINE_STDCXX_CONVERSION_FUNCTIONS(Pass, LLVMPassRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
 
 extern "C" void LLVMRustTimeTraceProfilerInitialize() {
@@ -362,7 +363,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
 
+#if LLVM_VERSION_LT(24, 0)
   Options.FloatABIType = FloatABIType;
+#endif
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
   Options.UniqueSectionNames = UniqueSectionNames;
@@ -436,7 +439,11 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
-#if LLVM_VERSION_GE(22, 0)
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
+      Options->ExceptionModel, Options->EABIVersion, Options->MCOptions.ABIName,
+      Options->VecLib));
+#elif LLVM_VERSION_GE(22, 0)
   unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,
       Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
@@ -520,6 +527,17 @@ extern "C" typedef void (*LLVMRustSelfProfileBeforePassCallback)(
 extern "C" typedef void (*LLVMRustSelfProfileAfterPassCallback)(
     void *); // LlvmSelfProfiler
 
+#if LLVM_VERSION_GE(24, 0)
+std::string LLVMRustwrappedIrGetName(const llvm::IRUnitRef &WrappedIr) {
+  if (const auto *Cast = dyn_cast<Module>(WrappedIr))
+    return Cast->getName().str();
+  if (const auto *Cast = dyn_cast<Function>(WrappedIr))
+    return Cast->getName().str();
+  if (const auto *Cast = dyn_cast<Loop>(WrappedIr))
+    return Cast->getName().str();
+  if (const auto *Cast = dyn_cast<LazyCallGraph::SCC>(WrappedIr))
+    return Cast->getName();
+#else
 std::string LLVMRustwrappedIrGetName(const llvm::Any &WrappedIr) {
   if (const auto *Cast = any_cast<const Module *>(&WrappedIr))
     return (*Cast)->getName().str();
@@ -529,6 +547,7 @@ std::string LLVMRustwrappedIrGetName(const llvm::Any &WrappedIr) {
     return (*Cast)->getName().str();
   if (const auto *Cast = any_cast<const LazyCallGraph::SCC *>(&WrappedIr))
     return (*Cast)->getName();
+#endif
   return "<UNKNOWN>";
 }
 
@@ -537,15 +556,26 @@ void LLVMSelfProfileInitializeCallbacks(
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback) {
   PIC.registerBeforeNonSkippedPassCallback(
+#if LLVM_VERSION_GE(24, 0)
+      [LlvmSelfProfiler, BeforePassCallback](StringRef Pass,
+                                             llvm::IRUnitRef Ir) {
+#else
       [LlvmSelfProfiler, BeforePassCallback](StringRef Pass, llvm::Any Ir) {
+#endif
         std::string PassName = Pass.str();
         std::string IrName = LLVMRustwrappedIrGetName(Ir);
         BeforePassCallback(LlvmSelfProfiler, PassName.c_str(), IrName.c_str());
       });
 
   PIC.registerAfterPassCallback(
+#if LLVM_VERSION_GE(24, 0)
+      [LlvmSelfProfiler,
+       AfterPassCallback](StringRef Pass, llvm::IRUnitRef IR,
+                          const PreservedAnalyses &Preserved) {
+#else
       [LlvmSelfProfiler, AfterPassCallback](
           StringRef Pass, llvm::Any IR, const PreservedAnalyses &Preserved) {
+#endif
         AfterPassCallback(LlvmSelfProfiler);
       });
 
@@ -555,17 +585,27 @@ void LLVMSelfProfileInitializeCallbacks(
         AfterPassCallback(LlvmSelfProfiler);
       });
 
+#if LLVM_VERSION_GE(24, 0)
+  PIC.registerBeforeAnalysisCallback([LlvmSelfProfiler, BeforePassCallback](
+                                         StringRef Pass, llvm::IRUnitRef Ir) {
+#else
   PIC.registerBeforeAnalysisCallback(
       [LlvmSelfProfiler, BeforePassCallback](StringRef Pass, llvm::Any Ir) {
-        std::string PassName = Pass.str();
-        std::string IrName = LLVMRustwrappedIrGetName(Ir);
-        BeforePassCallback(LlvmSelfProfiler, PassName.c_str(), IrName.c_str());
-      });
+#endif
+    std::string PassName = Pass.str();
+    std::string IrName = LLVMRustwrappedIrGetName(Ir);
+    BeforePassCallback(LlvmSelfProfiler, PassName.c_str(), IrName.c_str());
+  });
 
+#if LLVM_VERSION_GE(24, 0)
+  PIC.registerAfterAnalysisCallback([LlvmSelfProfiler, AfterPassCallback](
+                                        StringRef Pass, llvm::IRUnitRef Ir) {
+#else
   PIC.registerAfterAnalysisCallback(
       [LlvmSelfProfiler, AfterPassCallback](StringRef Pass, llvm::Any Ir) {
-        AfterPassCallback(LlvmSelfProfiler);
-      });
+#endif
+    AfterPassCallback(LlvmSelfProfiler);
+  });
 }
 
 enum class LLVMRustOptStage {
@@ -600,6 +640,27 @@ struct LLVMRustSanitizerOptions {
 extern "C" typedef void (*registerEnzymeAndPassPipelineFn)(
     llvm::PassBuilder &PB, bool augment);
 
+/// Forces the bitcode writer to emit full LTO summary instead of thin LTO
+/// summary for embedded bitcode under Fat LTO.
+///
+/// Note the bitcode writer will only emit the full LTO block ID if the
+/// "ThinLTO" metadata is defined and explicitly set to zero. Otherwise, the
+/// thin LTO block ID will be emitted.
+static void forceFullLTOSummary(Module *M) {
+  // This function may be called twice, such as if you call it with `-C lto=fat
+  // --emit=llvm-bc`, so exit early if if we've already set up the module to
+  // emit full LTO summaries.
+  if (auto *Existing = M->getModuleFlag("ThinLTO")) {
+    auto *Const = mdconst::extract<ConstantInt>(Existing);
+    assert(Const->getZExtValue() == 0 &&
+           "ThinLTO flag already set to non-zero");
+    return;
+  }
+
+  auto *Zero = ConstantInt::get(Type::getInt32Ty(M->getContext()), 0);
+  M->addModuleFlag(Module::Error, "ThinLTO", Zero);
+}
+
 extern "C" LLVMRustResult LLVMRustOptimize(
     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
     LLVMRustPassBuilderOptLevel OptLevelRust, LLVMRustOptStage OptStage,
@@ -616,6 +677,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     bool DebugInfoForProfiling, void *LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
+    const char *PostEnzymePasses, size_t PostEnzymePassesLen,
     const char *ExtraPasses, size_t ExtraPassesLen, const char *LLVMPlugins,
     size_t LLVMPluginsLen) {
   Module *TheModule = unwrap(ModuleRef);
@@ -852,120 +914,136 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   raw_string_ostream ThinLinkDataOS(ThinLTOSummaryBuffer->data);
   bool IsLTO = OptStage == LLVMRustOptStage::ThinLTO ||
                OptStage == LLVMRustOptStage::FatLTO;
-  if (!NoPrepopulatePasses) {
-    for (const auto &C : PipelineStartEPCallbacks)
-      PB.registerPipelineStartEPCallback(C);
-    for (const auto &C : OptimizerLastEPCallbacks)
-      PB.registerOptimizerLastEPCallback(C);
-
-    // The pre-link pipelines don't support O0 and require using
-    // buildO0DefaultPipeline() instead. At the same time, the LTO pipelines do
-    // support O0 and using them is required.
-    if (OptLevel == OptimizationLevel::O0 && !IsLTO) {
-      // We manually schedule ThinLTOBufferPasses below, so don't pass the value
-      // to enable it here.
-      MPM = PB.buildO0DefaultPipeline(OptLevel);
-    } else {
-      switch (OptStage) {
-      case LLVMRustOptStage::PreLinkNoLTO:
-        if (ThinLTOBufferRef) {
-          // This is similar to LLVM's `buildFatLTODefaultPipeline`, where the
-          // bitcode for embedding is obtained after performing
-          // `ThinLTOPreLinkDefaultPipeline`.
-          MPM.addPass(PB.buildThinLTOPreLinkDefaultPipeline(OptLevel));
-          MPM.addPass(ThinLTOBitcodeWriterPass(
-              ThinLTODataOS,
-              ThinLTOSummaryBufferRef ? &ThinLinkDataOS : nullptr));
-          *ThinLTOBufferRef = ThinLTOBuffer.release();
-          if (ThinLTOSummaryBufferRef) {
-            *ThinLTOSummaryBufferRef = ThinLTOSummaryBuffer.release();
-          }
-          MPM.addPass(PB.buildModuleOptimizationPipeline(
-              OptLevel, ThinOrFullLTOPhase::None));
-          MPM.addPass(
-              createModuleToFunctionPassAdaptor(AnnotationRemarksPass()));
-        } else {
-          MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
-        }
-        break;
-      case LLVMRustOptStage::PreLinkThinLTO:
-      case LLVMRustOptStage::PreLinkFatLTO:
-        MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
-        NeedThinLTOBufferPasses = false;
-        break;
-      case LLVMRustOptStage::ThinLTO:
-        // FIXME: Does it make sense to pass the ModuleSummaryIndex?
-        // It only seems to be needed for C++ specific optimizations.
-        MPM = PB.buildThinLTODefaultPipeline(OptLevel, nullptr);
-        break;
-      case LLVMRustOptStage::FatLTO:
-        MPM = PB.buildLTODefaultPipeline(OptLevel, nullptr);
-        NeedThinLTOBufferPasses = false;
-        break;
-      }
+  if (PostEnzymePassesLen) {
+    if (auto Err = PB.parsePassPipeline(
+            MPM, StringRef(PostEnzymePasses, PostEnzymePassesLen))) {
+      std::string ErrMsg = toString(std::move(Err));
+      LLVMRustSetLastError(ErrMsg.c_str());
+      return LLVMRustResult::Failure;
     }
   } else {
-    // We're not building any of the default pipelines but we still want to
-    // add the verifier, instrumentation, etc passes if they were requested
-    for (const auto &C : PipelineStartEPCallbacks)
-      C(MPM, OptLevel);
-    for (const auto &C : OptimizerLastEPCallbacks)
-      C(MPM, OptLevel, ThinOrFullLTOPhase::None);
-  }
+    if (!NoPrepopulatePasses) {
+      for (const auto &C : PipelineStartEPCallbacks)
+        PB.registerPipelineStartEPCallback(C);
+      for (const auto &C : OptimizerLastEPCallbacks)
+        PB.registerOptimizerLastEPCallback(C);
 
-  if (ExtraPassesLen) {
-    if (auto Err =
-            PB.parsePassPipeline(MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
-      std::string ErrMsg = toString(std::move(Err));
-      LLVMRustSetLastError(ErrMsg.c_str());
-      return LLVMRustResult::Failure;
-    }
-  }
-
-  if (NeedThinLTOBufferPasses) {
-    MPM.addPass(CanonicalizeAliasesPass());
-    MPM.addPass(NameAnonGlobalPass());
-  }
-  // For `-Copt-level=0`, and the pre-link fat/thin LTO stages.
-  if (ThinLTOBufferRef && *ThinLTOBufferRef == nullptr) {
-    // thin lto summaries prevent fat lto, so do not emit them if fat
-    // lto is requested. See PR #136840 for background information.
-    if (OptStage != LLVMRustOptStage::PreLinkFatLTO) {
-      MPM.addPass(ThinLTOBitcodeWriterPass(
-          ThinLTODataOS, ThinLTOSummaryBufferRef ? &ThinLinkDataOS : nullptr));
+      // The pre-link pipelines don't support O0 and require using
+      // buildO0DefaultPipeline() instead. At the same time, the LTO pipelines
+      // do support O0 and using them is required.
+      if (OptLevel == OptimizationLevel::O0 && !IsLTO) {
+        // We manually schedule ThinLTOBufferPasses below, so don't pass the
+        // value to enable it here.
+        MPM = PB.buildO0DefaultPipeline(OptLevel);
+      } else {
+        switch (OptStage) {
+        case LLVMRustOptStage::PreLinkNoLTO:
+          if (ThinLTOBufferRef) {
+            // This is similar to LLVM's `buildFatLTODefaultPipeline`, where the
+            // bitcode for embedding is obtained after performing
+            // `ThinLTOPreLinkDefaultPipeline`.
+            MPM.addPass(PB.buildThinLTOPreLinkDefaultPipeline(OptLevel));
+            MPM.addPass(ThinLTOBitcodeWriterPass(
+                ThinLTODataOS,
+                ThinLTOSummaryBufferRef ? &ThinLinkDataOS : nullptr));
+            *ThinLTOBufferRef = ThinLTOBuffer.release();
+            if (ThinLTOSummaryBufferRef) {
+              *ThinLTOSummaryBufferRef = ThinLTOSummaryBuffer.release();
+            }
+            MPM.addPass(PB.buildModuleOptimizationPipeline(
+                OptLevel, ThinOrFullLTOPhase::None));
+            MPM.addPass(
+                createModuleToFunctionPassAdaptor(AnnotationRemarksPass()));
+          } else {
+            MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
+          }
+          break;
+        case LLVMRustOptStage::PreLinkThinLTO:
+        case LLVMRustOptStage::PreLinkFatLTO:
+          MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
+          NeedThinLTOBufferPasses = false;
+          break;
+        case LLVMRustOptStage::ThinLTO:
+          // FIXME: Does it make sense to pass the ModuleSummaryIndex?
+          // It only seems to be needed for C++ specific optimizations.
+          MPM = PB.buildThinLTODefaultPipeline(OptLevel, nullptr);
+          break;
+        case LLVMRustOptStage::FatLTO:
+          MPM = PB.buildLTODefaultPipeline(OptLevel, nullptr);
+          NeedThinLTOBufferPasses = false;
+          break;
+        }
+      }
     } else {
-      MPM.addPass(BitcodeWriterPass(ThinLTODataOS));
-    }
-    *ThinLTOBufferRef = ThinLTOBuffer.release();
-    if (ThinLTOSummaryBufferRef) {
-      *ThinLTOSummaryBufferRef = ThinLTOSummaryBuffer.release();
-    }
-  }
-
-  // now load "-enzyme" pass:
-  // With dlopen, ENZYME macro may not be defined, so check EnzymePtr directly
-  // In the case of debug builds with multiple codegen units, we might not
-  // have all function definitions available during the early compiler
-  // invocations. We therefore wait for the final lto step to run Enzyme.
-  if (EnzymePtr && IsLTO) {
-
-    if (PrintBeforeEnzyme) {
-      // Handle the Rust flag `-Zautodiff=PrintModBefore`.
-      std::string Banner = "Module before EnzymeNewPM";
-      MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+      // We're not building any of the default pipelines but we still want to
+      // add the verifier, instrumentation, etc passes if they were requested
+      for (const auto &C : PipelineStartEPCallbacks)
+        C(MPM, OptLevel);
+      for (const auto &C : OptimizerLastEPCallbacks)
+        C(MPM, OptLevel, ThinOrFullLTOPhase::None);
     }
 
-    EnzymePtr(PB, false);
-    if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
-      std::string ErrMsg = toString(std::move(Err));
-      LLVMRustSetLastError(ErrMsg.c_str());
-      return LLVMRustResult::Failure;
+    if (ExtraPassesLen) {
+      if (auto Err = PB.parsePassPipeline(
+              MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
+        std::string ErrMsg = toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
+        return LLVMRustResult::Failure;
+      }
     }
 
-    if (PrintAfterEnzyme) {
-      // Handle the Rust flag `-Zautodiff=PrintModAfter`.
-      std::string Banner = "Module after EnzymeNewPM";
-      MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+    if (NeedThinLTOBufferPasses) {
+      MPM.addPass(CanonicalizeAliasesPass());
+      MPM.addPass(NameAnonGlobalPass());
+#if LLVM_VERSION_GE(23, 0)
+      MPM.addPass(AssignGUIDPass());
+#endif
+    }
+    // For `-Copt-level=0`, and the pre-link fat/thin LTO stages.
+    if (ThinLTOBufferRef && *ThinLTOBufferRef == nullptr) {
+      // thin lto summaries prevent fat lto, so emit a full summary instead if
+      // fat lto is requested. See PR #136840 for background information.
+      if (OptStage != LLVMRustOptStage::PreLinkFatLTO) {
+        MPM.addPass(ThinLTOBitcodeWriterPass(
+            ThinLTODataOS,
+            ThinLTOSummaryBufferRef ? &ThinLinkDataOS : nullptr));
+      } else {
+        forceFullLTOSummary(TheModule);
+        MPM.addPass(BitcodeWriterPass(ThinLTODataOS,
+                                      /*ShouldPreserveUseListOrder=*/false,
+                                      /*EmitSummaryIndex=*/true));
+      }
+      *ThinLTOBufferRef = ThinLTOBuffer.release();
+      if (ThinLTOSummaryBufferRef) {
+        *ThinLTOSummaryBufferRef = ThinLTOSummaryBuffer.release();
+      }
+    }
+
+    // now load "-enzyme" pass:
+    // With dlopen, ENZYME macro may not be defined, so check EnzymePtr directly
+    // In the case of debug builds with multiple codegen units, we might not
+    // have all function definitions available during the early compiler
+    // invocations. We therefore wait for the final lto step to run Enzyme.
+    if (EnzymePtr && IsLTO) {
+
+      if (PrintBeforeEnzyme) {
+        // Handle the Rust flag `-Zautodiff=PrintModBefore`.
+        std::string Banner = "Module before EnzymeNewPM";
+        MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+      }
+
+      EnzymePtr(PB, false);
+      if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
+        std::string ErrMsg = toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
+        return LLVMRustResult::Failure;
+      }
+
+      if (PrintAfterEnzyme) {
+        // Handle the Rust flag `-Zautodiff=PrintModAfter`.
+        std::string Banner = "Module after EnzymeNewPM";
+        MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+      }
     }
   }
 
@@ -1087,7 +1165,9 @@ extern "C" LLVMRustResult LLVMRustPrintModule(LLVMModuleRef M, const char *Path,
     LLVMRustSetLastError(ErrorInfo.c_str());
     return LLVMRustResult::Failure;
   }
-
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(M)->renumberMetadataForAssembly();
+#endif
   auto AAW = RustAssemblyAnnotationWriter(Demangle);
   auto FOS = formatted_raw_ostream(OS);
   unwrap(M)->print(FOS, &AAW);
@@ -1136,6 +1216,11 @@ extern "C" void LLVMRustSetModuleCodeModel(LLVMModuleRef M,
   if (!CM)
     return;
   unwrap(M)->setCodeModel(*CM);
+}
+
+extern "C" void LLVMRustSetModuleLargeDataThreshold(LLVMModuleRef M,
+                                                    uint64_t Threshold) {
+  unwrap(M)->setLargeDataThreshold(Threshold);
 }
 
 // Here you'll find an implementation of ThinLTO as used by the Rust compiler
@@ -1452,23 +1537,30 @@ extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
   {
     auto OS = raw_string_ostream(Ret->data);
     {
+      PassBuilder PB;
+      LoopAnalysisManager LAM;
+      FunctionAnalysisManager FAM;
+      CGSCCAnalysisManager CGAM;
+      ModuleAnalysisManager MAM;
+      PB.registerModuleAnalyses(MAM);
+      PB.registerCGSCCAnalyses(CGAM);
+      PB.registerFunctionAnalyses(FAM);
+      PB.registerLoopAnalyses(LAM);
+      PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+      ModulePassManager MPM;
+#if LLVM_VERSION_GE(23, 0)
+      MPM.addPass(AssignGUIDPass());
+#endif
+
       if (is_thin) {
-        PassBuilder PB;
-        LoopAnalysisManager LAM;
-        FunctionAnalysisManager FAM;
-        CGSCCAnalysisManager CGAM;
-        ModuleAnalysisManager MAM;
-        PB.registerModuleAnalyses(MAM);
-        PB.registerCGSCCAnalyses(CGAM);
-        PB.registerFunctionAnalyses(FAM);
-        PB.registerLoopAnalyses(LAM);
-        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-        ModulePassManager MPM;
         MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
-        MPM.run(*unwrap(M), MAM);
       } else {
-        WriteBitcodeToFile(*unwrap(M), OS);
+        forceFullLTOSummary(unwrap(M));
+        MPM.addPass(BitcodeWriterPass(OS, /*ShouldPreserveUseListOrder=*/false,
+                                      /*EmitSummaryIndex=*/true));
       }
+      MPM.run(*unwrap(M), MAM);
     }
   }
   return Ret.release();

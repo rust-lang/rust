@@ -41,17 +41,20 @@
 
 #![allow(unused_variables)]
 
+#[repr(C)]
 struct NoPadding1 {
     x: [u32; 3],
     y: i32,
     z: [f32; 2]
 }
 
+#[repr(C)]
 struct NoPadding2 {
     x: [u32; 3],
     y: [[u32; 2]; 2]
 }
 
+#[repr(C)]
 struct StructInternalPadding {
     x: [i16; 2],
     y: [i64; 2]
@@ -61,6 +64,7 @@ struct SingleVec {
     x: [i16; 5]
 }
 
+#[repr(C)]
 struct StructPaddedAtEnd {
     x: [i64; 2],
     y: [i16; 2]

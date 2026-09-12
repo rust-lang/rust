@@ -11,9 +11,9 @@
   |  Branch (LL:8): [True: 1, False: 0]
   ------------------
    LL|      1|        println!("size > 4");
-   LL|      2|    } else {
+   LL|       |    } else {
    LL|      2|        println!("size <= 4");
-   LL|      2|    }
+   LL|       |    }
    LL|      3|}
   ------------------
   | generics::print_size::<()>:
@@ -23,9 +23,9 @@
   |  |  Branch (LL:8): [True: 0, False: 1]
   |  ------------------
   |   LL|      0|        println!("size > 4");
-  |   LL|      1|    } else {
+  |   LL|       |    } else {
   |   LL|      1|        println!("size <= 4");
-  |   LL|      1|    }
+  |   LL|       |    }
   |   LL|      1|}
   ------------------
   | generics::print_size::<u32>:
@@ -35,9 +35,9 @@
   |  |  Branch (LL:8): [True: 0, False: 1]
   |  ------------------
   |   LL|      0|        println!("size > 4");
-  |   LL|      1|    } else {
+  |   LL|       |    } else {
   |   LL|      1|        println!("size <= 4");
-  |   LL|      1|    }
+  |   LL|       |    }
   |   LL|      1|}
   ------------------
   | generics::print_size::<u64>:
@@ -47,9 +47,9 @@
   |  |  Branch (LL:8): [True: 1, False: 0]
   |  ------------------
   |   LL|      1|        println!("size > 4");
-  |   LL|      1|    } else {
+  |   LL|       |    } else {
   |   LL|      0|        println!("size <= 4");
-  |   LL|      0|    }
+  |   LL|       |    }
   |   LL|      1|}
   ------------------
    LL|       |

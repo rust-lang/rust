@@ -1,17 +1,20 @@
 use std::borrow::Cow;
 
-use rustc_ast::AttrStyle;
+use rustc_ast::{AttrStyle, Safety};
+use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
+use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
+use rustc_lint_defs::builtin::{
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+};
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::context::AcceptContext;
 use crate::diagnostics::{
-    InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
+    InvalidAttrAtCrateLevel, InvalidTarget, InvalidTargetHelp, ItemFollowingInnerAttr,
+    UnsupportedAttributesInWhere,
 };
-use crate::session_diagnostics::{InvalidTarget, InvalidTargetHelp};
 use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
@@ -62,16 +65,13 @@ impl AllowedTargets<'_> {
 
     pub(crate) fn allowed_targets(&self) -> Vec<Target> {
         match self {
-            AllowedTargets::AllowList(list) => list,
-            AllowedTargets::AllowListWarnRest(list) => list,
+            AllowedTargets::AllowList(list) | AllowedTargets::AllowListWarnRest(list) => list,
             AllowedTargets::ManuallyChecked => unreachable!(),
         }
         .iter()
         .filter_map(|target| match target {
             Policy::Allow(target) => Some(*target),
-            Policy::AllowSilent(_) => None, // Not listed in possible targets
-            Policy::Warn(_) => None,
-            Policy::Error(_) => None,
+            Policy::AllowSilent(_) | Policy::Warn(_) | Policy::Error(_) => None,
         })
         .collect()
     }
@@ -132,7 +132,20 @@ impl<'sess> AttributeParser<'sess> {
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
 
         let diag = InvalidTarget {
-            span: cx.attr_span.clone(),
+            span: if attribute_args.is_empty() {
+                // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
+                // and the path span covers `inline` which is just what we want.
+                cx.attr_path.span
+            } else {
+                // Example 1: for the attribute `#[repr(C)]`, name+attribute_args gives
+                // "repr(C)", and the inner span covers `repr(C)` which is just what we want.
+                //
+                // Example 2: for the attribute `#[repr(C, packed)]`, name+attribute_args gives
+                // "repr(C)", and the inner span covers `repr(C, packed)` which doesn't match
+                // exactly but is as close as we can get.
+                cx.inner_span
+            },
+            attr_span: cx.attr_span,
             name: cx.attr_path.clone(),
             target: cx.target.plural_name(),
             only: if only { "only " } else { "" },
@@ -156,14 +169,14 @@ impl<'sess> AttributeParser<'sess> {
                     ]
                     .contains(&cx.target)
                 {
-                    rustc_session::lint::builtin::USELESS_DEPRECATED
+                    USELESS_DEPRECATED
                 } else if is_diagnostic_attr {
-                    rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES
+                    MISPLACED_DIAGNOSTIC_ATTRIBUTES
                 } else {
-                    rustc_session::lint::builtin::UNUSED_ATTRIBUTES
+                    UNUSED_ATTRIBUTES
                 };
 
-                let attr_span = cx.attr_span.clone();
+                let attr_span = cx.attr_span;
                 cx.emit_lint(lint, diag, attr_span);
             }
             AllowedResult::Error => {
@@ -177,6 +190,15 @@ impl<'sess> AttributeParser<'sess> {
         cx: &AcceptContext<'_, '_>,
     ) -> Option<InvalidTargetHelp> {
         match &*cx.attr_path.segments {
+            [sym::link_name] if cx.target == Target::Static => {
+                let needs_unsafe_wrapper = matches!(cx.attr_safety, Safety::Default);
+
+                Some(InvalidTargetHelp::UseExportName {
+                    unsafe_open: needs_unsafe_wrapper.then(|| cx.inner_span.shrink_to_lo()),
+                    name: cx.attr_path.span,
+                    unsafe_close: needs_unsafe_wrapper.then(|| cx.inner_span.shrink_to_hi()),
+                })
+            }
             [sym::repr] if attribute_args == "(align(...))" => match cx.target {
                 Target::Fn | Target::Method(..) if cx.features().fn_align() => {
                     Some(InvalidTargetHelp::UseRustcAlign)
@@ -224,7 +246,7 @@ impl<'sess> AttributeParser<'sess> {
             span: attr_span,
         };
         if warn {
-            cx.emit_lint(rustc_session::lint::builtin::UNUSED_ATTRIBUTES, diag, attr_span);
+            cx.emit_lint(UNUSED_ATTRIBUTES, diag, attr_span);
         } else {
             cx.emit_err(diag);
         }
@@ -463,7 +485,7 @@ impl<'f, 'sess> AcceptContext<'f, 'sess> {
 /// This is used for:
 /// - `rustc_dummy`, which can be applied to all targets
 /// - Attributes that are not parted to the new target system yet can use this list as a placeholder
-pub(crate) const ALL_TARGETS: &'static [Policy] = {
+pub(crate) const ALL_TARGETS: &[Policy] = {
     use Policy::Allow;
     &[
         Allow(Target::ExternCrate),
@@ -488,12 +510,16 @@ pub(crate) const ALL_TARGETS: &'static [Policy] = {
         Allow(Target::Expression),
         Allow(Target::Statement),
         Allow(Target::Arm),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignTy),
@@ -507,27 +533,27 @@ pub(crate) const ALL_TARGETS: &'static [Policy] = {
         Allow(Target::Delegation { mac: false }),
         Allow(Target::Delegation { mac: true }),
         Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Const,
+            kind: rustc_attr_ir::target::GenericParamKind::Const,
             has_default: false,
         }),
         Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Const,
+            kind: rustc_attr_ir::target::GenericParamKind::Const,
             has_default: true,
         }),
         Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Lifetime,
+            kind: rustc_attr_ir::target::GenericParamKind::Lifetime,
             has_default: false,
         }),
         Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Lifetime,
+            kind: rustc_attr_ir::target::GenericParamKind::Lifetime,
             has_default: true,
         }),
         Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Type,
+            kind: rustc_attr_ir::target::GenericParamKind::Type,
             has_default: false,
         }),
         Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Type,
+            kind: rustc_attr_ir::target::GenericParamKind::Type,
             has_default: true,
         }),
         Allow(Target::Loop),

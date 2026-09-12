@@ -1,0 +1,26 @@
+error: ['a: +, T: +]
+ --> $DIR/rustc_dump_variances.rs:7:1
+  |
+7 | struct Ref<'a, T> {
+  | ^^^^^^^^^^^^^^^^^
+
+error: ['a: +, T: o]
+  --> $DIR/rustc_dump_variances.rs:12:1
+   |
+12 | struct RefMut<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: +, T: o]
+  --> $DIR/rustc_dump_variances.rs:17:1
+   |
+17 | struct CellRef<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: [T: -, U: +]
+  --> $DIR/rustc_dump_variances.rs:22:1
+   |
+22 | fn x<T, U>(_t: T) -> U {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

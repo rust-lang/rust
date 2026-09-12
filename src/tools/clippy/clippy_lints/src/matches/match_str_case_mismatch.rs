@@ -1,12 +1,13 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sym;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Arm, Expr, ExprKind, LangItem, PatExpr, PatExprKind, PatKind};
+use rustc_hir::{Arm, Expr, ExprKind, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;

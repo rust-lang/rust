@@ -42,7 +42,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol};
 
 use crate::builder::expr::as_place::PlaceBuilder;
-use crate::builder::scope::{DropKind, LintLevel};
+use crate::builder::scope::LintLevel;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -477,15 +477,6 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let return_ty = fn_sig.output();
-    let coroutine = match tcx.type_of(fn_def).instantiate_identity().skip_norm_wip().kind() {
-        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
-            tcx.coroutine_kind(fn_def).unwrap(),
-            args.as_coroutine().yield_ty(),
-            args.as_coroutine().resume_ty(),
-        ))),
-        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
-        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
-    };
 
     if let Some((dialect, phase)) =
         find_attr!(tcx, fn_id, CustomMir(dialect, phase) => (dialect, phase))
@@ -505,9 +496,36 @@ fn construct_fn<'tcx>(
         );
     }
 
-    // FIXME(#132279): This should be able to reveal opaque
-    // types defined during HIR typeck.
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
+        TypingMode::borrowck(tcx, fn_def)
+    } else {
+        // FIXME(#132279): This should be able to reveal opaque
+        // types defined during HIR typeck.
+        TypingMode::non_body_analysis()
+    };
+
+    let infcx = tcx.infer_ctxt().build(typing_mode);
+
+    let defining_ty = tcx.type_of(fn_def).instantiate_identity().skip_normalization();
+    let defining_ty = if infcx.next_trait_solver() {
+        // Closure types come from HIR typeck results, where they were already
+        // normalized during writeback. Wrapping them in an `EarlyBinder`
+        // conservatively makes aliases non-rigid, so restore their rigidness
+        // instead of normalizing them again during MIR build.
+        ty::set_aliases_to_rigid(tcx, defining_ty)
+    } else {
+        defining_ty
+    };
+    let coroutine = match defining_ty.kind() {
+        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
+            tcx.coroutine_kind(fn_def).unwrap(),
+            args.as_coroutine().yield_ty(),
+            args.as_coroutine().resume_ty(),
+        ))),
+        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
+        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
+    };
+
     let mut builder = Builder::new(
         thir,
         infcx,
@@ -538,6 +556,7 @@ fn construct_fn<'tcx>(
             })
             .into_block();
         let source_info = builder.source_info(fn_end);
+        builder.push_coverage_point_for_fn_end(return_block, source_info, fn_id);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         builder.build_drop_trees();
         return_block.unit()
@@ -587,9 +606,15 @@ fn construct_const<'a, 'tcx>(
         _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 
-    // FIXME(#132279): We likely want to be able to use the hidden types of
-    // opaques used by this function here.
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
+        TypingMode::borrowck(tcx, def)
+    } else {
+        // FIXME(#132279): This should be able to reveal opaque
+        // types defined during HIR typeck.
+        TypingMode::non_body_analysis()
+    };
+
+    let infcx = tcx.infer_ctxt().build(typing_mode);
     let mut builder =
         Builder::new(thir, infcx, def, hir_id, span, 0, const_ty, const_ty_span, None);
 
@@ -612,10 +637,9 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let (inputs, output, coroutine) = match tcx.def_kind(def_id) {
-        DefKind::Const { .. }
-        | DefKind::AssocConst { .. }
+        DefKind::Const
+        | DefKind::AssocConst
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::Static { .. }
         | DefKind::GlobalAsm => {
             (vec![], tcx.type_of(def_id).instantiate_identity().skip_norm_wip(), None)
@@ -812,7 +836,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine.clone(),
             None,
         );
-        body.coverage_info_hi = self.coverage_info.as_ref().map(|b| b.as_done());
+        body.coverage_early_info = self.coverage_info.as_ref().map(|b| b.as_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
@@ -831,7 +855,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
-        body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+        body.coverage_early_info = self.coverage_info.map(|b| b.into_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         for (index, block) in body.basic_blocks.iter().enumerate() {
@@ -955,11 +979,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let place = Place::from(local);
 
             // Make sure we drop (parts of) the argument even when not matched on.
-            self.schedule_drop(
+            self.schedule_drop_value(
                 param.pat.as_ref().map_or(expr_span, |pat| pat.span),
                 argument_scope,
                 local,
-                DropKind::Value,
             );
 
             let Some(ref pat) = param.pat else {

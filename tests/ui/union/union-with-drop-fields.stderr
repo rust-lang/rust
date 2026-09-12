@@ -1,5 +1,5 @@
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/union-with-drop-fields.rs:8:5
+  --> $DIR/union-with-drop-fields.rs:9:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
@@ -11,7 +11,7 @@ LL |     a: std::mem::ManuallyDrop<String>,
    |        +++++++++++++++++++++++      +
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/union-with-drop-fields.rs:16:5
+  --> $DIR/union-with-drop-fields.rs:17:5
    |
 LL |     a: S,
    |     ^^^^
@@ -23,7 +23,7 @@ LL |     a: std::mem::ManuallyDrop<S>,
    |        +++++++++++++++++++++++ +
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/union-with-drop-fields.rs:21:5
+  --> $DIR/union-with-drop-fields.rs:22:5
    |
 LL |     a: T,
    |     ^^^^

@@ -1,17 +1,10 @@
-error[E0597]: `a` does not live long enough
-  --> $DIR/coerce-shared-lifetime-mismatch.rs:21:12
+error: implementing `CoerceShared` requires source and target to use the same reborrow lifetime argument
+  --> $DIR/coerce-shared-lifetime-mismatch.rs:17:10
    |
-LL |     let a = CustomMarker(PhantomData);
-   |         - binding `a` declared here
-LL |     method(a);
-   |     -------^-
-   |     |      |
-   |     |      borrowed value does not live long enough
-   |     argument requires that `a` is borrowed for `'static`
-LL |
-LL | }
-   | - `a` dropped here while still borrowed
+LL | impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^                  -- source reborrow lifetime
+   |                                       |
+   |                                       target reborrow lifetime
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0597`.

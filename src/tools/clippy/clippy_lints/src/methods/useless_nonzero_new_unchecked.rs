@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_inside_always_const_context;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, Node, QPath, UnsafeSource};

@@ -1,10 +1,10 @@
 //@ compile-flags: --test
 //@ reference: attributes.testing.test.allowed-positions
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 mod test {}
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 mod loooooooooooooong_teeeeeeeeeest {
     /*
     this is a comment
@@ -18,37 +18,37 @@ mod loooooooooooooong_teeeeeeeeeest {
     */
 }
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 extern "C" {}
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 trait Foo {}
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 impl Foo for i32 {}
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 const FOO: i32 = -1_i32;
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 static BAR: u64 = 10_000_u64;
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 enum MyUnit {
     Unit,
 }
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 struct NewI32(i32);
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 union Spooky {
     x: i32,
     y: u32,
 }
 
 #[repr(C, align(64))]
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
+#[test] //~ ERROR: the `test` attribute may only be used on a free function
 #[derive(Copy, Clone, Debug)]
 struct MoreAttrs {
     a: i32,
@@ -59,7 +59,7 @@ macro_rules! foo {
     () => {};
 }
 
-#[test] //~ WARN: the `#[test]` attribute may only be used on a free function
+#[test] //~ WARN: the `test` attribute may only be used on a free function
 foo!();
 
 // make sure it doesn't erroneously trigger on a real test

@@ -47,7 +47,7 @@ impl<I> Incoming<I> {
             message: "canceled by client".to_owned(),
             data: None,
         };
-        Some(Response { id, result: None, error: Some(error) })
+        Some(Response { id, response_result: Err(error) })
     }
 
     pub fn complete(&mut self, id: &RequestId) -> Option<I> {

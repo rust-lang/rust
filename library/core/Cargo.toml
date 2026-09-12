@@ -23,7 +23,6 @@ optimize_for_size = []
 # Make `RefCell` store additional debugging information, which is printed out when
 # a borrow error occurs
 debug_refcell = []
-llvm_enzyme = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
@@ -39,7 +38,6 @@ check-cfg = [
     'cfg(target_has_reliable_f16_math)',
     'cfg(target_has_reliable_f128)',
     'cfg(target_has_reliable_f128_math)',
-    'cfg(llvm_enzyme)',
     # Prevents use of a static variable for providing platform specific RawOsError
     # functionality
     'cfg(no_io_statics)',

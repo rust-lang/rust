@@ -93,7 +93,7 @@ macro_rules! dsp_call {
     };
 }
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.arm.qadd8"]
     fn arm_qadd8(a: i32, b: i32) -> i32;
 

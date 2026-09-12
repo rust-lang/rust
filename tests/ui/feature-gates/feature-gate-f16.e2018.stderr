@@ -18,8 +18,48 @@ LL |     let a: f16 = 100.0;
    = help: add `#![feature(f16)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: the type `f128` is unstable
+  --> $DIR/feature-gate-f16.rs:17:20
+   |
+LL |     let into_f128: f128 = 1.0_f16.into();
+   |                    ^^^^
+   |
+   = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
+   = help: add `#![feature(f128)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:19:11
+  --> $DIR/feature-gate-f16.rs:20:18
+   |
+LL |     let from_i8: f16 = 1_i8.into();
+   |                  ^^^
+   |
+   = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
+   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the type `f16` is unstable
+  --> $DIR/feature-gate-f16.rs:21:18
+   |
+LL |     let from_u8: f16 = 1_u8.into();
+   |                  ^^^
+   |
+   = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
+   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the type `f16` is unstable
+  --> $DIR/feature-gate-f16.rs:22:20
+   |
+LL |     let from_bool: f16 = true.into();
+   |                    ^^^
+   |
+   = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
+   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the type `f16` is unstable
+  --> $DIR/feature-gate-f16.rs:26:11
    |
 LL | fn foo(a: f16) {}
    |           ^^^
@@ -29,7 +69,7 @@ LL | fn foo(a: f16) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:22:8
+  --> $DIR/feature-gate-f16.rs:29:8
    |
 LL |     a: f16,
    |        ^^^
@@ -59,26 +99,46 @@ LL |     let c = 0f16;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the type `f16` is unstable
-  --> $DIR/feature-gate-f16.rs:13:18
+  --> $DIR/feature-gate-f16.rs:13:25
    |
-LL |     let d: f32 = 1.0f16.into();
-   |                  ^^^^^^
+LL |     let into_f32: f32 = 1.0f16.into();
+   |                         ^^^^^^
+   |
+   = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
+   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the type `f16` is unstable
+  --> $DIR/feature-gate-f16.rs:16:25
+   |
+LL |     let into_f64: f64 = 1.0_f16.into();
+   |                         ^^^^^^^
+   |
+   = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
+   = help: add `#![feature(f16)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the type `f16` is unstable
+  --> $DIR/feature-gate-f16.rs:17:27
+   |
+LL |     let into_f128: f128 = 1.0_f16.into();
+   |                           ^^^^^^^
    |
    = note: see issue #116909 <https://github.com/rust-lang/rust/issues/116909> for more information
    = help: add `#![feature(f16)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `f32_from_f16`
-  --> $DIR/feature-gate-f16.rs:13:25
+  --> $DIR/feature-gate-f16.rs:13:32
    |
-LL |     let d: f32 = 1.0f16.into();
-   |                         ^^^^
+LL |     let into_f32: f32 = 1.0f16.into();
+   |                                ^^^^
    |
    = help: add `#![feature(f32_from_f16)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: required for `f32` to implement `From<f16>`
    = note: required for `f16` to implement `Into<f32>`
 
-error: aborting due to 8 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

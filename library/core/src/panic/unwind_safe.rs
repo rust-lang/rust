@@ -42,7 +42,7 @@ use crate::task::{Context, Poll};
 /// That was a bit of a whirlwind tour of unwind safety, but for more information
 /// about unwind safety and how it applies to Rust, see an [associated RFC][rfc].
 ///
-/// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
+/// [rfc]: https://rust-lang.github.io/rfcs/1236-stabilize-catch-panic.html
 ///
 /// ## What is `UnwindSafe`?
 ///

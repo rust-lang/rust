@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: items.union.pattern.safety
 #![allow(unreachable_patterns)]
 
 #[derive(Copy, Clone)]

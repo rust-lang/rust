@@ -5,6 +5,7 @@ edition = "2018"
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
+test = false
 
 [dependencies]
 byteorder = "1.0"

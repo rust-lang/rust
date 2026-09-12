@@ -16,7 +16,6 @@ doctest = false
 arrayvec.workspace = true
 text-size.workspace = true
 rustc-hash.workspace = true
-indexmap.workspace = true
 
 span = { path = "../span", version = "0.0", default-features = false }
 stdx.workspace = true

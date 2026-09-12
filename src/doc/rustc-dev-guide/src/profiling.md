@@ -19,7 +19,7 @@ Depending on what you're trying to measure, there are several different approach
 - If you want a nice visual representation of the compile times of your crate graph,
   you can use [cargo's `--timings` flag](https://doc.rust-lang.org/nightly/cargo/reference/timings.html),
   e.g. `cargo build --timings`.
-  You can use this flag on the compiler itself with `CARGOFLAGS="--timings" ./x build`
+  You can use this flag on the compiler itself with `./x build compiler --timings`
 
 - If you want to profile memory usage, you can use various tools depending on what operating system
   you are using.
@@ -41,7 +41,7 @@ It is stored in files with `*.no-opt.bc` extension in LLVM bitcode format.
 
 Example usage:
 ```
-cargo install cargo-llvm-lines
+cargo install --locked cargo-llvm-lines
 # On a normal crate you could now run `cargo llvm-lines`, but `x` isn't normal :P
 
 # Do a clean before every run, to not mix in the results from previous runs.

@@ -2,15 +2,16 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
-use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_from_proc_macro, is_in_test, trait_ref_of_method};
+use clippy_utils::{
+    fn_has_unsatisfiable_clauses, is_entrypoint_fn, is_from_proc_macro, is_in_test, trait_ref_of_method,
+};
 use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, Body, Constness, FnDecl, GenericParamKind, OwnerId};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
@@ -80,7 +81,7 @@ pub struct MissingConstForFn {
 
 impl MissingConstForFn {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -99,12 +100,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             return;
         }
 
-        if span.in_external_macro(cx.tcx.sess.source_map()) || is_entrypoint_fn(cx, def_id.to_def_id()) {
+        if is_entrypoint_fn(cx, def_id.to_def_id()) {
             return;
         }
 
-        // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
+        // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
+        if fn_has_unsatisfiable_clauses(cx, def_id.to_def_id()) {
             return;
         }
 
@@ -151,7 +152,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             return;
         }
 
-        if is_from_proc_macro(cx, &(&kind, body, hir_id, span)) {
+        if (span.from_expansion() && span.in_external_macro(cx.tcx.sess.source_map()))
+            || is_from_proc_macro(cx, &(&kind, body, hir_id, span))
+        {
             return;
         }
 
@@ -213,7 +216,8 @@ fn fn_inputs_has_impl_trait_ty(cx: &LateContext<'_>, def_id: LocalDefId) -> bool
     inputs.iter().any(|input| {
         matches!(
             input.kind(),
-            &ty::Alias(_, ty::AliasTy { kind: ty::Free{def_id} , ..}) if cx.tcx.type_of(def_id).skip_binder().is_opaque()
+            &ty::Alias(_, ty::AliasTy { kind: ty::Free{def_id} , ..})
+                if cx.tcx.type_of(def_id).skip_binder().is_opaque()
         )
     })
 }

@@ -1,12 +1,5 @@
-#![allow(
-    clippy::deref_addrof,
-    clippy::no_effect,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_struct_initialization,
-    dead_code,
-    unused
-)]
 #![warn(clippy::unnecessary_operation)]
+#![allow(clippy::deref_addrof, clippy::no_effect)]
 
 use std::fmt::Display;
 use std::ops::Shl;
@@ -162,4 +155,25 @@ fn issue15173_original<MsU>(handler: impl FnOnce() -> MsU + Clone + 'static) {
         (|_| handler.clone()())(value);
         None
     }) as Box<dyn Fn(i32) -> Option<i32>>;
+}
+
+mod issue12898 {
+    use futures::future;
+    async fn forever() -> ! {
+        // pretend there is an infinite loop here...
+        future::pending().await
+    }
+    pub async fn definitely_forever() -> ! {
+        future::join(forever(), forever()).await.0;
+    }
+
+    pub async fn no_false_negative() -> ! {
+        fn never() -> ! {
+            unimplemented!()
+        }
+        {
+            never()
+        };
+        //~^^^ unnecessary_operation
+    }
 }

@@ -60,7 +60,7 @@ mod tests;
 
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use either::Either;
 use hir_expand::{
     EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, mod_path::ModPath, name::Name,
@@ -76,9 +76,8 @@ use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    AstId, BlockId, BlockLoc, BuiltinDeriveImplId, ExternCrateId, FunctionId, FxIndexMap, Lookup,
+    AstId, BlockId, BlockIdLt, BuiltinDeriveImplId, ExternCrateId, FunctionId, FxIndexMap, Lookup,
     MacroCallStyles, MacroExpander, MacroId, ModuleId, ModuleIdLt, ProcMacroId, UseId,
-    db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
     item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
@@ -273,12 +272,12 @@ struct BlockInfo {
     parent: ModuleId,
 }
 
-impl std::ops::Index<ModuleId> for DefMap {
+impl std::ops::Index<ModuleIdLt<'_>> for DefMap {
     type Output = ModuleData;
 
-    fn index(&self, id: ModuleId) -> &ModuleData {
+    fn index(&self, id: ModuleIdLt<'_>) -> &ModuleData {
         self.modules
-            .get(&id)
+            .get(&unsafe { id.to_static() })
             .unwrap_or_else(|| panic!("ModuleId not found in ModulesMap {:#?}: {id:#?}", self.root))
     }
 }
@@ -343,7 +342,7 @@ impl ModuleOrigin {
 
     /// Returns a node which defines this module.
     /// That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
+    pub fn definition_source(&self, db: &dyn SourceDatabase) -> InFile<ModuleSource> {
         match self {
             &ModuleOrigin::File { definition: editioned_file_id, .. }
             | &ModuleOrigin::CrateRoot { definition: editioned_file_id } => {
@@ -378,11 +377,11 @@ pub struct ModuleData {
 }
 
 #[inline]
-pub fn crate_def_map(db: &dyn DefDatabase, crate_id: Crate) -> &DefMap {
+pub fn crate_def_map(db: &dyn SourceDatabase, crate_id: Crate) -> &DefMap {
     crate_local_def_map(db, crate_id).def_map(db)
 }
 
-#[salsa_macros::tracked]
+#[salsa::tracked]
 pub(crate) struct DefMapPair<'db> {
     #[tracked]
     #[returns(ref)]
@@ -391,8 +390,8 @@ pub(crate) struct DefMapPair<'db> {
     pub(crate) local: LocalDefMap,
 }
 
-#[salsa_macros::tracked(returns(ref))]
-pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefMapPair<'_> {
+#[salsa::tracked(returns(ref))]
+pub(crate) fn crate_local_def_map(db: &dyn SourceDatabase, crate_id: Crate) -> DefMapPair<'_> {
     let krate = crate_id.data(db);
     let _p = tracing::info_span!(
         "crate_def_map_query",
@@ -425,9 +424,11 @@ pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefM
     DefMapPair::new(db, def_map, local_def_map)
 }
 
-#[salsa_macros::tracked(returns(ref))]
-pub fn block_def_map(db: &dyn DefDatabase, block_id: BlockId) -> DefMap {
-    let BlockLoc { ast_id, module } = *block_id.lookup(db);
+#[salsa::tracked(returns(ref))]
+pub fn block_def_map<'db>(db: &'db dyn SourceDatabase, block_id: BlockIdLt<'db>) -> DefMap {
+    let block_id = unsafe { block_id.to_static() };
+    let ast_id = block_id.ast_id(db);
+    let module = unsafe { block_id.module(db).to_static() };
 
     let visibility = Visibility::Module(module, VisibilityExplicitness::Implicit);
     let module_data =
@@ -458,7 +459,7 @@ impl DefMap {
     }
 
     fn empty(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         krate: Crate,
         crate_data: Arc<DefMapCrateData>,
         module_data: ModuleData,
@@ -521,7 +522,7 @@ impl DefMap {
     /// Returns all modules in the crate that are associated with the given file.
     pub fn modules_for_file<'a>(
         &'a self,
-        db: &'a dyn DefDatabase,
+        db: &'a dyn SourceDatabase,
         file_id: FileId,
     ) -> impl Iterator<Item = ModuleId> + 'a {
         self.modules
@@ -594,7 +595,7 @@ impl DefMap {
     }
 
     #[inline]
-    pub fn crate_root(&self, db: &dyn DefDatabase) -> ModuleId {
+    pub fn crate_root(&self, db: &dyn SourceDatabase) -> ModuleId {
         match self.block {
             Some(_) => crate_def_map(db, self.krate()).root,
             None => self.root,
@@ -615,7 +616,7 @@ impl DefMap {
 
     /// Returns the module containing `local_mod`, either the parent `mod`, or the module (or block) containing
     /// the block, if `self` corresponds to a block expression.
-    pub fn containing_module(&self, local_mod: ModuleId) -> Option<ModuleId> {
+    pub fn containing_module(&self, local_mod: ModuleIdLt<'_>) -> Option<ModuleId> {
         match self[local_mod].parent {
             Some(parent) => Some(parent),
             None => self.block.map(|BlockInfo { parent, .. }| parent),
@@ -634,7 +635,7 @@ impl DefMap {
 
     // FIXME: this can use some more human-readable format (ideally, an IR
     // even), as this should be a great debugging aid.
-    pub fn dump(&self, db: &dyn DefDatabase) -> String {
+    pub fn dump(&self, db: &dyn SourceDatabase) -> String {
         let mut buf = String::new();
         let mut current_map = self;
         while let Some(block) = current_map.block {
@@ -645,7 +646,13 @@ impl DefMap {
         go(&mut buf, db, current_map, "crate", current_map.root);
         return buf;
 
-        fn go(buf: &mut String, db: &dyn DefDatabase, map: &DefMap, path: &str, module: ModuleId) {
+        fn go(
+            buf: &mut String,
+            db: &dyn SourceDatabase,
+            map: &DefMap,
+            path: &str,
+            module: ModuleId,
+        ) {
             format_to!(buf, "{}\n", path);
 
             map[module].scope.dump(db, buf);
@@ -676,7 +683,7 @@ impl DefMap {
     pub(crate) fn resolve_path(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         original_module: ModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
@@ -699,7 +706,7 @@ impl DefMap {
     pub(crate) fn resolve_path_locally(
         &self,
         local_def_map: &LocalDefMap,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         original_module: ModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
@@ -720,11 +727,11 @@ impl DefMap {
     ///
     /// If `f` returns `Some(val)`, iteration is stopped and `Some(val)` is returned. If `f` returns
     /// `None`, iteration continues.
-    pub(crate) fn with_ancestor_maps<T>(
+    pub(crate) fn with_ancestor_maps<'db, T>(
         &self,
-        db: &dyn DefDatabase,
-        local_mod: ModuleId,
-        f: &mut dyn FnMut(&DefMap, ModuleId) -> Option<T>,
+        db: &'db dyn SourceDatabase,
+        local_mod: ModuleIdLt<'db>,
+        f: &mut dyn FnMut(&DefMap, ModuleIdLt<'db>) -> Option<T>,
     ) -> Option<T> {
         if let Some(it) = f(self, local_mod) {
             return Some(it);
@@ -758,7 +765,7 @@ impl ModuleData {
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
+    pub fn definition_source(&self, db: &dyn SourceDatabase) -> InFile<ModuleSource> {
         self.origin.definition_source(db)
     }
 
@@ -773,7 +780,7 @@ impl ModuleData {
         }
     }
 
-    pub fn definition_source_range(&self, db: &dyn DefDatabase) -> InFile<TextRange> {
+    pub fn definition_source_range(&self, db: &dyn SourceDatabase) -> InFile<TextRange> {
         match &self.origin {
             &ModuleOrigin::File { definition, .. } | &ModuleOrigin::CrateRoot { definition } => {
                 InFile::new(
@@ -791,7 +798,7 @@ impl ModuleData {
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root or block.
-    pub fn declaration_source(&self, db: &dyn DefDatabase) -> Option<InFile<ast::Module>> {
+    pub fn declaration_source(&self, db: &dyn SourceDatabase) -> Option<InFile<ast::Module>> {
         let decl = self.origin.declaration()?;
         let value = decl.to_node(db);
         Some(InFile { file_id: decl.file_id, value })
@@ -799,7 +806,7 @@ impl ModuleData {
 
     /// Returns the range which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root or block.
-    pub fn declaration_source_range(&self, db: &dyn DefDatabase) -> Option<InFile<TextRange>> {
+    pub fn declaration_source_range(&self, db: &dyn SourceDatabase) -> Option<InFile<TextRange>> {
         let decl = self.origin.declaration()?;
         Some(InFile { file_id: decl.file_id, value: decl.to_range(db) })
     }
@@ -831,7 +838,7 @@ pub enum MacroSubNs {
     Attr,
 }
 
-pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> MacroCallStyles {
+pub(crate) fn macro_styles_from_id(db: &dyn SourceDatabase, macro_id: MacroId) -> MacroCallStyles {
     let expander = match macro_id {
         MacroId::Macro2Id(it) => it.lookup(db).expander,
         MacroId::MacroRulesId(it) => it.lookup(db).expander,
@@ -861,7 +868,7 @@ pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> M
 ///
 /// [rustc]: https://github.com/rust-lang/rust/blob/1.69.0/compiler/rustc_resolve/src/macros.rs#L75
 fn sub_namespace_match(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     macro_id: MacroId,
     expected: Option<MacroSubNs>,
 ) -> bool {
@@ -911,11 +918,13 @@ impl DerefMut for ModulesMap {
     }
 }
 
-impl Index<ModuleId> for ModulesMap {
+impl Index<ModuleIdLt<'_>> for ModulesMap {
     type Output = ModuleData;
 
-    fn index(&self, id: ModuleId) -> &ModuleData {
-        self.inner.get(&id).unwrap_or_else(|| panic!("ModuleId not found in ModulesMap: {id:#?}"))
+    fn index(&self, id: ModuleIdLt<'_>) -> &ModuleData {
+        self.inner
+            .get(&unsafe { id.to_static() })
+            .unwrap_or_else(|| panic!("ModuleId not found in ModulesMap: {id:#?}"))
     }
 }
 

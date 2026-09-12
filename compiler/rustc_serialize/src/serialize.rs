@@ -5,7 +5,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::hash::{BuildHasher, Hash};
 use std::marker::{PhantomData, PointeeSized};
-use std::num::NonZero;
+use std::num::{NonZero, ZeroablePrimitive};
 use std::path;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -241,15 +241,15 @@ impl<D: Decoder> Decodable<D> for ! {
     }
 }
 
-impl<S: Encoder> Encodable<S> for NonZero<u32> {
+impl<T: ZeroablePrimitive + Encodable<S>, S: Encoder> Encodable<S> for NonZero<T> {
     fn encode(&self, s: &mut S) {
-        s.emit_u32(self.get());
+        self.get().encode(s)
     }
 }
 
-impl<D: Decoder> Decodable<D> for NonZero<u32> {
+impl<T: ZeroablePrimitive + Decodable<D>, D: Decoder> Decodable<D> for NonZero<T> {
     fn decode(d: &mut D) -> Self {
-        NonZero::new(d.read_u32()).unwrap()
+        NonZero::new(T::decode(d)).unwrap()
     }
 }
 
@@ -336,15 +336,11 @@ impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
     }
 }
 
-impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
-    fn decode(d: &mut D) -> [u8; N] {
+impl<D: Decoder, T: Decodable<D>, const N: usize> Decodable<D> for [T; N] {
+    fn decode(d: &mut D) -> [T; N] {
         let len = d.read_usize();
         assert!(len == N);
-        let mut v = [0u8; N];
-        for i in 0..len {
-            v[i] = Decodable::decode(d);
-        }
-        v
+        std::array::from_fn(move |_| Decodable::decode(d))
     }
 }
 

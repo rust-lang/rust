@@ -3,10 +3,9 @@
 // For `declare_interior_mutable_const` there are three strategies used to
 // determine if a value has interior mutability:
 // * A type-based check. This is the least accurate, but can always run.
-// * A const-eval based check. This is the most accurate, but this requires that the value is
-//   defined and does not work with generics.
-// * A HIR-tree based check. This is less accurate than const-eval, but it can be applied to generic
-//   values.
+// * A const-eval based check. This is the most accurate, but this requires that the value is defined and does not work
+//   with generics.
+// * A HIR-tree based check. This is less accurate than const-eval, but it can be applied to generic values.
 //
 // For `borrow_interior_mutable_const` the same three strategies are applied
 // when checking a constant's value, but field and array index projections at
@@ -31,14 +30,13 @@ use rustc_hir::{
     ConstArgKind, ConstItemRhs, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, StructTailExpr,
     TraitItem, TraitItemKind, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeckResults,
-    TypingEnv, Unnormalized,
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable as _,
+    TypeckResults, TypingEnv, Unnormalized,
 };
-use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
 use std::collections::hash_map::Entry;
 
@@ -405,14 +403,14 @@ impl<'tcx> NonCopyConst<'tcx> {
                         .instantiate(tcx, gen_args)
                         .skip_norm_wip();
                     match res {
-                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
+                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
                             if let Ok(val) =
                                 tcx.const_eval_resolve(typing_env, UnevaluatedConst::new(did, gen_args), DUMMY_SP)
                                 && let Ok(is_freeze) = self.is_value_freeze(tcx, typing_env, ty, val) =>
                         {
                             is_freeze
                         },
-                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
+                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
                             if let Some((typeck, init)) = get_const_hir_value(tcx, typing_env, did, gen_args) =>
                         {
                             self.is_init_expr_freeze(tcx, typing_env, typeck, gen_args, init)
@@ -604,7 +602,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                             .skip_norm_wip();
                         match init_typeck.qpath_res(init_path, init_expr.hir_id) {
                             Res::Def(DefKind::Ctor(..), _) => return None,
-                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
+                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
                                 if let Ok(val) = tcx.const_eval_resolve(
                                     typing_env,
                                     UnevaluatedConst::new(did, next_init_args),
@@ -614,7 +612,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                             {
                                 return res;
                             },
-                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
+                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
                                 if let Some((next_typeck, value)) =
                                     get_const_hir_value(tcx, typing_env, did, next_init_args) =>
                             {
@@ -853,7 +851,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &e.kind
             && let typeck = cx.typeck_results()
-            && let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did) = typeck.qpath_res(qpath, e.hir_id)
+            && let Res::Def(DefKind::Const | DefKind::AssocConst, did) = typeck.qpath_res(qpath, e.hir_id)
             // As of `1.80` constant contexts can't borrow any type with interior mutability
             && !is_in_const_context(cx)
             && !self.is_ty_freeze(cx.tcx, cx.typing_env(), typeck.expr_ty(e)).is_freeze()
@@ -967,7 +965,7 @@ fn get_const_hir_value<'tcx>(
     };
     match ct_rhs {
         ConstItemRhs::Body(body_id) => Some((tcx.typeck(did), tcx.hir_body(body_id).value)),
-        ConstItemRhs::TypeConst(ct_arg) => match ct_arg.kind {
+        ConstItemRhs::Direct(ct_arg) => match ct_arg.kind {
             ConstArgKind::Anon(anon_const) => Some((tcx.typeck(did), tcx.hir_body(anon_const.body).value)),
             _ => None,
         },

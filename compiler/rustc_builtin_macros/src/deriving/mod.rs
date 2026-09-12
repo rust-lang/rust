@@ -6,39 +6,32 @@ use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-macro path_local($x:ident) {
-    generic::ty::Path::new_local(sym::$x)
-}
-
-macro pathvec_std($($rest:ident)::+) {{
+macro pathvec($($rest:ident)::+) {{
     vec![ $( sym::$rest ),+ ]
 }}
 
 macro path_std($($x:tt)*) {
-    generic::ty::Path::new( pathvec_std!( $($x)* ) )
+    generic::ty::Path::new( pathvec!( $($x)* ) )
 }
 
-pub(crate) mod bounds;
 pub(crate) mod clone;
 pub(crate) mod coerce_pointee;
+pub(crate) mod const_param_ty;
+pub(crate) mod copy;
 pub(crate) mod debug;
 pub(crate) mod default;
+pub(crate) mod eq;
 pub(crate) mod from;
 pub(crate) mod hash;
-
-#[path = "cmp/eq.rs"]
-pub(crate) mod eq;
-#[path = "cmp/ord.rs"]
 pub(crate) mod ord;
-#[path = "cmp/partial_eq.rs"]
 pub(crate) mod partial_eq;
-#[path = "cmp/partial_ord.rs"]
 pub(crate) mod partial_ord;
+pub(crate) mod reborrow;
 
 pub(crate) mod generic;
 
 pub(crate) type BuiltinDeriveFn =
-    fn(&ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
+    fn(&ExtCtxt<'_>, Span, &MetaItem, &ast::Item, &mut dyn FnMut(Box<ast::Item>), bool);
 
 pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 
@@ -62,25 +55,23 @@ impl MultiItemModifier for BuiltinDerive {
                         ecx,
                         span,
                         meta_item,
-                        &Annotatable::Item(item),
-                        &mut |a| {
-                            // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
-                            // to the function
-                            items.push(Annotatable::Stmt(Box::new(ast::Stmt {
-                                id: ast::DUMMY_NODE_ID,
-                                kind: ast::StmtKind::Item(a.expect_item()),
-                                span,
-                            })));
-                        },
+                        &item,
+                        &mut |a| items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, a)))),
                         is_derive_const,
                     );
                 } else {
                     unreachable!("should have already errored on non-item statement")
                 }
             }
-            _ => {
-                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a), is_derive_const);
-            }
+            Annotatable::Item(item) => (self.0)(
+                ecx,
+                span,
+                meta_item,
+                &item,
+                &mut |a| items.push(Annotatable::Item(a)),
+                is_derive_const,
+            ),
+            _ => unreachable!(),
         }
         ExpandResult::Ready(items)
     }
@@ -100,16 +91,12 @@ fn call_intrinsic(
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    let span = cx.with_def_site_ctxt(span);
-    let path = cx.std_path(&[sym::intrinsics, sym::unreachable]);
-    let call = cx.expr_call_global(span, path, ThinVec::new());
-
+    let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
     cx.expr_block(Box::new(ast::Block {
         stmts: thin_vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
-        tokens: None,
     }))
 }
 

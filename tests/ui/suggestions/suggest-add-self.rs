@@ -3,12 +3,12 @@ struct X(i32);
 impl X {
     pub(crate) fn f() {
         self.0
-        //~^ ERROR expected value, found module `self`
+        //~^ ERROR cannot find value `self` in this scope
     }
 
     pub fn g() {
         self.0
-        //~^ ERROR expected value, found module `self`
+        //~^ ERROR cannot find value `self` in this scope
     }
 }
 

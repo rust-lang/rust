@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 // Regression test for #107745.
 // Previously need_type_info::update_infer_source will consider expressions originating from

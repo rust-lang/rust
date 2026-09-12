@@ -7,7 +7,7 @@ use toolchain::Tool;
 
 use crate::{toolchain_info::QueryConfig, utf8_stdout};
 
-pub(crate) fn get(
+pub fn get(
     config: QueryConfig<'_>,
     extra_env: &FxHashMap<String, Option<String>>,
 ) -> Result<Option<Version>, anyhow::Error> {

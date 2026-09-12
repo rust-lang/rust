@@ -1,0 +1,109 @@
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:38:9
+   |
+LL |     let S { a, b, .. } = s;
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::rest-pattern-accessible-field` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rest_pattern_accessible_field)]`
+help: consider explicitly ignoring remaining fields with wildcard patterns (`x: _`)
+   |
+LL -     let S { a, b, .. } = s;
+LL +     let S { a, b, c: _ } = s;
+   |
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:41:9
+   |
+LL |     let S { c, .. } = s;
+   |         ^^^^^^^^^^^
+   |
+help: consider explicitly ignoring remaining fields with wildcard patterns (`x: _`)
+   |
+LL -     let S { c, .. } = s;
+LL +     let S { c, a: _, b: _ } = s;
+   |
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:46:5
+   |
+LL |     S { a: _, b: _, .. } = S { a: 1, b: 2, c: 3 };
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider explicitly ignoring remaining fields with wildcard patterns (`x: _`)
+   |
+LL -     S { a: _, b: _, .. } = S { a: 1, b: 2, c: 3 };
+LL +     S { a: _, b: _, c: _ } = S { a: 1, b: 2, c: 3 };
+   |
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:53:9
+   |
+LL |         E::B { .. } => (),
+   |         ^^^^^^^^^^^
+   |
+help: consider explicitly ignoring fields with wildcard patterns (`x: _`)
+   |
+LL -         E::B { .. } => (),
+LL +         E::B { b1: _, b2: _ } => (),
+   |
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:60:9
+   |
+LL |         E::B { b1: _, .. } => (),
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: consider explicitly ignoring remaining fields with wildcard patterns (`x: _`)
+   |
+LL -         E::B { b1: _, .. } => (),
+LL +         E::B { b1: _, b2: _ } => (),
+   |
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:77:9
+   |
+LL |     let NonExhaustiveStruct { field1: _, .. } = ne;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider explicitly ignoring remaining fields with wildcard patterns (`x: _`)
+   |
+LL |     let NonExhaustiveStruct { field1: _, field2: _, .. } = ne;
+   |                                          ++++++++++
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:86:9
+   |
+LL |     let NonExhaustiveStructNoPrivateFields { .. } = ne;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider explicitly ignoring fields with wildcard patterns (`x: _`)
+   |
+LL |     let NonExhaustiveStructNoPrivateFields { field: _, .. } = ne;
+   |                                              +++++++++
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:99:9
+   |
+LL |     let LocalNonExhaustive { .. } = ne;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider explicitly ignoring fields with wildcard patterns (`x: _`)
+   |
+LL -     let LocalNonExhaustive { .. } = ne;
+LL +     let LocalNonExhaustive { field: _ } = ne;
+   |
+
+error: struct destructuring with rest (`..`)
+  --> tests/ui/rest_pattern_accessible_field.rs:104:9
+   |
+LL |     let Sm { .. } = Sm::default();
+   |         ^^^^^^^^^
+   |
+help: consider explicitly ignoring fields with wildcard patterns (`x: _`)
+   |
+LL |     let Sm { a: _, b: _, .. } = Sm::default();
+   |              +++++++++++
+
+error: aborting due to 9 previous errors
+

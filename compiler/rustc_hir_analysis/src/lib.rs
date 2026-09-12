@@ -56,10 +56,10 @@ This API is completely unstable and subject to change.
 */
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(default_field_values)]
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]
-#![feature(never_type)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
@@ -81,7 +81,6 @@ mod impl_wf_check;
 mod outlives;
 mod variance;
 
-pub use diagnostics::NoVariantNamed;
 use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -89,7 +88,7 @@ use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{Const, Ty, TyCtxt};
 use rustc_middle::{middle, ty};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
@@ -173,9 +172,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
-            DefKind::Const { .. }
+            DefKind::Const
                 if !tcx.generics_of(item_def_id).own_requires_monomorphization()
-                    && !tcx.is_type_const(item_def_id) =>
+                    && tcx.const_of_item(item_def_id).is_none() =>
             {
                 // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
                 //                             seems to be fine for now. Revisit this!
@@ -190,11 +189,24 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // `feed_anon_const_type`.
         // Also skip items for which typeck forwards to parent typeck.
         if !(def_kind == DefKind::AnonConst
-            || def_kind == DefKind::InlineConst && tcx.is_type_system_inline_const(item_def_id)
+            && tcx.anon_const_kind(item_def_id) != ty::AnonConstKind::NonTypeSystemInline
             || tcx.is_typeck_child(item_def_id.to_def_id()))
         {
             tcx.ensure_ok().typeck(item_def_id);
         }
+    });
+
+    // This has to be a second pass over the body owners, after every body has been
+    // type-checked above. `needs_coroutine_by_move_body_def_id` asks for `type_of`, and for a
+    // body owner nested inside a const argument's anon const that goes through `typeck` of the
+    // anon const, which needs the anon const's own type. That type is never computed, only fed
+    // while the enclosing body is type-checked. Doing this in the pass above lets the parallel
+    // front end reach the nested body owner first, computing (and caching) an error type for
+    // the anon const that then conflicts with the type fed later on.
+    //
+    // This must not be parallelized since `coroutine_by_move_body_def_id` creates new `DefId`-s
+    // inside, which must be done in deterministic order to have reproducible binaries.
+    tcx.hir_body_owners().for_each(|item_def_id| {
         // Ensure we generate the new `DefId` before finishing `check_crate`.
         // Afterwards we freeze the list of `DefId`s.
         if tcx.needs_coroutine_by_move_body_def_id(item_def_id.to_def_id()) {
@@ -204,13 +216,16 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
     if tcx.features().rustc_attrs() {
         tcx.sess.time("dumping_rustc_attr_data", || {
+            // tidy-alphabetical-start
+            collect::dump::clauses_and_item_bounds(tcx);
+            collect::dump::def_parents(tcx);
+            collect::dump::generics(tcx);
+            collect::dump::object_lifetime_defaults(tcx);
+            collect::dump::opaque_hidden_types(tcx);
+            collect::dump::vtables(tcx);
             outlives::dump::inferred_outlives(tcx);
             variance::dump::variances(tcx);
-            collect::dump::generics(tcx);
-            collect::dump::opaque_hidden_types(tcx);
-            collect::dump::predicates_and_item_bounds(tcx);
-            collect::dump::def_parents(tcx);
-            collect::dump::vtables(tcx);
+            // tidy-alphabetical-end
         });
     }
 
@@ -227,7 +242,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 /// It's used in rustdoc and Clippy.
 ///
 /// </div>
-pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
@@ -241,7 +256,7 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
 // FIXME(const_generics): having special methods for rustdoc in `rustc_hir_analysis` is cursed
 pub fn lower_const_arg_for_rustdoc<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hir_ct: &hir::ConstArg<'tcx>,
+    hir_ct: &hir::ConstArg<'_>,
     ty: Ty<'tcx>,
 ) -> Const<'tcx> {
     let env_def_id = tcx.hir_get_parent_item(hir_ct.hir_id);

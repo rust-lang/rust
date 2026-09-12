@@ -11,12 +11,12 @@ use crate::{fmt, mem};
 
 #[derive(Hash)]
 #[repr(transparent)]
-pub struct Buf {
+pub(crate) struct Buf {
     pub inner: String,
 }
 
 #[repr(transparent)]
-pub struct Slice {
+pub(crate) struct Slice {
     pub inner: str,
 }
 

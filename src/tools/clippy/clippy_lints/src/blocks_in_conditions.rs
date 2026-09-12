@@ -1,10 +1,9 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_block_with_applicability;
-use clippy_utils::{contains_return, higher, is_from_proc_macro};
+use clippy_utils::{contains_return, higher, is_from_proc_macro, leaks_droppable_temporary};
 use rustc_errors::Applicability;
-use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource, Node};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -53,7 +52,7 @@ const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression conditio
 
 impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
+        if expr.span.from_expansion() {
             return;
         }
 
@@ -83,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                     if let Some(ex) = &block.expr {
                         // don't dig into the expression here, just suggest that they remove
                         // the block
-                        if expr.span.from_expansion() || ex.span.from_expansion() {
+                        if ex.span.from_expansion() {
                             return;
                         }
 
@@ -93,35 +92,59 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                             return;
                         }
 
+                        // Don't lint if the block creates temporaries with significant drops that need
+                        // to be dropped at the end of the block (e.g., MutexGuard).
+                        // Removing the braces would extend the lifetime of these temporaries.
+                        // #15112
+                        if leaks_droppable_temporary(cx, ex) {
+                            return;
+                        }
+
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
                             BLOCKS_IN_CONDITIONS,
                             cond.span,
                             BRACED_EXPR_MESSAGE,
-                            "try",
+                            "remove the braces",
                             snippet_block_with_applicability(cx, ex.span, "..", Some(expr.span), &mut applicability),
                             applicability,
                         );
                     }
                 } else {
                     let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
-                    if span.from_expansion() || expr.span.from_expansion() || is_from_proc_macro(cx, cond) {
+                    if span.from_expansion() || is_from_proc_macro(cx, cond) {
                         return;
                     }
-                    // move block higher
-                    let mut applicability = Applicability::MachineApplicable;
-                    span_lint_and_sugg(
+
+                    span_lint_and_then(
                         cx,
                         BLOCKS_IN_CONDITIONS,
                         expr.span.with_hi(cond.span.hi()),
                         complex_block_message,
-                        "try",
-                        format!(
-                            "let res = {}; {keyword} res",
-                            snippet_block_with_applicability(cx, block.span, "..", Some(expr.span), &mut applicability),
-                        ),
-                        applicability,
+                        |diag| {
+                            // Only suggest fix where let binding is easy to apply i.e. parent node is a block.
+                            // See issue #17068
+                            if let Node::Block(_) | Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id) {
+                                // move block higher
+                                let mut applicability = Applicability::MachineApplicable;
+                                diag.span_suggestion(
+                                    expr.span.with_hi(cond.span.hi()),
+                                    "use a binding instead",
+                                    format!(
+                                        "let res = {}; {keyword} res",
+                                        snippet_block_with_applicability(
+                                            cx,
+                                            block.span,
+                                            "..",
+                                            Some(expr.span),
+                                            &mut applicability
+                                        ),
+                                    ),
+                                    applicability,
+                                );
+                            }
+                        },
                     );
                 }
             }

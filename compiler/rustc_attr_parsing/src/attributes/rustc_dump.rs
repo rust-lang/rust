@@ -1,6 +1,6 @@
+use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
+use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{AttributeKind, RustcDumpLayoutKind};
-use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use super::prelude::*;
@@ -59,8 +59,12 @@ impl NoArgsAttributeParser for RustcDumpGenericsParser {
         Allow(Target::Closure),
         Allow(Target::TyAlias),
         Allow(Target::Const),
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Impl { of_trait: true }),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -101,8 +105,11 @@ pub(crate) struct RustcDumpItemBoundsParser;
 
 impl NoArgsAttributeParser for RustcDumpItemBoundsParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_item_bounds];
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::AssocTy)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+    ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpItemBounds;
 }
@@ -123,8 +130,7 @@ impl CombineAttributeParser for RustcDumpLayoutParser {
         Allow(Target::TyAlias),
     ]);
 
-    const TEMPLATE: AttributeTemplate =
-        template!(List: &["abi", "align", "size", "homogenous_aggregate", "debug"]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["abi", "align", "size", "homogenous_aggregate", "largest_niche", "debug"]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn extend(
@@ -150,6 +156,7 @@ impl CombineAttributeParser for RustcDumpLayoutParser {
                 sym::backend_repr => RustcDumpLayoutKind::BackendRepr,
                 sym::debug => RustcDumpLayoutKind::Debug,
                 sym::homogeneous_aggregate => RustcDumpLayoutKind::HomogenousAggregate,
+                sym::largest_niche => RustcDumpLayoutKind::LargestNiche,
                 sym::size => RustcDumpLayoutKind::Size,
                 _ => {
                     cx.adcx().expected_specific_argument(
@@ -176,8 +183,12 @@ pub(crate) struct RustcDumpObjectLifetimeDefaultsParser;
 impl NoArgsAttributeParser for RustcDumpObjectLifetimeDefaultsParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_object_lifetime_defaults];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Const),
         Allow(Target::Enum),
         Allow(Target::Fn),
@@ -198,13 +209,17 @@ impl NoArgsAttributeParser for RustcDumpObjectLifetimeDefaultsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpObjectLifetimeDefaults;
 }
 
-pub(crate) struct RustcDumpPredicatesParser;
+pub(crate) struct RustcDumpClausesParser;
 
-impl NoArgsAttributeParser for RustcDumpPredicatesParser {
-    const PATH: &[Symbol] = &[sym::rustc_dump_predicates];
+impl NoArgsAttributeParser for RustcDumpClausesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_clauses];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Const),
         Allow(Target::Delegation { mac: false }),
         Allow(Target::Delegation { mac: true }),
@@ -223,7 +238,7 @@ impl NoArgsAttributeParser for RustcDumpPredicatesParser {
         Allow(Target::Union),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpPredicates;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpClauses;
 }
 
 pub(crate) struct RustcDumpSymbolNameParser;
@@ -261,10 +276,8 @@ impl NoArgsAttributeParser for RustcDumpVariancesParser {
         Allow(Target::Struct),
         Allow(Target::Union),
     ]);
-    const STABILITY: AttributeStability = unstable!(
-        rustc_attrs,
-        "the `#[rustc_dump_variances]` attribute is used for rustc unit tests"
-    );
+    const STABILITY: AttributeStability =
+        unstable!(rustc_attrs, "the `rustc_dump_variances` attribute is used for rustc unit tests");
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariances;
 }
 

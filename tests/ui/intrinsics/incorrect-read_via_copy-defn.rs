@@ -4,5 +4,5 @@ fn main() {
 }
 
 #[rustc_intrinsic]
-//~^ ERROR the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items
+//~^ ERROR the `rustc_intrinsic` attribute is used to declare intrinsics as function items
 unsafe fn read_via_copy() {}

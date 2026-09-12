@@ -2,11 +2,12 @@
 //! and <https://github.com/rust-lang/rust/issues/158155>
 
 #![crate_name = "foo"]
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
 pub trait Tr {
-    type const SIZE: usize;
+    #[rustc_always_gca]
+    const SIZE: usize;
 }
 
 //@ has 'foo/fn.mk_array.html'

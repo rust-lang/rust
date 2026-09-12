@@ -1,8 +1,9 @@
 use super::FORMAT_COLLECT;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_format_macro, root_macro_call_first_node};
-use clippy_utils::res::MaybeDef;
-use rustc_hir::{Expr, ExprKind, LangItem};
+use clippy_utils::res::MaybeDef as _;
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 

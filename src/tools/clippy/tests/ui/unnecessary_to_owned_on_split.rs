@@ -1,4 +1,5 @@
-#![allow(clippy::single_char_pattern)]
+#![warn(clippy::unnecessary_to_owned)]
+#![expect(clippy::single_char_pattern)]
 
 struct Issue12068;
 

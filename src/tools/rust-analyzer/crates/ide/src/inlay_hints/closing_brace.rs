@@ -75,18 +75,17 @@ pub(super) fn hints(
         node = node.parent()?;
 
         let parent = label.syntax().parent()?;
-        let block;
-        match_ast! {
+        let block = match_ast! {
             match parent {
                 ast::BlockExpr(block_expr) => {
-                    block = block_expr.stmt_list()?;
+                    block_expr.stmt_list()?
                 },
                 ast::AnyHasLoopBody(loop_expr) => {
-                    block = loop_expr.loop_body()?.stmt_list()?;
+                    loop_expr.loop_body()?.stmt_list()?
                 },
                 _ => return None,
             }
-        }
+        };
         closing_token = block.r_curly_token()?;
 
         let lifetime = label.lifetime()?.to_string();
@@ -139,7 +138,8 @@ pub(super) fn hints(
                 _ => return None,
             }
         }
-    } else if let Some(mac) = ast::MacroCall::cast(node.clone()) {
+    } else {
+        let mac = ast::MacroCall::cast(node.clone())?;
         let last_token = mac.syntax().last_token()?;
         if last_token.kind() != T![;] && last_token.kind() != SyntaxKind::R_CURLY {
             return None;
@@ -150,8 +150,6 @@ pub(super) fn hints(
             format!("{}!", mac.path()?),
             mac.path().and_then(|it| it.segment()).map(|it| it.syntax().text_range()),
         )
-    } else {
-        return None;
     };
 
     if let Some(mut next) = closing_token.next_token() {

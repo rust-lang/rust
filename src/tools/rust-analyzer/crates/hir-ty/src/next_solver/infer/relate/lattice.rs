@@ -91,7 +91,7 @@ impl<'db> TypeRelation<DbInterner<'db>> for LatticeOp<'_, 'db> {
         &mut self,
         a_ty: Ty<'db>,
         b_ty: Ty<'db>,
-        def_id: SolverDefId,
+        def_id: SolverDefId<'db>,
         a_args: GenericArgs<'db>,
         b_args: GenericArgs<'db>,
         mk: impl FnOnce(GenericArgs<'db>) -> Ty<'db>,

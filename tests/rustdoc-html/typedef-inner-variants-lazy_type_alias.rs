@@ -1,6 +1,6 @@
 #![crate_name = "inner_types_lazy"]
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
 //@ has 'inner_types_lazy/struct.Pair.html'

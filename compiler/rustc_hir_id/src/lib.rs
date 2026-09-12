@@ -4,6 +4,12 @@
 #![feature(negative_impls)]
 #![feature(rustc_attrs)]
 
+pub mod def_path_hash_map;
+pub mod definitions;
+
+#[cfg(test)]
+mod tests;
+
 use std::fmt::{self, Debug};
 
 use rustc_data_structures::stable_hash::{

@@ -37,7 +37,9 @@ pub extern "C" fn second_f64(_: f64, x: f64) -> f64 {
 }
 
 // CHECK-LABEL: second_f128
-// CHECK: movaps (%rdx), %xmm0
+// CHECK: movq %rcx, %rax
+// CHECK-NEXT: movaps (%r8), %xmm0
+// CHECK-NEXT: movaps %xmm0, (%rcx)
 // CHECK-NEXT: retq
 #[no_mangle]
 pub extern "C" fn second_f128(_: f128, x: f128) -> f128 {

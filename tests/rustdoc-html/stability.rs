@@ -85,7 +85,10 @@ pub mod stable_later {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "use stable path instead"]
+#[rustc_allowed_through_unstable_modules(
+    message = "use stable path instead",
+    module = "stable_module",
+)]
 pub mod stable_earlier1 {
     //@ has stability/stable_earlier1/struct.StableInUnstable.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
@@ -160,7 +163,7 @@ pub trait UnstableTraitWithStableMethod {
 //
 /// `i32` is always stable in 1.0, even if you look at it from core.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i32 {}
+const _: () = ();
 
 //@ has stability/keyword.if.html \
 //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
@@ -168,4 +171,4 @@ mod prim_i32 {}
 //
 /// We currently don't document stability for keywords, but let's test it anyway.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod if_keyword {}
+const _: () = ();

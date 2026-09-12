@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, iter: &hir::Expr
     let collect_ret_ty = cx.typeck_results().expr_ty(expr);
     if collect_ret_ty.is_diag_item(cx, sym::Result)
         && let ty::Adt(_, args) = collect_ret_ty.kind()
-        && let Some(result_t) = args.types().next()
+        && let Some(result_t) = args.iter().next().and_then(ty::GenericArg::as_type)
         && result_t.is_unit()
     // get parts for snippet
     {

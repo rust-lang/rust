@@ -1,0 +1,12 @@
+---
+source: src/test/mod.rs
+---
+error[internal]: left behind trailing whitespace
+ --> tests/warning/source/trailing_whitespace.rs:1:1:46
+  |
+1 | /// This doc comment has trailing whitespace.   
+  |                                              ^^^
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+warning: rustfmt has failed to format. See previous 1 errors.

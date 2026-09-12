@@ -21,87 +21,91 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use stdarch_gen_common::{Mode, run_generator};
 use walkdir::WalkDir;
 
 fn main() -> Result<(), String> {
-    parse_args()
+    let (in_path, out_base) = parse_args();
+    let mode = Mode::from_env();
+
+    for filepath in WalkDir::new(&in_path)
         .into_iter()
-        .map(|(filepath, out)| {
-            File::open(&filepath)
-                .map(|f| (f, filepath, out))
-                .map_err(|e| format!("could not read input file: {e}"))
+        .filter_map(Result::ok)
+        .filter(|f| f.file_type().is_file())
+        .filter(|f| f.file_name().to_string_lossy().ends_with(".yml"))
+        .map(|f| f.into_path())
+    {
+        // Directory the harness checks/blesses against. The committed output
+        // location for this spec file (`<out_base>/<arch>/<feature>/`).
+        let committed = make_output_filepath(&filepath, &out_base)
+            .parent()
+            .expect("generated output path must have a parent directory")
+            .to_path_buf();
+
+        run_generator(&committed, mode, |scratch: &Path| {
+            generate_spec(&filepath, scratch)
         })
-        .map(|res| {
-            let (file, filepath, out) = res?;
-            serde_yaml::from_reader(file)
-                .map(|input: input::GeneratorInput| (input, filepath, out))
-                .map_err(|e| format!("could not parse input file: {e}"))
-        })
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .map(|(input, filepath, out)| {
-            let intrinsics = input.intrinsics.into_iter()
-                .map(|intrinsic| {
-                    intrinsic.generate_variants(&input.ctx)
-                })
-                .try_collect()
-                .map(|mut vv: Vec<_>| {
-                    vv.sort_by_cached_key(|variants| {
-                        variants.first().map_or_else(String::default, |variant| {
-                            variant.signature.fn_name().to_string()
-                        })
-                    });
-                    vv.into_iter().flatten().collect_vec()
-                })?;
-
-            if input.ctx.generate_load_store_tests {
-                let loads = intrinsics.iter()
-                    .filter_map(|i| {
-                        if matches!(i.test, Test::Load(..)) {
-                            Some(i.clone())
-                        } else {
-                            None
-                        }
-                    }).collect();
-                let stores = intrinsics.iter()
-                    .filter_map(|i| {
-                        if matches!(i.test, Test::Store(..)) {
-                            Some(i.clone())
-                        } else {
-                            None
-                        }
-                    }).collect();
-                load_store_tests::generate_load_store_tests(loads, stores, out.as_ref().map(|o| make_tests_filepath(&filepath, o)).as_ref())?;
-            }
-
-            Ok((
-                input::GeneratorInput {
-                    intrinsics,
-                    ctx: input.ctx,
-                },
-                filepath,
-                out,
-            ))
-        })
-        .try_for_each(
-            |result: context::Result<(input::GeneratorInput, PathBuf, Option<PathBuf>)>| -> context::Result {
-                let (generated, filepath, out) = result?;
-
-                let w = match out {
-                    Some(out) => Box::new(
-                        File::create(make_output_filepath(&filepath, &out))
-                            .map_err(|e| format!("could not create output file: {e}"))?,
-                    ) as Box<dyn Write>,
-                    None => Box::new(std::io::stdout()) as Box<dyn Write>,
-                };
-
-                generate_file(generated, w)
-                    .map_err(|e| format!("could not generate output file: {e}"))
-            },
-        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
-fn parse_args() -> Vec<(PathBuf, Option<PathBuf>)> {
+/// Generate the output files for a single spec file into `out_dir`.
+fn generate_spec(filepath: &Path, out_dir: &Path) -> Result<(), String> {
+    let file = File::open(filepath).map_err(|e| format!("could not read input file: {e}"))?;
+    let input: input::GeneratorInput =
+        serde_yaml::from_reader(file).map_err(|e| format!("could not parse input file: {e}"))?;
+
+    let intrinsics = input
+        .intrinsics
+        .into_iter()
+        .map(|intrinsic| intrinsic.generate_variants(&input.ctx))
+        .try_collect()
+        .map(|mut vv: Vec<_>| {
+            vv.sort_by_cached_key(|variants| {
+                variants.first().map_or_else(String::default, |variant| {
+                    variant.signature.fn_name().to_string()
+                })
+            });
+            vv.into_iter().flatten().collect_vec()
+        })?;
+
+    if input.ctx.generate_load_store_tests {
+        let loads = intrinsics
+            .iter()
+            .filter_map(|i| match i.test {
+                Test::Load(..) => Some(i.clone()),
+                _ => None,
+            })
+            .collect();
+        let stores = intrinsics
+            .iter()
+            .filter_map(|i| match i.test {
+                Test::Store(..) => Some(i.clone()),
+                _ => None,
+            })
+            .collect();
+        // Reuse make_tests_filepath to derive the correct leaf name
+        // (`ld_st_tests_<arch>.rs`), then write it into out_dir.
+        let tests_name = make_tests_filepath(filepath, Path::new(""))
+            .file_name()
+            .expect("load/store test path must have a file name")
+            .to_owned();
+        let tests_path = out_dir.join(tests_name);
+        load_store_tests::generate_load_store_tests(loads, stores, Some(&tests_path))?;
+    }
+
+    let generated = input::GeneratorInput {
+        intrinsics,
+        ctx: input.ctx,
+    };
+    let out_file = File::create(out_dir.join("generated.rs"))
+        .map_err(|e| format!("could not create output file: {e}"))?;
+    generate_file(generated, Box::new(out_file) as Box<dyn Write>)
+        .map_err(|e| format!("could not generate output file: {e}"))
+}
+
+fn parse_args() -> (PathBuf, PathBuf) {
     let mut args_it = std::env::args().skip(1);
     assert!(
         1 <= args_it.len() && args_it.len() <= 2,
@@ -117,31 +121,26 @@ fn parse_args() -> Vec<(PathBuf, Option<PathBuf>)> {
         "invalid path {in_path:#?} given"
     );
 
-    let out_dir = if let Some(dir) = args_it.next() {
+    let out_base = if let Some(dir) = args_it.next() {
         let out_path = Path::new(dir.as_str()).to_path_buf();
         assert!(
             out_path.exists() && out_path.is_dir(),
             "invalid path {out_path:#?} given"
         );
-        Some(out_path)
+        out_path
     } else {
         std::env::current_exe()
+            .ok()
             .map(|mut f| {
                 f.pop();
                 f.push("../../crates/core_arch/src/");
-                f.exists().then_some(f)
+                f
             })
-            .ok()
-            .flatten()
+            .filter(|f| f.exists())
+            .expect("could not locate crates/core_arch/src; pass OUTPUT_DIR command-line argument explicitly")
     };
 
-    WalkDir::new(in_path)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|f| f.file_type().is_file())
-        .filter(|f| f.file_name().to_string_lossy().ends_with(".yml"))
-        .map(|f| (f.into_path(), out_dir.clone()))
-        .collect()
+    (in_path, out_base)
 }
 
 fn generate_file(
@@ -181,6 +180,9 @@ pub fn format_code(
     input: impl std::fmt::Display,
 ) -> std::io::Result<()> {
     let proc = Command::new("rustfmt")
+        // Ensure that we generate the same file contents on both Linux and Windows.
+        .arg("--config")
+        .arg("newline_style=Unix")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()?;

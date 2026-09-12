@@ -230,7 +230,7 @@ fn foo(_x: isize) { }
 fn main() {
     let v: u64 = 5;
     let x = foo as extern "C" fn() -> isize;
-          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `fn foo(isize)` as `fn() -> isize`
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `fn foo(isize)` as `extern "C" fn() -> isize`
     let y = v as extern "Rust" fn(isize) -> (isize, isize);
           //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `u64` as `fn(isize) -> (isize, isize)`
     y(x());
@@ -465,7 +465,7 @@ fn foo<T: ?Sized>() {
           //^^^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*const T`
 }
 "#,
-            &["E0308", "unused_variables"],
+            &["E0308"],
         );
     }
 

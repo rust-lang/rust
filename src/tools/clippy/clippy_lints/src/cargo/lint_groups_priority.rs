@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_lint::{LateContext, unerased_lint_store};
-use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
+use rustc_span::{BytePos, Pos as _, SourceFile, Span, SyntaxContext};
 use std::ops::Range;
 use std::path::Path;
 use toml::Spanned;
@@ -97,7 +97,7 @@ fn check_table(cx: &LateContext<'_>, table: &DeTable<'_>, known_groups: &FxHashS
                     diag.span_suggestion_verbose(
                         config_span,
                         format!(
-                            "to have lints override the group set `{}` to a lower priority",
+                            "to have lints override the group, set `{}` to a lower priority",
                             group.as_ref()
                         ),
                         format!("{{ level = {:?}, priority = {low_priority} }}", group_config.level),

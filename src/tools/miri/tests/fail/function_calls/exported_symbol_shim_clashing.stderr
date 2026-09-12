@@ -7,11 +7,8 @@ LL |         malloc(0);
 help: the `malloc` symbol is defined here
   --> tests/fail/function_calls/exported_symbol_shim_clashing.rs:LL:CC
    |
-LL | / extern "C" fn malloc(_: usize) -> *mut std::ffi::c_void {
-LL | |
-LL | |     unreachable!()
-LL | | }
-   | |_^
+LL | extern "C" fn malloc(_: usize) -> *mut std::ffi::c_void {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

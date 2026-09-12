@@ -1,6 +1,10 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::ty::is_copy;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{DefinedTy, ExprUseNode, get_expr_use_site, peel_blocks, strip_pat_refs};
 use rustc_ast::ast;
 use rustc_data_structures::packed::Pu128;
@@ -178,7 +182,7 @@ fn check_fold_with_method(
     fold_span: Span,
     method: Symbol,
     replacement: Replacement,
-) {
+) -> bool {
     // Extract the name of the function passed to `fold`
     if let Res::Def(DefKind::AssocFn, fn_did) = acc.res_if_named(cx, method)
         // Check if the function belongs to the operator
@@ -204,12 +208,15 @@ fn check_fold_with_method(
                 replacement.maybe_add_note(diag);
             },
         );
+        return true;
     }
+    false
 }
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
+    recv: &'tcx hir::Expr<'tcx>,
     init: &hir::Expr<'_>,
     acc: &hir::Expr<'_>,
     fold_span: Span,
@@ -219,6 +226,21 @@ pub(super) fn check<'tcx>(
         return;
     }
 
+    if check_standard_fold(cx, expr, init, acc, fold_span) {
+        return;
+    }
+    check_option_fold(cx, expr, recv, init, acc, fold_span);
+}
+
+/// Checks for the `any`/`all`/`sum`/`product` replacements. Returns `true`
+/// when a lint was emitted.
+fn check_standard_fold<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    init: &hir::Expr<'_>,
+    acc: &hir::Expr<'_>,
+    fold_span: Span,
+) -> bool {
     // Check if the first argument to .fold is a suitable literal
     if let hir::ExprKind::Lit(lit) = init.kind {
         match lit.node {
@@ -229,7 +251,7 @@ pub(super) fn check<'tcx>(
                     has_generic_return: false,
                     is_short_circuiting: true,
                 };
-                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, replacement);
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, replacement)
             },
             ast::LitKind::Bool(true) => {
                 let replacement = Replacement {
@@ -238,7 +260,7 @@ pub(super) fn check<'tcx>(
                     has_generic_return: false,
                     is_short_circuiting: true,
                 };
-                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, replacement);
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, replacement)
             },
             ast::LitKind::Int(Pu128(0), _) => {
                 let replacement = Replacement {
@@ -247,9 +269,8 @@ pub(super) fn check<'tcx>(
                     has_generic_return: needs_turbofish(cx, expr),
                     is_short_circuiting: false,
                 };
-                if !check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, replacement) {
-                    check_fold_with_method(cx, expr, acc, fold_span, sym::add, replacement);
-                }
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, replacement)
+                    || check_fold_with_method(cx, expr, acc, fold_span, sym::add, replacement)
             },
             ast::LitKind::Int(Pu128(1), _) => {
                 let replacement = Replacement {
@@ -258,11 +279,118 @@ pub(super) fn check<'tcx>(
                     has_generic_return: needs_turbofish(cx, expr),
                     is_short_circuiting: false,
                 };
-                if !check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, replacement) {
-                    check_fold_with_method(cx, expr, acc, fold_span, sym::mul, replacement);
-                }
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, replacement)
+                    || check_fold_with_method(cx, expr, acc, fold_span, sym::mul, replacement)
             },
-            _ => (),
+            _ => false,
         }
+    } else {
+        false
+    }
+}
+
+/// Checks whether `expr` is a path to a closure parameter.
+///
+/// Such a binding cannot be used as the substituted `init`: when folds are
+/// nested, the enclosing closure may be an accumulator this lint removes in
+/// another suggestion, which would leave the copied name unresolved.
+fn is_closure_param(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    if let Some(binding_id) = expr.res_local_id() {
+        let mut in_param = false;
+        for (_, node) in cx.tcx.hir_parent_iter(binding_id) {
+            match node {
+                hir::Node::Pat(_) | hir::Node::PatField(_) => {},
+                hir::Node::Param(_) => in_param = true,
+                hir::Node::Expr(parent) => return in_param && matches!(parent.kind, hir::ExprKind::Closure(_)),
+                _ => return false,
+            }
+        }
+    }
+    false
+}
+
+/// Folding over an `Option`'s iterator visits zero/one items.
+/// This is the same as `map_or` if the `init` is `Copy` or a literal.
+fn check_option_fold<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    recv: &'tcx hir::Expr<'tcx>,
+    init: &hir::Expr<'_>,
+    acc: &hir::Expr<'_>,
+    fold_span: Span,
+) {
+    let ctxt = expr.span.ctxt();
+    match init.kind {
+        hir::ExprKind::Lit(_) => {},
+        hir::ExprKind::Path(_) if is_copy(cx, cx.typeck_results().expr_ty(init)) && !is_closure_param(cx, init) => {},
+        _ => return,
+    }
+    if let hir::ExprKind::MethodCall(iter_path, option_expr, [], _) = recv.kind
+        && let adapter = match iter_path.ident.name {
+            sym::iter => "as_ref().",
+            sym::iter_mut => "as_mut().",
+            sym::into_iter => "",
+            _ => return,
+        }
+        && cx.typeck_results().expr_ty(option_expr).is_diag_item(cx, sym::Option)
+        && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
+        && let closure_body = cx.tcx.hir_body(body)
+        && let [param_acc, param_item] = closure_body.params
+        // The suggestion rewrites source spans, so bail out when any part
+        // comes from a different syntax context.
+        && recv.span.ctxt() == ctxt
+        && param_acc.pat.span.ctxt() == ctxt
+        && param_item.pat.span.ctxt() == ctxt
+    {
+        // Collect the accumulator uses to substitute with `init`.
+        // A `mut` accumulator is likely reassigned in the closure body, which
+        // would turn the substitution into nonsense like `0 += x`.
+        let acc_id = match strip_pat_refs(param_acc.pat).kind {
+            PatKind::Binding(hir::BindingMode::NONE, id, ..) => Some(id),
+            PatKind::Wild => None,
+            _ => return,
+        };
+        let mut acc_uses: Vec<Span> = Vec::new();
+        let mut acc_uses_ok = true;
+        if let Some(acc_id) = acc_id {
+            for_each_expr(cx.tcx, closure_body.value, |sub_expr| {
+                if sub_expr.res_local_id() == Some(acc_id) {
+                    if sub_expr.span.ctxt() == ctxt {
+                        acc_uses.push(sub_expr.span);
+                    } else {
+                        acc_uses_ok = false;
+                    }
+                }
+                ControlFlow::<()>::Continue(())
+            });
+        }
+        if !acc_uses_ok {
+            return;
+        }
+
+        let mut applicability = Applicability::MachineApplicable;
+        let (init_snippet, _) = snippet_with_context(cx, init.span, ctxt, "..", &mut applicability);
+
+        // `.iter().fold(` -> `.as_ref().map_or(`, drop the accumulator
+        // parameter, and substitute `init` for each use of the accumulator.
+        acc_uses.sort();
+        let mut parts = vec![
+            (
+                recv.span.with_lo(option_expr.span.hi()).with_hi(init.span.lo()),
+                format!(".{adapter}map_or("),
+            ),
+            (param_acc.pat.span.with_hi(param_item.pat.span.lo()), String::new()),
+        ];
+        parts.extend(acc_uses.into_iter().map(|span| (span, init_snippet.to_string())));
+
+        span_lint_and_then(
+            cx,
+            UNNECESSARY_FOLD,
+            fold_span.with_hi(expr.span.hi()),
+            "this `.fold` can be written more succinctly using another method",
+            |diag| {
+                diag.multipart_suggestion("try", parts, applicability);
+            },
+        );
     }
 }

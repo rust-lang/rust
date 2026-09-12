@@ -17,7 +17,9 @@ error[E0308]: mismatched types
   --> $DIR/unboxing-needing-parenthases-issue-132924.rs:8:31
    |
 LL |     let test: Option<i32> = { x as Box<Option<i32>> };
-   |                               ^^^^^^^^^^^^^^^^^^^^^ expected `Option<i32>`, found `Box<Option<i32>>`
+   |               -----------     ^^^^^^^^^^^^^^^^^^^^^ expected `Option<i32>`, found `Box<Option<i32>>`
+   |               |
+   |               expected due to this
    |
    = note: expected enum `Option<_>`
             found struct `Box<Option<_>>`

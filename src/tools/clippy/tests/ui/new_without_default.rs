@@ -1,10 +1,5 @@
-#![allow(
-    clippy::missing_safety_doc,
-    clippy::extra_unused_lifetimes,
-    clippy::extra_unused_type_parameters,
-    clippy::needless_lifetimes
-)]
 #![warn(clippy::new_without_default)]
+#![expect(clippy::extra_unused_lifetimes, clippy::missing_safety_doc)]
 
 pub struct Foo;
 
@@ -357,6 +352,26 @@ pub mod issue16255 {
             T: Clone,
         {
             Self { marker: PhantomData }
+        }
+    }
+}
+
+pub mod issue17361 {
+    //! This test ensures that attributes applied to the impl block
+    //! containing `fn new()` do not get mistakenly applied to the
+    //! newly generated `Default` trait impl. This has been the
+    //! case because the `Default` trait impl was inserted right
+    //! before the existing impl block, but after the attributes.
+
+    #![deny(clippy::unwrap_used, reason = "check that expect below stays put")]
+
+    pub struct S;
+
+    #[expect(clippy::unwrap_used, reason = "without it, new() fails to compile")]
+    impl S {
+        pub fn new() -> S {
+            //~^ new_without_default
+            std::hint::black_box(Some(S)).unwrap()
         }
     }
 }

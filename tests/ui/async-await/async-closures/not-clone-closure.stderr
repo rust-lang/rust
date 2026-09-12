@@ -5,11 +5,11 @@ LL |     not_clone.clone();
    |               ^^^^^ unsatisfied trait bound
    |
    = help: within `{async closure@$DIR/not-clone-closure.rs:27:21: 27:34}`, the trait `Clone` is not implemented for `NotClonableUpvar`
-note: required because it's used within this closure
-  --> $DIR/not-clone-closure.rs:27:21
+note: required because `z` is used within this closure
+  --> $DIR/not-clone-closure.rs:28:20
    |
-LL |     let not_clone = async move || {
-   |                     ^^^^^^^^^^^^^
+LL |         println!("{z:?}");
+   |                    ^
 help: consider annotating `NotClonableUpvar` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

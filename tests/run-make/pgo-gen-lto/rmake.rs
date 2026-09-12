@@ -6,6 +6,8 @@
 // Reason: this exercises LTO profiling
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{cwd, has_extension, has_prefix, run, rustc, shallow_find_files};
 

@@ -2,6 +2,7 @@
 // isn't broken.
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+permissions: ["clipboard-read"]
 
 define-function: (
     "check-copy-button",

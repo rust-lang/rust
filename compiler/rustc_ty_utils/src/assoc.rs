@@ -2,7 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ConstItemRhs, ImplItemImplKind, ItemKind};
+use rustc_hir::{self as hir, ImplItemImplKind, ItemKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -32,7 +32,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                 let item_def_id = trait_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                    .chain(rpitit_items.get(&item_def_id).into_flat_iter().copied())
             }))
         }
         hir::ItemKind::Impl(impl_) => {
@@ -44,7 +44,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                 let item_def_id = impl_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                    .chain(rpitit_items.get(&item_def_id).into_flat_iter().copied())
             }))
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
@@ -88,9 +88,7 @@ fn associated_item_from_trait_item(
     let owner_id = trait_item.owner_id;
     let name = trait_item.ident.name;
     let kind = match trait_item.kind {
-        hir::TraitItemKind::Const(_, _) => {
-            ty::AssocKind::Const { name, is_type_const: tcx.is_type_const(owner_id.def_id) }
-        }
+        hir::TraitItemKind::Const(_, _) => ty::AssocKind::Const { name },
         hir::TraitItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }
@@ -106,13 +104,11 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
     let owner_id = impl_item.owner_id;
     let name = impl_item.ident.name;
     let kind = match impl_item.kind {
-        hir::ImplItemKind::Const(_, rhs) => {
-            ty::AssocKind::Const { name, is_type_const: matches!(rhs, ConstItemRhs::TypeConst(_)) }
-        }
-        hir::ImplItemKind::Fn { .. } => {
+        hir::ImplItemKind::Const(..) => ty::AssocKind::Const { name },
+        hir::ImplItemKind::Fn(..) => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }
-        hir::ImplItemKind::Type { .. } => {
+        hir::ImplItemKind::Type(..) => {
             ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
         }
     };
@@ -343,7 +339,7 @@ fn associated_type_for_impl_trait_in_impl(
         let mut own_params = trait_assoc_generics.own_params.clone();
 
         let parent_generics = tcx.generics_of(impl_local_def_id.to_def_id());
-        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
+        let parent_count = parent_generics.count();
 
         for param in &mut own_params {
             param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;

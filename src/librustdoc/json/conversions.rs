@@ -8,14 +8,16 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{
-    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow,
+    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow, RustcVersion,
 };
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HeaderSafety, Safety, find_attr};
+use rustc_hir::{HeaderSafety, Safety, find_attr, intravisit};
+use rustc_hir_pretty::PpAnn;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
+use rustc_span::def_id::ModId;
 use rustc_span::{Pos, Symbol, kw, sym};
 use rustdoc_json_types::*;
 
@@ -207,15 +209,15 @@ impl FromClean<clean::Span> for Option<Span> {
     }
 }
 
-impl FromClean<Option<ty::Visibility<DefId>>> for Visibility {
-    fn from_clean(v: &Option<ty::Visibility<DefId>>, renderer: &JsonRenderer<'_>) -> Self {
-        match v {
+impl FromClean<Option<ty::Visibility<ModId>>> for Visibility {
+    fn from_clean(v: &Option<ty::Visibility<ModId>>, renderer: &JsonRenderer<'_>) -> Self {
+        match *v {
             None => Visibility::Default,
             Some(ty::Visibility::Public) => Visibility::Public,
-            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
-            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
-                parent: renderer.id_from_item_default((*did).into()),
-                path: renderer.tcx.def_path(*did).to_string_no_crate_verbose(),
+            Some(ty::Visibility::Restricted(mod_id)) if mod_id.is_crate_root() => Visibility::Crate,
+            Some(ty::Visibility::Restricted(mod_id)) => Visibility::Restricted {
+                parent: renderer.id_from_item_default(ItemId::DefId(mod_id.to_def_id())),
+                path: renderer.tcx.def_path(mod_id.to_def_id()).to_string_no_crate_verbose(),
             },
         }
     }
@@ -241,7 +243,7 @@ impl FromClean<hir::Stability> for Stability {
             hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
                     hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(hir::RustcVersion::CURRENT.to_string()),
+                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
                     hir::StableSince::Err(_) => None,
                 },
@@ -259,7 +261,7 @@ impl FromClean<hir::ConstStability> for Stability {
             hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
                     hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(hir::RustcVersion::CURRENT.to_string()),
+                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
                     hir::StableSince::Err(_) => None,
                 },
@@ -685,7 +687,7 @@ impl FromClean<clean::Type> for Type {
                 __pat_unstable_do_not_use: p.to_string(),
             },
             // FIXME(FRTs): implement
-            clean::Type::FieldOf(..) => todo!(),
+            clean::Type::FieldOf(..) => unimplemented!(),
             ImplTrait(g) => Type::ImplTrait(g.into_json(renderer)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
@@ -699,7 +701,7 @@ impl FromClean<clean::Type> for Type {
             },
             QPath(qpath) => qpath.into_json(renderer),
             // FIXME(unsafe_binder): Implement rustdoc-json.
-            UnsafeBinder(_) => todo!(),
+            UnsafeBinder(_) => unimplemented!(),
         }
     }
 }
@@ -827,7 +829,7 @@ impl FromClean<clean::Impl> for Impl {
             clean::ImplKind::Blanket(ty) => (false, Some(ty)),
         };
         let is_negative = match polarity {
-            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => false,
+            ty::ImplPolarity::Positive => false,
             ty::ImplPolarity::Negative => true,
         };
         Impl {
@@ -1242,7 +1244,10 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
 }
 
 fn other_attr(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Attribute {
-    let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
+    let mut s = rustc_hir_pretty::attribute_to_string(
+        &(&tcx as &dyn intravisit::HirTyCtxt<'_>) as &dyn PpAnn,
+        attr,
+    );
     assert_eq!(s.pop(), Some('\n'));
     Attribute::Other(s)
 }
@@ -1290,7 +1295,7 @@ fn format_integer_type(it: rustc_abi::IntegerType) -> String {
 pub(super) fn target(sess: &rustc_session::Session) -> Target {
     // Build a set of which features are enabled on this target
     let globally_enabled_features: FxHashSet<&str> =
-        sess.unstable_target_features.iter().map(|name| name.as_str()).collect();
+        sess.internal_target_features.iter().map(|name| name.as_str()).collect();
 
     // Build a map of target feature stability by feature name
     use rustc_target::target_features::Stability;

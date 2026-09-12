@@ -1,33 +1,19 @@
 //! See docs in build/expr/mod.rs
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::HirId;
 use rustc_middle::middle::region::{Scope, ScopeData, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
 
-use crate::builder::scope::{DropKind, LintLevel};
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    pub(crate) fn as_temp(
-        &mut self,
-        block: BasicBlock,
-        temp_lifetime: TempLifetime,
-        expr_id: ExprId,
-        mutability: Mutability,
-    ) -> BlockAnd<Local> {
-        // this is the only place in mir building that we need to truly need to worry about
-        // infinite recursion. Everything else does recurse, too, but it always gets broken up
-        // at some point by inserting an intermediate temporary
-        ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr_id, mutability))
-    }
-
     #[instrument(skip(self), level = "debug")]
-    fn as_temp_inner(
+    pub(crate) fn as_temp(
         &mut self,
         mut block: BasicBlock,
         temp_lifetime: TempLifetime,
@@ -43,7 +29,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return this.in_scope(
                 (region_scope, source_info),
                 LintLevel::Explicit(hir_id),
-                |this| this.as_temp(block, temp_lifetime, value, mutability),
+                |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
+                    this.as_temp(block, temp_lifetime, value, mutability)
+                },
             );
         }
 
@@ -120,7 +109,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `bar(&foo())` or anything within a block will keep the
                 // regular drops just like runtime code.
                 if let Some(temp_lifetime) = temp_lifetime.temp_lifetime {
-                    this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Storage);
+                    this.schedule_drop_storage(expr_span, temp_lifetime, temp);
                 }
             }
         }
@@ -128,7 +117,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block = this.expr_into_dest(temp_place, block, expr_id).into_block();
 
         if let Some(temp_lifetime) = temp_lifetime.temp_lifetime {
-            this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);
+            this.schedule_drop_value(expr_span, temp_lifetime, temp);
         }
 
         if let Some(backwards_incompatible) = temp_lifetime.backwards_incompatible {

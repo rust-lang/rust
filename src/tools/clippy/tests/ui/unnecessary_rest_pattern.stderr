@@ -1,0 +1,76 @@
+error: unnecessary rest pattern (`..`)
+  --> tests/ui/unnecessary_rest_pattern.rs:42:9
+   |
+LL |     let S { a, b, c, .. } = s;
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-rest-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_rest_pattern)]`
+help: consider removing the unnecessary rest pattern (`..`)
+   |
+LL -     let S { a, b, c, .. } = s;
+LL +     let S { a, b, c,  } = s;
+   |
+
+error: unnecessary rest pattern (`..`)
+  --> tests/ui/unnecessary_rest_pattern.rs:49:9
+   |
+LL |         E::B { b1, b2, .. } => (),
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the unnecessary rest pattern (`..`)
+   |
+LL -         E::B { b1, b2, .. } => (),
+LL +         E::B { b1, b2,  } => (),
+   |
+
+error: unnecessary rest pattern (`..`)
+  --> tests/ui/unnecessary_rest_pattern.rs:51:9
+   |
+LL |         E::C { .. } => (),
+   |         ^^^^^^^^^^^
+   |
+help: consider removing the unnecessary rest pattern (`..`)
+   |
+LL -         E::C { .. } => (),
+LL +         E::C {  } => (),
+   |
+
+error: unnecessary rest pattern (`..`)
+  --> tests/ui/unnecessary_rest_pattern.rs:84:9
+   |
+LL |     let LocalNonExhaustive { field: _, .. } = ne;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the unnecessary rest pattern (`..`)
+   |
+LL -     let LocalNonExhaustive { field: _, .. } = ne;
+LL +     let LocalNonExhaustive { field: _,  } = ne;
+   |
+
+error: unnecessary rest pattern (`..`)
+  --> tests/ui/unnecessary_rest_pattern.rs:97:9
+   |
+LL |     let Variant { .. } = variant;
+   |         ^^^^^^^^^^^^^^
+   |
+help: consider removing the unnecessary rest pattern (`..`)
+   |
+LL -     let Variant { .. } = variant;
+LL +     let Variant {  } = variant;
+   |
+
+error: unnecessary rest pattern (`..`)
+  --> tests/ui/unnecessary_rest_pattern.rs:101:9
+   |
+LL |         Variant { .. } => {},
+   |         ^^^^^^^^^^^^^^
+   |
+help: consider removing the unnecessary rest pattern (`..`)
+   |
+LL -         Variant { .. } => {},
+LL +         Variant {  } => {},
+   |
+
+error: aborting due to 6 previous errors
+

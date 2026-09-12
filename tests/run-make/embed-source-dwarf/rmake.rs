@@ -3,6 +3,8 @@
 //@ ignore-apple
 //@ ignore-wasm (`object` doesn't handle wasm object files)
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 // This test should be replaced with one in tests/debuginfo once we can easily
 // tell via GDB or LLDB if debuginfo contains source code. Cheap tricks in LLDB

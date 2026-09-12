@@ -20,11 +20,11 @@ use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path, print_ty_path};
 use super::sidebar::{ModuleLike, Sidebar, print_sidebar, sidebar_module_like};
-use super::{AllTypes, StylePath, scrape_examples_help};
+use super::{AllTypes, StylePath};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
 use crate::clean::{self, ExternalCrate};
-use crate::config::{EmitType, ModuleSorting, RenderOptions, ShouldMerge};
+use crate::config::{EmitType, ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -36,9 +36,9 @@ use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
 use crate::html::span_map::{LinkFromSrc, Span, collect_spans_and_sources};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{layout, sources, static_files};
+use crate::html::{layout, sources};
 use crate::scrape_examples::AllCallLocations;
-use crate::{DOC_RUST_LANG_ORG_VERSION, try_err};
+use crate::try_err;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -148,9 +148,6 @@ pub(crate) struct SharedContext<'tcx> {
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
     pub(crate) call_locations: AllCallLocations,
-    /// Controls whether we read / write to cci files in the doc root. Defaults read=true,
-    /// write=true
-    should_merge: ShouldMerge,
 }
 
 impl SharedContext<'_> {
@@ -615,7 +612,6 @@ impl<'tcx> Context<'tcx> {
             span_correspondence_map: matches,
             cache,
             call_locations,
-            should_merge: options.should_merge,
             expanded_codes,
         };
 
@@ -666,16 +662,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn after_krate(mut self) -> Result<(), Error> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(crate_name.as_str()).join("all.html");
-        let settings_file = self.dst.join("settings.html");
-        let help_file = self.dst.join("help.html");
-        let scrape_examples_help_file = self.dst.join("scrape-examples-help.html");
 
-        let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
-        if !root_path.ends_with('/') {
-            root_path.push('/');
-        }
         let shared = &self.shared;
-        let mut page = layout::Page {
+        let page = layout::Page {
             title: "List of all items in this crate",
             short_title: "All",
             css_class: "mod sys",
@@ -704,106 +693,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         let v = layout::render(&shared.layout, &page, sidebar, all.print(), &shared.style_files);
         shared.fs.write(final_file, v)?;
-
-        // if to avoid writing help, settings files to doc root unless we're on the final invocation
-        if shared.should_merge.write_rendered_cci {
-            // Generating settings page.
-            page.title = "Settings";
-            page.description = "Settings of Rustdoc";
-            page.root_path = "./";
-            page.rust_logo = true;
-
-            let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
-            let v = layout::render(
-                &shared.layout,
-                &page,
-                sidebar,
-                fmt::from_fn(|buf| {
-                    write!(
-                        buf,
-                        "<div class=\"main-heading\">\
-                         <h1>Rustdoc settings</h1>\
-                         <span class=\"out-of-band\">\
-                             <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
-                                Back\
-                            </a>\
-                         </span>\
-                         </div>\
-                         <noscript>\
-                            <section>\
-                                You need to enable JavaScript be able to update your settings.\
-                            </section>\
-                         </noscript>\
-                         <script defer src=\"{static_root_path}{settings_js}\"></script>",
-                        static_root_path = page.get_static_root_path(),
-                        settings_js = static_files::STATIC_FILES.settings_js,
-                    )?;
-                    // Pre-load all theme CSS files, so that switching feels seamless.
-                    //
-                    // When loading settings.html as a popover, the equivalent HTML is
-                    // generated in main.js.
-                    for file in &shared.style_files {
-                        if let Ok(theme) = file.basename() {
-                            write!(
-                                buf,
-                                "<link rel=\"preload\" href=\"{root_path}{theme}{suffix}.css\" \
-                                    as=\"style\">",
-                                root_path = page.static_root_path.unwrap_or(""),
-                                suffix = page.resource_suffix,
-                            )?;
-                        }
-                    }
-                    Ok(())
-                }),
-                &shared.style_files,
-            );
-            shared.fs.write(settings_file, v)?;
-
-            // Generating help page.
-            page.title = "Help";
-            page.description = "Documentation for Rustdoc";
-            page.root_path = "./";
-            page.rust_logo = true;
-
-            let sidebar = "<h2 class=\"location\">Help</h2><div class=\"sidebar-elems\"></div>";
-            let v = layout::render(
-                &shared.layout,
-                &page,
-                sidebar,
-                format_args!(
-                    "<div class=\"main-heading\">\
-                        <h1>Rustdoc help</h1>\
-                        <span class=\"out-of-band\">\
-                            <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
-                            Back\
-                        </a>\
-                        </span>\
-                        </div>\
-                        <noscript>\
-                        <section>\
-                            <p>You need to enable JavaScript to use keyboard commands or search.</p>\
-                            <p>For more information, browse the <a href=\"{DOC_RUST_LANG_ORG_VERSION}/rustdoc/\">rustdoc handbook</a>.</p>\
-                        </section>\
-                        </noscript>",
-                ),
-                &shared.style_files,
-            );
-            shared.fs.write(help_file, v)?;
-        }
-
-        // if to avoid writing files to doc root unless we're on the final invocation
-        if shared.layout.scrape_examples_extension && shared.should_merge.write_rendered_cci {
-            page.title = "About scraped examples";
-            page.description = "How the scraped examples feature works in Rustdoc";
-            let v = layout::render(
-                &shared.layout,
-                &page,
-                "",
-                scrape_examples_help(shared),
-                &shared.style_files,
-            );
-            shared.fs.write(scrape_examples_help_file, v)?;
-        }
 
         if let Some(ref redirections) = shared.redirections
             && !redirections.borrow().is_empty()

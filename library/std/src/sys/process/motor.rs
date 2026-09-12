@@ -3,39 +3,36 @@ use super::env::{CommandEnv, CommandResolvedEnvs};
 use crate::ffi::OsStr;
 pub use crate::ffi::OsString as EnvKey;
 use crate::num::NonZeroI32;
-use crate::os::fd::{FromRawFd, IntoRawFd};
+use crate::os::fd::{AsRawFd, FromRawFd};
 use crate::os::motor::ffi::OsStrExt;
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::{AsInner, FromInner, map_motor_error};
+use crate::sys::{IntoInner, map_motor_error};
 use crate::{fmt, io};
 
 pub enum Stdio {
     Inherit,
     Null,
     MakePipe,
+    // There is no public `From<io::Stdin>` conversion yet.
+    #[expect(dead_code)]
+    ParentStdin,
+    ParentStdout,
+    ParentStderr,
     Fd(crate::sys::fd::FileDesc),
 }
 
 impl Stdio {
-    fn into_rt(self) -> moto_rt::RtFd {
+    fn into_rt(&self) -> moto_rt::RtFd {
         match self {
             Stdio::Inherit => moto_rt::process::STDIO_INHERIT,
             Stdio::Null => moto_rt::process::STDIO_NULL,
             Stdio::MakePipe => moto_rt::process::STDIO_MAKE_PIPE,
-            Stdio::Fd(fd) => fd.into_raw_fd(),
-        }
-    }
-
-    fn try_clone(&self) -> io::Result<Self> {
-        match self {
-            Self::Fd(fd) => {
-                Ok(Self::Fd(crate::sys::fd::FileDesc::from_inner(fd.as_inner().try_clone()?)))
-            }
-            Self::Inherit => Ok(Self::Inherit),
-            Self::Null => Ok(Self::Null),
-            Self::MakePipe => Ok(Self::MakePipe),
+            Stdio::ParentStdin => moto_rt::process::STDIO_PARENT_STDIN,
+            Stdio::ParentStdout => moto_rt::process::STDIO_PARENT_STDOUT,
+            Stdio::ParentStderr => moto_rt::process::STDIO_PARENT_STDERR,
+            Stdio::Fd(fd) => fd.as_raw_fd(),
         }
     }
 }
@@ -53,10 +50,7 @@ pub struct Command {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        let mut env = CommandEnv::default();
-        env.remove(OsStr::new(moto_rt::process::STDIO_IS_TERMINAL_ENV_KEY));
-
-        Command { program: program.as_str().to_owned(), env, ..Default::default() }
+        Command { program: program.as_str().to_owned(), ..Default::default() }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
@@ -114,21 +108,21 @@ impl Command {
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
         let stdin = if let Some(stdin) = self.stdin.as_ref() {
-            stdin.try_clone()?.into_rt()
+            stdin.into_rt()
         } else if needs_stdin {
-            default.try_clone()?.into_rt()
+            default.into_rt()
         } else {
             Stdio::Null.into_rt()
         };
         let stdout = if let Some(stdout) = self.stdout.as_ref() {
-            stdout.try_clone()?.into_rt()
+            stdout.into_rt()
         } else {
-            default.try_clone()?.into_rt()
+            default.into_rt()
         };
-        let stderr = if let Some(stderr) = self.stdout.as_ref() {
-            stderr.try_clone()?.into_rt()
+        let stderr = if let Some(stderr) = self.stderr.as_ref() {
+            stderr.into_rt()
         } else {
-            default.try_clone()?.into_rt()
+            default.into_rt()
         };
 
         let mut env = Vec::<(String, String)>::new();
@@ -146,11 +140,11 @@ impl Command {
             stderr,
         };
 
-        let (handle, stdin, stdout, stderr) =
-            moto_rt::process::spawn(args).map_err(map_motor_error)?;
+        let res = moto_rt::process::spawn(args).map_err(map_motor_error)?;
+        let (handle, stdin, stdout, stderr) = (res.handle, res.stdin, res.stdout, res.stderr);
 
         Ok((
-            Process { handle },
+            Process { handle, pid: res.pid as u32 },
             StdioPipes {
                 stdin: if stdin >= 0 {
                     Some(unsafe { ChildPipe::from_raw_fd(stdin) })
@@ -172,6 +166,29 @@ impl Command {
     }
 }
 
+pub fn output(cmd: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    let (mut process, mut pipes) = cmd.spawn(Stdio::MakePipe, false)?;
+
+    drop(pipes.stdin.take());
+    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    crate::thread::scope(|scope| {
+        let waiter = scope.spawn(move || {
+            let status = process.wait();
+            drop(process);
+            status
+        });
+        let read_result = match (pipes.stdout.take(), pipes.stderr.take()) {
+            (None, None) => Ok(()),
+            (Some(out), None) => out.read_to_end(&mut stdout).map(|_| ()),
+            (None, Some(err)) => err.read_to_end(&mut stderr).map(|_| ()),
+            (Some(out), Some(err)) => read_output(out, &mut stdout, err, &mut stderr),
+        };
+        let status = waiter.join().expect("child wait thread panicked");
+        read_result?;
+        Ok((status?, stdout, stderr))
+    })
+}
+
 impl From<crate::sys::fd::FileDesc> for Stdio {
     fn from(fd: crate::sys::fd::FileDesc) -> Stdio {
         Stdio::Fd(fd)
@@ -179,20 +196,20 @@ impl From<crate::sys::fd::FileDesc> for Stdio {
 }
 
 impl From<File> for Stdio {
-    fn from(_file: File) -> Stdio {
-        panic!("Not implemented")
+    fn from(file: File) -> Stdio {
+        Stdio::Fd(file.into_inner())
     }
 }
 
 impl From<io::Stdout> for Stdio {
     fn from(_: io::Stdout) -> Stdio {
-        panic!("Not implemented")
+        Stdio::ParentStdout
     }
 }
 
 impl From<io::Stderr> for Stdio {
     fn from(_: io::Stderr) -> Stdio {
-        panic!("Not implemented")
+        Stdio::ParentStderr
     }
 }
 
@@ -255,6 +272,7 @@ impl From<u8> for ExitCode {
 
 pub struct Process {
     handle: u64,
+    pid: u32,
 }
 
 impl Drop for Process {
@@ -265,7 +283,9 @@ impl Drop for Process {
 
 impl Process {
     pub fn id(&self) -> u32 {
-        0
+        // The kernel bounds pids to the i32-positive range, so the pid the
+        // runtime reported at spawn is exact (pid-refactoring-design.md).
+        self.pid
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
@@ -324,14 +344,25 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
 pub type ChildPipe = crate::sys::pipe::Pipe;
 
 pub fn read_output(
-    _out: ChildPipe,
-    _stdout: &mut Vec<u8>,
-    _err: ChildPipe,
-    _stderr: &mut Vec<u8>,
+    out: ChildPipe,
+    stdout: &mut Vec<u8>,
+    err: ChildPipe,
+    stderr: &mut Vec<u8>,
 ) -> io::Result<()> {
-    Err(io::Error::from_raw_os_error(moto_rt::E_NOT_IMPLEMENTED.into()))
+    // Drain both pipes concurrently so the child can't deadlock filling one
+    // pipe while we block reading the other.
+    crate::thread::scope(|s| {
+        let err_reader = s.spawn(move || err.read_to_end(stderr));
+        let out_res = out.read_to_end(stdout);
+        let err_res = err_reader.join().expect("stderr reader thread panicked");
+        out_res?;
+        err_res?;
+        Ok(())
+    })
 }
 
 pub fn getpid() -> u32 {
-    panic!("Pids on Motor OS are u64.")
+    // Motor OS pids are u64 in the ABI, but the kernel bounds them to i32
+    // to be compatible with the wider ecosystem.
+    moto_rt::process::current_pid().try_into().expect("current_pid() too large")
 }

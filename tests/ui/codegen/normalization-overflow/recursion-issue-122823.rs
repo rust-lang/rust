@@ -1,6 +1,6 @@
 //@ build-fail
 //@ compile-flags: -Copt-level=0
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 use std::vec::Vec;
 use std::iter::Peekable;

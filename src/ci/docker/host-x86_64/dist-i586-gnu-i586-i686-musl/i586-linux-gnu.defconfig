@@ -2,11 +2,14 @@ CT_CONFIG_VERSION="4"
 CT_PREFIX_DIR="/x-tools/${CT_TARGET}"
 CT_USE_MIRROR=y
 CT_MIRROR_BASE_URL="https://ci-mirrors.rust-lang.org/rustc"
+CT_VERIFY_DOWNLOAD_DIGEST_SHA256=y
 CT_ARCH_X86=y
 CT_ARCH_ARCH="i586"
 CT_TARGET_CFLAGS="-Wa,-mrelax-relocations=no"
 CT_KERNEL_LINUX=y
+CT_OBSOLETE=y
 CT_LINUX_V_3_2=y
+CT_LINUX_VERSION="3.2.101"
 CT_BINUTILS_V_2_32=y
 CT_BINUTILS_EXTRA_CONFIG_ARRAY="--enable-compressed-debug-sections=none"
 CT_GLIBC_V_2_17=y

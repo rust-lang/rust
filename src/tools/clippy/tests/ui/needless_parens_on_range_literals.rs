@@ -1,7 +1,7 @@
 //@edition:2018
 
 #![warn(clippy::needless_parens_on_range_literals)]
-#![allow(clippy::almost_complete_range)]
+#![expect(clippy::almost_complete_range)]
 
 fn main() {
     let _ = ('a')..=('z');

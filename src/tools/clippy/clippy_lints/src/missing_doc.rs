@@ -6,10 +6,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
     AttrArgs, Attribute, Body, BodyId, FieldDef, HirId, ImplItem, Item, ItemKind, Node, TraitItem, Variant,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::ty::Visibility;
-use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::sym;
 use rustc_span::symbol::kw;
@@ -141,7 +140,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
-            | ItemKind::Use(..) => return,
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => return,
 
             ItemKind::Mod(ident, ..) => {
                 if item.span.from_expansion() && item.span.eq_ctxt(ident.span) {

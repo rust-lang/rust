@@ -11,6 +11,14 @@ LL |     foo(cell, |cell_a, cell_x| {
            ]
    = note: late-bound region is '?2
 
+note: no external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:18:1
+   |
+LL | fn case1() {
+   | ^^^^^^^^^^
+   |
+   = note: defining type: case1
+
 error[E0521]: borrowed data escapes outside of closure
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:22:9
    |
@@ -24,14 +32,6 @@ LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
    = note: requirement occurs because of the type `Cell<&'?9 u32>`, which makes the generic argument `&'?9 u32` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-
-note: no external requirements
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:18:1
-   |
-LL | fn case1() {
-   | ^^^^^^^^^^
-   |
-   = note: defining type: case1
 
 note: external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:35:15

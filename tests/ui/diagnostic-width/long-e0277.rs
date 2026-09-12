@@ -9,5 +9,5 @@ trait Trait {}
 fn require_trait<T: Trait>() {}
 
 fn main() {
-    require_trait::<D>(); //~ ERROR the trait bound `(...
+    require_trait::<D>(); //~ ERROR the trait bound `((_
 }

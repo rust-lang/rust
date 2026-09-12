@@ -1,16 +1,16 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
 use clippy_utils::{eq_expr_value, is_else_clause, is_lang_item_or_ctor, span_contains_non_whitespace, sym};
 use rustc_ast::LitKind;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::{BlockCheckMode, Expr, ExprKind, LangItem, PatKind, StmtKind, UnsafeSource};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{BlockCheckMode, Expr, ExprKind, PatKind, StmtKind, UnsafeSource};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span, Symbol};
 use std::fmt;
 use std::ops::ControlFlow;
@@ -67,7 +67,7 @@ pub struct ManualPopIf {
 impl ManualPopIf {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             binary_heap_pop_if_feature_enabled: tcx.features().enabled(sym::binary_heap_pop_if),
         }
     }

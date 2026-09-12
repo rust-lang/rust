@@ -40,6 +40,12 @@ pub(crate) fn replace_qualified_name_with_use(
 
     let original_path = target_path(ctx, original_path)?;
 
+    // There is no qualifier to replace, so there is nothing for this assist to do
+    if original_path.qualifier().is_none() {
+        cov_mark::hit!(not_applicable_for_unqualified_path);
+        return None;
+    }
+
     // then search for an import for the first path segment of what we want to replace
     // that way it is less likely that we import the item from a different location due re-exports
     let module = match ctx.sema.resolve_path(&original_path.first_qualifier_or_self())? {
@@ -248,6 +254,22 @@ fs::Path
     fn test_replace_not_applicable_in_use() {
         cov_mark::check!(not_applicable_in_use);
         check_assist_not_applicable(replace_qualified_name_with_use, r"use std::fmt$0;");
+    }
+
+    #[test]
+    fn test_replace_not_applicable_for_unqualified_path() {
+        cov_mark::check!(not_applicable_for_unqualified_path);
+        check_assist_not_applicable(
+            replace_qualified_name_with_use,
+            r"
+//- /main.rs crate:main deps:sub
+fn main() {
+    su$0b();
+}
+//- /sub.rs crate:sub
+pub fn sub() {}
+",
+        );
     }
 
     #[test]

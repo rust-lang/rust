@@ -5,6 +5,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
+use rustc_lint_defs::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
@@ -14,7 +15,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
-use rustc_session::lint;
 use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Symbol, kw, sym};
@@ -203,7 +203,7 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
     let constants = tcx
         .hir_body_owners()
         .filter(|&def_id| {
-            matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+            tcx.def_kind(def_id) == DefKind::Const
                 && tcx.type_of(def_id).instantiate_identity().skip_norm_wip() == ty
                 && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
         })
@@ -906,6 +906,58 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
         false
     }
 
+    /// Check for source-level uses that may have been removed from reachable MIR.
+    /// For example:
+    /// ```rust
+    /// fn example() {
+    ///     let x = todo!();
+    ///     eprintln!("{x}");
+    /// }
+    /// ```
+    /// The use of x is unreachable, but we'll still want to know if x is used to correctly emit
+    /// unused variable warning.
+    fn is_local_used_in_source(&self, name: Symbol, def_span: Span) -> bool {
+        use rustc_hir as hir;
+        use rustc_hir::def::Res;
+        use rustc_hir::intravisit::{self, Visitor};
+
+        let Some(body_def_id) = self.body.source.def_id().as_local() else { return false };
+        let Some(hir_body) = self.tcx.hir_maybe_body_owned_by(body_def_id) else { return false };
+        let typeck_results = self.tcx.typeck(body_def_id);
+
+        struct LocalUseVisitor<'a, 'tcx> {
+            tcx: TyCtxt<'tcx>,
+            typeck_results: &'a ty::TypeckResults<'tcx>,
+            name: Symbol,
+            def_span: Span,
+            found: bool,
+        }
+
+        impl<'a, 'tcx> Visitor<'tcx> for LocalUseVisitor<'a, 'tcx> {
+            fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+                if self.found {
+                    return;
+                }
+
+                if let hir::ExprKind::Path(qpath) = &expr.kind
+                    && let Res::Local(hir_id) = self.typeck_results.qpath_res(qpath, expr.hir_id)
+                    && self.tcx.hir_name(hir_id) == self.name
+                    && self.tcx.hir_span(hir_id) == self.def_span
+                {
+                    self.found = true;
+                    return;
+                }
+
+                intravisit::walk_expr(self, expr);
+            }
+        }
+
+        let mut visitor =
+            LocalUseVisitor { tcx: self.tcx, typeck_results, name, def_span, found: false };
+        visitor.visit_body(hir_body);
+        visitor.found
+    }
+
     /// Report fully unused locals, and forget the corresponding assignments.
     fn report_fully_unused(&mut self) {
         let tcx = self.tcx;
@@ -995,8 +1047,22 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 }
             };
 
+            // the is_local_used_in_source is sufficient to check if the local is used in the source code,
+            // but we keep the local_kind check for a cheap filter to avoid heavy check
+            let is_used_after_uninitialized = self.body.local_kind(local) == LocalKind::Temp
+                && matches!(binding.opt_match_place, Some((None, _)))
+                && self.is_local_used_in_source(name, def_span);
+
             let statements = &mut self.assignments[index];
             if statements.is_empty() {
+                if is_used_after_uninitialized {
+                    // A local from `let PAT = ...` normally has an assignment recorded for the
+                    // value it initializes. If no assignment was recorded in reachable MIR, the
+                    // initializer did not complete. If the local still has a source-level use,
+                    // that use was made unreachable by the diverging initializer.
+                    continue;
+                }
+
                 if !self.is_local_in_reachable_code(local) {
                     continue;
                 }
@@ -1008,7 +1074,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     diagnostics::UnusedVariableSugg::TryPrefix { spans: vec![def_span], name, typo }
                 };
                 tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_VARIABLES,
+                    UNUSED_VARIABLES,
                     hir_id,
                     def_span,
                     diagnostics::UnusedVariable {
@@ -1058,7 +1124,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
                 let typo = maybe_suggest_typo();
                 tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_VARIABLES,
+                    UNUSED_VARIABLES,
                     hir_id,
                     def_span,
                     diagnostics::UnusedVarAssignedOnly { name, typo },
@@ -1100,7 +1166,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             };
 
             tcx.emit_node_span_lint(
-                lint::builtin::UNUSED_VARIABLES,
+                UNUSED_VARIABLES,
                 hir_id,
                 spans,
                 diagnostics::UnusedVariable {
@@ -1192,20 +1258,20 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                             if suggestion.is_none() && is_direct { overwrite } else { None };
                         let help = suggestion.is_none() && overwrite.is_none();
                         tcx.emit_node_span_lint(
-                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            UNUSED_ASSIGNMENTS,
                             hir_id,
                             source_info.span,
                             diagnostics::UnusedAssign { name, overwrite, help, suggestion },
                         )
                     }
                     AccessKind::Param => tcx.emit_node_span_lint(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        UNUSED_ASSIGNMENTS,
                         hir_id,
                         source_info.span,
                         diagnostics::UnusedAssignPassed { name },
                     ),
                     AccessKind::Capture => tcx.emit_node_span_lint(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        UNUSED_ASSIGNMENTS,
                         hir_id,
                         decl_span,
                         diagnostics::UnusedCaptureMaybeCaptureRef { name },
@@ -1276,14 +1342,13 @@ impl<'tcx> Analysis<'tcx> for MaybeLivePlaces<'_, 'tcx> {
         self.transfer_function(trans).visit_statement(statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         trans: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
+        terminator: &Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         self.transfer_function(trans).visit_terminator(terminator, location);
-        terminator.edges()
     }
 
     fn apply_call_return_effect(
@@ -1483,8 +1548,7 @@ impl DefUse {
             PlaceContext::MutatingUse(
                 MutatingUseContext::RawBorrow
                 | MutatingUseContext::Borrow
-                | MutatingUseContext::Drop
-                | MutatingUseContext::Retag,
+                | MutatingUseContext::Drop,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::RawBorrow

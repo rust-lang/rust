@@ -9,7 +9,7 @@ The tracking issue for this feature is: [#86555]
 This implements [RFC2528]. When turned on, you can create instances of the same struct
 that have different generic type or lifetime parameters.
 
-[RFC2528]: https://github.com/rust-lang/rfcs/blob/master/text/2528-type-changing-struct-update-syntax.md
+[RFC2528]: https://rust-lang.github.io/rfcs/2528-type-changing-struct-update-syntax.html
 
 ```rust
 #![allow(unused_variables, dead_code)]

@@ -267,7 +267,7 @@ pub struct Crate {
     // Extra crate-level attributes, without the surrounding `#![]`.
     pub(crate) crate_attrs: Vec<String>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
-    pub(crate) is_workspace_member: bool,
+    pub is_workspace_member: bool,
     pub(crate) include: Vec<AbsPathBuf>,
     pub(crate) exclude: Vec<AbsPathBuf>,
     pub(crate) is_proc_macro: bool,

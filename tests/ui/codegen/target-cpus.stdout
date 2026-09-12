@@ -1,4 +1,5 @@
 Available CPUs for this target:
     bleeding-edge
     generic       - This is the default target CPU for the current build target (currently wasm32-unknown-unknown).
+    lime1
     mvp

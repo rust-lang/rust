@@ -15,75 +15,75 @@ pub mod a {
 
 fn h1() -> i32 {
     a.I
-    //~^ ERROR expected value, found module `a`
+    //~^ ERROR cannot find value `a` in this scope
     //~| HELP use the path separator
 }
 
 fn h2() -> i32 {
     a.g()
-    //~^ ERROR expected value, found module `a`
+    //~^ ERROR cannot find value `a` in this scope
     //~| HELP use the path separator
 }
 
 fn h3() -> i32 {
     a.b.J
-    //~^ ERROR expected value, found module `a`
+    //~^ ERROR cannot find value `a` in this scope
     //~| HELP use the path separator
 }
 
 fn h4() -> i32 {
     a::b.J
-    //~^ ERROR expected value, found module `a::b`
+    //~^ ERROR cannot find value `b` in module `a`
     //~| HELP a constant with a similar name exists
     //~| HELP use the path separator
 }
 
 fn h5() {
     a.b.f();
-    //~^ ERROR expected value, found module `a`
+    //~^ ERROR cannot find value `a` in this scope
     //~| HELP use the path separator
     let v = Vec::new();
     v.push(a::b);
-    //~^ ERROR expected value, found module `a::b`
+    //~^ ERROR cannot find value `b` in module `a`
     //~| HELP a constant with a similar name exists
 }
 
 fn h6() -> i32 {
     a::b.f()
-    //~^ ERROR expected value, found module `a::b`
+    //~^ ERROR cannot find value `b` in module `a`
     //~| HELP a constant with a similar name exists
     //~| HELP use the path separator
 }
 
 fn h7() {
     a::b
-    //~^ ERROR expected value, found module `a::b`
+    //~^ ERROR cannot find value `b` in module `a`
     //~| HELP a constant with a similar name exists
 }
 
 fn h8() -> i32 {
     a::b()
-    //~^ ERROR expected function, found module `a::b`
+    //~^ ERROR cannot find function `b` in module `a`
     //~| HELP a constant with a similar name exists
 }
 
 macro_rules! module {
     () => {
         a
-        //~^ ERROR expected value, found module `a`
-        //~| ERROR expected value, found module `a`
+        //~^ ERROR cannot find value `a` in this scope
+        //~| ERROR cannot find value `a` in this scope
     };
 }
 
 macro_rules! create {
     (method) => {
         a.f()
-        //~^ ERROR expected value, found module `a`
+        //~^ ERROR cannot find value `a` in this scope
         //~| HELP use the path separator
     };
     (field) => {
         a.f
-        //~^ ERROR expected value, found module `a`
+        //~^ ERROR cannot find value `a` in this scope
         //~| HELP use the path separator
     };
 }

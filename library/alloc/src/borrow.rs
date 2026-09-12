@@ -188,7 +188,7 @@ impl<'a, B: ?Sized + ToOwned> Borrow<B> for Cow<'a, B>
 //     B::Owned: [const] Borrow<B>,
 {
     fn borrow(&self) -> &B {
-        &**self
+        self
     }
 }
 

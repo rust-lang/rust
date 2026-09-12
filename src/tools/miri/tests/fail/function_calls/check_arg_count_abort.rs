@@ -5,6 +5,6 @@ fn main() {
 
     unsafe {
         abort(1);
-        //~^ ERROR: Undefined Behavior: incorrect number of arguments for `abort`: got 1, expected 0
+        //~^ ERROR: takes 0 arguments, but 1 argument was given
     }
 }

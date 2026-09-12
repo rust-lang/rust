@@ -37,6 +37,11 @@ LL | const fn const_drop<T>(_: T) {}
    |                        ^      - value is dropped here
    |                        |
    |                        the destructor for this type cannot be evaluated in constant functions
+   |
+help: consider restricting type parameter `T` with unstable trait `Destruct`
+   |
+LL | const fn const_drop<T: [const] Destruct>(_: T) {}
+   |                      ++++++++++++++++++
 
 error[E0493]: destructor of `(T, ())` cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:17:5

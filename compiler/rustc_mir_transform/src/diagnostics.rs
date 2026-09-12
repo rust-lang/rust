@@ -3,10 +3,11 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
     Subdiagnostic, msg,
 };
+use rustc_lint_defs::Lint;
+use rustc_lint_defs::builtin::{ARITHMETIC_OVERFLOW, UNCONDITIONAL_PANIC};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
 
@@ -119,10 +120,18 @@ impl<'a, P: std::fmt::Debug> Diagnostic<'a, ()> for AssertLint<P> {
 impl AssertLintKind {
     pub(crate) fn lint(&self) -> &'static Lint {
         match self {
-            AssertLintKind::ArithmeticOverflow => lint::builtin::ARITHMETIC_OVERFLOW,
-            AssertLintKind::UnconditionalPanic => lint::builtin::UNCONDITIONAL_PANIC,
+            AssertLintKind::ArithmeticOverflow => ARITHMETIC_OVERFLOW,
+            AssertLintKind::UnconditionalPanic => UNCONDITIONAL_PANIC,
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("this operation will panic at runtime")]
+pub(crate) struct ConstNIsZero {
+    #[label("const parameter `{$const_param_name}` is zero")]
+    pub const_param_span: Span,
+    pub const_param_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -382,4 +391,29 @@ pub(crate) struct ForceInlineFailure {
 pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
     pub callee: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("field `{$name}` cannot be mutated outside `{$restriction_path}`")]
+pub(crate) struct MutOfRestrictedField {
+    #[primary_span]
+    pub mut_span: Span,
+    #[label("field restricted here")]
+    pub restriction_span: Span,
+    pub name: Symbol,
+    pub restriction_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`{$name}` cannot be constructed using a `{$descr}` expression outside `{$restriction_path}`"
+)]
+pub(crate) struct ConstructionOfTyWithMutRestrictedField {
+    #[primary_span]
+    pub construction_span: Span,
+    #[label("field restricted here")]
+    pub restriction_span: Span,
+    pub name: Symbol,
+    pub descr: &'static str,
+    pub restriction_path: String,
 }

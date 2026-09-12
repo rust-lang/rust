@@ -2,12 +2,11 @@
 
 use std::marker::PhantomData;
 
-use base_db::FxIndexSet;
+use base_db::{FxIndexSet, salsa::SalsaValue};
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AstIdLoc, Complete, DefWithBodyId, ExternCrateId, HasModule, ImplId,
     Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
-    db::DefDatabase,
     expr_store::Body,
     item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob},
     nameres::crate_def_map,
@@ -29,7 +28,7 @@ use crate::{Crate, HasCrate, Module, ModuleDef, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct FileSymbol<'db> {
     pub name: Symbol,
     pub def: ModuleDef,
@@ -40,7 +39,33 @@ pub struct FileSymbol<'db> {
     pub is_assoc: bool,
     pub is_import: bool,
     pub do_not_complete: Complete,
-    _marker: PhantomData<&'db ()>,
+    _marker: PhantomData<fn() -> &'db ()>,
+}
+
+impl<'db> std::fmt::Debug for FileSymbol<'db> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let FileSymbol {
+            name,
+            def,
+            loc,
+            container_name,
+            is_alias,
+            is_assoc,
+            is_import,
+            do_not_complete,
+            _marker: _,
+        } = self;
+        f.debug_struct("FileSymbol")
+            .field("name", name)
+            .field("def", def)
+            .field("loc", loc)
+            .field("container_name", container_name)
+            .field("is_alias", is_alias)
+            .field("is_assoc", is_assoc)
+            .field("is_import", is_import)
+            .field("do_not_complete", do_not_complete)
+            .finish()
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -410,7 +435,7 @@ impl<'a> SymbolCollector<'a> {
         );
         self.with_container_name(impl_name.as_deref().map(Symbol::intern), |s| {
             for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
-                if s.collect_pub_only && s.db.assoc_visibility(assoc_item_id) != Visibility::Public
+                if s.collect_pub_only && assoc_item_id.assoc_visibility(s.db) != Visibility::Public
                 {
                     continue;
                 }
@@ -460,7 +485,7 @@ impl<'a> SymbolCollector<'a> {
         trait_do_not_complete: Option<Complete>,
     ) -> Complete
     where
-        L: Lookup<Database = dyn DefDatabase> + Into<ModuleDefId>,
+        L: Lookup + Into<ModuleDefId>,
         <L as Lookup>::Data: HasSource,
         <<L as Lookup>::Data as HasSource>::Value: HasName,
     {

@@ -296,6 +296,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand fix" -l llvm-profile-use -d 'u
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand fix" -l allow-dirty -d 'Pass `--allow-dirty` to `cargo fix`, allowing it to run even if the current git checkout has uncommitted changes'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s i -l incremental -d 'use incremental compilation'
@@ -911,14 +912,14 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subc
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "eprintln" -d 'Run `profile_local eprintln`. This executes the compiler on the given benchmarks and stores its stderr output'
-complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "samply" -d 'Run `profile_local samply` This executes the compiler on the given benchmarks and profiles it with `samply`. You need to install `samply`, e.g. using `cargo install samply`'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "samply" -d 'Run `profile_local samply` This executes the compiler on the given benchmarks and profiles it with `samply`. You need to install `samply`, e.g. using `cargo install --locked samply`'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "cachegrind" -d 'Run `profile_local cachegrind`. This executes the compiler on the given benchmarks under `Cachegrind`'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "benchmark" -d 'Run compile benchmarks with a locally built compiler'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -a "compare" -d 'Compare the results of two previously executed benchmark runs'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',Opt\t'',Clippy\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l build -d 'host target of the stage0 compiler' -r -f
@@ -957,7 +958,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',Opt\t'',Clippy\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l build -d 'host target of the stage0 compiler' -r -f
@@ -996,7 +997,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',Opt\t'',Clippy\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l build -d 'host target of the stage0 compiler' -r -f
@@ -1035,7 +1036,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l exclude -d 'Select the benchmarks matching a prefix in this comma-separated list that you don\'t want to run' -r
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full\t'',IncrFull\t'',IncrUnchanged\t'',IncrPatched\t''}"
-complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',Opt\t'',Clippy\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check\t'',Debug\t'',Doc\t'',DocJson\t'',Opt\t'',Clippy\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l build -d 'host target of the stage0 compiler' -r -f

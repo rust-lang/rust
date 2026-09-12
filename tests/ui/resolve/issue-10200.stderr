@@ -1,13 +1,15 @@
 error[E0532]: expected a pattern, found a function call
   --> $DIR/issue-10200.rs:6:9
    |
-LL | struct Foo(bool);
-   | ----------------- similarly named tuple struct `Foo` defined here
-...
 LL |         foo(x)
-   |         ^^^
+   |         ^^^ not a tuple struct or tuple variant
    |
    = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+note: similarly named tuple struct `Foo` defined here
+  --> $DIR/issue-10200.rs:1:1
+   |
+LL | struct Foo(bool);
+   | ^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists (notice the capitalization)
    |
 LL -         foo(x)

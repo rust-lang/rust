@@ -146,12 +146,12 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="bpass2",
-        except="hir_owner,fn_sig,generics_of,typeck_root,associated_item,optimized_mir",
+        except="hir_owner,fn_sig,type_of,generics_of,typeck_root,associated_item,optimized_mir",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="hir_owner,fn_sig,generics_of,typeck_root,associated_item,optimized_mir",
+        except="hir_owner,fn_sig,type_of,generics_of,typeck_root,associated_item,optimized_mir",
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn method_selfness(&self) { }
@@ -421,9 +421,9 @@ impl Foo {
     // ----------------------------------------------------------
     // -----------------------------------------------------------
     // ----------------------------------------------------------
-    // --------------------------------------------------------------
+    // ----------------------------------------------------------------------
     // -------------------------
-    // --------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------
     // -------------------------
     pub fn add_lifetime_parameter_to_method    (&self) { }
 }
@@ -443,9 +443,9 @@ impl Foo {
     // if we lower generics before the body, then the `HirId` for
     // things in the body will be affected. So if you start to see
     // `typeck_root` appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="bpass2", except="hir_owner,fn_sig")]
+    #[rustc_clean(cfg="bpass2", except="hir_owner,fn_sig,type_of")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="hir_owner,fn_sig,generics_of")]
+    #[rustc_clean(cfg="bpass5", except="hir_owner,fn_sig,type_of,generics_of")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_lifetime_parameter_to_method<'a>(&self) { }
 }
@@ -466,12 +466,12 @@ impl Foo {
     // -------------------------------------------------
     // -----------
     // --------------
-    // ----------------------------------------------------------------
+    // -------------------------------------------------------------
     //
     // -------------------------
     // -----------
     // --------------
-    // ----------------------------------------------------------------
+    // -------------------------------------------------------------
     //
     // -------------------------
     pub fn add_type_parameter_to_method   (&self) { }
@@ -494,12 +494,12 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="bpass2",
-        except="hir_owner,generics_of,predicates_of,type_of",
+        except="hir_owner,generics_of,clauses_of,type_of",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="hir_owner,generics_of,predicates_of,type_of",
+        except="hir_owner,generics_of,clauses_of,type_of",
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_type_parameter_to_method<T>(&self) { }
@@ -512,12 +512,12 @@ impl Foo {
 impl Foo {
     //------------
     //---------------
-    //-----------------------------------------------------------------------
+    //--------------------------------------------------------------------
     //
     //--------------------------
     //------------
     //---------------
-    //-----------------------------------------------------------------------
+    //--------------------------------------------------------------------
     //
     //--------------------------
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b    >(&self) { }
@@ -531,12 +531,12 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="bpass2",
-        except="hir_owner,generics_of,predicates_of,type_of,fn_sig"
+        except="hir_owner,generics_of,clauses_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="hir_owner,generics_of,predicates_of,type_of,fn_sig"
+        except="hir_owner,generics_of,clauses_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
@@ -558,12 +558,12 @@ impl Foo {
     // -------------------------------------------------
     // -----------
     // --------------
-    // ----------------------------------------------------------------------
+    // -------------------------------------------------------------------
     //
     // -------------------------
     // -----------
     // --------------
-    // ----------------------------------------------------------------------
+    // -------------------------------------------------------------------
     //
     // -------------------------
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T    >(&self) { }
@@ -586,12 +586,12 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="bpass2",
-        except="hir_owner,generics_of,predicates_of,type_of,fn_sig"
+        except="hir_owner,generics_of,clauses_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="hir_owner,generics_of,predicates_of,type_of,fn_sig"
+        except="hir_owner,generics_of,clauses_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
@@ -611,9 +611,9 @@ impl Foo {
     // ------------------------------------------------------------
     // ------------------------------------------------------
     // -------------------------------------------------
-    // ---------------------------------------------------------------------
+    // ------------------------------------------------------------------
     // -------------------------
-    // ---------------------------------------------------------------------
+    // ------------------------------------------------------------------
     // -------------------------
     pub fn add_trait_bound_to_type_param_of_method<T       >(&self) { }
 }
@@ -633,9 +633,9 @@ impl Foo {
     // generics before the body, then the `HirId` for things in the
     // body will be affected. So if you start to see `typeck_root`
     // appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="bpass2", except="hir_owner,predicates_of")]
+    #[rustc_clean(cfg="bpass2", except="hir_owner,clauses_of")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="hir_owner,predicates_of")]
+    #[rustc_clean(cfg="bpass5", except="hir_owner,clauses_of")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_trait_bound_to_type_param_of_method<T: Clone>(&self) { }
 }

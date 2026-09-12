@@ -1,8 +1,3 @@
-// tidy-alphabetical-start
-#![allow(internal_features)]
-#![feature(rustc_attrs)]
-// tidy-alphabetical-end
-
 use std::borrow::Cow;
 
 pub use fluent_bundle::types::FluentType;
@@ -29,7 +24,6 @@ pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle
 ///
 /// Intended to be removed once diagnostics are entirely translatable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-#[rustc_diagnostic_item = "DiagMessage"]
 pub enum DiagMessage {
     /// Non-translatable diagnostic message or a message that has been translated eagerly.
     ///
@@ -219,8 +213,8 @@ impl From<Vec<Span>> for MultiSpan {
     }
 }
 
-fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale::Locale> {
-    icu_locale::Locale::try_from_str(&lang.to_string()).ok()
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale_core::Locale> {
+    icu_locale_core::Locale::try_from_str(&lang.to_string()).ok()
 }
 
 pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {

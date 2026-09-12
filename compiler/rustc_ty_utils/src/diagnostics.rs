@@ -72,13 +72,6 @@ pub(crate) enum GenericConstantTooComplexSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("`FnPtr` trait with unexpected associated item")]
-pub(crate) struct UnexpectedFnPtrAssociatedItem {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "monomorphising SIMD type `{$ty}` with a non-primitive-scalar (integer/float/pointer) element type `{$e_ty}`"
 )]

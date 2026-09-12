@@ -1,4 +1,4 @@
-error: Undefined Behavior: calling a function with calling convention "C" using caller calling convention "Rust"
+error: Undefined Behavior: ABI mismatch: `malloc` has calling convention "C", but the caller is using calling convention "Rust"
   --> tests/fail/function_calls/check_arg_abi.rs:LL:CC
    |
 LL |         let _ = malloc(0);

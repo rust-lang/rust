@@ -23,26 +23,26 @@ fn attrs() {
     struct S;
 
     // Statement, macro
-    #[empty_attr] //~ ERROR: custom attributes cannot be applied to statements
+    #[empty_attr] //~ ERROR: macro attributes on statements are unstable
     println!();
 
     // Statement, semi
-    #[empty_attr] //~ ERROR: custom attributes cannot be applied to statements
+    #[empty_attr] //~ ERROR: macro attributes on statements are unstable
     S;
 
     // Statement, local
-    #[empty_attr] //~ ERROR: custom attributes cannot be applied to statements
+    #[empty_attr] //~ ERROR: macro attributes on statements are unstable
     let _x = 2;
 
     // Expr
-    let _x = #[identity_attr] 2; //~ ERROR: custom attributes cannot be applied to expressions
+    let _x = #[identity_attr] 2; //~ ERROR: macro attributes on expressions are unstable
 
     // Opt expr
-    let _x = [#[identity_attr] 2]; //~ ERROR: custom attributes cannot be applied to expressions
+    let _x = [#[identity_attr] 2]; //~ ERROR: macro attributes on expressions are unstable
 
     // Expr macro
     let _x = #[identity_attr] println!();
-    //~^ ERROR: custom attributes cannot be applied to expressions
+    //~^ ERROR: macro attributes on expressions are unstable
 }
 
 fn test_case() {

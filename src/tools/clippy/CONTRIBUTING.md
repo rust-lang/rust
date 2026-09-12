@@ -8,7 +8,7 @@ something. We appreciate any sort of contributions, and don't want a wall of rul
 
 Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document
 explains how you can contribute and how to get started.  If you have any questions about contributing or need help with
-anything, feel free to ask questions on issues or visit the `#clippy` on [Zulip].
+anything, feel free to ask questions on issues or visit the `#t-clippy` on [Zulip].
 
 All contributors are expected to follow the [Rust Code of Conduct].
 
@@ -24,7 +24,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Contributions](#contributions)
   - [License](#license)
 
-[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
 ## The Clippy book
@@ -108,7 +108,7 @@ For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
 a lot more type hints.
 
-To have `rust-analyzer` also work in the `clippy_dev` and `lintcheck` crates, add the following configuration
+To have `rust-analyzer` also work in the `clippy-dev` and `lintcheck` crates, add the following configuration
 
 ```json
 {
@@ -257,6 +257,13 @@ changelog: Something 3
 
 [changelog]: CHANGELOG.md
 
+## LLM policy
+
+Clippy adopts the same [LLM usage policy] as `rust-lang/rust`.
+You can consult the [LLM usage chapter] in the Clippy book to see
+what that means, how it applies.
+
+
 ## License
 
 All code in this repository is under the [Apache-2.0] or the [MIT] license.
@@ -265,3 +272,5 @@ All code in this repository is under the [Apache-2.0] or the [MIT] license.
 
 [Apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
 [MIT]: https://opensource.org/licenses/MIT
+[LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
+[LLM usage chapter]: https://doc.rust-lang.org/nightly/clippy/development/llm_usage.html

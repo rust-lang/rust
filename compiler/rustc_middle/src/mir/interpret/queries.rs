@@ -1,6 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_session::lint;
+use rustc_lint_defs::builtin::CONST_EVALUATABLE_UNCHECKED;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -9,7 +9,7 @@ use super::{
 };
 use crate::mir::interpret::ValTreeCreationError;
 use crate::ty::{self, ConstToValTreeResult, GenericArgs, TyCtxt, TypeVisitableExt};
-use crate::{error, mir};
+use crate::{diagnostics, mir};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
@@ -104,8 +104,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let def_id = match ct.kind {
+            ty::AliasConstKind::InherentSelf { .. } => {
+                bug!("got AliasConstKind::InherentSelf in const_eval_resolve_for_typeck")
+            }
             ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id }
             | ty::AliasConstKind::Anon { def_id } => def_id,
         };
@@ -147,7 +150,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let mir_body = self.mir_for_ctfe(def_id);
                 if mir_body.is_polymorphic {
                     self.emit_node_span_lint(
-                        lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                        CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
                         self.def_span(def_id),
                         rustc_errors::DiagDecorator(|lint| {
@@ -219,14 +222,21 @@ impl<'tcx> TyCtxt<'tcx> {
                     ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
                     // Report the others.
                     ValTreeCreationError::NodesOverflow => {
-                        let handled = self.dcx().emit_err(error::MaxNumNodesInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::MaxNumNodesInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::InvalidConst => {
-                        let handled = self.dcx().emit_err(error::InvalidConstInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::InvalidConstInValtree {
+                            span,
+                            global_const_id: cid.display(self),
+                        });
+                        Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
+                    }
+                    ValTreeCreationError::CyclicConst => {
+                        let handled = self.dcx().emit_err(diagnostics::CyclicConstInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });

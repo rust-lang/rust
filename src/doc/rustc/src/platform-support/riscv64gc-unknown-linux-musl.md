@@ -1,8 +1,10 @@
 # riscv64gc-unknown-linux-musl
 
-**Tier: 2**
+**Tier: 2 (with Host Tools)**
 
-Target for RISC-V Linux programs using musl libc.
+Linux musl libc RISC-V target using the *RV64I* base instruction set with the
+*G* collection of extensions, as well as the *C* extension.
+
 
 ## Target maintainers
 
@@ -11,37 +13,44 @@ Target for RISC-V Linux programs using musl libc.
 
 ## Requirements
 
-Building the target itself requires a RISC-V compiler that is supported by `cc-rs`.
+This target requires:
+
+* Linux Kernel version 4.20 or later
+* musl libc 1.2.5 or later
+
 
 ## Building the target
 
-The target can be built by enabling it for a `rustc` build.
+This target is distributed through `rustup`, and otherwise requires no
+special configuration.
+
+If you need to build your own Rust then the targets can be enabled in
+`bootstrap.toml`. For example:
 
 ```toml
 [build]
 target = ["riscv64gc-unknown-linux-musl"]
 ```
 
-Make sure your C compiler is included in `$PATH`, then add it to the `bootstrap.toml`:
-
-```toml
-[target.riscv64gc-unknown-linux-musl]
-cc = "riscv64-linux-gnu-gcc"
-cxx = "riscv64-linux-gnu-g++"
-ar = "riscv64-linux-gnu-ar"
-linker = "riscv64-linux-gnu-gcc"
-```
 
 ## Building Rust programs
 
-This target are distributed through `rustup`, and otherwise require no
-special configuration.
+On a riscv64gc-unknown-linux-musl host, the `riscv64gc-unknown-linux-musl`
+target should be automatically installed and used by default.
 
-## Cross-compilation
+On all other hosts, add the target:
 
-This target can be cross-compiled from any host.
+```bash
+rustup target add riscv64gc-unknown-linux-musl
+```
+
+Then cross compile crates with:
+
+```bash
+cargo build --target riscv64gc-unknown-linux-musl
+```
 
 ## Testing
 
-This target can be tested as normal with `x.py` on a RISC-V host or via QEMU
+The target can be tested as normal with `x.py` on a RISC-V host or via QEMU
 emulation.

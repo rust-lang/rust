@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::partial_pub_fields)]
 
 fn main() {

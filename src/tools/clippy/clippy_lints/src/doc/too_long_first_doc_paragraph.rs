@@ -13,13 +13,14 @@ pub(super) fn check(
     cx: &LateContext<'_>,
     item: &Item<'_>,
     attrs: &[Attribute],
-    mut first_paragraph_len: usize,
+    first_paragraph_text_len: usize,
+    mut first_paragraph_md_len: usize,
     check_private_items: bool,
 ) {
     if !check_private_items && !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
         return;
     }
-    if first_paragraph_len <= 200
+    if first_paragraph_text_len <= 200
         || !matches!(
             item.kind,
             // This is the list of items which can be documented AND are displayed on the module
@@ -58,10 +59,10 @@ pub(super) fn check(
             }
 
             let len = doc.chars().count();
-            if len >= first_paragraph_len {
+            if len >= first_paragraph_md_len {
                 break;
             }
-            first_paragraph_len -= len;
+            first_paragraph_md_len -= len;
         }
     }
 

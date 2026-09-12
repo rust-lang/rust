@@ -37,19 +37,24 @@ pub(crate) fn format_string(
     });
     ctx.scope.process_all_names(&mut |name, scope| {
         if let ScopeDef::ModuleDef(module_def) = scope {
+            let mut const_value = None;
             let symbol_kind = match module_def {
-                ModuleDef::Const(..) => SymbolKind::Const,
+                ModuleDef::Const(c) => {
+                    const_value = Some(c);
+                    SymbolKind::Const
+                }
                 ModuleDef::Static(..) => SymbolKind::Static,
                 _ => return,
             };
 
-            CompletionItem::new(
+            let mut builder = CompletionItem::new(
                 CompletionItemKind::SymbolKind(symbol_kind),
                 source_range,
                 name.display_no_db(ctx.edition).to_smolstr(),
                 ctx.edition,
-            )
-            .add_to(acc, ctx.db);
+            );
+            builder.const_value(const_value, ctx.db, ctx.display_target);
+            builder.add_to(acc, ctx.db);
         }
     });
 }

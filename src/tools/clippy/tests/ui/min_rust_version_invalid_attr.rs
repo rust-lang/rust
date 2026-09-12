@@ -1,5 +1,3 @@
-//@compile-flags: -Zdeduplicate-diagnostics=yes
-
 #![feature(custom_inner_attributes)]
 #![clippy::msrv = "invalid.version"]
 //~^ ERROR: `invalid.version` is not a valid Rust version

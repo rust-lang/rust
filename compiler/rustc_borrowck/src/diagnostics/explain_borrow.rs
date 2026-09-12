@@ -12,7 +12,7 @@ use rustc_middle::mir::{
     Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{DesugaringKind, Span, kw, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
@@ -22,7 +22,7 @@ use super::{RegionName, UseSpans, find_use};
 use crate::borrow_set::BorrowData;
 use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
-use crate::region_infer::{BlameConstraint, Cause};
+use crate::region_infer::{BestBlame, Cause};
 use crate::{MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
@@ -35,12 +35,9 @@ pub(crate) enum BorrowExplanation<'tcx> {
         should_note_order: bool,
     },
     MustBeValidFor {
-        category: ConstraintCategory<'tcx>,
-        from_closure: bool,
-        span: Span,
+        best_blame: BestBlame<'tcx>,
         region_name: RegionName,
         opt_place_desc: Option<String>,
-        path: Vec<OutlivesConstraint<'tcx>>,
     },
     Unexplained,
 }
@@ -376,13 +373,13 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 }
             }
             BorrowExplanation::MustBeValidFor {
-                category,
-                span,
+                ref best_blame,
                 ref region_name,
                 ref opt_place_desc,
-                from_closure: _,
-                ref path,
             } => {
+                let OutlivesConstraint { category, span, .. } = *best_blame.constraint();
+                let path = best_blame.path();
+
                 region_name.highlight_region_name(err);
 
                 if let Some(desc) = opt_place_desc {
@@ -403,8 +400,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     );
                 };
 
-                cx.add_placeholder_from_predicate_note(err, &path);
-                cx.add_sized_or_copy_bound_info(err, category, &path);
+                cx.add_placeholder_from_predicate_note(err, path);
+                cx.add_sized_or_copy_bound_info(err, category, path);
 
                 if let ConstraintCategory::Cast {
                     is_raw_ptr_dyn_type_cast: _,
@@ -574,24 +571,6 @@ fn suggest_rewrite_if_let<G: EmissionGuarantee>(
 }
 
 impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
-    fn free_region_constraint_info(
-        &self,
-        borrow_region: RegionVid,
-        outlived_region: RegionVid,
-    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<OutlivesConstraint<'tcx>>)
-    {
-        let (blame_constraint, path) = self.regioncx.best_blame_constraint(
-            borrow_region,
-            NllRegionVariableOrigin::FreeRegion,
-            outlived_region,
-        );
-        let BlameConstraint { category, from_closure, cause, .. } = blame_constraint;
-
-        let outlived_fr_name = self.give_region_a_name(outlived_region);
-
-        (category, from_closure, cause.span, outlived_fr_name, path)
-    }
-
     /// Returns structured explanation for *why* the borrow contains the
     /// point from `location`. This is key for the "3-point errors"
     /// [described in the NLL RFC][d].
@@ -707,17 +686,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 // Here, under NLL: no cause was found. Under polonius: no cause was found, or a
                 // boring local was found, which we ignore like NLLs do to match its diagnostics.
                 if let Some(region) = self.regioncx.to_error_region_vid(borrow_region_vid) {
-                    let (category, from_closure, span, region_name, path) =
-                        self.free_region_constraint_info(borrow_region_vid, region);
-                    if let Some(region_name) = region_name {
+                    let best_blame = self.regioncx.best_blame_constraint(
+                        borrow_region_vid,
+                        NllRegionVariableOrigin::FreeRegion,
+                        region,
+                    );
+
+                    if let Some(region_name) = self.give_region_a_name(region) {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
                         BorrowExplanation::MustBeValidFor {
-                            category,
-                            from_closure,
-                            span,
+                            best_blame,
                             region_name,
                             opt_place_desc,
-                            path,
                         }
                     } else {
                         debug!("Could not generate a region name");

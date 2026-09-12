@@ -1,8 +1,8 @@
 error[E0565]: malformed `no_std` attribute input
-  --> $DIR/malformed-no-std.rs:3:1
+  --> $DIR/malformed-no-std.rs:3:4
    |
 LL | #![no_std = "foo"]
-   | ^^^^^^^^^^-------^
+   |    ^^^^^^^-------
    |           |
    |           didn't expect any arguments here
    |
@@ -13,10 +13,10 @@ LL + #![no_std]
    |
 
 error[E0565]: malformed `no_std` attribute input
-  --> $DIR/malformed-no-std.rs:5:1
+  --> $DIR/malformed-no-std.rs:5:4
    |
 LL | #![no_std("bar")]
-   | ^^^^^^^^^-------^
+   |    ^^^^^^-------
    |          |
    |          didn't expect any arguments here
    |
@@ -27,10 +27,10 @@ LL + #![no_std]
    |
 
 error[E0565]: malformed `no_std` attribute input
-  --> $DIR/malformed-no-std.rs:8:1
+  --> $DIR/malformed-no-std.rs:8:4
    |
 LL | #![no_std(foo = "bar")]
-   | ^^^^^^^^^-------------^
+   |    ^^^^^^-------------
    |          |
    |          didn't expect any arguments here
    |
@@ -41,10 +41,10 @@ LL + #![no_std]
    |
 
 error[E0565]: malformed `no_core` attribute input
-  --> $DIR/malformed-no-std.rs:11:1
+  --> $DIR/malformed-no-std.rs:11:4
    |
 LL | #![no_core = "foo"]
-   | ^^^^^^^^^^^-------^
+   |    ^^^^^^^^-------
    |            |
    |            didn't expect any arguments here
    |
@@ -55,10 +55,10 @@ LL + #![no_core]
    |
 
 error[E0565]: malformed `no_core` attribute input
-  --> $DIR/malformed-no-std.rs:13:1
+  --> $DIR/malformed-no-std.rs:13:4
    |
 LL | #![no_core("bar")]
-   | ^^^^^^^^^^-------^
+   |    ^^^^^^^-------
    |           |
    |           didn't expect any arguments here
    |
@@ -81,10 +81,10 @@ LL | #![no_core = "foo"]
    | ^^^^^^^^^^^^^^^^^^^
 
 error[E0565]: malformed `no_core` attribute input
-  --> $DIR/malformed-no-std.rs:16:1
+  --> $DIR/malformed-no-std.rs:16:4
    |
 LL | #![no_core(foo = "bar")]
-   | ^^^^^^^^^^-------------^
+   |    ^^^^^^^-------------
    |           |
    |           didn't expect any arguments here
    |

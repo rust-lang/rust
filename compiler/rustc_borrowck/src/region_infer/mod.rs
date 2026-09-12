@@ -28,7 +28,6 @@ use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstra
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
-use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues};
 use crate::type_check::Locations;
@@ -345,7 +344,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             outlives_constraints,
             scc_annotations,
             type_tests,
-            mut liveness_constraints,
+            liveness_constraints,
             universe_causes,
             placeholder_indices,
         } = lowered_constraints;
@@ -374,9 +373,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             match definition.origin {
                 // For each free, universally quantified region X:
                 NllRegionVariableOrigin::FreeRegion => {
-                    // Add all nodes in the CFG to liveness constraints
-                    liveness_constraints.add_all_points(region);
-
                     // Add `end(X)` into the set for X.
                     scc_values.add_free_region(scc, region);
                 }
@@ -394,8 +390,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // has them, setting `scc_values[scc(region)] |= liveness_constraints[region]`.
             //
             // These values will later be propagated during [`Self::propagate_constraints()`].
-            // The values include any live-at-all-points constraints added above
-            // for free regions.
+            // The values include any live-at-all-points constraints added previously in `liveness::generate`.
             if let Some(liveness) = liveness_constraints.point_liveness(region) {
                 scc_values.merge_liveness(scc, liveness)
             }
@@ -594,6 +589,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // result in basically the exact same error being reported to
         // the user. Avoid that.
         let mut deduplicate_errors = FxIndexSet::default();
+        let mut failed_type_tests = Vec::new();
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
@@ -614,8 +610,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
 
-            // Type-test failed. Report the error.
+            // Type-test failed. Collect it so we can suppress redundant errors below.
             let erased_generic_kind = infcx.tcx.erase_and_anonymize_regions(type_test.generic_kind);
+            failed_type_tests.push((erased_generic_kind, type_test));
+        }
+
+        // An async body can produce both `G: 'static` and `G: 'a` type-test failures at
+        // the same span, as in `tests/ui/async-await/spurious-static-bound-issue-115376.rs`.
+        // Reporting the weaker bound adds a redundant diagnostic and suggests a lifetime
+        // bound that cannot fix the missing `G: 'static` requirement. Keep the `'static`
+        // error and suppress weaker failures for the same erased generic kind and span.
+        // This is a diagnostic heuristic, using the same erasure as deduplication below.
+        //
+        // Collect all failed `'static` bounds before reporting errors so suppression does
+        // not depend on the order of the type tests. Compare SCCs because a lower-bound
+        // region can be equivalent to `'static` without being `fr_static` itself.
+        let static_scc = self.constraint_sccs.scc(self.universal_regions().fr_static);
+        let static_bound_errors: FxIndexSet<_> = failed_type_tests
+            .iter()
+            .filter_map(|&(erased_generic_kind, type_test)| {
+                if self.constraint_sccs.scc(type_test.lower_bound) == static_scc {
+                    Some((erased_generic_kind, type_test.span))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // If `G: 'static` failed at this span, then same-span `G: 'a` failures are weaker.
+        for (erased_generic_kind, type_test) in failed_type_tests {
+            if self.constraint_sccs.scc(type_test.lower_bound) != static_scc
+                && static_bound_errors.contains(&(erased_generic_kind, type_test.span))
+            {
+                continue;
+            }
 
             // Skip duplicate-ish errors.
             if deduplicate_errors.insert((
@@ -1285,9 +1313,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 return RegionRelationCheckResult::Error;
             }
 
-            let blame_constraint = self
-                .best_blame_constraint(longer_fr, NllRegionVariableOrigin::FreeRegion, shorter_fr)
-                .0;
+            let best_blame = self.best_blame_constraint(
+                longer_fr,
+                NllRegionVariableOrigin::FreeRegion,
+                shorter_fr,
+            );
+            let OutlivesConstraint { category, span, .. } = best_blame.constraint();
 
             // Grow `shorter_fr` until we find some non-local regions.
             // We will always find at least one: `'static`. We'll call
@@ -1346,8 +1377,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                     subject: ClosureOutlivesSubject::Region(fr_minus),
                     outlived_free_region: fr_plus,
-                    blame_span: blame_constraint.cause.span,
-                    category: blame_constraint.category,
+                    blame_span: *span,
+                    category: *category,
                 });
             }
             return RegionRelationCheckResult::Propagated;
@@ -1614,7 +1645,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region: RegionVid,
         from_region_origin: NllRegionVariableOrigin<'tcx>,
         to_region: RegionVid,
-    ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
+    ) -> BestBlame<'tcx> {
         assert!(from_region != to_region, "Trying to blame a region for itself!");
 
         let path = self.constraint_path_between_regions(from_region, to_region).unwrap();
@@ -1630,7 +1661,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
 
         // Edge case: it's possible that `'from_region` is an unnameable placeholder.
-        let path = if let Some(unnameable) = due_to_placeholder_outlives
+        let mut path = if let Some(unnameable) = due_to_placeholder_outlives
             && unnameable != from_region
         {
             // We ignore the extra edges due to unnameable placeholders to get
@@ -1651,24 +1682,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 ))
                 .collect::<Vec<_>>()
         );
-
-        // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
-        // Instead, we use it to produce an improved `ObligationCauseCode`.
-        // FIXME - determine what we should do if we encounter multiple
-        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
-        let cause_code = path
-            .iter()
-            .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
-                    // We currently do not store the `DefId` in the `ConstraintCategory`
-                    // for performances reasons. The error reporting code used by NLL only
-                    // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| ObligationCauseCode::Misc);
 
         // When reporting an error, there is typically a chain of constraints leading from some
         // "source" region which must outlive some "target" region.
@@ -1805,41 +1818,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!(?best_choice, ?blame_source);
 
-        let best_constraint = if let Some(next) = path.get(best_choice + 1)
+        let best_blame_idx = if let Some(next) = path.get(best_choice + 1)
             && matches!(path[best_choice].category, ConstraintCategory::Return(_))
             && next.category == ConstraintCategory::OpaqueType
         {
             // The return expression is being influenced by the return type being
             // impl Trait, point at the return type and not the return expr.
-            *next
+            best_choice + 1
         } else if path[best_choice].category == ConstraintCategory::Return(ReturnConstraint::Normal)
             && let Some(field) = path.iter().find_map(|p| {
                 if let ConstraintCategory::ClosureUpvar(f) = p.category { Some(f) } else { None }
             })
         {
-            OutlivesConstraint {
-                category: ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field)),
-                ..path[best_choice]
-            }
+            path[best_choice].category =
+                ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+            best_choice
         } else {
-            path[best_choice]
+            best_choice
         };
 
         assert!(
             !matches!(
-                best_constraint.category,
+                path[best_blame_idx].category,
                 ConstraintCategory::OutlivesUnnameablePlaceholder(_)
             ),
             "Illegal placeholder constraint blamed; should have redirected to other region relation"
         );
 
-        let blame_constraint = BlameConstraint {
-            category: best_constraint.category,
-            from_closure: best_constraint.from_closure,
-            cause: ObligationCause::new(best_constraint.span, CRATE_DEF_ID, cause_code.clone()),
-            variance_info: best_constraint.variance_info,
-        };
-        (blame_constraint, path)
+        BestBlame { path, idx: best_blame_idx }
     }
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
@@ -1898,12 +1904,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self.liveness_constraints
     }
 
-    /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
-    /// loans dataflow computations.
-    pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {
-        self.liveness_constraints.record_live_loans(live_loans);
-    }
-
     /// Returns whether the `loan_idx` is live at the given `location`: whether its issuing
     /// region is contained within the type of a variable that is live at this point.
     /// Note: for now, the sets of live loans is only available when using `-Zpolonius=next`.
@@ -1914,9 +1914,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct BlameConstraint<'tcx> {
-    pub category: ConstraintCategory<'tcx>,
-    pub from_closure: bool,
-    pub cause: ObligationCause<'tcx>,
-    pub variance_info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+pub(crate) struct BestBlame<'tcx> {
+    /// See docs on [`RegionInferenceContext::best_blame_constraint`] for what this is.
+    path: Vec<OutlivesConstraint<'tcx>>,
+    /// Index into `path` of the constraint most relevant to report to users.
+    idx: usize,
+}
+
+impl<'tcx> BestBlame<'tcx> {
+    pub(crate) fn to_obligation_cause(&self) -> ObligationCause<'tcx> {
+        // FIXME - determine what we should do if we encounter multiple
+        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
+        let cause_code = self
+            .path
+            .iter()
+            .find_map(|constraint| {
+                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                    // We currently do not store the `DefId` in the `ConstraintCategory`
+                    // for performances reasons. The error reporting code used by NLL only
+                    // uses the span, so this doesn't cause any problems at the moment.
+                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| ObligationCauseCode::Misc);
+
+        ObligationCause::new(self.constraint().span, CRATE_DEF_ID, cause_code.clone())
+    }
+
+    pub(crate) fn constraint(&self) -> &OutlivesConstraint<'tcx> {
+        &self.path[self.idx]
+    }
+
+    pub(crate) fn path(&self) -> &[OutlivesConstraint<'tcx>] {
+        &self.path
+    }
 }

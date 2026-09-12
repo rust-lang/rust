@@ -1,8 +1,8 @@
 error[E0539]: malformed `deprecated` attribute input
-  --> $DIR/invalid-literal.rs:1:1
+  --> $DIR/invalid-literal.rs:1:3
    |
 LL | #[deprecated = b"test"]
-   | ^^^^^^^^^^^^^^^-^^^^^^^
+   |   ^^^^^^^^^^^^^-^^^^^^
    |                |
    |                help: consider removing the prefix
    |

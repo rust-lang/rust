@@ -95,12 +95,43 @@ pub enum Heuristics {
     Default,
 }
 
+#[config_type]
+/// Heuristic settings for doc comments. Same as `Heuristics`, but `Inherit` will inherit the value
+/// from the top-level configuration.
+pub enum DocCodeHeuristics {
+    /// Inherit from the top-level configuration
+    Inherit,
+    /// Turn off any heuristics
+    Off,
+    /// Turn on max heuristics
+    Max,
+    /// Use scaled values based on the value of `max_width`
+    Default,
+}
+
+impl DocCodeHeuristics {
+    pub fn to_heuristics(self) -> Option<Heuristics> {
+        match self {
+            DocCodeHeuristics::Inherit => None,
+            DocCodeHeuristics::Off => Some(Heuristics::Off),
+            DocCodeHeuristics::Max => Some(Heuristics::Max),
+            DocCodeHeuristics::Default => Some(Heuristics::Default),
+        }
+    }
+}
+
 impl Density {
-    pub fn to_list_tactic(self, len: usize) -> ListTactic {
+    pub fn to_list_tactic(self, style_edition: StyleEdition, len: usize) -> ListTactic {
         match self {
             Density::Compressed => ListTactic::Mixed,
             Density::Tall => ListTactic::HorizontalVertical,
-            Density::Vertical if len == 1 => ListTactic::Horizontal,
+            Density::Vertical if len == 1 => {
+                if style_edition <= StyleEdition::Edition2024 {
+                    ListTactic::Horizontal
+                } else {
+                    ListTactic::HorizontalVertical
+                }
+            }
             Density::Vertical => ListTactic::Vertical,
         }
     }
@@ -620,6 +651,7 @@ config_option_with_style_edition_default!(
     WrapComments, bool, _ => false;
     FormatCodeInDocComments, bool, _ => false;
     DocCommentCodeBlockWidth, usize, _ => 100;
+    DocUseSmallHeuristics, DocCodeHeuristics, _ => DocCodeHeuristics::Inherit;
     CommentWidth, usize, _ => 80;
     NormalizeComments, bool, _ => false;
     NormalizeDocAttributes, bool, _ => false;

@@ -10,6 +10,7 @@ cfg_select! {
         target_os = "fuchsia",
         target_os = "motor",
         target_os = "hermit",
+        all(target_os = "wasi", target_env = "p3"),
     ) => {
         mod futex;
         pub use futex::Parker;
@@ -35,10 +36,7 @@ cfg_select! {
         mod xous;
         pub use xous::Parker;
     }
-    any(
-        target_family = "unix",
-        target_os = "teeos",
-    ) => {
+    any(target_family = "unix", target_os = "teeos") => {
         mod pthread;
         pub use pthread::Parker;
     }

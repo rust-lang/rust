@@ -5,7 +5,7 @@ use std::slice;
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
-    db::{ExpandDatabase, HirDatabase},
+    db::HirDatabase,
 };
 use ide_db::{
     RootDatabase,
@@ -13,6 +13,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
+    traits::IsRequiredAssocItem,
 };
 use itertools::Itertools;
 use syntax::{
@@ -56,12 +57,7 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
             });
         non_trivial_children.next().is_some()
     };
-    if stmt_list
-        .syntax()
-        .children_with_tokens()
-        .filter_map(NodeOrToken::into_token)
-        .any(|token| token.kind() == syntax::SyntaxKind::COMMENT)
-    {
+    if stmt_list.syntax().children_with_tokens().any(|it| ast::AnyComment::can_cast(it.kind())) {
         return None;
     }
 
@@ -162,14 +158,14 @@ pub enum DefaultMethods {
 
 pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
-    items: &[hir::AssocItem],
+    items: &[(hir::AssocItem, IsRequiredAssocItem)],
     default_methods: DefaultMethods,
     ignore_items: IgnoreAssocItems,
 ) -> Vec<InFile<ast::AssocItem>> {
-    return items
+    items
         .iter()
         .copied()
-        .filter(|assoc_item| {
+        .filter(|(assoc_item, is_required)| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).is_doc_hidden()
             {
@@ -181,10 +177,10 @@ pub fn filter_assoc_items(
                 return false;
             }
 
-            true
+            is_required.0 == (default_methods == DefaultMethods::No)
         })
         // Note: This throws away items with no source.
-        .filter_map(|assoc_item| {
+        .filter_map(|(assoc_item, _)| {
             let item = match assoc_item {
                 hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
                 hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
@@ -192,33 +188,7 @@ pub fn filter_assoc_items(
             };
             Some(item)
         })
-        .filter(has_def_name)
-        .filter(|it| match &it.value {
-            ast::AssocItem::Fn(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::Const(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::TypeAlias(def) => matches!(
-                (default_methods, def.ty()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::MacroCall(_) => unreachable!(),
-        })
-        .collect();
-
-    fn has_def_name(item: &InFile<ast::AssocItem>) -> bool {
-        match &item.value {
-            ast::AssocItem::Fn(def) => def.name(),
-            ast::AssocItem::TypeAlias(def) => def.name(),
-            ast::AssocItem::Const(def) => def.name(),
-            ast::AssocItem::MacroCall(_) => None,
-        }
-        .is_some()
-    }
+        .collect()
 }
 
 /// Given `original_items` retrieved from the trait definition (usually by
@@ -241,7 +211,7 @@ pub fn add_trait_assoc_items_to_impl(
         .map(|InFile { file_id, value: original_item }| {
             let mut cloned_item = {
                 if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let span_map = macro_file.expansion_span_map(sema.db);
                     let item_prettified = prettify_macro_expansion(
                         sema.db,
                         original_item.syntax().clone(),
@@ -297,13 +267,15 @@ pub fn add_trait_assoc_items_to_impl(
 
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
-        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | DOC_COMMENT | ATTR))
         .map(|it| it.text_range().start())
         .unwrap_or_else(|| node.text_range().start())
 }
 
 pub(crate) fn invert_boolean_expression(make: &SyntaxFactory, expr: ast::Expr) -> ast::Expr {
-    invert_special_case(make, &expr).unwrap_or_else(|| make.expr_prefix(T![!], expr).into())
+    invert_special_case(make, &expr).unwrap_or_else(|| {
+        make.expr_prefix(T![!], wrap_paren(expr, make, ExprPrecedence::Prefix)).into()
+    })
 }
 
 fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Expr> {
@@ -342,7 +314,7 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
             let method = mce.name_ref()?;
             let arg_list = mce.arg_list()?;
 
-            let method = match method.text().as_str() {
+            let method = match method.text() {
                 "is_some" => "is_none",
                 "is_none" => "is_some",
                 "is_ok" => "is_err",
@@ -548,7 +520,7 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
         for item in il.assoc_items() {
             if let ast::AssocItem::Fn(f) = item
                 && let Some(name) = f.name()
-                && names.iter().any(|n| n.eq_ignore_ascii_case(&name.text()))
+                && names.iter().any(|n| n.eq_ignore_ascii_case(name.text()))
             {
                 return true;
             }
@@ -662,7 +634,7 @@ fn generate_impl_inner(
         .zip(generic_params.as_ref())
         .and_then(|(trait_, params)| generic_param_associated_bounds(make, adt, trait_, params));
 
-    let ty: ast::Type = make.ty_path(make.ident_path(&adt.name().unwrap().text())).into();
+    let ty: ast::Type = make.ty_path(make.ident_path(adt.name().unwrap().text())).into();
 
     let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     match trait_ {

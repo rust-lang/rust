@@ -1,13 +1,12 @@
 use super::MANUAL_FIND;
 use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{as_some_expr, higher, peel_blocks_with_stmt};
+use clippy_utils::{as_some_expr, higher, is_none_expr, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
@@ -149,7 +148,7 @@ fn last_stmt_and_ret<'tcx>(
         && let Some((_, Node::Block(block))) = parent_iter.next()
         && let Some((last_stmt, last_ret)) = extract(block)
         && last_stmt.hir_id == node_hir
-        && last_ret.res(cx).ctor_parent(cx).is_lang_item(cx, LangItem::OptionNone)
+        && is_none_expr(cx, last_ret)
         && let Some((_, Node::Expr(_block))) = parent_iter.next()
         // This includes the function header
         && let Some((_, func)) = parent_iter.next()

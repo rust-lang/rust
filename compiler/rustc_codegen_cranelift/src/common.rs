@@ -5,8 +5,9 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
+    codegen_handle_fn_abi_err,
 };
-use rustc_span::{Spanned, Symbol};
+use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, HasTargetSpec, Target};
 
@@ -116,13 +117,13 @@ pub(crate) fn codegen_icmp_imm(
 
         match intcc {
             IntCC::Equal => {
-                let lsb_eq = fx.bcx.ins().icmp_imm(IntCC::Equal, lhs_lsb, rhs_lsb);
-                let msb_eq = fx.bcx.ins().icmp_imm(IntCC::Equal, lhs_msb, rhs_msb);
+                let lsb_eq = fx.bcx.ins().icmp_imm_u(IntCC::Equal, lhs_lsb, rhs_lsb);
+                let msb_eq = fx.bcx.ins().icmp_imm_u(IntCC::Equal, lhs_msb, rhs_msb);
                 fx.bcx.ins().band(lsb_eq, msb_eq)
             }
             IntCC::NotEqual => {
-                let lsb_ne = fx.bcx.ins().icmp_imm(IntCC::NotEqual, lhs_lsb, rhs_lsb);
-                let msb_ne = fx.bcx.ins().icmp_imm(IntCC::NotEqual, lhs_msb, rhs_msb);
+                let lsb_ne = fx.bcx.ins().icmp_imm_u(IntCC::NotEqual, lhs_lsb, rhs_lsb);
+                let msb_ne = fx.bcx.ins().icmp_imm_u(IntCC::NotEqual, lhs_msb, rhs_msb);
                 fx.bcx.ins().bor(lsb_ne, msb_ne)
             }
             _ => {
@@ -132,21 +133,21 @@ pub(crate) fn codegen_icmp_imm(
                 //     msb_cc
                 // }
 
-                let msb_eq = fx.bcx.ins().icmp_imm(IntCC::Equal, lhs_msb, rhs_msb);
-                let lsb_cc = fx.bcx.ins().icmp_imm(intcc, lhs_lsb, rhs_lsb);
-                let msb_cc = fx.bcx.ins().icmp_imm(intcc, lhs_msb, rhs_msb);
+                let msb_eq = fx.bcx.ins().icmp_imm_u(IntCC::Equal, lhs_msb, rhs_msb);
+                let lsb_cc = fx.bcx.ins().icmp_imm_u(intcc, lhs_lsb, rhs_lsb);
+                let msb_cc = fx.bcx.ins().icmp_imm_u(intcc, lhs_msb, rhs_msb);
 
                 fx.bcx.ins().select(msb_eq, lsb_cc, msb_cc)
             }
         }
     } else {
         let rhs = rhs as i64; // Truncates on purpose in case rhs is actually an unsigned value
-        fx.bcx.ins().icmp_imm(intcc, lhs, rhs)
+        fx.bcx.ins().icmp_imm_u(intcc, lhs, rhs)
     }
 }
 
 pub(crate) fn codegen_bitcast(fx: &mut FunctionCx<'_, '_, '_>, dst_ty: Type, val: Value) -> Value {
-    let mut flags = MemFlags::new();
+    let mut flags = MemFlagsData::new();
     flags.set_endianness(match fx.tcx.data_layout.endian {
         rustc_abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
         rustc_abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
@@ -262,7 +263,7 @@ pub(crate) fn create_wrapper_function(
 
         bcx.ins().return_(&results);
         bcx.seal_all_blocks();
-        bcx.finalize();
+        bcx.finalize(module.target_config());
     }
     module.define_function(wrapper_func_id, &mut ctx).unwrap();
 }
@@ -400,8 +401,9 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 key: None,
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
-            let misalign_offset = self.bcx.ins().band_imm(base_ptr, i64::from(align - 1));
-            let realign_offset = self.bcx.ins().irsub_imm(misalign_offset, i64::from(align));
+            let misalign_offset = self.bcx.ins().band_imm_u(base_ptr, i64::from(align - 1));
+            let align = self.bcx.ins().iconst(self.pointer_type, i64::from(align));
+            let realign_offset = self.bcx.ins().isub(align, misalign_offset);
             Pointer::new(self.bcx.ins().iadd(base_ptr, realign_offset))
         }
     }
@@ -452,23 +454,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for FullyMonomorphizedLayoutCx<'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        if let FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) =
-            err
-        {
-            self.0.sess.dcx().emit_fatal(Spanned { span, node: err })
-        } else {
-            match fn_abi_request {
-                FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}");
-                }
-                FnAbiRequest::OfInstance { instance, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}"
-                    );
-                }
-            }
-        }
+        codegen_handle_fn_abi_err(self.0, err, span, fn_abi_request).raise_fatal()
     }
 }
 

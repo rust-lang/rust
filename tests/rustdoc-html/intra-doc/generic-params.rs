@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![crate_name = "foo"]
 #![allow(rustdoc::redundant_explicit_links)]

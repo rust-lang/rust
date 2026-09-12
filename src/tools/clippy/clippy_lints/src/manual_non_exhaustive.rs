@@ -3,13 +3,12 @@ use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::is_doc_hidden;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_indent;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, QPath, TyKind, VariantData, find_attr};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
@@ -72,7 +71,7 @@ pub struct ManualNonExhaustive {
 impl ManualNonExhaustive {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             constructed_enum_variants: FxHashSet::default(),
             potential_enums: Vec::new(),
         }

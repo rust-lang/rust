@@ -41,7 +41,7 @@ subtyping, we recommend you read the paper). There are a few parts:
 3. Check for _placeholder leaks_.
 
 [hrsubtype]: ./hrtb.md
-[placeholder]: ../appendix/glossary.html#placeholder
+[placeholder]: ../appendix/glossary.md#placeholder
 [paper by SPJ]: https://www.microsoft.com/en-us/research/publication/practical-type-inference-for-arbitrary-rank-types
 
 So let's work through our example.

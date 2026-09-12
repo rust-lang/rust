@@ -1,5 +1,5 @@
-#![allow(clippy::non_canonical_clone_impl, unused)]
 #![warn(clippy::unnecessary_struct_initialization)]
+#![allow(clippy::non_canonical_clone_impl)]
 
 struct S {
     f: String,

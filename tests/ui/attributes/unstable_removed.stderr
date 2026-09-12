@@ -1,14 +1,8 @@
 error[E0658]: stability attributes may not be used outside of the standard library
-  --> $DIR/unstable_removed.rs:9:1
+  --> $DIR/unstable_removed.rs:9:4
    |
-LL | / #![unstable_removed(
-LL | |
-LL | |     feature = "old_feature",
-LL | |     reason = "a good one",
-LL | |     link = "https://github.com/rust-lang/rust/issues/141617",
-LL | |     since="1.92.0"
-LL | | )]
-   | |__^
+LL | #![unstable_removed(
+   |    ^^^^^^^^^^^^^^^^
 
 error[E0557]: feature `old_feature` has been removed
   --> $DIR/unstable_removed.rs:3:12

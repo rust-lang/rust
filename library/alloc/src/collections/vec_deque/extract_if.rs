@@ -74,6 +74,7 @@ where
     fn next(&mut self) -> Option<T> {
         while self.idx < self.end {
             let i = self.idx;
+            let idx = self.vec.to_wrapped_index(i);
             // SAFETY:
             //  We know that `i < self.end` from the if guard and that `self.end <= self.old_len` from
             //  the validity of `Self`. Therefore `i` points to an element within `vec`.
@@ -83,7 +84,6 @@ where
             //
             //  Note: we can't use `vec.get_mut(i).unwrap()` here since the precondition for that
             //  function is that i < vec.len, but we've set vec's length to zero.
-            let idx = self.vec.to_wrapped_index(i);
             let cur = unsafe { &mut *self.vec.ptr().add(idx.as_index()) };
             let drained = (self.pred)(cur);
             // Update the index *after* the predicate is called. If the index

@@ -1,15 +1,18 @@
 # \*-windows-gnullvm
 
-**Tier: 2 (with host tools)**
-
 Windows targets similar to `*-windows-gnu` but using Universal C Runtime (UCRT) as the runtime and various LLVM tools/libraries instead of
 GCC/Binutils.
 
-Target triples available so far:
+**Tier: 2 (with host tools)**
 
+Target tuples available so far:
 - `aarch64-pc-windows-gnullvm`
-- `i686-pc-windows-gnullvm`
 - `x86_64-pc-windows-gnullvm`
+
+**Tier: 2 (without host tools)**
+
+Target tuples available so far:
+- `i686-pc-windows-gnullvm`
 
 ## Target maintainers
 
@@ -19,7 +22,7 @@ Target triples available so far:
 ## Requirements
 
 Building those targets requires an LLVM-based C toolchain, for example, [llvm-mingw][1] or [MSYS2][2] with CLANG*
-environment.
+environment, with static libunwind library available.
 
 Binaries for this target should be at least on par with `*-windows-gnu` in terms of requirements and functionality,
 except for implicit self-contained mode (explained in [the section below](#building-rust-programs)).

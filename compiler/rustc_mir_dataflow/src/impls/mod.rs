@@ -9,8 +9,7 @@ pub use self::initialized::{
     MaybeUninitializedPlaces, MaybeUninitializedPlacesDomain,
 };
 pub use self::liveness::{
-    DefUse, MaybeLiveLocals, MaybeTransitiveLiveLocals,
-    TransferFunction as LivenessTransferFunction,
+    DefUse, LivenessTransferFunction, MaybeLiveLocals, MaybeTransitiveLiveLocals,
 };
 pub use self::storage_liveness::{
     MaybeRequiresStorage, MaybeStorageDead, MaybeStorageLive, always_storage_live_locals,

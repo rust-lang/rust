@@ -343,6 +343,12 @@ fn name(p: &mut Parser<'_>) {
     name_r(p, TokenSet::EMPTY);
 }
 
+fn name_any_identifier(p: &mut Parser<'_>) {
+    let m = p.start();
+    p.bump_remap_any_ident();
+    m.complete(p, NAME);
+}
+
 fn name_ref_or_self(p: &mut Parser<'_>) {
     if matches!(p.current(), T![ident] | T![self]) {
         let m = p.start();

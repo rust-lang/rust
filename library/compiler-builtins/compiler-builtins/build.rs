@@ -297,14 +297,7 @@ mod c {
         ]);
 
         if consider_float_intrinsics {
-            sources.extend(&[
-                ("__divdc3", "divdc3.c"),
-                ("__divsc3", "divsc3.c"),
-                ("__muldc3", "muldc3.c"),
-                ("__mulsc3", "mulsc3.c"),
-                ("__negdf2", "negdf2.c"),
-                ("__negsf2", "negsf2.c"),
-            ]);
+            sources.extend(&[("__negdf2", "negdf2.c"), ("__negsf2", "negsf2.c")]);
         }
 
         // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
@@ -362,6 +355,10 @@ mod c {
                 ("__aeabi_div0", "arm/aeabi_div0.c"),
                 ("__aeabi_drsub", "arm/aeabi_drsub.c"),
                 ("__aeabi_frsub", "arm/aeabi_frsub.c"),
+                ("__aeabi_uread4", "arm/aeabi_uread4.S"),
+                ("__aeabi_uread8", "arm/aeabi_uread8.S"),
+                ("__aeabi_uwrite4", "arm/aeabi_uwrite4.S"),
+                ("__aeabi_uwrite8", "arm/aeabi_uwrite8.S"),
                 ("__bswapdi2", "arm/bswapdi2.S"),
                 ("__bswapsi2", "arm/bswapsi2.S"),
                 ("__divmodsi4", "arm/divmodsi4.S"),
@@ -456,10 +453,6 @@ mod c {
                 ("__fe_getround", "fp_mode.c"),
                 ("__fe_raise_inexact", "fp_mode.c"),
             ]);
-
-            if cfg.target_os != "windows" && cfg.target_os != "cygwin" {
-                sources.extend(&[("__multc3", "multc3.c")]);
-            }
         }
 
         if cfg.target_arch == "mips" || cfg.target_arch == "riscv32" || cfg.target_arch == "riscv64"

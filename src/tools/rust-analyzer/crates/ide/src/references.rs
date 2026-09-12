@@ -79,8 +79,8 @@ pub struct Declaration {
 //
 // Special handling for constructors:
 // - When the cursor is on `{`, `(`, or `;` in a struct/enum definition
-// - When the cursor is on the type name in a struct/enum definition
 // These cases will show only constructor/initialization usages of the type
+// (for example, `S { .. }`, `S(..)`, or `S`) instead of every type reference.
 //
 // | Editor  | Shortcut |
 // |---------|----------|
@@ -121,8 +121,8 @@ pub struct FindAllRefsConfig<'a> {
 /// - `;` after unit struct: Shows unit literal initializations
 /// - Type name in definition: Shows all initialization usages
 ///   In these cases, other kinds of references (like type references) are filtered out.
-pub(crate) fn find_all_refs(
-    sema: &Semantics<'_, RootDatabase>,
+pub(crate) fn find_all_refs<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     position: FilePosition,
     config: &FindAllRefsConfig<'_>,
 ) -> Option<Vec<ReferenceSearchResult>> {
@@ -130,7 +130,7 @@ pub(crate) fn find_all_refs(
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
     let exclude_library_refs = !is_library_file(sema.db, position.file_id);
     let make_searcher = |literal_search: bool| {
-        move |def: Definition| {
+        move |def: Definition<'db>| {
             let mut included_categories = ReferenceCategory::all();
             if config.exclude_imports {
                 included_categories.remove(ReferenceCategory::IMPORT);
@@ -228,11 +228,11 @@ fn is_library_file(db: &RootDatabase, file_id: FileId) -> bool {
     db.source_root(source_root).source_root(db).is_library
 }
 
-pub(crate) fn find_defs(
-    sema: &Semantics<'_, RootDatabase>,
+pub(crate) fn find_defs<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
-) -> Option<Vec<Definition>> {
+) -> Option<Vec<Definition<'db>>> {
     if let Some(token) = syntax.token_at_offset(offset).left_biased()
         && let Some(doc_comment) = token_as_doc_comment(&token)
     {
@@ -304,7 +304,7 @@ pub(crate) fn find_defs(
 /// Filter out all non-literal usages for adt-defs
 fn retain_adt_literal_usages(
     usages: &mut UsageSearchResult,
-    def: Definition,
+    def: Definition<'_>,
     sema: &Semantics<'_, RootDatabase>,
 ) {
     let refs = usages.references.values_mut();
@@ -600,7 +600,7 @@ fn main() {
             false,
             false,
             expect![[r#"
-                Some Variant FileId(1) 6737..6769 6762..6766
+                Some Variant FileId(1) 6735..6767 6760..6764
 
                 FileId(0) 46..50
             "#]],
@@ -3355,6 +3355,24 @@ fn foo<'r#fn$0>(s: &'r#fn str) {
                 FileId(0) 18..23
                 FileId(0) 44..49
                 FileId(0) 72..77
+            "#]],
+        );
+    }
+
+    #[test]
+    fn pub_macro_2_scope() {
+        check(
+            r#"
+//- /foo.rs crate:foo
+pub macro m$0() {}
+
+//- /bar.rs new_source_root:local crate:bar deps:foo
+foo::m!();
+        "#,
+            expect![[r#"
+                m Macro FileId(0) 0..16 10..11
+
+                FileId(1) 5..6
             "#]],
         );
     }

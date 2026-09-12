@@ -140,7 +140,7 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
                     let src = adt.source(ctx.db())?.value;
                     let name = src.name()?;
                     let generic_params = src.generic_param_list();
-                    let name_ref = make.name_ref(&name.text());
+                    let name_ref = make.name_ref(name.text());
                     let segment = match generic_params {
                         Some(params) => {
                             make.path_segment_generics(name_ref, params.to_generic_args(&make))

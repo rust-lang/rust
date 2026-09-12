@@ -1,8 +1,8 @@
 error[E0539]: malformed `unstable` attribute input
-  --> $DIR/stability-attribute-sanity-4.rs:8:5
+  --> $DIR/stability-attribute-sanity-4.rs:8:7
    |
 LL |     #[unstable]
-   |     ^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^ expected this to be a list
    |
 help: must be of the form
    |
@@ -10,10 +10,10 @@ LL |     #[unstable(feature = "name", reason = "...", issue = "N")]
    |               +++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `unstable` attribute input
-  --> $DIR/stability-attribute-sanity-4.rs:11:5
+  --> $DIR/stability-attribute-sanity-4.rs:11:7
    |
 LL |     #[unstable = "b"]
-   |     ^^^^^^^^^^^-----^
+   |       ^^^^^^^^^-----
    |                |
    |                expected this to be a list
    |
@@ -24,10 +24,10 @@ LL +     #[unstable(feature = "name", reason = "...", issue = "N")]
    |
 
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity-4.rs:14:5
+  --> $DIR/stability-attribute-sanity-4.rs:14:7
    |
 LL |     #[stable]
-   |     ^^^^^^^^^ expected this to be a list
+   |       ^^^^^^ expected this to be a list
    |
 help: must be of the form
    |
@@ -35,10 +35,10 @@ LL |     #[stable(feature = "name", since = "version")]
    |             +++++++++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity-4.rs:17:5
+  --> $DIR/stability-attribute-sanity-4.rs:17:7
    |
 LL |     #[stable = "a"]
-   |     ^^^^^^^^^-----^
+   |       ^^^^^^^-----
    |              |
    |              expected this to be a list
    |

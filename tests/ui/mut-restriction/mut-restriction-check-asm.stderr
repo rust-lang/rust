@@ -1,0 +1,32 @@
+error: field `0` cannot be mutated outside `crate::foo::bar`
+  --> $DIR/mut-restriction-check-asm.rs:31:9
+   |
+LL |               pub mut(self) u8,
+   |                   --------- field restricted here
+...
+LL | /         asm!(
+LL | |
+LL | |             "add {0}, 5",
+LL | |             "mov {1}, 42",
+...  |
+LL | |             inout(reg_byte) bar.2,
+LL | |         );
+   | |_________^
+
+error: field `1` cannot be mutated outside `crate::foo`
+  --> $DIR/mut-restriction-check-asm.rs:31:9
+   |
+LL |               pub mut(super) u8,
+   |                   ---------- field restricted here
+...
+LL | /         asm!(
+LL | |
+LL | |             "add {0}, 5",
+LL | |             "mov {1}, 42",
+...  |
+LL | |             inout(reg_byte) bar.2,
+LL | |         );
+   | |_________^
+
+error: aborting due to 2 previous errors
+

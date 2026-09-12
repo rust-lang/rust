@@ -1,14 +1,19 @@
-use core::fmt::{self, Display};
+use core::cell::{Cell, OnceCell};
+use core::fmt::{self, Display, Write as _};
+use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
-use core::mem;
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::range::Range;
 use core::str::FromStr;
+use core::str::pattern::Pattern;
+use core::{mem, ptr};
+use memchr::memchr_iter;
+use rustc_arena::DroplessArena;
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
-use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
+use std::path::{self, Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
@@ -96,13 +101,10 @@ impl<'a> File<'a> {
         }
     }
 
-    /// Opens and reads a file into a string, panicking of failure.
+    /// Opens a file for reading, panicking of failure.
     #[track_caller]
-    pub fn open_read_to_cleared_string<'dst>(
-        path: &'a (impl AsRef<Path> + ?Sized),
-        dst: &'dst mut String,
-    ) -> &'dst mut String {
-        Self::open(path, OpenOptions::new().read(true)).read_to_cleared_string(dst)
+    pub fn open_read(path: &'a (impl AsRef<Path> + ?Sized)) -> Self {
+        Self::open(path, OpenOptions::new().read(true))
     }
 
     /// Read the entire contents of a file to the given buffer.
@@ -118,13 +120,19 @@ impl<'a> File<'a> {
         self.read_append_to_string(dst)
     }
 
+    /// Writes the entire contents of the specified buffer to the file, panicking on failure.
+    #[track_caller]
+    pub fn write(&mut self, data: &[u8]) {
+        expect_action(self.inner.write_all(data), ErrAction::Write, self.path);
+    }
+
     /// Replaces the entire contents of a file.
     #[track_caller]
     pub fn replace_contents(&mut self, data: &[u8]) {
         let res = match self.inner.seek(SeekFrom::Start(0)) {
-            Ok(_) => match self.inner.write_all(data) {
-                Ok(()) => self.inner.set_len(data.len() as u64),
-                Err(e) => Err(e),
+            Ok(_) => {
+                self.write(data);
+                self.inner.set_len(data.len() as u64)
             },
             Err(e) => Err(e),
         };
@@ -365,6 +373,34 @@ impl FileUpdater {
     }
 
     #[track_caller]
+    pub fn update_loaded_file_checked(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        file: &SourceFile<'_>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.dst_buf.clear();
+        match (
+            mode,
+            update(file.path.get().as_ref(), &file.contents, &mut self.dst_buf),
+        ) {
+            (UpdateMode::Check, UpdateStatus::Changed) => {
+                eprintln!(
+                    "the contents of `{}` are out of date\nplease run `{tool}` to update",
+                    file.path.get(),
+                );
+                process::exit(1);
+            },
+            (UpdateMode::Change, UpdateStatus::Changed) => {
+                File::open(file.path.get(), OpenOptions::new().truncate(true).write(true))
+                    .write(self.dst_buf.as_bytes());
+            },
+            (UpdateMode::Check | UpdateMode::Change, UpdateStatus::Unchanged) => {},
+        }
+    }
+
+    #[track_caller]
     fn update_file_inner(&mut self, path: &Path, update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus) {
         let mut file = File::open(path, OpenOptions::new().read(true).write(true));
         file.read_to_cleared_string(&mut self.src_buf);
@@ -430,51 +466,59 @@ pub fn update_text_region_fn(
 }
 
 #[track_caller]
-pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
-    match OpenOptions::new().create_new(true).write(true).open(new_name) {
-        Ok(file) => drop(file),
-        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+pub fn try_rename_file(old_name: impl AsRef<Path>, new_name: impl AsRef<Path>) -> bool {
+    #[track_caller]
+    fn f(old_name: &Path, new_name: &Path) -> bool {
+        match OpenOptions::new().create_new(true).write(true).open(new_name) {
+            Ok(file) => drop(file),
+            Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+            Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+        }
+        match fs::rename(old_name, new_name) {
+            Ok(()) => true,
+            Err(ref e) => {
+                drop(fs::remove_file(new_name));
+                // `NotADirectory` happens on posix when renaming a directory to an existing file.
+                // Windows will ignore this and rename anyways.
+                if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                    false
+                } else {
+                    panic_action(e, ErrAction::Rename, old_name);
+                }
+            },
+        }
     }
-    match fs::rename(old_name, new_name) {
-        Ok(()) => true,
-        Err(ref e) => {
-            drop(fs::remove_file(new_name));
-            // `NotADirectory` happens on posix when renaming a directory to an existing file.
-            // Windows will ignore this and rename anyways.
-            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
-                false
-            } else {
-                panic_action(e, ErrAction::Rename, old_name);
-            }
-        },
-    }
+    f(old_name.as_ref(), new_name.as_ref())
 }
 
 #[track_caller]
-pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
-    match fs::create_dir(new_name) {
-        Ok(()) => {},
-        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+pub fn try_rename_dir(old_name: impl AsRef<Path>, new_name: impl AsRef<Path>) -> bool {
+    #[track_caller]
+    fn f(old_name: &Path, new_name: &Path) -> bool {
+        match fs::create_dir(new_name) {
+            Ok(()) => {},
+            Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+            Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+        }
+        // Windows can't reliably rename to an empty directory.
+        #[cfg(windows)]
+        drop(fs::remove_dir(new_name));
+        match fs::rename(old_name, new_name) {
+            Ok(()) => true,
+            Err(ref e) => {
+                // Already dropped earlier on windows.
+                #[cfg(not(windows))]
+                drop(fs::remove_dir(new_name));
+                // `NotADirectory` happens on posix when renaming a file to an existing directory.
+                if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                    false
+                } else {
+                    panic_action(e, ErrAction::Rename, old_name);
+                }
+            },
+        }
     }
-    // Windows can't reliably rename to an empty directory.
-    #[cfg(windows)]
-    drop(fs::remove_dir(new_name));
-    match fs::rename(old_name, new_name) {
-        Ok(()) => true,
-        Err(ref e) => {
-            // Already dropped earlier on windows.
-            #[cfg(not(windows))]
-            drop(fs::remove_dir(new_name));
-            // `NotADirectory` happens on posix when renaming a file to an existing directory.
-            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
-                false
-            } else {
-                panic_action(e, ErrAction::Rename, old_name);
-            }
-        },
-    }
+    f(old_name.as_ref(), new_name.as_ref())
 }
 
 #[track_caller]
@@ -554,8 +598,8 @@ pub fn split_args_for_threads(
                 //
                 // For simplicity we use 30000 here under a few assumptions.
                 // * Individual arguments aren't super long (the final argument is still added)
-                // * `ARG_MAX` is set to a reasonable amount. Basically every system will be configured way above
-                //   what windows supports, but POSIX only requires `4096`.
+                // * `ARG_MAX` is set to a reasonable amount. Basically every system will be configured way above what
+                //   windows supports, but POSIX only requires `4096`.
                 if cmd_len > 30000 {
                     self.batch_size = self.args.len().div_ceil(self.thread_count).max(self.min_batch_size);
                     break;
@@ -576,21 +620,29 @@ pub fn split_args_for_threads(
 }
 
 #[track_caller]
-pub fn delete_file_if_exists(path: &Path) -> bool {
-    match fs::remove_file(path) {
-        Ok(()) => true,
-        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
-        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+pub fn delete_file_if_exists(path: impl AsRef<Path>) -> bool {
+    #[track_caller]
+    fn f(path: &Path) -> bool {
+        match fs::remove_file(path) {
+            Ok(()) => true,
+            Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
+            Err(ref e) => panic_action(e, ErrAction::Delete, path),
+        }
     }
+    f(path.as_ref())
 }
 
 #[track_caller]
-pub fn delete_dir_if_exists(path: &Path) {
-    match fs::remove_dir_all(path) {
-        Ok(()) => {},
-        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
-        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+pub fn delete_dir_if_exists(path: impl AsRef<Path>) {
+    #[track_caller]
+    fn f(path: &Path) {
+        match fs::remove_dir_all(path) {
+            Ok(()) => {},
+            Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
+            Err(ref e) => panic_action(e, ErrAction::Delete, path),
+        }
     }
+    f(path.as_ref());
 }
 
 /// Walks all items excluding top-level dot files/directories and any target directories.
@@ -600,6 +652,28 @@ pub fn walk_dir_no_dot_or_target(p: impl AsRef<Path>) -> impl Iterator<Item = ::
             .file_name()
             .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
     })
+}
+
+pub fn slice_groups<T>(slice: &[T], split_idx: impl FnMut(&T, &[T]) -> usize) -> impl Iterator<Item = &[T]> {
+    struct I<'a, T, F> {
+        slice: &'a [T],
+        split_idx: F,
+    }
+    impl<'a, T, F: FnMut(&T, &[T]) -> usize> Iterator for I<'a, T, F> {
+        type Item = &'a [T];
+        fn next(&mut self) -> Option<Self::Item> {
+            let (head, tail) = self.slice.split_first()?;
+            let idx = (self.split_idx)(head, tail) + 1;
+            if let Some((head, tail)) = self.slice.split_at_checked(idx) {
+                self.slice = tail;
+                Some(head)
+            } else {
+                self.slice = &mut [];
+                None
+            }
+        }
+    }
+    I { slice, split_idx }
 }
 
 pub fn slice_groups_mut<T>(
@@ -626,4 +700,179 @@ pub fn slice_groups_mut<T>(
         }
     }
     I { slice, split_idx }
+}
+
+/// A string used as a temporary buffer used to avoid allocating for short lived strings.
+pub struct StrBuf(String);
+impl StrBuf {
+    /// Creates a new buffer with the specified initial capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        Self(String::with_capacity(cap))
+    }
+
+    /// Allocates the result of formatting the given value onto the arena.
+    pub fn alloc_display<'cx>(&mut self, arena: &'cx DroplessArena, value: impl Display) -> &'cx str {
+        self.0.clear();
+        write!(self.0, "{value}").expect("`Display` impl returned an error");
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Allocates the string onto the arena with all ascii characters converted to
+    /// lowercase.
+    pub fn alloc_ascii_lower<'cx>(&mut self, arena: &'cx DroplessArena, s: &str) -> &'cx str {
+        self.0.clear();
+        self.0.push_str(s);
+        self.0.make_ascii_lowercase();
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Collects all elements into the buffer and allocates that onto the arena.
+    pub fn alloc_collect<'cx, I>(&mut self, arena: &'cx DroplessArena, iter: I) -> &'cx str
+    where
+        I: IntoIterator,
+        String: Extend<I::Item>,
+    {
+        self.0.clear();
+        self.0.extend(iter);
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Allocates the result of replacing all instances the pattern with the given string
+    /// onto the arena.
+    pub fn alloc_replaced<'cx>(
+        &mut self,
+        arena: &'cx DroplessArena,
+        s: &str,
+        pat: impl Pattern,
+        replacement: &str,
+    ) -> &'cx str {
+        let mut parts = s.split(pat);
+        let Some(first) = parts.next() else {
+            return "";
+        };
+        self.0.clear();
+        self.0.push_str(first);
+        for part in parts {
+            self.0.push_str(replacement);
+            self.0.push_str(part);
+        }
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Performs an operation with the freshly cleared buffer.
+    pub fn with<T>(&mut self, f: impl FnOnce(&mut String) -> T) -> T {
+        self.0.clear();
+        f(&mut self.0)
+    }
+}
+
+pub struct VecBuf<T>(Vec<T>);
+impl<T> VecBuf<T> {
+    /// Creates a new buffer with the specified initial capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        Self(Vec::with_capacity(cap))
+    }
+
+    /// Performs an operation with the freshly cleared buffer.
+    pub fn with<R>(&mut self, f: impl FnOnce(&mut Vec<T>) -> R) -> R {
+        self.0.clear();
+        f(&mut self.0)
+    }
+}
+
+#[derive(Eq)]
+pub struct SourceFile<'cx> {
+    // `cargo dev rename_lint` needs to be able to rename files.
+    pub path: Cell<&'cx str>,
+    pub line_starts: OnceCell<Vec<u32>>,
+    pub contents: String,
+}
+impl<'cx> SourceFile<'cx> {
+    #[must_use]
+    pub fn load(path: &'cx str) -> Self {
+        let mut contents = String::new();
+        File::open_read(path).read_append_to_string(&mut contents);
+        SourceFile {
+            path: Cell::new(path),
+            line_starts: OnceCell::new(),
+            contents,
+        }
+    }
+
+    pub fn line_starts(&self) -> &[u32] {
+        self.line_starts.get_or_init(|| {
+            let mut line_starts = Vec::with_capacity(self.contents.len() / 32 + 4);
+            line_starts.push(0);
+            #[expect(clippy::cast_possible_truncation)]
+            line_starts.extend(memchr_iter(b'\n', self.contents.as_bytes()).map(|x| x as u32 + 1));
+            line_starts
+        })
+    }
+
+    /// Splits the file's path into the crate it's a part of and the module it implements.
+    ///
+    /// Only supports paths in the form `CRATE_NAME/src/PATH/TO/FILE.rs` using the current
+    /// platform's path separator. The module path returned will use the current platform's
+    /// path separator.
+    pub fn path_as_krate_mod(&self) -> (&'cx str, &'cx str) {
+        let path = self.path.get();
+        let Some((krate, path)) = path.split_once(path::MAIN_SEPARATOR) else {
+            return ("", "");
+        };
+        let module = if let Some(path) = path.strip_prefix("src")
+            && let Some(path) = path.strip_prefix(path::MAIN_SEPARATOR)
+            && let Some(path) = path.strip_suffix(".rs")
+        {
+            if path == "lib" {
+                ""
+            } else if let Some(path) = path.strip_suffix("mod")
+                && let Some(path) = path.strip_suffix(path::MAIN_SEPARATOR)
+            {
+                path
+            } else {
+                path
+            }
+        } else {
+            ""
+        };
+        (krate, module)
+    }
+}
+impl PartialEq<SourceFile<'_>> for SourceFile<'_> {
+    fn eq(&self, other: &SourceFile<'_>) -> bool {
+        // We should only be creating one source file per path.
+        ptr::addr_eq(self, other)
+    }
+}
+impl Hash for SourceFile<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state);
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Span<'cx> {
+    pub file: &'cx SourceFile<'cx>,
+    pub range: Range<u32>,
+}
+impl<'cx> Span<'cx> {
+    pub fn new(file: &'cx SourceFile<'cx>, range: Range<u32>) -> Self {
+        Self { file, range }
+    }
 }

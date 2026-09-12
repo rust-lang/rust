@@ -40,7 +40,6 @@ pub(crate) fn complete_known_attribute_input(
     let path = attribute.path()?;
     let segments = path.segments().map(|s| s.name_ref()).collect::<Option<Vec<_>>>()?;
     let segments = segments.iter().map(|n| n.text()).collect::<Vec<_>>();
-    let segments = segments.iter().map(|t| t.as_str()).collect::<Vec<_>>();
     let tt = attribute.token_tree()?;
 
     match segments.as_slice() {
@@ -127,6 +126,7 @@ pub(crate) fn complete_attribute_path(
     }
     let qualifier_path =
         if let Qualified::With { path, .. } = qualified { Some(path) } else { None };
+    let qualifier_segments = qualifier_path.iter().flat_map(|q| q.segments()).collect::<Vec<_>>();
 
     let attributes = annotated_item_kind.and_then(|kind| {
         if ast::Expr::can_cast(kind) {
@@ -141,9 +141,8 @@ pub(crate) fn complete_attribute_path(
         // add the missing parts to the label and snippet
         let mut label = attr_completion.label.to_owned();
         let mut snippet = attr_completion.snippet.map(|s| s.to_owned());
-        let segments = qualifier_path.iter().flat_map(|q| q.segments()).collect::<Vec<_>>();
         let qualifiers = attr_completion.qualifiers;
-        let matching_qualifiers = segments
+        let matching_qualifiers = qualifier_segments
             .iter()
             .zip(qualifiers)
             .take_while(|(s, q)| s.name_ref().is_some_and(|t| t.text() == **q))

@@ -6,6 +6,7 @@ LL |     let _: [u8; foo::<T>()];
    |
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:16:23
@@ -15,6 +16,7 @@ LL |     let _: [u8; bar::<N>()];
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:18:23
@@ -24,6 +26,7 @@ LL |     let _: [u8; faz::<'a>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:20:23
@@ -33,6 +36,7 @@ LL |     let _: [u8; baz::<'a>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:21:23
@@ -42,6 +46,7 @@ LL |     let _: [u8; faz::<'b>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:23:23
@@ -51,6 +56,7 @@ LL |     let _: [u8; baz::<'b>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:27:23
@@ -60,6 +66,7 @@ LL |     let _ = [0; bar::<N>()];
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:29:23
@@ -69,6 +76,7 @@ LL |     let _ = [0; faz::<'a>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:31:23
@@ -78,6 +86,7 @@ LL |     let _ = [0; baz::<'a>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:32:23
@@ -87,6 +96,7 @@ LL |     let _ = [0; faz::<'b>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:34:23
@@ -96,6 +106,7 @@ LL |     let _ = [0; baz::<'b>(&())];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:35:24
@@ -105,6 +116,7 @@ LL |     let _: Foo<{ foo::<T>() }>;
    |
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:36:24
@@ -114,6 +126,7 @@ LL |     let _: Foo<{ bar::<N>() }>;
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:38:24
@@ -123,6 +136,7 @@ LL |     let _: Foo<{ faz::<'a>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:40:24
@@ -132,6 +146,7 @@ LL |     let _: Foo<{ baz::<'a>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:41:24
@@ -141,6 +156,7 @@ LL |     let _: Foo<{ faz::<'b>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:43:24
@@ -150,6 +166,7 @@ LL |     let _: Foo<{ baz::<'b>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:44:27
@@ -159,6 +176,7 @@ LL |     let _ = Foo::<{ foo::<T>() }>;
    |
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:45:27
@@ -168,6 +186,7 @@ LL |     let _ = Foo::<{ bar::<N>() }>;
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:47:27
@@ -177,6 +196,7 @@ LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:49:27
@@ -186,6 +206,7 @@ LL |     let _ = Foo::<{ baz::<'a>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:50:27
@@ -195,6 +216,7 @@ LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:52:27
@@ -204,6 +226,7 @@ LL |     let _ = Foo::<{ baz::<'b>(&()) }>;
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/const-arg-in-const-arg.rs:16:23

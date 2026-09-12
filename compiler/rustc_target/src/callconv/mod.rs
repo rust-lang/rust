@@ -55,8 +55,9 @@ pub enum PassMode {
     Pair(ArgAttributes, ArgAttributes),
     /// Pass the argument after casting it. See the `CastTarget` docs for details.
     ///
-    /// `pad_i32` indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
-    Cast { pad_i32: bool, cast: Box<CastTarget> },
+    /// `pad_i32` indicates how many `Reg::i32()` dummy arguments are emitted before the real
+    /// argument.
+    Cast { pad_i32_count: u8, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
     ///
     /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
@@ -84,8 +85,8 @@ impl PassMode {
             (PassMode::Direct(a1), PassMode::Direct(a2)) => a1.eq_abi(a2),
             (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => a1.eq_abi(a2) && b1.eq_abi(b2),
             (
-                PassMode::Cast { cast: c1, pad_i32: pad1 },
-                PassMode::Cast { cast: c2, pad_i32: pad2 },
+                PassMode::Cast { cast: c1, pad_i32_count: pad1 },
+                PassMode::Cast { cast: c2, pad_i32_count: pad2 },
             ) => c1.eq_abi(c2) && pad1 == pad2,
             (
                 PassMode::Indirect { attrs: a1, meta_attrs: None, on_stack: s1 },
@@ -390,17 +391,15 @@ impl<'a, Ty: fmt::Display> fmt::Debug for ArgAbi<'a, Ty> {
 impl<'a, Ty> ArgAbi<'a, Ty> {
     /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
     pub fn new(
-        cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
         scalar_attrs: impl Fn(Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
             _ if layout.is_zst() => PassMode::Ignore,
             BackendRepr::Scalar(scalar) => PassMode::Direct(scalar_attrs(scalar, Size::ZERO)),
-            BackendRepr::ScalarPair(a, b) => PassMode::Pair(
-                scalar_attrs(a, Size::ZERO),
-                scalar_attrs(b, a.size(cx).align_to(b.default_align(cx).abi)),
-            ),
+            BackendRepr::ScalarPair { a, b, b_offset } => {
+                PassMode::Pair(scalar_attrs(a, Size::ZERO), scalar_attrs(b, b_offset))
+            }
             BackendRepr::SimdVector { .. } => PassMode::Direct(ArgAttributes::new()),
             BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),
             BackendRepr::SimdScalableVector { .. } => PassMode::Direct(ArgAttributes::new()),
@@ -426,20 +425,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         let meta_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
         PassMode::Indirect { attrs, meta_attrs, on_stack: false }
-    }
-
-    /// Pass this argument directly instead. Should NOT be used!
-    /// Only exists because of past ABI mistakes that will take time to fix
-    /// (see <https://github.com/rust-lang/rust/issues/115666>).
-    #[track_caller]
-    pub fn make_direct_deprecated(&mut self) {
-        match self.mode {
-            PassMode::Indirect { .. } => {
-                self.mode = PassMode::Direct(ArgAttributes::new());
-            }
-            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => {} // already direct
-            _ => panic!("Tried to make {:?} direct", self.mode),
-        }
     }
 
     /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
@@ -523,16 +508,36 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32: false };
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32_count: 0 };
     }
 
     pub fn cast_to_with_attrs<T: Into<CastTarget>>(&mut self, target: T, attrs: ArgAttributes) {
         self.mode =
-            PassMode::Cast { cast: Box::new(target.into().with_attrs(attrs)), pad_i32: false };
+            PassMode::Cast { cast: Box::new(target.into().with_attrs(attrs)), pad_i32_count: 0 };
     }
 
-    pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
-        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32 };
+    /// Cast to `target`, forwarding `NoUndef` only when the layout provably has no uninit
+    /// bytes *and* the cast exactly covers the layout (`target.size(cx) == self.layout.size`).
+    /// A wider cast (e.g. `Uniform::new` rounding a 3-byte aggregate up to an `i32`) covers
+    /// undef padding bytes that must not be marked `noundef`; a narrower cast does not occur,
+    /// since a `PassMode::Cast` target always covers the whole value.
+    pub fn cast_to_maybe_noundef<T, C>(&mut self, target: T, cx: &C)
+    where
+        T: Into<CastTarget>,
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasDataLayout,
+    {
+        let target = target.into();
+        let attr = if layout_is_noundef(self.layout, cx) && target.size(cx) == self.layout.size {
+            ArgAttribute::NoUndef
+        } else {
+            ArgAttribute::default()
+        };
+        self.cast_to_with_attrs(target, attr.into());
+    }
+
+    pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32_count: u8) {
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32_count };
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -753,6 +758,24 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 continue;
             }
 
+            // Always extend `bool` in the Rust ABI
+            let extend_bool = |attrs: &mut ArgAttributes, scalar: Scalar| {
+                if scalar.is_bool() {
+                    attrs.ext(ArgExtension::Zext);
+                }
+            };
+
+            if let PassMode::Direct(attrs) = &mut arg.mode
+                && let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
+            {
+                extend_bool(attrs, scalar);
+            } else if let PassMode::Pair(a_attrs, b_attrs) = &mut arg.mode
+                && let BackendRepr::ScalarPair { a, b, b_offset: _ } = arg.layout.backend_repr
+            {
+                extend_bool(a_attrs, a);
+                extend_bool(b_attrs, b);
+            }
+
             if arg_idx.is_none()
                 && arg.layout.size > Primitive::Pointer(AddressSpace::ZERO).size(cx) * 2
                 && !matches!(
@@ -821,12 +844,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                         // We want to pass small aggregates as immediates, but using
                         // an LLVM aggregate type for this leads to bad optimizations,
                         // so we pick an appropriately sized integer type instead.
-                        let attr = if layout_is_noundef(arg.layout, cx) {
-                            ArgAttribute::NoUndef
-                        } else {
-                            ArgAttribute::default()
-                        };
-                        arg.cast_to_with_attrs(Reg { kind: RegKind::Integer, size }, attr.into());
+                        arg.cast_to_maybe_noundef(Reg { kind: RegKind::Integer, size }, cx);
                     } else if self.conv == CanonAbi::RustTail {
                         assert!(arg.layout.is_sized(), "extern \"tail\" arguments must be sized");
                         arg.pass_by_stack_offset(None);
@@ -877,7 +895,7 @@ where
 {
     match layout.backend_repr {
         BackendRepr::Scalar(scalar) => !scalar.is_uninit_valid(),
-        BackendRepr::ScalarPair(s1, s2) => {
+        BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
             !s1.is_uninit_valid()
                 && !s2.is_uninit_valid()
                 // Ensure there is no padding.

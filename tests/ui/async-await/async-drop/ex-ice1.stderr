@@ -1,8 +1,10 @@
-error[E0423]: expected function, found module `core::future::async_drop`
-  --> $DIR/ex-ice1.rs:9:35
+error[E0423]: cannot find function `async_drop` in module `core::future`
+  --> $DIR/ex-ice1.rs:9:49
    |
 LL | ...   let async_drop_fut = pin!(core::future::async_drop(async {}));
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^ not a function
+   |                                               ^^^^^^^^^^ not found in `core::future`
+   |
+   = note: a module named `core::future::async_drop` exists in another namespace
 
 error[E0603]: module `async_drop` is private
   --> $DIR/ex-ice1.rs:9:49

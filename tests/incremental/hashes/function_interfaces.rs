@@ -140,12 +140,12 @@ pub fn type_parameter   () {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "hir_owner, generics_of, type_of, predicates_of"
+    except = "hir_owner, generics_of, type_of, clauses_of"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "hir_owner, generics_of, type_of, predicates_of"
+    except = "hir_owner, generics_of, type_of, clauses_of"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn type_parameter<T>() {}
@@ -156,9 +156,9 @@ pub fn type_parameter<T>() {}
 pub fn lifetime_parameter    () {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "hir_owner, generics_of,fn_sig")]
+#[rustc_clean(cfg = "bpass2", except = "hir_owner, generics_of, fn_sig, type_of")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "hir_owner, generics_of,fn_sig")]
+#[rustc_clean(cfg = "bpass5", except = "hir_owner, generics_of, fn_sig, type_of")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn lifetime_parameter<'a>() {}
 
@@ -168,7 +168,7 @@ pub fn lifetime_parameter<'a>() {}
 pub fn trait_bound<T    >() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "hir_owner, predicates_of")]
+#[rustc_clean(cfg = "bpass2", except = "hir_owner, clauses_of")]
 #[rustc_clean(cfg = "bpass3")]
 pub fn trait_bound<T: Eq>() {}
 
@@ -178,9 +178,9 @@ pub fn trait_bound<T: Eq>() {}
 pub fn builtin_bound<T      >() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "hir_owner, predicates_of")]
+#[rustc_clean(cfg = "bpass2", except = "hir_owner, clauses_of")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "hir_owner, predicates_of")]
+#[rustc_clean(cfg = "bpass5", except = "hir_owner, clauses_of")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn builtin_bound<T: Send>() {}
 
@@ -192,12 +192,12 @@ pub fn lifetime_bound<'a, T>() {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "hir_owner, generics_of, type_of, predicates_of,fn_sig"
+    except = "hir_owner, generics_of, type_of, clauses_of,fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "hir_owner, generics_of, type_of, predicates_of,fn_sig,optimized_mir"
+    except = "hir_owner, generics_of, type_of, clauses_of,fn_sig,optimized_mir"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn lifetime_bound<'a, T: 'a>() {}
@@ -208,7 +208,7 @@ pub fn lifetime_bound<'a, T: 'a>() {}
 pub fn second_trait_bound<T: Eq        >() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "hir_owner, predicates_of")]
+#[rustc_clean(cfg = "bpass2", except = "hir_owner, clauses_of")]
 #[rustc_clean(cfg = "bpass3")]
 pub fn second_trait_bound<T: Eq + Clone>() {}
 
@@ -220,7 +220,7 @@ pub fn second_builtin_bound<T: Send        >() {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg = "bpass2", except = "hir_owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "hir_owner, predicates_of")]
+#[rustc_clean(cfg = "bpass5", except = "hir_owner, clauses_of")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn second_builtin_bound<T: Send + Sized>() {}
 
@@ -232,12 +232,12 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a     >() {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "hir_owner, generics_of, type_of, predicates_of,fn_sig"
+    except = "hir_owner, generics_of, type_of, clauses_of,fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "hir_owner, generics_of, type_of, predicates_of,fn_sig"
+    except = "hir_owner, generics_of, type_of, clauses_of,fn_sig"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
@@ -385,9 +385,9 @@ pub mod change_trait_bound_indirectly {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg = "bpass2", except = "hir_owner, predicates_of")]
+    #[rustc_clean(cfg = "bpass2", except = "hir_owner, clauses_of")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "hir_owner, predicates_of")]
+    #[rustc_clean(cfg = "bpass5", except = "hir_owner, clauses_of")]
     #[rustc_clean(cfg = "bpass6")]
     pub fn indirect_trait_bound<T: Trait>(p: T) {}
 }
@@ -400,9 +400,9 @@ pub mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg = "bpass2", except = "hir_owner, predicates_of")]
+    #[rustc_clean(cfg = "bpass2", except = "hir_owner, clauses_of")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "hir_owner, predicates_of")]
+    #[rustc_clean(cfg = "bpass5", except = "hir_owner, clauses_of")]
     #[rustc_clean(cfg = "bpass6")]
     pub fn indirect_trait_bound_where<T>(p: T)
     where

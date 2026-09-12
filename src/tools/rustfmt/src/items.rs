@@ -39,7 +39,6 @@ use crate::visitor::FmtVisitor;
 const DEFAULT_VISIBILITY: ast::Visibility = ast::Visibility {
     kind: ast::VisibilityKind::Inherited,
     span: DUMMY_SP,
-    tokens: None,
 };
 
 fn type_annotation_separator(config: &Config) -> &str {
@@ -65,19 +64,17 @@ impl Rewrite for ast::Local {
             return Err(RewriteError::SkipFormatting);
         }
 
-        // FIXME(super_let): Implement formatting
-        if self.super_.is_some() {
-            return Err(RewriteError::SkipFormatting);
-        }
-
+        let super_ = self.super_.is_some();
+        // FIXME: deletes any comments in between super and let
+        let let_ = if super_ { "super let " } else { "let " };
         let attrs_str = self.attrs.rewrite_result(context, shape)?;
         let mut result = if attrs_str.is_empty() {
-            "let ".to_owned()
+            let_.to_owned()
         } else {
             combine_strs_with_missing_comments(
                 context,
                 &attrs_str,
-                "let ",
+                let_,
                 mk_sp(
                     self.attrs.last().map(|a| a.span.hi()).unwrap(),
                     self.span.lo(),
@@ -86,10 +83,9 @@ impl Rewrite for ast::Local {
                 false,
             )?
         };
-        let let_kw_offset = result.len() - "let ".len();
+        let let_kw_offset = result.len() - let_.len();
 
-        // 4 = "let ".len()
-        let pat_shape = shape.offset_left(4, self.span())?;
+        let pat_shape = shape.offset_left(let_.len(), self.span())?;
         // 1 = ;
         let pat_shape = pat_shape.sub_width(1, self.span())?;
         let pat_str = self.pat.rewrite_result(context, pat_shape)?;
@@ -301,7 +297,7 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     ext: ast::Extern,
-    coroutine_kind: Cow<'a, Option<ast::CoroutineKind>>,
+    coroutine_marker: &'a Option<ast::CoroutineMarker>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
     safety: ast::Safety,
@@ -317,7 +313,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             safety: method_sig.header.safety,
-            coroutine_kind: Cow::Borrowed(&method_sig.header.coroutine_kind),
+            coroutine_marker: &method_sig.header.coroutine_marker,
             constness: method_sig.header.constness,
             defaultness,
             ext: method_sig.header.ext,
@@ -341,7 +337,7 @@ impl<'a> FnSig<'a> {
                 generics,
                 ext: sig.header.ext,
                 constness: sig.header.constness,
-                coroutine_kind: Cow::Borrowed(&sig.header.coroutine_kind),
+                coroutine_marker: &sig.header.coroutine_marker,
                 defaultness,
                 safety: sig.header.safety,
                 visibility: vis,
@@ -356,8 +352,8 @@ impl<'a> FnSig<'a> {
         result.push_str(&*format_visibility(context, self.visibility));
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
-        self.coroutine_kind
-            .map(|coroutine_kind| result.push_str(format_coro(&coroutine_kind)));
+        self.coroutine_marker
+            .map(|coroutine_marker| result.push_str(format_coro(coroutine_marker)));
         result.push_str(format_safety(self.safety));
         result.push_str(&format_extern(
             self.ext,
@@ -1529,7 +1525,7 @@ fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> By
 
 // Format tuple or struct without any fields. We need to make sure that the comments
 // inside the delimiters are preserved.
-fn format_empty_struct_or_tuple(
+pub(crate) fn format_empty_struct_or_tuple(
     context: &RewriteContext<'_>,
     span: Span,
     offset: Indent,
@@ -1715,13 +1711,13 @@ pub(crate) fn rewrite_type_alias<'a>(
     match (visitor_kind, &op_ty) {
         (Item | AssocTraitItem | ForeignItem, Some(op_bounds)) => {
             let op = OpaqueType { bounds: op_bounds };
-            rewrite_ty(rw_info, Some(bounds), Some(&op), rhs_hi, vis)
+            rewrite_ty(rw_info, Some(bounds), Some(&op), rhs_hi, vis, defaultness)
         }
         (Item | AssocTraitItem | ForeignItem, None) => {
-            rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis)
+            rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis, defaultness)
         }
         (AssocImplItem, _) => {
-            let result = if let Some(op_bounds) = op_ty {
+            if let Some(op_bounds) = op_ty {
                 let op = OpaqueType { bounds: op_bounds };
                 rewrite_ty(
                     rw_info,
@@ -1729,13 +1725,10 @@ pub(crate) fn rewrite_type_alias<'a>(
                     Some(&op),
                     rhs_hi,
                     &DEFAULT_VISIBILITY,
+                    defaultness,
                 )
             } else {
-                rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis)
-            }?;
-            match defaultness {
-                ast::Defaultness::Default(..) => Ok(format!("default {result}")),
-                _ => Ok(result),
+                rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis, defaultness)
             }
         }
     }
@@ -1748,10 +1741,15 @@ fn rewrite_ty<R: Rewrite>(
     // the span of the end of the RHS (or the end of the generics, if there is no RHS)
     rhs_hi: BytePos,
     vis: &ast::Visibility,
+    defaultness: ast::Defaultness,
 ) -> RewriteResult {
     let mut result = String::with_capacity(128);
     let TyAliasRewriteInfo(context, indent, generics, after_where_clause, ident, span) = *rw_info;
-    result.push_str(&format!("{}type ", format_visibility(context, vis)));
+    result.push_str(&format!(
+        "{}{}type ",
+        format_visibility(context, vis),
+        format_defaultness(defaultness)
+    ));
     let ident_str = rewrite_ident(context, ident);
 
     if generics.params.is_empty() {
@@ -1889,8 +1887,8 @@ pub(crate) fn rewrite_struct_field_prefix(
     field: &ast::FieldDef,
 ) -> RewriteResult {
     let vis = format_visibility(context, &field.vis);
-    let mut_restriction = format_mut_restriction(context, &field.mut_restriction);
-    let safety = format_safety(field.safety);
+    let mut_restriction = format_mut_restriction(context, field.mut_restriction());
+    let safety = format_safety(field.safety());
     let type_annotation_spacing = type_annotation_spacing(context.config);
     Ok(match field.ident {
         Some(name) => format!(
@@ -1919,7 +1917,7 @@ pub(crate) fn rewrite_struct_field(
     lhs_max_width: usize,
 ) -> RewriteResult {
     // FIXME(default_field_values): Implement formatting.
-    if field.default.is_some() {
+    if field.default_value().is_some() {
         return Err(RewriteError::Unknown);
     }
 
@@ -2012,16 +2010,12 @@ impl<'a> StaticParts<'a> {
                 ),
                 ast::ItemKind::Const(c) => (
                     Some(c.defaultness),
-                    if c.rhs_kind.is_type_const() {
-                        "type const"
-                    } else {
-                        "const"
-                    },
+                    "const",
                     ast::Safety::Default,
                     c.ident,
                     &c.ty,
                     ast::Mutability::Not,
-                    c.rhs_kind.expr(),
+                    c.body.as_deref(),
                     Some(&c.generics),
                 ),
                 _ => unreachable!(),
@@ -2041,25 +2035,14 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics, prefix) = match &ti.kind {
+        let (defaultness, ty, expr_opt, generics) = match &ti.kind {
             ast::AssocItemKind::Const(c) => {
-                let prefix = if c.rhs_kind.is_type_const() {
-                    "type const"
-                } else {
-                    "const"
-                };
-                (
-                    c.defaultness,
-                    &c.ty,
-                    c.rhs_kind.expr(),
-                    Some(&c.generics),
-                    prefix,
-                )
+                (c.defaultness, &c.ty, c.body.as_deref(), Some(&c.generics))
             }
             _ => unreachable!(),
         };
         StaticParts {
-            prefix,
+            prefix: "const",
             safety: ast::Safety::Default,
             vis: &ti.vis,
             ident,
@@ -2073,25 +2056,14 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics, prefix) = match &ii.kind {
+        let (defaultness, ty, expr_opt, generics) = match &ii.kind {
             ast::AssocItemKind::Const(c) => {
-                let prefix = if c.rhs_kind.is_type_const() {
-                    "type const"
-                } else {
-                    "const"
-                };
-                (
-                    c.defaultness,
-                    &c.ty,
-                    c.rhs_kind.expr(),
-                    Some(&c.generics),
-                    prefix,
-                )
+                (c.defaultness, &c.ty, c.body.as_deref(), Some(&c.generics))
             }
             _ => unreachable!(),
         };
         StaticParts {
-            prefix,
+            prefix: "const",
             safety: ast::Safety::Default,
             vis: &ii.vis,
             ident,
@@ -2110,28 +2082,44 @@ fn rewrite_static(
     static_parts: &StaticParts<'_>,
     offset: Indent,
 ) -> Option<String> {
-    // For now, if this static (or const) has generics, then bail.
+    // For now, if this static (or const) has a where clause, then bail.
     if static_parts
         .generics
-        .is_some_and(|g| !g.params.is_empty() || !g.where_clause.is_empty())
+        .is_some_and(|g| !g.where_clause.is_empty())
     {
         return None;
     }
-
+    let generics = static_parts
+        .generics
+        .and_then(|g| {
+            format_generics(
+                context,
+                &g,
+                context.config.brace_style(),
+                BracePos::None,
+                offset,
+                // make a span that starts right after `const x<n>`
+                mk_sp(static_parts.ident.span.hi(), static_parts.ty.span.lo()),
+                offset.block_indent,
+            )
+        })
+        .map_or("".into(), |x| format!("{x}"));
     let colon = colon_spaces(context.config);
     let mut prefix = format!(
-        "{}{}{}{} {}{}{}",
+        "{}{}{}{} {}{}{}{}",
         format_visibility(context, static_parts.vis),
         static_parts.defaultness.map_or("", format_defaultness),
         format_safety(static_parts.safety),
         static_parts.prefix,
         format_mutability(static_parts.mutability),
         rewrite_ident(context, static_parts.ident),
-        colon,
+        generics,
+        colon
     );
+
     // 2 = " =".len()
-    let ty_shape =
-        Shape::indented(offset.block_only(), context.config).offset_left_opt(prefix.len() + 2)?;
+    let ty_shape = Shape::indented(offset.block_only(), context.config)
+        .offset_left_opt(last_line_width(&prefix) + 2)?;
     let ty_str = match static_parts.ty.rewrite(context, ty_shape) {
         Some(ty_str) => ty_str,
         None => {
@@ -2365,7 +2353,14 @@ impl Rewrite for ast::Param {
 
             Ok(result)
         } else {
-            self.ty.rewrite_result(context, shape)
+            combine_strs_with_missing_comments(
+                context,
+                &param_attrs_result,
+                &self.ty.rewrite_result(context, shape)?,
+                span,
+                shape,
+                !has_multiple_attr_lines && !has_doc_comments,
+            )
         }
     }
 }
@@ -2589,13 +2584,13 @@ fn rewrite_fn_base(
             .map_or(false, |last_line| last_line.contains("//"));
 
         if context.config.style_edition() >= StyleEdition::Edition2024 {
-            if closing_paren_overflow_max_width {
-                result.push(')');
+            if params_last_line_contains_comment {
                 result.push_str(&indent.to_string_with_newline(context.config));
+                result.push(')');
                 no_params_and_over_max_width = true;
-            } else if params_last_line_contains_comment {
-                result.push_str(&indent.to_string_with_newline(context.config));
+            } else if closing_paren_overflow_max_width {
                 result.push(')');
+                result.push_str(&indent.to_string_with_newline(context.config));
                 no_params_and_over_max_width = true;
             } else {
                 result.push(')');
@@ -2678,7 +2673,12 @@ fn rewrite_fn_base(
                 .unwrap_or(ret_shape)
         };
 
-        if multi_line_ret_str || ret_should_indent {
+        let exceeds_max_width = last_line_width(&result) + ret_str_len > context.config.max_width();
+
+        if multi_line_ret_str
+            || ret_should_indent
+            || (context.config.style_edition() >= StyleEdition::Edition2027 && exceeds_max_width)
+        {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
             let ret_str = fd.output.rewrite_result(context, ret_shape)?;
@@ -2872,7 +2872,7 @@ fn rewrite_params(
         context
             .config
             .fn_params_layout()
-            .to_list_tactic(param_items.len()),
+            .to_list_tactic(context.config.style_edition(), param_items.len()),
         Separator::Comma,
         one_line_budget,
     );

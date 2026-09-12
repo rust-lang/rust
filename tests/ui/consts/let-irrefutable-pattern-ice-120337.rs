@@ -4,7 +4,6 @@
 // variant. (N.B. this is UB, but not currently detected by rustc)
 //
 //@ check-pass
-#![feature(never_type)]
 
 #[derive(Copy, Clone)]
 pub enum E { A(!), }

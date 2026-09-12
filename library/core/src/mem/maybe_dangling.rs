@@ -74,6 +74,7 @@ pub struct MaybeDangling<P: ?Sized>(P);
 
 impl<P: ?Sized> MaybeDangling<P> {
     /// Wraps a value in a `MaybeDangling`, allowing it to dangle.
+    #[rustc_no_writable]
     pub const fn new(x: P) -> Self
     where
         P: Sized,

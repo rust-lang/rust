@@ -1,5 +1,5 @@
 // ICE #105210 self.lines.iter().all(|r| !r.iter().any(|sc| sc.chr == \'\\t\'))
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 //@ edition:2021
 pub fn main() {}
 

@@ -8,7 +8,7 @@ use crate::num::{NonZero, NonZeroI32};
 use crate::path::{Path, PathBuf};
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::io::error_string;
+use crate::sys::io::format_error;
 use crate::sys::pal::helpers;
 use crate::sys::unsupported;
 use crate::{fmt, io};
@@ -247,14 +247,24 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        Some(self.0.as_usize() as i32)
+        let code = self.0.as_usize();
+
+        if self.0.is_error() {
+            // UEFI error status codes have the high bit set
+            // (e.g. DEVICE_ERROR is 0x8000000000000007 on 64-bit).
+            // Strip the platform-width high bit and re-set bit 31 to
+            // produce the equivalent 32-bit UEFI error representation.
+            let err_num = code & !(isize::MIN as usize);
+            i32::try_from(err_num).ok().map(|n| n | i32::MIN)
+        } else {
+            i32::try_from(code).ok()
+        }
     }
 }
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let err_str = error_string(self.0.as_usize());
-        write!(f, "{}", err_str)
+        format_error(self.0.as_usize(), f)
     }
 }
 
@@ -269,8 +279,7 @@ pub struct ExitStatusError(r_efi::efi::Status);
 
 impl fmt::Debug for ExitStatusError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let err_str = error_string(self.0.as_usize());
-        write!(f, "{}", err_str)
+        format_error(self.0.as_usize(), f)
     }
 }
 
@@ -282,7 +291,16 @@ impl Into<ExitStatus> for ExitStatusError {
 
 impl ExitStatusError {
     pub fn code(self) -> Option<NonZero<i32>> {
-        NonZeroI32::new(self.0.as_usize() as i32)
+        let code = self.0.as_usize();
+
+        if self.0.is_error() {
+            // same as ExitStatus::code(), stripping the platform-width
+            // high bit and re-setting bit 31 for the 32-bit equivalent.
+            let err_num = code & !(isize::MIN as usize);
+            NonZeroI32::new(i32::try_from(err_num).ok()? | i32::MIN)
+        } else {
+            NonZeroI32::new(i32::try_from(code).ok()?)
+        }
     }
 }
 

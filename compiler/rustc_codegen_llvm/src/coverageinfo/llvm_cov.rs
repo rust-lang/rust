@@ -64,7 +64,7 @@ pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8
 ///
 /// Each field name has a `_regions` suffix for improved readability after
 /// exhaustive destructing, which ensures that all region types are handled.
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub(crate) struct Regions {
     pub(crate) code_regions: Vec<ffi::CodeRegion>,
     pub(crate) expansion_regions: Vec<ffi::ExpansionRegion>,

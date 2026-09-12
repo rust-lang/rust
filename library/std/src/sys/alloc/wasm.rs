@@ -18,7 +18,7 @@
 
 use core::cell::SyncUnsafeCell;
 
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::Layout;
 
 struct SyncDlmalloc(dlmalloc::Dlmalloc);
 unsafe impl Sync for SyncDlmalloc {}
@@ -26,39 +26,36 @@ unsafe impl Sync for SyncDlmalloc {}
 static DLMALLOC: SyncUnsafeCell<SyncDlmalloc> =
     SyncUnsafeCell::new(SyncDlmalloc(dlmalloc::Dlmalloc::new()));
 
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
-unsafe impl GlobalAlloc for System {
-    #[inline]
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
-        unsafe { (*DLMALLOC.get()).0.malloc(layout.size(), layout.align()) }
-    }
+#[inline]
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+    // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
+    let _lock = lock::lock();
+    unsafe { (*DLMALLOC.get()).0.malloc(layout.size(), layout.align()) }
+}
 
-    #[inline]
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
-        unsafe { (*DLMALLOC.get()).0.calloc(layout.size(), layout.align()) }
-    }
+#[inline]
+pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+    // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+    // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
+    let _lock = lock::lock();
+    unsafe { (*DLMALLOC.get()).0.calloc(layout.size(), layout.align()) }
+}
 
-    #[inline]
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling free() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
-        unsafe { (*DLMALLOC.get()).0.free(ptr, layout.size(), layout.align()) }
-    }
+#[inline]
+pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+    // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+    // Calling free() is safe because preconditions on this function match the trait method preconditions.
+    let _lock = lock::lock();
+    unsafe { (*DLMALLOC.get()).0.free(ptr, layout.size(), layout.align()) }
+}
 
-    #[inline]
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
-        unsafe { (*DLMALLOC.get()).0.realloc(ptr, layout.size(), layout.align(), new_size) }
-    }
+#[inline]
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+    // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
+    let _lock = lock::lock();
+    unsafe { (*DLMALLOC.get()).0.realloc(ptr, layout.size(), layout.align(), new_size) }
 }
 
 #[cfg(target_feature = "atomics")]

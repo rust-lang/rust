@@ -1,9 +1,11 @@
-#![warn(clippy::transmutes_expressible_as_ptr_casts)]
-// These two warnings currently cover the cases transmutes_expressible_as_ptr_casts
-// would otherwise be responsible for
-#![warn(clippy::useless_transmute)]
-#![warn(clippy::transmute_ptr_to_ptr)]
-#![allow(unused, clippy::borrow_as_ptr, clippy::missing_transmute_annotations)]
+// `clippy::transmutes_ptr_to_ptr` and `clippy::useless_transmute` currently cover the cases
+// `transmutes_expressible_as_ptr_casts` would otherwise be responsible for
+#![warn(
+    clippy::transmute_ptr_to_ptr,
+    clippy::transmutes_expressible_as_ptr_casts,
+    clippy::useless_transmute
+)]
+#![expect(clippy::missing_transmute_annotations)]
 #![allow(function_casts_as_integer)]
 
 use std::mem::{size_of, transmute};
@@ -92,7 +94,7 @@ fn issue_10449() {
 }
 
 // Pointers cannot be cast to integers in const contexts
-#[allow(
+#[expect(
     ptr_to_integer_transmute_in_consts,
     reason = "This is tested in the compiler test suite"
 )]

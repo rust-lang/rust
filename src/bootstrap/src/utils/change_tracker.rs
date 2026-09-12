@@ -631,4 +631,44 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New `--verbose-run-make-subprocess-output` flag for `x.py test` (defaults to true). Set `--verbose-run-make-subprocess-output=false` to suppress verbose subprocess output for passing run-make tests when using `--no-capture`.",
     },
+    ChangeInfo {
+        change_id: 158169,
+        severity: ChangeSeverity::Info,
+        summary: "New option `rust.compress-debuginfo` allows configuring whether Rust and C/C++ debuginfo should be compressed.",
+    },
+    ChangeInfo {
+        change_id: 158912,
+        severity: ChangeSeverity::Info,
+        summary: "New config section `pgo` was introduced, to configure PGO profiling options. The `--rust-profile-use`/`--rust-profile-generate`/`--llvm-profile-use`/`--llvm-profile-generate` flags and the `rust.profile-use`/`rust.profile-generate` config options have been deprecated.",
+    },
+    ChangeInfo {
+        change_id: 155617,
+        severity: ChangeSeverity::Warning,
+        summary: "`jemalloc` options are replaced with `override-allocator` which take allocator names such as `jemalloc`",
+    },
+    ChangeInfo {
+        change_id: 159011,
+        severity: ChangeSeverity::Info,
+        summary: "A new `build.sde` configuration option has been added to support intrinsic-test.",
+    },
+    ChangeInfo {
+        change_id: 159455,
+        severity: ChangeSeverity::Warning,
+        summary: "GDB and LLDB are no longer automatically discovered from the environment. If you want to use path discovery for them, you can opt in using `build.gdb = \"discover\"` or `build.lldb = \"discover\"`.",
+    },
+    ChangeInfo {
+        change_id: 159878,
+        severity: ChangeSeverity::Warning,
+        summary: "Obsolete option `build.compiletest-use-stage0-libtest` has no effect and has been removed.",
+    },
+    ChangeInfo {
+        change_id: 160142,
+        severity: ChangeSeverity::Warning,
+        summary: "The `rust.use-lld` option has been removed. Use `rust.bootstrap-override-lld` instead.",
+    },
+    ChangeInfo {
+        change_id: 160100,
+        severity: ChangeSeverity::Warning,
+        summary: "The `override-allocator` option has been renamed: The global setting is now `build.allocator` and the per-target setting is `target.<target>.allocator`. It can now be set to 'system' to explicitly request the system allocator.",
+    },
 ];

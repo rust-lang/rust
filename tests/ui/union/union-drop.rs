@@ -1,8 +1,10 @@
 //@ run-pass
+//@ reference: destructors.manually-suppressing
+//@ reference: items.union.drop
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
-// FIXME(static_mut_refs): this could use an atomic
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 // Drop works for union itself.

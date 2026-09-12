@@ -1,7 +1,7 @@
 use super::SAME_ITEM_PUSH;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{msrvs, std_or_core, sym};
@@ -82,7 +82,7 @@ pub(super) fn check<'tcx>(
                                 ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
                                 // immutable bindings that are initialized with constant
                                 ExprKind::Path(ref path) => {
-                                    if let Res::Def(DefKind::Const { .. }, ..) = cx.qpath_res(path, init.hir_id) {
+                                    if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
                                         emit_lint(cx, vec, pushed_item, ctxt, msrv);
                                     }
                                 },
@@ -91,7 +91,7 @@ pub(super) fn check<'tcx>(
                         }
                     },
                     // constant
-                    Res::Def(DefKind::Const { .. }, ..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
+                    Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
                     _ => {},
                 }
             },

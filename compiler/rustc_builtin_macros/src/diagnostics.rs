@@ -562,7 +562,7 @@ pub(crate) enum EnvNotDefined {
     CargoEnvVar {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         var_expr: String,
     },
     #[diag("environment variable `{$var}` not defined at compile time")]
@@ -570,7 +570,7 @@ pub(crate) enum EnvNotDefined {
     CargoEnvVarTypo {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         suggested_var: Symbol,
     },
     #[diag("environment variable `{$var}` not defined at compile time")]
@@ -578,7 +578,7 @@ pub(crate) enum EnvNotDefined {
     CustomEnvVar {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         var_expr: String,
     },
 }
@@ -588,7 +588,7 @@ pub(crate) enum EnvNotDefined {
 pub(crate) struct EnvNotUnicode {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) var: Symbol,
+    pub(crate) var: String,
 }
 
 #[derive(Diagnostic)]
@@ -1036,7 +1036,7 @@ pub(crate) struct TakesNoArguments<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("the `#[{$path}]` attribute is only usable with crates of the `proc-macro` crate type")]
+#[diag("the `{$path}` attribute is only usable with crates of the `proc-macro` crate type")]
 pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
     #[primary_span]
     pub span: Span,
@@ -1095,6 +1095,13 @@ pub(crate) struct CfgSelectNoMatches {
 }
 
 #[derive(Diagnostic)]
+#[diag("a single item cannot both declare and implement EIIs")]
+pub(crate) struct EiiBothDeclAndImpl {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[eii_declaration(...)]` is only valid on macros")]
 pub(crate) struct EiiExternTargetExpectedMacro {
     #[primary_span]
@@ -1117,21 +1124,18 @@ pub(crate) struct EiiExternTargetExpectedUnsafe {
 }
 
 #[derive(Diagnostic)]
+#[diag("a single item cannot implement multiple EIIs")]
+pub(crate) struct EiiMultipleImplementations {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[{$name}]` is only valid on functions and statics")]
 pub(crate) struct EiiSharedMacroTarget {
     #[primary_span]
     pub span: Span,
     pub name: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("static cannot implement multiple EIIs")]
-#[note(
-    "this is not allowed because multiple externally implementable statics that alias may be unintuitive"
-)]
-pub(crate) struct EiiStaticMultipleImplementations {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

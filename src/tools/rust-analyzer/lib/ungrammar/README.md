@@ -4,7 +4,7 @@ A DSL for specifying concrete syntax trees.
 
 See the [blog post][post] for an introduction.
 
-See [./rust.ungram](./rust.ungram) for an example.
+See [./ungrammar.ungram](./ungrammar.ungram) for an example.
 
 ## Editor support
 

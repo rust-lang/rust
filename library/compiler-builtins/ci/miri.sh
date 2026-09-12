@@ -1,9 +1,11 @@
 #!/bin/bash
 set -eux
 
+# We need to disable the randomness that Miri intentionally introduces when
+# performing floating-point operations
 # We need Tree Borrows as some of our raw pointer patterns are not
 # compatible with Stacked Borrows.
-export MIRIFLAGS="-Zmiri-tree-borrows"
+export MIRIFLAGS="-Zmiri-deterministic-floats -Zmiri-tree-borrows"
 
 # One target that sets `mem_unaligned` and one that does not,
 # and a big-endian target.
@@ -20,4 +22,10 @@ for target in "${targets[@]}"; do
         --no-default-features \
         --target "$target" \
         -- mem
+
+    # Run the `libm` tests as well, but not `libm-test` to avoid this taking
+    # too long.
+    cargo miri test \
+        --manifest-path libm/Cargo.toml \
+        --target "$target"
 done

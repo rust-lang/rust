@@ -1,0 +1,27 @@
+error: format argument must be a string literal
+  --> $DIR/eager-format-glob-delegation-ice-159233.rs:5:28
+   |
+LL | static REGEX: () = format!(|| { reuse impl Trait for S; });
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL | static REGEX: () = format!("{}", || { reuse impl Trait for S; });
+   |                            +++++
+
+error[E0433]: cannot find type `Trait` in this scope
+  --> $DIR/eager-format-glob-delegation-ice-159233.rs:5:44
+   |
+LL | static REGEX: () = format!(|| { reuse impl Trait for S; });
+   |                                            ^^^^^ use of undeclared type `Trait`
+
+error[E0308]: mismatched types
+  --> $DIR/eager-format-glob-delegation-ice-159233.rs:5:20
+   |
+LL | static REGEX: () = format!(|| { reuse impl Trait for S; });
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `String`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0433.
+For more information about an error, try `rustc --explain E0308`.

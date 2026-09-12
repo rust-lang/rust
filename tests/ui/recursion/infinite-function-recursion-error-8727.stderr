@@ -9,7 +9,7 @@ LL |     generic::<Option<T>>();
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
 
-error: reached the recursion limit while instantiating `generic::<Option<Option<Option<Option<...>>>>>`
+error: reached the recursion limit while instantiating `generic::<Option<Option<Option<Option<_>>>>>`
   --> $DIR/infinite-function-recursion-error-8727.rs:9:5
    |
 LL |     generic::<Option<T>>();

@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 
 use std::marker::ConstParamTy;
@@ -12,8 +12,7 @@ enum MyEnum<T> {
     Unit,
 }
 
-
-type const CONST_ITEM: u32 = 42;
+const CONST_ITEM: u32 = core::direct_const_arg!(42);
 
 fn accepts_point<const P: Point>() {}
 fn accepts_enum<const E: MyEnum<u32>>() {}
@@ -32,7 +31,8 @@ fn test_errors<const N: usize>() {
     //~| ERROR tuple constructor with invalid base path
 
     accepts_point::<{ non_ctor(N, N) }>();
-    //~^ ERROR complex const arguments must be placed inside of a `const` block
+    //~^ ERROR function items cannot be used as const args
+    //~| ERROR tuple constructor with invalid base path
 
     accepts_point::<{ CONST_ITEM(N, N) }>();
     //~^ ERROR tuple constructor with invalid base path

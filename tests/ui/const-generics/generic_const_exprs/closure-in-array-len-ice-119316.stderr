@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/closure-in-array-len-ice-119316.rs:7:30
+   |
+LL |     let _data = &mut [0u8; { N + (|| 42)() }];
+   |                              ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | async fn foo<'a, const N: /* Type */>() {
+   |                +++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
