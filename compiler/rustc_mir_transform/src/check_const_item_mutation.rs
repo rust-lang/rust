@@ -2,7 +2,7 @@ use rustc_hir::HirId;
 use rustc_lint_defs::builtin::CONST_ITEM_MUTATION;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
@@ -35,8 +35,9 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
     fn is_const_item_without_destructor(&self, local: Local) -> Option<DefId> {
         let def_id = self.is_const_item(local)?;
 
-        // We avoid linting mutation of a const item if the const's type has a
-        // Drop impl. The Drop logic observes the mutation which was performed.
+        // We avoid linting mutation of a const item if the const's type needs
+        // drop. Any drop logic (including that of fields) may observe the
+        // mutation which was performed.
         //
         //     pub struct Log { msg: &'static str }
         //     pub const LOG: Log = Log { msg: "" };
@@ -46,21 +47,30 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         //
         //     LOG.msg = "wow";  // prints "wow"
         //
+        // Likewise, if a field of the const type has its own Drop impl, that
+        // drop logic may also observe the mutation:
+        //
+        //     struct Inner { val: u32 }
+        //     impl Drop for Inner { fn drop(&mut self) { println!("{}", self.val); } }
+        //     struct Outer { inner: Inner }
+        //     const O: Outer = Outer { inner: Inner { val: 0 } };
+        //
+        //     O.inner.val = 42;  // Inner::drop prints "42"
+        //
         // FIXME(https://github.com/rust-lang/rust/issues/77425):
         // Drop this exception once there is a stable attribute to suppress the
-        // const item mutation lint for a single specific const only. Something
-        // equivalent to:
-        //
-        //     #[const_mutation_allowed]
-        //     pub const LOG: Log = Log { msg: "" };
-        // FIXME: this should not be checking for `Drop` impls,
-        // but whether it or any field has a Drop impl (`needs_drop`)
-        // as fields' Drop impls may make this observable, too.
-        match self.tcx.type_of(def_id).skip_binder().ty_adt_def().map(|adt| adt.has_dtor(self.tcx))
-        {
-            Some(true) => None,
-            Some(false) | None => Some(def_id),
+        // const item mutation lint for a single specific const only.
+        let ty = self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+        // `needs_drop` is overly conservative for types that contain type
+        // parameters (e.g. `Self` in a trait associated const): it always
+        // returns `true` because the parameter *might* implement Drop, even
+        // when the concrete type at the call site does not. In that case we
+        // cannot suppress the lint, so fall through and warn.
+        if ty.has_param() {
+            return Some(def_id);
         }
+        let typing_env = ty::TypingEnv::non_body_analysis(self.tcx, def_id);
+        if ty.needs_drop(self.tcx, typing_env) { None } else { Some(def_id) }
     }
 
     /// If we should lint on this usage, return the [`HirId`], source [`Span`]
