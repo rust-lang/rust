@@ -103,6 +103,8 @@ pub(crate) enum FnContext {
     Free,
     /// A Function Pointer Type `fn(..)`.
     FunctionPtrType,
+    /// A Parenthesized Argument List `impl Fn(...)`
+    ParenthesizedArgumentList,
     /// A Trait context.
     Trait,
     /// An Impl block.
@@ -814,9 +816,19 @@ impl<'a> Parser<'a> {
                     Err(err) if this.unmatched_angle_bracket_count > 0 => return Err(err),
                     Err(err) if recover_arg_parse => {
                         // Recover from attempting to parse the argument as a type without pattern.
-                        err.cancel();
                         this.restore_snapshot(parser_snapshot_before_ty);
-                        this.recover_arg_parse(fn_parse_mode.context)?
+                        match this.recover_arg_parse(fn_parse_mode.context) {
+                            Ok(res) => {
+                                // We managed to parse the argument as a pattern, cancel the original error and emit a better one
+                                err.cancel();
+                                res
+                            }
+                            Err(new_err) => {
+                                // We did not manage to parse the argument as a pattern, avoid suggesting a pattern and emit the original error
+                                new_err.cancel();
+                                return Err(err);
+                            }
+                        }
                     }
                     Err(err) => return Err(err),
                 }

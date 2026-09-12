@@ -2379,6 +2379,7 @@ impl<'a> Parser<'a> {
             target: match context {
                 FnContext::Trait => "methods without bodies",
                 FnContext::FunctionPtrType => "function pointer types",
+                FnContext::ParenthesizedArgumentList => "parenthesized argument list",
                 FnContext::Free => unreachable!("This method is not called in free functions, as patterns are always allowed there"),
                 FnContext::Impl => unreachable!("This method is not called in impls, as patterns are always allowed there"),
             },

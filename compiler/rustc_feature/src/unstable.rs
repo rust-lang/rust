@@ -643,7 +643,7 @@ declare_features! (
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
     /// Allows providing names to parameters of `impl Fn` etc
-    (incomplete, named_fn_trait_parameters, "1.99.0", Some(158499)),
+    (unstable, named_fn_trait_parameters, "1.99.0", Some(158499)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.
