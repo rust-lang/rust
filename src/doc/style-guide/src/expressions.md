@@ -6,8 +6,8 @@ A block expression must have a newline after the initial `{` and before the
 terminal `}`, unless it qualifies to be written as a single line based on
 another style rule.
 
-A keyword before the block (such as `unsafe` or `async`) must be on the same
-line as the opening brace, with a single space between the keyword and the
+A keyword before the block (such as `unsafe`, `async`, or `try`) must be on the
+same line as the opening brace, with a single space between the keyword and the
 opening brace. Indent the contents of the block.
 
 ```rust
@@ -152,6 +152,35 @@ move |arg1: i32, arg2: i32| -> i32 {
 |x| unsafe {
     expr
 }
+```
+
+## `try` blocks with types
+
+Use a single space between `try` and `bikeshed`, between `bikeshed` and the
+type, and between the type and `{`. Do not break between any of these.
+
+If `try`, `bikeshed`, the type, and `{` fit on a single line, always format them
+that way. If, having done that, the block's formatting allows placing it on a
+single line, do so, otherwise break after the `{` and format the block as usual.
+
+If `try`, `bikeshed`, the type, and `{` do not fit on a single line, then break
+within the type per the rules for formatting large types, and keep the `{` on
+the line with the end of the type (e.g. a closing `>` or `)`).
+
+```rust
+try bikeshed Option<()> { foo()? }
+
+try bikeshed Result<(), _> {
+    foo()?;
+    bar()?;
+}
+
+try bikeshed Result<
+    VeryVeryVeryVeryLongTypeForSuccess,
+    VeryVeryVeryVeryLongTypeForFailure,
+> {
+    foo()?
+};
 ```
 
 ## Struct literals
