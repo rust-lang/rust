@@ -1,5 +1,7 @@
 use super::{SocketAddr, UnixStream, sockaddr_un};
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::io::{
+    AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
+};
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
@@ -355,6 +357,11 @@ impl From<OwnedFd> for UnixListener {
         UnixListener(Socket::from_inner(FromInner::from_inner(fd)))
     }
 }
+
+// SAFETY: It's a tower of 1-field wrappers around OwnedFd.
+// No methods to close the socket, no methods with safety preconditions,
+// other than the fd being valid.
+unsafe_impl_fd_asrefs!(UnixListener);
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixListener> for OwnedFd {
