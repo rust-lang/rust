@@ -47,7 +47,8 @@ pub struct Location<'a> {
 }
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-impl PartialEq for Location<'_> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl PartialEq for Location<'_> {
     fn eq(&self, other: &Self) -> bool {
         // Compare col / line first as they're cheaper to compare and more likely to differ,
         // while not impacting the result.
@@ -56,20 +57,23 @@ impl PartialEq for Location<'_> {
 }
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-impl Eq for Location<'_> {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl Eq for Location<'_> {}
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-impl Ord for Location<'_> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl Ord for Location<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.file()
             .cmp(other.file())
-            .then_with(|| self.line.cmp(&other.line))
-            .then_with(|| self.col.cmp(&other.col))
+            .then_with(const || self.line.cmp(&other.line))
+            .then_with(const || self.col.cmp(&other.col))
     }
 }
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-impl PartialOrd for Location<'_> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl PartialOrd for Location<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }

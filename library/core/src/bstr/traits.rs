@@ -6,7 +6,8 @@ use crate::slice::SliceIndex;
 use crate::{hash, ops, range};
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl Ord for ByteStr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl Ord for ByteStr {
     #[inline]
     fn cmp(&self, other: &ByteStr) -> Ordering {
         Ord::cmp(&self.0, &other.0)
@@ -14,7 +15,8 @@ impl Ord for ByteStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl PartialOrd for ByteStr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl PartialOrd for ByteStr {
     #[inline]
     fn partial_cmp(&self, other: &ByteStr) -> Option<Ordering> {
         PartialOrd::partial_cmp(&self.0, &other.0)
@@ -22,7 +24,8 @@ impl PartialOrd for ByteStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl PartialEq<ByteStr> for ByteStr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl PartialEq<ByteStr> for ByteStr {
     #[inline]
     fn eq(&self, other: &ByteStr) -> bool {
         self.0 == other.0
@@ -30,7 +33,8 @@ impl PartialEq<ByteStr> for ByteStr {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
-impl Eq for ByteStr {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl Eq for ByteStr {}
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl hash::Hash for ByteStr {
