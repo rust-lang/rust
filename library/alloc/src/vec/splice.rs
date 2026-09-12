@@ -1,3 +1,4 @@
+use core::iter::TrustedLen;
 use core::ptr;
 
 use super::{Drain, Vec};
@@ -48,6 +49,9 @@ impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I: Iterator, A: Allocator> TrustedLen for Splice<'_, I, A> {}
 
 // See also: [`crate::collections::vec_deque::Splice`].
 #[stable(feature = "vec_splice", since = "1.21.0")]

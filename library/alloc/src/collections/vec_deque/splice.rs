@@ -1,4 +1,5 @@
 use core::alloc::Allocator;
+use core::iter::TrustedLen;
 
 use crate::alloc::Global;
 use crate::collections::vec_deque::Drain;
@@ -52,6 +53,9 @@ impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
 
 #[unstable(feature = "deque_extend_front", issue = "146975")]
 impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I: Iterator, A: Allocator> TrustedLen for Splice<'_, I, A> {}
 
 // See also: [`crate::vec::Splice`].
 #[unstable(feature = "deque_extend_front", issue = "146975")]
