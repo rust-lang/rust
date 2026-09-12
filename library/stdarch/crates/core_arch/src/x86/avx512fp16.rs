@@ -1,6 +1,6 @@
 use crate::arch::asm;
 use crate::core_arch::{simd::*, x86::*};
-use crate::intrinsics::{fmaf16, simd::*};
+use crate::intrinsics::{fma, simd::*};
 use crate::ptr;
 
 /// Set packed half-precision (16-bit) floating-point elements in dst with the supplied values.
@@ -5537,7 +5537,7 @@ pub const fn _mm_fmadd_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
         let extracta: f16 = simd_extract!(a, 0);
         let extractb: f16 = simd_extract!(b, 0);
         let extractc: f16 = simd_extract!(c, 0);
-        let r = fmaf16(extracta, extractb, extractc);
+        let r = fma(extracta, extractb, extractc);
         simd_insert!(a, 0, r)
     }
 }
@@ -5559,7 +5559,7 @@ pub const fn _mm_mask_fmadd_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) 
         if k & 1 != 0 {
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fmadd = fmaf16(fmadd, extractb, extractc);
+            fmadd = fma(fmadd, extractb, extractc);
         }
         simd_insert!(a, 0, fmadd)
     }
@@ -5582,7 +5582,7 @@ pub const fn _mm_mask3_fmadd_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8)
         if k & 1 != 0 {
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
-            fmadd = fmaf16(extracta, extractb, fmadd);
+            fmadd = fma(extracta, extractb, fmadd);
         }
         simd_insert!(c, 0, fmadd)
     }
@@ -5606,7 +5606,7 @@ pub const fn _mm_maskz_fmadd_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h)
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fmadd = fmaf16(extracta, extractb, extractc);
+            fmadd = fma(extracta, extractb, extractc);
         }
         simd_insert!(a, 0, fmadd)
     }
@@ -6052,7 +6052,7 @@ pub const fn _mm_fmsub_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
         let extracta: f16 = simd_extract!(a, 0);
         let extractb: f16 = simd_extract!(b, 0);
         let extractc: f16 = simd_extract!(c, 0);
-        let r = fmaf16(extracta, extractb, -extractc);
+        let r = fma(extracta, extractb, -extractc);
         simd_insert!(a, 0, r)
     }
 }
@@ -6074,7 +6074,7 @@ pub const fn _mm_mask_fmsub_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) 
         if k & 1 != 0 {
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fmsub = fmaf16(fmsub, extractb, -extractc);
+            fmsub = fma(fmsub, extractb, -extractc);
         }
         simd_insert!(a, 0, fmsub)
     }
@@ -6097,7 +6097,7 @@ pub const fn _mm_mask3_fmsub_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8)
         if k & 1 != 0 {
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
-            fmsub = fmaf16(extracta, extractb, -fmsub);
+            fmsub = fma(extracta, extractb, -fmsub);
         }
         simd_insert!(c, 0, fmsub)
     }
@@ -6121,7 +6121,7 @@ pub const fn _mm_maskz_fmsub_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h)
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fmsub = fmaf16(extracta, extractb, -extractc);
+            fmsub = fma(extracta, extractb, -extractc);
         }
         simd_insert!(a, 0, fmsub)
     }
@@ -6558,7 +6558,7 @@ pub const fn _mm_fnmadd_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
         let extracta: f16 = simd_extract!(a, 0);
         let extractb: f16 = simd_extract!(b, 0);
         let extractc: f16 = simd_extract!(c, 0);
-        let r = fmaf16(-extracta, extractb, extractc);
+        let r = fma(-extracta, extractb, extractc);
         simd_insert!(a, 0, r)
     }
 }
@@ -6580,7 +6580,7 @@ pub const fn _mm_mask_fnmadd_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h)
         if k & 1 != 0 {
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fnmadd = fmaf16(-fnmadd, extractb, extractc);
+            fnmadd = fma(-fnmadd, extractb, extractc);
         }
         simd_insert!(a, 0, fnmadd)
     }
@@ -6603,7 +6603,7 @@ pub const fn _mm_mask3_fnmadd_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8
         if k & 1 != 0 {
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
-            fnmadd = fmaf16(-extracta, extractb, fnmadd);
+            fnmadd = fma(-extracta, extractb, fnmadd);
         }
         simd_insert!(c, 0, fnmadd)
     }
@@ -6627,7 +6627,7 @@ pub const fn _mm_maskz_fnmadd_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fnmadd = fmaf16(-extracta, extractb, extractc);
+            fnmadd = fma(-extracta, extractb, extractc);
         }
         simd_insert!(a, 0, fnmadd)
     }
@@ -7072,7 +7072,7 @@ pub const fn _mm_fnmsub_sh(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
         let extracta: f16 = simd_extract!(a, 0);
         let extractb: f16 = simd_extract!(b, 0);
         let extractc: f16 = simd_extract!(c, 0);
-        let r = fmaf16(-extracta, extractb, -extractc);
+        let r = fma(-extracta, extractb, -extractc);
         simd_insert!(a, 0, r)
     }
 }
@@ -7094,7 +7094,7 @@ pub const fn _mm_mask_fnmsub_sh(a: __m128h, k: __mmask8, b: __m128h, c: __m128h)
         if k & 1 != 0 {
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fnmsub = fmaf16(-fnmsub, extractb, -extractc);
+            fnmsub = fma(-fnmsub, extractb, -extractc);
         }
         simd_insert!(a, 0, fnmsub)
     }
@@ -7117,7 +7117,7 @@ pub const fn _mm_mask3_fnmsub_sh(a: __m128h, b: __m128h, c: __m128h, k: __mmask8
         if k & 1 != 0 {
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
-            fnmsub = fmaf16(-extracta, extractb, -fnmsub);
+            fnmsub = fma(-extracta, extractb, -fnmsub);
         }
         simd_insert!(c, 0, fnmsub)
     }
@@ -7141,7 +7141,7 @@ pub const fn _mm_maskz_fnmsub_sh(k: __mmask8, a: __m128h, b: __m128h, c: __m128h
             let extracta: f16 = simd_extract!(a, 0);
             let extractb: f16 = simd_extract!(b, 0);
             let extractc: f16 = simd_extract!(c, 0);
-            fnmsub = fmaf16(-extracta, extractb, -extractc);
+            fnmsub = fma(-extracta, extractb, -extractc);
         }
         simd_insert!(a, 0, fnmsub)
     }
