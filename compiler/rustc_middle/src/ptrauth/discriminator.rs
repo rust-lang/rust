@@ -1,11 +1,13 @@
 //! Function pointer type discrimination for pointer authentication.
 
 //! This module implements Rust's equivalent of Clang's function pointer type
-//! discriminator computation used in pointer authentication.
+//! discriminator computation used in pointer authentication, as well as the
+//! machinery required to locate function pointer fields in Rust layouts that
+//! require such discriminators.
 //!
 //! Compatibility with Clang is a primary goal. The discriminator produced for a
-//! given external "C" function type must match the value computed by Clang so that
-//! function pointers can be exchanged safely between Rust and C code while
+//! given external "C" function type must match the value computed by Clang so
+//! that function pointers can be exchanged safely between Rust and C code while
 //! preserving pointer authentication semantics.
 //!
 //! The implementation mirrors Clang's behavior in
@@ -15,14 +17,16 @@
 //!
 //! ## Overview
 //!
-//! The computation is structured into three conceptual stages:
+//! The implementation is structured into three conceptual stages:
 //!
 //! ### 1. Type normalization and lowering
+//!
 //!    Rust types are converted into a language-independent representation
 //!    (`ClangDiscTy`) that mirrors the type categories used by Clang when computing
 //!    function pointer discriminators. This includes canonicalization such as
 //!    treating all pointer-like types uniformly and mapping Rust constructs onto
 //!    their closest C equivalents.
+//!
 //!    One notable exception is C `_Complex`. Rust has no corresponding native type,
 //!    so there is no canonical Rust representation to map onto Clang's `_Complex`
 //!    type category. Rather than infer one (for example, by treating `(f32, f32)`
@@ -31,17 +35,24 @@
 //!    encoding.
 //!
 //! ### 2. Type encoding
+//!
 //!    The lowered representation is serialized into a byte stream using rules
 //!    intended to match Clang's implementation in:
 //!    `encodeTypeForFunctionPointerAuth`. The resulting encoding describes the
 //!    function signature in a target-independent form suitable for hashing.
 //!
 //! ### 3. Discriminator hashing
+//!
 //!    The encoded byte stream is hashed using LLVM's stable SipHash-2-4 based
 //!    discriminator algorithm. The implementation here is a direct translation
 //!    of LLVM/Clang's logic and must remain bit-for-bit compatible. See:
 //!    <https://github.com/llvm/llvm-project/blob/main/third-party/siphash/include/siphash/SipHash.h>.
 //!    Defined in `llvm_siphash.rs`.
+//!
+//!    In addition to computing discriminators for individual function pointer
+//!    types, this module can recursively walk Rust type layouts and produce a map
+//!    from byte offsets to discriminators for function pointer fields contained
+//!    within aggregates.
 //!
 //! ## Module structure
 //!
@@ -49,10 +60,14 @@
 //!   - `FnPtrDiscriminatorSource`
 //!   - `ptrauth_compute_fn_ptr_type_discriminator_for`
 //!   - `ptrauth_clone_discriminated_schema_for`
+//!   - `ptrauth_collect_fn_ptr_discriminators`
 //!
 //! - Low-level API
 //!   - `FnPtrTypeDiscriminatorInput`
 //!   - `compute_fn_ptr_type_discriminator`
+//!
+//! - Layout traversal
+//!   - `ptrauth_collect_fn_ptr_discriminators`
 //!
 //! - Signature extraction
 //!   - `extract_fn_ptr_type`
@@ -68,14 +83,16 @@
 //!
 //! ## Compatibility requirements
 //!
-//! Any changes to the encoding or hashing logic should be validated against Clang's
-//! discriminator computation. Divergence from Clang will result in incompatible
-//! pointer authentication values across language boundaries.
+//! Any changes to the encoding or hashing logic should be validated against
+//! Clang's discriminator computation. Divergence from Clang will result in
+//! incompatible pointer authentication values across language boundaries.
 //!
-//! This implementation intentionally approximates Clang's behavior for extern "C"
-//! function types only. It does NOT attempt to model full type system rules.
+//! This implementation intentionally approximates Clang's behavior for
+//! `extern "C"` and `extern "System"` function types only. It does NOT attempt
+//! to model full Rust type system rules.
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, Size};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
 use rustc_session::PointerAuthSchema;
 use rustc_span::sym;
@@ -252,6 +269,129 @@ fn extract_fn_ptr_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Option<Ty<'
 
             _ => return None,
         }
+    }
+}
+
+/// Recursively walks a type layout and records the offsets of all supported
+/// function pointer fields together with their computed type discriminators.
+///
+///
+/// Traversal currently supports:
+/// - references
+/// - direct function pointers
+/// - structs
+/// - tuples
+/// - arrays
+///
+/// Offsets are accumulated relative to the containing object.
+pub fn ptrauth_collect_fn_ptr_discriminators<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> FxHashMap<Size, u64> {
+    let mut map = FxHashMap::default();
+
+    collect_fn_ptr_discriminators_inner(tcx, typing_env, ty, Size::ZERO, &mut map);
+
+    map
+}
+
+fn collect_fn_ptr_discriminators_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+    base_offset: Size,
+    map: &mut FxHashMap<Size, u64>,
+) {
+    // Direct function pointer.
+    if let Some(disc) = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, ty) {
+        map.insert(base_offset, disc.into());
+
+        return;
+    }
+
+    match ty.kind() {
+        ty::Ref(_, pointee, _) => {
+            collect_fn_ptr_discriminators_inner(tcx, typing_env, *pointee, base_offset, map);
+        }
+        ty::Adt(def, args) if def.is_struct() => {
+            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
+                return;
+            };
+
+            let variant = def.non_enum_variant();
+
+            for (idx, field_def) in variant.fields.iter_enumerated() {
+                let field_ty = tcx.normalize_erasing_regions(typing_env, field_def.ty(tcx, args));
+
+                let field_offset = layout.fields.offset(idx.into());
+
+                collect_fn_ptr_discriminators_inner(
+                    tcx,
+                    typing_env,
+                    field_ty,
+                    base_offset + field_offset,
+                    map,
+                );
+            }
+        }
+        ty::Tuple(fields) => {
+            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
+                return;
+            };
+
+            for (idx, field_ty) in fields.iter().enumerate() {
+                let field_offset = layout.fields.offset(idx);
+
+                collect_fn_ptr_discriminators_inner(
+                    tcx,
+                    typing_env,
+                    field_ty,
+                    base_offset + field_offset,
+                    map,
+                );
+            }
+        }
+        ty::Array(elem_ty, len) => {
+            let count = match len.try_to_target_usize(tcx) {
+                Some(v) => v,
+                None => return,
+            };
+
+            let Ok(elem_layout) = tcx.layout_of(typing_env.as_query_input(*elem_ty)) else {
+                return;
+            };
+
+            let stride = elem_layout.size;
+
+            // Collect discriminator of one element, so we don't have to recompute it for all the
+            // elements in the array.
+            let mut elem_map = FxHashMap::default();
+
+            collect_fn_ptr_discriminators_inner(
+                tcx,
+                typing_env,
+                *elem_ty,
+                Size::ZERO,
+                &mut elem_map,
+            );
+
+            // SAFETY: We immediately collect into a Vec and sort by offset.
+            // The HashMap iteration order is irrelevant and must not affect determinism.
+            #[allow(rustc::potential_query_instability)]
+            let mut entries: Vec<(Size, u64)> = elem_map.into_iter().collect();
+            entries.sort_unstable_by_key(|(offset, _)| *offset);
+
+            // Replicate for every array slot.
+            for i in 0..count {
+                let elem_base = base_offset + stride * i;
+
+                for (inner_offset, discr) in entries.iter().copied() {
+                    map.insert(elem_base + inner_offset, discr);
+                }
+            }
+        }
+        _ => {}
     }
 }
 

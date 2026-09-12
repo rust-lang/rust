@@ -835,6 +835,21 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue_transmute(fx, operand);
                 }
+                Rvalue::Cast(CastKind::TransmuteCopy, ref operand, _to_ty) => {
+                    // TransmuteCopy copy differs from Transmute, as it takes a `&Src` and allows
+                    // for the `Dst` to be smaller than `Src`. To match that we construct a `CValue`
+                    // using dst's layout and src's (dereferenced) address.
+                    let operand = codegen_operand(fx, operand);
+                    let src_ptr = match operand.layout().backend_repr {
+                        BackendRepr::ScalarPair { .. } => operand.load_scalar_pair(fx).0,
+                        BackendRepr::Scalar(..) => operand.load_scalar(fx),
+                        repr => bug!(
+                            "Unexpected backend_repr for TransmuteCopy reference operand: {repr:?}"
+                        ),
+                    };
+                    let from = CValue::by_ref(Pointer::new(src_ptr), dest_layout);
+                    lval.write_cvalue(fx, from);
+                }
                 Rvalue::Discriminant(place) => {
                     let place = codegen_place(fx, place);
                     let value = place.to_cvalue(fx);
