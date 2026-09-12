@@ -8,6 +8,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(arbitrary_self_types)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
@@ -17,7 +18,6 @@
 #![feature(iter_intersperse)]
 #![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
-#![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

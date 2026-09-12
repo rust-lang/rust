@@ -2752,7 +2752,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
     /// use std::path::Path;
     ///
     /// let path = Path::new("/test/haha/foo.txt");
@@ -2770,7 +2769,7 @@ impl Path {
     /// assert_eq!(path.trim_prefix("/haha"), path);
     /// ```
     #[must_use = "this returns the remaining path as a new path, without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
     pub fn trim_prefix<P>(&self, base: P) -> &Path
     where
         P: AsRef<Path>,
