@@ -2573,7 +2573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion_verbose(
                     expr.span.shrink_to_hi(),
                     "consider parsing the string to numeric type",
-                    format!("parse::<{}>().unwrap_or_default()", expected.to_string()),
+                    format!(".parse::<{}>().unwrap_or_default()", expected.to_string()),
                     Applicability::MaybeIncorrect,
                 );
 
