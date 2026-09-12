@@ -873,15 +873,17 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_for_each", since = "1.21.0")]
-    #[rustc_non_const_trait_method]
     fn for_each<F>(self, f: F)
     where
-        Self: Sized,
-        F: FnMut(Self::Item),
+        Self: Sized + [const] Destruct,
+        F: [const] FnMut(Self::Item) + [const] Destruct,
     {
         #[inline]
-        fn call<T>(mut f: impl FnMut(T)) -> impl FnMut((), T) {
-            move |(), item| f(item)
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const fn call<T>(
+            mut f: impl [const] FnMut(T) + [const] Destruct,
+        ) -> impl [const] FnMut((), T) + [const] Destruct {
+            const move |(), item| f(item)
         }
 
         self.fold((), call(f));
