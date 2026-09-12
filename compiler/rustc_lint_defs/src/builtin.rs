@@ -65,6 +65,7 @@ pub mod hardwired {
             LEGACY_DERIVE_HELPERS,
             LINKER_INFO,
             LINKER_MESSAGES,
+            LINKER_STATIC_ARCHIVE_ORDER,
             LONG_RUNNING_CONST_EVAL,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             MACRO_USE_EXTERN_CRATE,
@@ -4112,6 +4113,41 @@ declare_lint! {
     pub LINKER_INFO,
     Allow,
     "linker warnings known to be informational-only and not indicative of a problem"
+}
+
+declare_lint! {
+    /// The `linker_static_archive_order` lint detects static archives (`.a`/`.o`) passed via
+    /// `-Clink-arg` instead of the idiomatic `-l static=` option, which places the archive with
+    /// rustc's other native libraries.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs CLI args, platform-specific)
+    /// // rustc -Clink-arg=/path/to/libfoo.a foo.rs
+    /// fn main() {}
+    /// ```
+    ///
+    /// `-Clink-arg` arguments are appended after those libraries, so the archive can end up ordered
+    /// before a dynamic library it references. Under `--as-needed`, strict left-to-right linkers
+    /// such as GNU `ld.bfd` may then drop that library, causing undefined references. `lld`
+    /// tolerates this, masking the problem; the lint still fires there so the issue surfaces before
+    /// a switch back to `ld.bfd`.
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is heuristic: without symbol resolution, rustc can't know whether the archive
+    /// actually back-references a later dynamic library, so it may fire on link orders that succeed.
+    /// It is allowed by default so that `-D warnings` does not turn a possible false positive into a
+    /// hard error. See <https://github.com/rust-lang/rust/issues/154975>.
+    pub LINKER_STATIC_ARCHIVE_ORDER,
+    Allow,
+    "static archive passed via `-Clink-arg` may be ordered before a dynamic library it references, \
+     which `--as-needed` linkers such as GNU `ld.bfd` can then drop",
+    // The lint is heuristic: rustc can't know whether a back-reference actually exists, so the
+    // diagnostic may fire on link orders that link successfully. Prevent `-D warnings` from
+    // turning a possible false positive into a hard error. `-D linker-static-archive-order` still
+    // applies.
+    ignore_deny_warnings
 }
 
 declare_lint! {
