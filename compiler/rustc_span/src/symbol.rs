@@ -2816,7 +2816,7 @@ struct InternerInner {
     byte_strs: Vec<&'static [u8]>,
 }
 
-const HASH_UP_TO: usize = 128;
+const HASH_UP_TO: usize = 1024;
 
 impl Interner {
     // These arguments are `&str`, but because of the sharing, we are
