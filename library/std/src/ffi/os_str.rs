@@ -134,6 +134,16 @@ impl OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
+    /// Get the raw bytes as a mutable slice.
+    ///
+    /// # Safety
+    ///
+    /// You must uphold the invariants of OsStr for each platform.
+    pub(crate) unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+        // SAFETY: it's up to the caller to use this safely.
+        unsafe { self.inner.as_mut_slice().as_bytes_mut() }
+    }
+
     /// Converts bytes to an `OsString` without checking that the bytes contains
     /// valid [`OsStr`]-encoded data.
     ///
