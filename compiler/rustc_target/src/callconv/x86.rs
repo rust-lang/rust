@@ -167,12 +167,13 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
 
     for arg in fn_abi.args.iter_mut() {
         let attrs = match arg.mode {
-            PassMode::Ignore | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
+            PassMode::Ignore
+            | PassMode::Indirect { attrs: _, meta_attrs: None, address_space: _, mode: _ } => {
                 continue;
             }
             PassMode::Direct(ref mut attrs) => attrs,
             PassMode::Pair(..)
-            | PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ }
+            | PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ }
             | PassMode::Cast { .. } => {
                 unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
             }
