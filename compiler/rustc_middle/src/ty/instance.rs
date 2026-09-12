@@ -160,7 +160,7 @@ pub enum ShimKind<'tcx> {
     /// Proxy shim for async drop of future (def_id, proxy_cor_ty, impl_cor_ty)
     FutureDropPoll(DefId, Ty<'tcx>, Ty<'tcx>),
 
-    /// `core::ptr::drop_glue::<T>`.
+    /// `Destruct::drop_in_place()`
     ///
     /// The `DefId` is for `core::ptr::drop_glue`.
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop glue.
@@ -796,8 +796,8 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
-    pub fn resolve_drop_glue(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
-        let def_id = tcx.require_lang_item(LangItem::DropGlue, DUMMY_SP);
+    pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::DestructDropInPlace, DUMMY_SP);
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
@@ -806,6 +806,16 @@ impl<'tcx> Instance<'tcx> {
             args,
             ty.ty_adt_def().and_then(|adt| tcx.hir_span_if_local(adt.did())).unwrap_or(DUMMY_SP),
         )
+    }
+
+    pub fn try_resolve_drop_in_place(
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        let def_id = tcx.require_lang_item(LangItem::DestructDropInPlace, DUMMY_SP);
+        let args = tcx.mk_args(&[ty.into()]);
+        Instance::try_resolve(tcx, typing_env, def_id, args)
     }
 
     pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {

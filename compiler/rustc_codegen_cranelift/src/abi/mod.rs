@@ -743,7 +743,7 @@ pub(crate) fn codegen_drop<'tcx>(
     unwind: UnwindAction,
 ) {
     let ty = drop_place.layout().ty;
-    let drop_instance = Instance::resolve_drop_glue(fx.tcx, ty);
+    let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
     let ret_block = fx.get_block(target);
 
     // AsyncDropGlueCtorShim can't be here
