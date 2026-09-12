@@ -54,6 +54,7 @@ pub mod hardwired {
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
             INCOMPLETE_INCLUDE,
+            INEFFECTIVE_UNSTABLE_REEXPORTS,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
             INVALID_DOC_ATTRIBUTES,
@@ -2814,6 +2815,38 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
+}
+
+declare_lint! {
+    /// The `ineffective_unstable_reexports` lint detects `#[unstable]`
+    /// attributes on re-exports where the attribute does not make the
+    /// re-exported path unstable.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(staged_api)]
+    /// #![stable(feature = "test", since = "1.0.0")]
+    ///
+    /// #[stable(feature = "test", since = "1.0.0")]
+    /// pub struct S;
+    ///
+    /// #[unstable(feature = "reexport", issue = "none")]
+    /// pub use self::S as T;
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `#[unstable]` on a re-export does not currently make an otherwise
+    /// stable re-exported path unstable.
+    pub INEFFECTIVE_UNSTABLE_REEXPORTS,
+    Deny,
+    "detects ineffective `#[unstable]` attributes on re-exports",
+    @feature_gate = staged_api;
 }
 
 declare_lint! {

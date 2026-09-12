@@ -187,6 +187,8 @@ pub mod rust_future {
 
     // There are two different panic macros, one in `core` and one in `std`. They are slightly
     // different. For `std` we explicitly want the one defined in `std`.
+    #[allow(clippy::useless_attribute)]
+    #[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
     #[unstable(feature = "prelude_next", issue = "none")]
     pub use super::v1::panic;
 }
