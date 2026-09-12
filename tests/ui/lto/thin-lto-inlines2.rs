@@ -23,8 +23,15 @@ fn main() {
     println!("{} {}", foo(), bar::bar());
 
     unsafe {
-        let foo = foo as usize as *const u8;
+        let mut foo = foo as usize as *const u8;
         let bar = bar::bar as usize as *const u8;
+
+        // cf-protection puts a NOP-like instruction, ENDBR64, at the start
+        // of each function, but that's not present for the inlined version.
+        // Skip that if present.
+        if std::slice::from_raw_parts(foo, 4) == [0xf3, 0x0f, 0x1e, 0xfa] {
+            foo = foo.add(4);
+        }
 
         assert_eq!(*foo, *bar);
     }
