@@ -14,6 +14,14 @@ use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
+#[diag("invalid parameter `{$name}` in `diagnostic::c_buffer_length`")]
+#[help("{$reason}")]
+pub(crate) struct CBufferLengthParameter {
+    pub name: Symbol,
+    pub reason: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`")]
 pub(crate) struct MixedExportNameAndNoMangle {
     #[label("`{$no_mangle_attr}` is ignored")]
