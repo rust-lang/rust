@@ -393,7 +393,20 @@ impl str {
             // code on higher opt-levels. See PR #84751 for more details.
             index == self.len()
         } else {
-            self.as_bytes()[index].is_utf8_char_boundary()
+            let is_char_boundary = self.as_bytes()[index].is_utf8_char_boundary();
+
+            // SAFETY: `self` is valid UTF-8. If `!is_char_boundary` then the byte at `index` is a
+            // continuation byte. Therefore, by definition, the preceding byte must be the first
+            // byte of a multi-byte sequence or another continuation byte. In either case, the
+            // preceding byte is not in the ASCII range.
+            //
+            // This hint enables the optimizer to elide runtime char boundary checks when the byte
+            // at `index` is the successor to a known ASCII character.
+            //
+            // Note: `0 < index < self.len()` so `index - 1` is in bounds.
+            unsafe { assert_unchecked(is_char_boundary || !self.as_bytes()[index - 1].is_ascii()) };
+
+            is_char_boundary
         }
     }
 
