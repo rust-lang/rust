@@ -8,7 +8,7 @@ use std::hash::Hash;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_hir::def::DefKind;
-use rustc_hir::{ItemKind, Node, UseKind};
+use rustc_hir::{ItemKind, Node, UseKind, UseTree};
 use rustc_macros::StableHash;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
@@ -188,7 +188,7 @@ impl EffectiveVisibilities {
                 let nominal_vis = tcx.visibility(def_id);
                 if ev.reachable.greater_than(nominal_vis, tcx) {
                     if let Node::Item(item) = tcx.hir_node_by_def_id(def_id)
-                        && let ItemKind::Use(_, UseKind::Glob) = item.kind
+                        && let ItemKind::Use(UseTree { kind: UseKind::Glob, .. }) = item.kind
                     {
                         // Glob import visibilities can be increased by other
                         // more public glob imports in cases of ambiguity.

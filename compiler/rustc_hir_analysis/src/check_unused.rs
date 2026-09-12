@@ -44,16 +44,15 @@ pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         if used_trait_imports.contains(&id) {
             continue;
         }
-        let item = tcx.hir_expect_item(id);
-        if item.span.is_dummy() {
+        let span = tcx.def_span(id);
+        if span.is_dummy() {
             continue;
         }
-        let (path, _) = item.expect_use();
         tcx.emit_node_span_lint(
             UNUSED_IMPORTS,
-            item.hir_id(),
-            path.span,
-            UnusedImport { tcx, span: path.span },
+            tcx.local_def_id_to_hir_id(id),
+            span,
+            UnusedImport { tcx, span },
         );
     }
 }
