@@ -1145,9 +1145,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        target_assoc_item: Option<&ast::AssocItem>,
+        ast_target_item: Option<ast::AstItemKind<'_>>,
     ) -> &'hir [rustc_attr_ir::Attribute] {
-        self.lower_attrs_with_extra(id, attrs, target_span, target, None, target_assoc_item, &[])
+        self.lower_attrs_with_extra(id, attrs, target_span, target, ast_target_item, &[])
     }
 
     fn lower_attrs_with_extra(
@@ -1156,8 +1156,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        target_item: Option<&ast::Item>,
-        target_assoc_item: Option<&ast::AssocItem>,
+        ast_target_item: Option<ast::AstItemKind<'_>>,
         extra_hir_attributes: &[rustc_attr_ir::Attribute],
     ) -> &'hir [rustc_attr_ir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
@@ -1168,8 +1167,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_span(target_span),
                 id,
                 target,
-                target_item,
-                target_assoc_item,
+                ast_target_item,
             );
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
@@ -1197,16 +1195,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
-        target_item: Option<&ast::Item>,
-        target_assoc_item: Option<&ast::AssocItem>,
+        ast_target_item: Option<ast::AstItemKind<'_>>,
     ) -> Vec<rustc_attr_ir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
-            target_item,
-            target_assoc_item,
+            ast_target_item,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {
