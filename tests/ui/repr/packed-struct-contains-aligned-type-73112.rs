@@ -8,7 +8,7 @@ fn main() {
 
     #[repr(C, packed)]
     struct SomeStruct {
-    //~^ ERROR packed type cannot transitively contain a `#[repr(align)]` type [E0588]
+    //~^ ERROR packed type cannot transitively contain a `#[repr(align)]` type
         page_table: PageTable,
     }
 }

@@ -17,6 +17,7 @@ pub mod hardwired {
             // tidy-alphabetical-start
             AARCH64_SOFTFLOAT_NEON,
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+            ALIGNED_FIELDS_IN_PACKED,
             AMBIGUOUS_ASSOCIATED_ITEMS,
             AMBIGUOUS_DERIVE_HELPERS,
             AMBIGUOUS_GLOB_IMPORTED_TRAITS,
@@ -5789,4 +5790,33 @@ declare_lint! {
     Deny,
     "duplicate tools found in crate-level `#[register_tools]` directives",
     @feature_gate = register_tool;
+}
+
+declare_lint! {
+    /// The `aligned_fields_in_packed` lint detects fields with `align` representation hints
+    /// inside `repr(C)` types with `packed` representation hint.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[repr(C, align(16))]
+    /// struct Aligned(i32);
+    ///
+    /// #[repr(C, packed)] // error!
+    /// struct Packed(Aligned);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The behavior of this combination of hints is inconsistent across C compilers. The layout
+    /// computed for these types by Rust may thus not match the layout actually used by C.
+    /// Specifically, Rust always follows the GCC convention, which makes it incompatible with MSVC
+    /// for these types. This may change in the future for targets where GCC is not the default C
+    /// compiler.
+    pub ALIGNED_FIELDS_IN_PACKED,
+    Deny,
+    "`repr(C, align)` types nested inside `repr(C, packed)` types \
+    do not always have a C-compatible layout",
 }
