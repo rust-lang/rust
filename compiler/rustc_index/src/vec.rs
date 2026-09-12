@@ -1,5 +1,6 @@
+use std::alloc::{Allocator, Global};
 use std::borrow::{Borrow, BorrowMut};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, RangeBounds};
 use std::{fmt, slice, vec};
@@ -35,11 +36,26 @@ use crate::{Idx, IndexSlice};
 /// This allows to index the IndexVec with the new index type.
 ///
 /// [`newtype_index!`]: ../macro.newtype_index.html
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 #[repr(transparent)]
-pub struct IndexVec<I: Idx, T> {
-    pub raw: Vec<T>,
+pub struct IndexVec<I: Idx, T, A: Allocator = Global> {
+    pub raw: Vec<T, A>,
     _marker: PhantomData<fn(&I)>,
+}
+
+impl<I: Idx, T: PartialEq, A: Allocator> PartialEq for IndexVec<I, T, A> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.raw.as_slice() == other.raw.as_slice()
+    }
+}
+impl<I: Idx, T: Eq, A: Allocator> Eq for IndexVec<I, T, A> {}
+
+impl<I: Idx, T: Hash, A: Allocator> Hash for IndexVec<I, T, A> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.raw.as_slice().hash(state);
+    }
 }
 
 impl<I: Idx, T> IndexVec<I, T> {
@@ -48,13 +64,6 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub const fn new() -> Self {
         IndexVec::from_raw(Vec::new())
     }
-
-    /// Constructs a new `IndexVec<I, T>` from a `Vec<T>`.
-    #[inline]
-    pub const fn from_raw(raw: Vec<T>) -> Self {
-        IndexVec { raw, _marker: PhantomData }
-    }
-
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         IndexVec::from_raw(Vec::with_capacity(capacity))
@@ -97,6 +106,26 @@ impl<I: Idx, T> IndexVec<I, T> {
         let _ = I::new(n);
         IndexVec::from_raw((0..n).map(I::new).map(func).collect())
     }
+}
+
+impl<I: Idx, T, A: Allocator> IndexVec<I, T, A> {
+    /// Constructs a new, empty `IndexVec<I, T>`.
+    #[inline]
+    pub const fn new_in(a: A) -> Self {
+        IndexVec::from_raw(Vec::new_in(a))
+    }
+
+    /// Constructs a new, empty `IndexVec<I, T>`.
+    #[inline]
+    pub fn with_capacity_in(capacity: usize, a: A) -> Self {
+        IndexVec::from_raw(Vec::with_capacity_in(capacity, a))
+    }
+
+    /// Constructs a new `IndexVec<I, T>` from a `Vec<T>`.
+    #[inline]
+    pub const fn from_raw(raw: Vec<T, A>) -> Self {
+        IndexVec { raw, _marker: PhantomData }
+    }
 
     #[inline]
     pub fn as_slice(&self) -> &IndexSlice<I, T> {
@@ -122,7 +151,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn into_iter(self) -> vec::IntoIter<T> {
+    pub fn into_iter(self) -> vec::IntoIter<T, A> {
         self.raw.into_iter()
     }
 
@@ -205,7 +234,7 @@ impl<I: Idx, T> IndexVec<I, T> {
 }
 
 /// `IndexVec` is often used as a map, so it provides some map-like APIs.
-impl<I: Idx, T> IndexVec<I, Option<T>> {
+impl<I: Idx, T, A: Allocator> IndexVec<I, Option<T>, A> {
     #[inline]
     pub fn insert(&mut self, index: I, value: T) -> Option<T> {
         self.ensure_contains_elem(index, || None).replace(value)
@@ -238,7 +267,7 @@ impl<I: Idx, T> IndexVec<I, Option<T>> {
 pub struct IndexSliceMapView<'a, I: Idx, T>(&'a IndexSlice<I, T>);
 pub struct IndexSliceMapViewCompact<'a, I: Idx, T>(&'a IndexSlice<I, Option<T>>);
 
-impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
+impl<I: Idx, T: fmt::Debug, A: Allocator> fmt::Debug for IndexVec<I, T, A> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.as_slice(), fmt)
     }
@@ -266,7 +295,7 @@ impl<'a, I: Idx, T: fmt::Debug> fmt::Debug for IndexSliceMapViewCompact<'a, I, T
     }
 }
 
-impl<I: Idx, T> Deref for IndexVec<I, T> {
+impl<I: Idx, T, A: Allocator> Deref for IndexVec<I, T, A> {
     type Target = IndexSlice<I, T>;
 
     #[inline]
@@ -275,26 +304,26 @@ impl<I: Idx, T> Deref for IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T> DerefMut for IndexVec<I, T> {
+impl<I: Idx, T, A: Allocator> DerefMut for IndexVec<I, T, A> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut_slice()
     }
 }
 
-impl<I: Idx, T> Borrow<IndexSlice<I, T>> for IndexVec<I, T> {
+impl<I: Idx, T, A: Allocator> Borrow<IndexSlice<I, T>> for IndexVec<I, T, A> {
     fn borrow(&self) -> &IndexSlice<I, T> {
         self
     }
 }
 
-impl<I: Idx, T> BorrowMut<IndexSlice<I, T>> for IndexVec<I, T> {
+impl<I: Idx, T, A: Allocator> BorrowMut<IndexSlice<I, T>> for IndexVec<I, T, A> {
     fn borrow_mut(&mut self) -> &mut IndexSlice<I, T> {
         self
     }
 }
 
-impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
+impl<I: Idx, T, A: Allocator> Extend<T> for IndexVec<I, T, A> {
     #[inline]
     fn extend<J: IntoIterator<Item = T>>(&mut self, iter: J) {
         self.raw.extend(iter);
@@ -323,17 +352,17 @@ impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
     }
 }
 
-impl<I: Idx, T> IntoIterator for IndexVec<I, T> {
+impl<I: Idx, T, A: Allocator> IntoIterator for IndexVec<I, T, A> {
     type Item = T;
-    type IntoIter = vec::IntoIter<T>;
+    type IntoIter = vec::IntoIter<T, A>;
 
     #[inline]
-    fn into_iter(self) -> vec::IntoIter<T> {
+    fn into_iter(self) -> vec::IntoIter<T, A> {
         self.raw.into_iter()
     }
 }
 
-impl<'a, I: Idx, T> IntoIterator for &'a IndexVec<I, T> {
+impl<'a, I: Idx, T, A: Allocator> IntoIterator for &'a IndexVec<I, T, A> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -343,7 +372,7 @@ impl<'a, I: Idx, T> IntoIterator for &'a IndexVec<I, T> {
     }
 }
 
-impl<'a, I: Idx, T> IntoIterator for &'a mut IndexVec<I, T> {
+impl<'a, I: Idx, T, A: Allocator> IntoIterator for &'a mut IndexVec<I, T, A> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
@@ -383,7 +412,7 @@ impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
 
 // Whether `IndexVec` is `Send` depends only on the data,
 // not the phantom data.
-unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
+unsafe impl<I: Idx, T, A: Allocator> Send for IndexVec<I, T, A> where T: Send {}
 
 #[cfg(test)]
 mod tests;

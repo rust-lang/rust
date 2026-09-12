@@ -3917,6 +3917,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "bitflags",
+ "bumpalo",
  "either",
  "elsa",
  "ena",
@@ -4438,6 +4439,7 @@ name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "bumpalo",
  "either",
  "gsgdt",
  "parking_lot",
@@ -4497,6 +4499,7 @@ dependencies = [
 name = "rustc_mir_dataflow"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "polonius-engine",
  "regex",
  "rustc_abi",

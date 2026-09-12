@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 polonius-engine = "0.13.0"
+bumpalo = { version = "3.20.3", features = ["allocator_api"] }
 regex = "1"
 rustc_abi = { path = "../rustc_abi" }
 rustc_data_structures = { path = "../rustc_data_structures" }
