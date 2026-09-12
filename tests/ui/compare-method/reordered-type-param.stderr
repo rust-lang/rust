@@ -16,6 +16,11 @@ LL |   fn b<C:Clone,D>(&self, x: C) -> C;
               found signature `fn(&E, G) -> G`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+note: expected to match this type parameter
+  --> $DIR/reordered-type-param.rs:7:8
+   |
+LL |   fn b<C:Clone,D>(&self, x: C) -> C;
+   |        ^
 help: change the parameter type to match the trait
    |
 LL -   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }

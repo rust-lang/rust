@@ -8,6 +8,8 @@ LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
    |
    = note: expected signature `extern "rust-call" fn(&Foo, (&'a _,))`
               found signature `extern "rust-call" fn(&Foo, (_,))`
+note: expected to match this type parameter
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 help: change the parameter type to match the trait
    |
 LL |   extern "rust-call" fn call(&self, (_,): (&'a T,)) {}
@@ -23,6 +25,8 @@ LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
    |
    = note: expected signature `extern "rust-call" fn(&mut Foo, (&'a _,))`
               found signature `extern "rust-call" fn(&mut Foo, (_,))`
+note: expected to match this type parameter
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 help: change the parameter type to match the trait
    |
 LL |   extern "rust-call" fn call_mut(&mut self, (_,): (&'a T,)) {}
@@ -39,6 +43,8 @@ LL |   extern "rust-call" fn call_once(self, (_,): (T,)) {}
    |
    = note: expected signature `extern "rust-call" fn(Foo, (&'a _,))`
               found signature `extern "rust-call" fn(Foo, (_,))`
+note: expected to match this type parameter
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 help: change the parameter type to match the trait
    |
 LL |   extern "rust-call" fn call_once(self, (_,): (&'a T,)) {}

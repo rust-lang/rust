@@ -24,6 +24,11 @@ LL |     fn foo(self);
    |            ^^^^
    = note: expected signature `fn(MyFuture)`
               found signature `fn(Box<MyFuture>)`
+note: expected to match this type parameter
+  --> $DIR/bad-self-type.rs:16:1
+   |
+LL | trait T {
+   | ^^^^^^^
 help: change the self-receiver type to match the trait
    |
 LL -     fn foo(self: Box<Self>) {}

@@ -1,0 +1,51 @@
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/default-type-parameter.rs:8:17
+   |
+LL |     fn foo() -> u32 { 0 }
+   |                 ^^^ expected `()`, found `u32`
+   |
+note: type in trait
+  --> $DIR/default-type-parameter.rs:2:17
+   |
+LL |     fn foo() -> T;
+   |                 ^
+   = note: expected signature `fn() -> ()`
+              found signature `fn() -> u32`
+note: expected to match this type parameter
+  --> $DIR/default-type-parameter.rs:1:13
+   |
+LL | trait Trait<T = ()> {
+   |             ^^^^^^
+help: change the output type to match the trait
+   |
+LL -     fn foo() -> u32 { 0 }
+LL +     fn foo() -> () { 0 }
+   |
+
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/default-type-parameter.rs:11:17
+   |
+LL |     fn foo() -> u32 { 0 }
+   |                 ^^^ expected `i32`, found `u32`
+   |
+note: type in trait
+  --> $DIR/default-type-parameter.rs:2:17
+   |
+LL |     fn foo() -> T;
+   |                 ^
+   = note: expected signature `fn() -> i32`
+              found signature `fn() -> u32`
+note: expected to match this type parameter
+  --> $DIR/default-type-parameter.rs:1:13
+   |
+LL | trait Trait<T = ()> {
+   |             ^^^^^^
+help: change the output type to match the trait
+   |
+LL -     fn foo() -> u32 { 0 }
+LL +     fn foo() -> i32 { 0 }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

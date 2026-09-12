@@ -20,6 +20,8 @@ LL |     fn from(_: fn((), (), u64)) -> Self {
    |
    = note: expected signature `fn(fn((), (), u32)) -> B`
               found signature `fn(fn((), (), u64)) -> B`
+note: expected to match this type parameter
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
 help: change the parameter type to match the trait
    |
 LL -     fn from(_: fn((), (), u64)) -> Self {
