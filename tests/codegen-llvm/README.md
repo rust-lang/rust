@@ -8,7 +8,7 @@ revisions annotation, like so:
 
 ```rust
 // revisions: aaa bbb
-// [bbb] compile-flags: --flags-for-bbb
+// [bbb] compile-flags: -Csomething=true
 ```
 
 After specifying those variations, you can write different expected, or
@@ -22,3 +22,14 @@ like so:
 // bbb-NOT:  emitted-only-for-aaa
 // bbb-SAME:                       emitted-only-for-bbb
 ```
+
+If multiple test revisions want to share some annotations, you can use a setup like this:
+
+```rust
+// revisions: aaa bbb ccc
+// [bbb] filecheck-flags: --check-prefix=both
+// [ccc] filecheck-flags: --check-prefix=both
+```
+
+Now `aaa:`, `bbb:`, `ccc:` annotations are only check for those specific revisions,
+and `both:` annotations are checked for revisions `bbb` and `ccc`.
