@@ -1,15 +1,15 @@
 // FIXME: This is currently disabled on *BSD.
 
-use super::{SocketAddr, sockaddr_un};
+use super::SocketAddr;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::zeroed;
 use crate::os::unix::io::RawFd;
+use crate::os::unix::net::SOCK_MAX_SIZE;
 use crate::path::Path;
 use crate::ptr::{eq, read_unaligned};
 use crate::slice::from_raw_parts;
 use crate::sys::net::Socket;
-
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(all(
     doc,
@@ -36,7 +36,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<(usize, bool, io::Result<SocketAddr>)> {
     unsafe {
-        let mut msg_name: libc::sockaddr_un = zeroed();
+        let mut msg_name: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
         let mut msg: libc::msghdr = zeroed();
         msg.msg_name = (&raw mut msg_name) as *mut _;
         msg.msg_namelen = size_of::<libc::sockaddr_un>() as libc::socklen_t;
@@ -67,12 +67,12 @@ pub(super) fn send_vectored_with_ancillary_to(
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<usize> {
     unsafe {
-        let (mut msg_name, msg_namelen) =
-            if let Some(path) = path { sockaddr_un(path)? } else { (zeroed(), 0) };
+        let mut sockaddr =
+            if let Some(path) = path { SocketAddr::from_path(path)? } else { zeroed() };
 
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = (&raw mut msg_name) as *mut _;
-        msg.msg_namelen = msg_namelen;
+        msg.msg_name = (&raw mut sockaddr.addr) as *mut _;
+        msg.msg_namelen = sockaddr.len;
         msg.msg_iov = bufs.as_ptr() as *mut _;
         msg.msg_iovlen = bufs.len() as _;
         msg.msg_controllen = ancillary.length as _;
