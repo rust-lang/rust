@@ -296,11 +296,8 @@ where
 }
 
 /// Non-resizing [`Write::write`] implementation for slices.
-/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<usize> {
+fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<usize> {
     let pos = cmp::min(*pos_mut, slice.len() as u64);
     let dst = &mut slice[(pos as usize)..];
     let amt = cmp::min(buf.len(), dst.len());
@@ -310,11 +307,8 @@ pub fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Resul
 }
 
 /// Non-resizing [`Write::write_vectored`] implementation for slices.
-/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn slice_write_vectored(
+fn slice_write_vectored(
     pos_mut: &mut u64,
     slice: &mut [u8],
     bufs: &[IoSlice<'_>],
@@ -331,21 +325,15 @@ pub fn slice_write_vectored(
 }
 
 /// Non-resizing [`Write::write_all`] implementation for slices.
-/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn slice_write_all(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<()> {
+fn slice_write_all(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<()> {
     let n = slice_write(pos_mut, slice, buf)?;
     if n < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
 }
 
 /// Non-resizing [`Write::write_all_vectored`] implementation for slices.
-/// Exported for `Cursor<Box<[u8], A>>`'s implementation of [`Write`].
 #[inline]
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn slice_write_all_vectored(
+fn slice_write_all_vectored(
     pos_mut: &mut u64,
     slice: &mut [u8],
     bufs: &[IoSlice<'_>],
@@ -357,80 +345,6 @@ pub fn slice_write_all_vectored(
         }
     }
     Ok(())
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Write for Cursor<&mut [u8]> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write(pos, inner, buf)
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write_vectored(pos, inner, bufs)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write_all(pos, inner, buf)
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write_all_vectored(pos, inner, bufs)
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[stable(feature = "cursor_array", since = "1.61.0")]
-impl<const N: usize> Write for Cursor<[u8; N]> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write(pos, inner, buf)
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write_vectored(pos, inner, bufs)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write_all(pos, inner, buf)
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        let (pos, inner) = self.into_parts_mut();
-        slice_write_all_vectored(pos, inner, bufs)
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -468,53 +382,95 @@ where
     }
 }
 
-/// Trait used to allow indirect implementation of `Write` for `Cursor<Self>`.
-/// Since [`Cursor`] is not a foundational type, it is not possible to implement
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Write for Cursor<T>
+where
+    T: AsMut<[u8]>,
+{
+    #[inline]
+    default fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let (pos, inner) = self.into_parts_mut();
+        slice_write(pos, inner.as_mut(), buf)
+    }
+
+    #[inline]
+    default fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let (pos, inner) = self.into_parts_mut();
+        slice_write_vectored(pos, inner.as_mut(), bufs)
+    }
+
+    #[inline]
+    default fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        let (pos, inner) = self.into_parts_mut();
+        slice_write_all(pos, inner.as_mut(), buf)
+    }
+
+    #[inline]
+    default fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        let (pos, inner) = self.into_parts_mut();
+        slice_write_all_vectored(pos, inner.as_mut(), bufs)
+    }
+
+    #[inline]
+    default fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    default fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Trait used to allow indirect implementation of [`Write`] for [`Cursor<Self>`](Cursor).
+/// Since [`Cursor`] is not a fundamental type, it is not possible to implement
 /// `Write` for `Cursor<T>` if `Write` is defined in `libcore` and `T` is in a
 /// downstream crate (e.g., `liballoc` or `libstd`).
 ///
 /// Methods are identical in purpose and meaning to their `Write` namesakes.
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub trait WriteThroughCursor: Sized {
+#[rustc_specialization_trait]
+pub trait SpecCursorWrite: Sized + AsMut<[u8]> {
     fn write(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<usize>;
     fn write_vectored(this: &mut Cursor<Self>, bufs: &[IoSlice<'_>]) -> io::Result<usize>;
-    fn is_write_vectored(this: &Cursor<Self>) -> bool;
-    fn write_all(this: &mut Cursor<Self>, buf: &[u8]) -> io::Result<()>;
-    fn write_all_vectored(this: &mut Cursor<Self>, bufs: &mut [IoSlice<'_>]) -> io::Result<()>;
-    fn flush(this: &mut Cursor<Self>) -> io::Result<()>;
 }
 
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W: WriteThroughCursor> Write for Cursor<W> {
+impl<W> Write for Cursor<W>
+where
+    W: SpecCursorWrite,
+{
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        WriteThroughCursor::write(self, buf)
+        SpecCursorWrite::write(self, buf)
     }
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        WriteThroughCursor::write_vectored(self, bufs)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        WriteThroughCursor::is_write_vectored(self)
+        SpecCursorWrite::write_vectored(self, bufs)
     }
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        WriteThroughCursor::write_all(self, buf)
+        SpecCursorWrite::write(self, buf)?;
+        Ok(())
     }
 
     #[inline]
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        WriteThroughCursor::write_all_vectored(self, bufs)
+        SpecCursorWrite::write_vectored(self, bufs)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
-        WriteThroughCursor::flush(self)
+        Ok(())
     }
 }
