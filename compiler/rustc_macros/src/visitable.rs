@@ -43,21 +43,21 @@ pub(super) fn visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro
     s.add_bounds(synstructure::AddBounds::Generics);
     s.bind_with(|_| synstructure::BindStyle::Ref);
     let ref_visit = s.each(|bind| {
-        let extra = get_attr(bind, "extra").unwrap_or(quote! {});
+        let extra = get_attr(bind, "extra").unwrap_or(quote! { () });
         if has_attr(bind, "ignore") {
             quote! {}
         } else {
-            quote! { rustc_ast_ir::try_visit!(crate::visit::Visitable::visit(#bind, __visitor, (#extra))) }
+            quote! { rustc_ast_ir::try_visit!(crate::visit::Visitable::visit(#bind, __visitor, #extra)) }
         }
     });
 
     s.bind_with(|_| synstructure::BindStyle::RefMut);
     let mut_visit = s.each(|bind| {
-        let extra = get_attr(bind, "extra").unwrap_or(quote! {});
+        let extra = get_attr(bind, "extra").unwrap_or(quote! { () });
         if has_attr(bind, "ignore") {
             quote! {}
         } else {
-            quote! { crate::mut_visit::MutVisitable::visit_mut(#bind, __visitor, (#extra)) }
+            quote! { crate::mut_visit::MutVisitable::visit_mut(#bind, __visitor, #extra) }
         }
     });
 
