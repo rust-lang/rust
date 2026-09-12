@@ -1,7 +1,7 @@
 //! Migration code for the `expr_fragment_specifier_2024` rule.
 
 use rustc_ast::token::{Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenTree, ArenaTokenTreeIter};
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
 use rustc_span::edition::Edition;
 use rustc_span::sym;
@@ -78,17 +78,18 @@ declare_lint! {
 declare_lint_pass!(Expr2024 => [EDITION_2024_EXPR_FRAGMENT_SPECIFIER,]);
 
 impl Expr2024 {
-    fn check_tokens(&mut self, cx: &crate::EarlyContext<'_>, tokens: &TokenStream) {
+    fn check_tokens(&mut self, cx: &crate::EarlyContext<'_>, tokens: ArenaTokenTreeIter) {
         let mut prev_colon = false;
         let mut prev_identifier = false;
         let mut prev_dollar = false;
-        for tt in tokens.iter() {
+        let stream = tokens.stream().clone();
+        for tt in tokens {
             debug!(
                 "check_tokens: {:?} - colon {prev_dollar} - ident {prev_identifier} - colon {prev_colon}",
                 tt
             );
             match tt {
-                TokenTree::Token(token, _) => match token.kind {
+                ArenaTokenTree::Token(token, _) => match token.kind {
                     TokenKind::Dollar => {
                         prev_dollar = true;
                         continue;
@@ -109,7 +110,9 @@ impl Expr2024 {
                     }
                     _ => {}
                 },
-                TokenTree::Delimited(.., tts) => self.check_tokens(cx, tts),
+                ArenaTokenTree::DelimitedStart(bounds, _) => {
+                    self.check_tokens(cx, stream.iter_delimited(bounds))
+                }
             }
             prev_colon = false;
             prev_identifier = false;
@@ -142,6 +145,6 @@ impl Expr2024 {
 
 impl EarlyLintPass for Expr2024 {
     fn check_mac_def(&mut self, cx: &crate::EarlyContext<'_>, mc: &rustc_ast::MacroDef) {
-        self.check_tokens(cx, &mc.body.tokens.to_token_stream());
+        self.check_tokens(cx, mc.body.tokens.iter_top_level_trees());
     }
 }
