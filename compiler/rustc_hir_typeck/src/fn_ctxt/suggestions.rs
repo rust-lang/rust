@@ -4,6 +4,7 @@ use core::iter;
 
 use hir::def_id::LocalDefId;
 use itertools::Itertools;
+use rustc_ast::LitKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
@@ -21,8 +22,8 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
-    self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
-    suggest_constraining_type_params,
+    self, Article, Binder, FloatTy, IntTy, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, UintTy,
+    Unnormalized, Upcast, suggest_constraining_type_params,
 };
 use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -2532,6 +2533,97 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             true
         } else {
             false
+        }
+    }
+
+    // suggest using .parse::<type>() when incorrect type assignment
+    pub(crate) fn suggest_string_to_numeric(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        // Return if:
+        //  expected ty is not numeric
+        //  assigned ty is not &str or String
+        //  note: &String, &&str excluded on purpose, doing so yields &T instead of T
+        if !expected.is_numeric() {
+            return false;
+        }
+
+        if !expr_ty.is_imm_ref_str()
+            && !matches!(
+                expr_ty.kind(),
+                ty::Adt(adt, _) if self.tcx.is_lang_item(adt.did(), LangItem::String)
+            )
+        {
+            return false;
+        }
+
+        // Check kind of expression (literal, variable)
+        match expr.kind {
+            ExprKind::Lit(lit) if matches!(lit.node, LitKind::Str(_, _)) => {
+                let LitKind::Str(sym, _) = lit.node else {
+                    return false;
+                };
+                let str_val = sym.as_str();
+
+                let parses_ok = match expected.kind() {
+                    ty::Int(int_ty) => match int_ty {
+                        IntTy::Isize => str_val.parse::<isize>().is_ok(),
+                        IntTy::I8 => str_val.parse::<i8>().is_ok(),
+                        IntTy::I16 => str_val.parse::<i16>().is_ok(),
+                        IntTy::I32 => str_val.parse::<i32>().is_ok(),
+                        IntTy::I64 => str_val.parse::<i64>().is_ok(),
+                        IntTy::I128 => str_val.parse::<i128>().is_ok(),
+                    },
+                    ty::Uint(uint_ty) => match uint_ty {
+                        UintTy::Usize => str_val.parse::<usize>().is_ok(),
+                        UintTy::U8 => str_val.parse::<u8>().is_ok(),
+                        UintTy::U16 => str_val.parse::<u16>().is_ok(),
+                        UintTy::U32 => str_val.parse::<u32>().is_ok(),
+                        UintTy::U64 => str_val.parse::<u64>().is_ok(),
+                        UintTy::U128 => str_val.parse::<u128>().is_ok(),
+                    },
+                    ty::Float(flt_ty) => match flt_ty {
+                        FloatTy::F32 => str_val.parse::<f32>().is_ok(),
+                        FloatTy::F64 => str_val.parse::<f64>().is_ok(),
+                        FloatTy::F16 | FloatTy::F128 => return false,
+                    },
+                    _ => false,
+                };
+
+                if !parses_ok {
+                    return false;
+                }
+
+                let target_type_str = expected.to_string();
+
+                err.span_suggestion_verbose(
+                    expr.span.shrink_to_hi(),
+                    "consider parsing the string literal to numeric type",
+                    format!(".parse::<{target_type_str}>().unwrap_or_default()"),
+                    Applicability::MachineApplicable,
+                );
+
+                return true;
+            }
+
+            // Ignore binary and unary ops, currently out of scope
+            ExprKind::Binary(_, _, _) | ExprKind::Unary(_, _) => return false,
+
+            // For everything else (functions calls, variables, etc.) just suggest parsing directly
+            _ => {
+                err.span_suggestion_verbose(
+                    expr.span.shrink_to_hi(),
+                    "consider parsing the string to numeric type",
+                    format!(".parse::<{}>().unwrap_or_default()", expected.to_string()),
+                    Applicability::MaybeIncorrect,
+                );
+
+                return true;
+            }
         }
     }
 

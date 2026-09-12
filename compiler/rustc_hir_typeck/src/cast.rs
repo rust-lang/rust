@@ -31,8 +31,9 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, ExprKind};
+use rustc_hir::{self as hir, ExprKind, expr_needs_parens};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_lint_defs::builtin::{TRIVIAL_CASTS, TRIVIAL_NUMERIC_CASTS};
@@ -211,6 +212,12 @@ fn make_invalid_casting_error<'a, 'tcx>(
     )
 }
 
+fn is_string_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let ty = ty.peel_refs();
+    ty.is_str()
+        || matches!(ty.kind(), ty::Adt(adt, _) if tcx.is_lang_item(adt.did(), LangItem::String))
+}
+
 /// If a cast from `from_ty` to `to_ty` is valid, returns a `Some` containing the kind
 /// of the cast.
 ///
@@ -300,6 +307,26 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             CastError::NeedViaThinPtr | CastError::NeedViaPtr => {
                 let mut err =
                     make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx);
+
+                if self.cast_ty.is_numeric() {
+                    let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
+
+                    if is_string_like(fcx.tcx, expr_ty)
+                        && !matches!(
+                            self.expr.kind,
+                            ExprKind::AddrOf(_, _, _) | ExprKind::Unary(_, _)
+                        )
+                        && !expr_needs_parens(self.expr)
+                    {
+                        let target_type_str = self.cast_ty.to_string();
+                        err.span_suggestion_verbose(
+                            self.expr_span.shrink_to_hi().to(self.cast_span),
+                            "consider parsing the string into a numeric type instead",
+                            format!(".parse::<{target_type_str}>().unwrap_or_default()"),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
 
                 if self.cast_ty.is_integral() {
                     if !matches!(self.expr.kind, ExprKind::AddrOf(..))
@@ -588,6 +615,27 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                     if let Some(note) = note {
                         err.note(note);
+                    }
+
+                    if self.cast_ty.is_numeric() {
+                        let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
+
+                        if is_string_like(fcx.tcx, expr_ty)
+                            && !matches!(
+                                self.expr.kind,
+                                ExprKind::AddrOf(_, _, _) | ExprKind::Unary(_, _)
+                            )
+                            && !expr_needs_parens(self.expr)
+                        {
+                            let target_ty_str = self.cast_ty.to_string();
+
+                            err.span_suggestion_verbose(
+                                self.expr_span.shrink_to_hi().to(self.cast_span),
+                                "consider parsing the string into a numeric type instead",
+                                format!(".parse::<{target_ty_str}>().unwrap_or_default()"),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                 } else {
                     err.span_label(self.span, "invalid cast");
