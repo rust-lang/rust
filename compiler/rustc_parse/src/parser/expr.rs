@@ -37,6 +37,8 @@ use super::{
 use crate::diagnostics::ExprParenthesesNeeded;
 use crate::{diagnostics, exp, maybe_recover_from_interpolated_ty_qpath};
 
+mod errors;
+
 #[derive(Debug)]
 pub(super) enum DestructuredFloat {
     /// 1e2
@@ -151,7 +153,6 @@ impl<'a> Parser<'a> {
         self.expected_token_types.insert(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
             let lhs_span = self.interpolated_or_expr_span(&lhs);
-            let cur_op_span = self.token.span;
             let restrictions = if op.node.is_assign_like() {
                 self.restrictions & Restrictions::NO_STRUCT_LITERAL
             } else {
@@ -165,134 +166,60 @@ impl<'a> Parser<'a> {
             } {
                 break;
             }
-            // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op.node == AssocOp::Range(RangeLimits::Closed) {
-                self.err_dotdotdot_syntax(self.token.span);
-            }
 
-            if self.token == token::LArrow {
-                self.err_larrow_operator(self.token.span);
-            }
+            self.reject_dotdotdot_expr_op();
+            self.reject_larrow_expr_op();
 
             parsed_something = true;
             self.bump();
-            if op.node.is_comparison() {
-                if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
-                    return Ok((expr, parsed_something));
-                }
-            }
 
-            // Look for JS' `===` and `!==` and recover
-            if let AssocOp::Binary(bop @ BinOpKind::Eq | bop @ BinOpKind::Ne) = op.node
-                && self.token == token::Eq
-                && self.prev_token.span.hi() == self.token.span.lo()
+            if op.node.is_comparison()
+                && let Some(expr) = self.check_no_chained_comparison(&lhs, &op)?
             {
-                let sp = op.span.to(self.token.span);
-                let sugg = bop.as_str().into();
-                let invalid = format!("{sugg}=");
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: invalid.clone(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Correctable {
-                        span: sp,
-                        invalid,
-                        correct: sugg,
-                    },
-                });
-                self.bump();
+                return Ok((expr, parsed_something));
             }
 
-            // Look for PHP's `<>` and recover
-            if op.node == AssocOp::Binary(BinOpKind::Lt)
-                && self.token == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: "<>".into(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Correctable {
-                        span: sp,
-                        invalid: "<>".into(),
-                        correct: "!=".into(),
-                    },
-                });
-                self.bump();
-            }
+            self.recover_from_strict_eq_op(op);
+            self.recover_from_diamond_ne_op();
+            self.recover_from_spaceship_cmp_op();
+            self.recover_from_postfix_inc_op(&lhs, starts_stmt)?;
+            self.recover_from_postfix_dec_op(&lhs, starts_stmt)?;
 
-            // Look for C++'s `<=>` and recover
-            if op.node == AssocOp::Binary(BinOpKind::Le)
-                && self.token == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: "<=>".into(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Spaceship(sp),
-                });
-                self.bump();
-            }
-
-            if self.prev_token == token::Plus
-                && self.token == token::Plus
-                && self.prev_token.span.between(self.token.span).is_empty()
-            {
-                let op_span = self.prev_token.span.to(self.token.span);
-                // Eat the second `+`
-                self.bump();
-                lhs = self.recover_from_postfix_increment(lhs, op_span, starts_stmt)?;
-                continue;
-            }
-
-            if self.prev_token == token::Minus
-                && self.token == token::Minus
-                && self.prev_token.span.between(self.token.span).is_empty()
-                && !self.look_ahead(1, |tok| tok.can_begin_expr())
-            {
-                let op_span = self.prev_token.span.to(self.token.span);
-                // Eat the second `-`
-                self.bump();
-                lhs = self.recover_from_postfix_decrement(lhs, op_span, starts_stmt)?;
-                continue;
-            }
-
-            let op_span = op.span;
-            let op = op.node;
-            // Special cases:
-            if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
-                continue;
-            } else if let AssocOp::Range(limits) = op {
-                // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
-                // generalise it to the Fixity::None code.
-                lhs = self.parse_expr_range(prec, lhs, limits, cur_op_span)?;
-                break;
-            }
-
-            let min_prec = match op.fixity() {
+            let min_prec = match op.node.fixity() {
                 Fixity::Right => Bound::Included(prec),
                 Fixity::Left | Fixity::None => Bound::Excluded(prec),
             };
-            let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc(min_prec)
-            })?;
 
-            let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
-            lhs = match op {
-                AssocOp::Binary(ast_op) => {
-                    let binary = self.mk_binary(respan(cur_op_span, ast_op), lhs, rhs);
-                    self.mk_expr(span, binary)
-                }
-                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
-                AssocOp::AssignOp(aop) => {
-                    let aopexpr = self.mk_assign_op(respan(cur_op_span, aop), lhs, rhs);
-                    self.mk_expr(span, aopexpr)
-                }
-                AssocOp::Cast | AssocOp::Range(_) => {
-                    self.dcx().span_bug(span, "AssocOp should have been handled by special case")
-                }
+            let finish_parsing_bin_op = |this: &mut Self| {
+                let rhs = this.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
+                    this.parse_expr_assoc(min_prec)
+                })?;
+                let span = this.mk_expr_sp(&lhs, lhs_span, op.span, rhs.span);
+                Ok((rhs, span))
             };
+
+            lhs = match op.node {
+                AssocOp::Binary(ast_op) => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, self.mk_binary(respan(op.span, ast_op), lhs, rhs))
+                }
+                AssocOp::AssignOp(aop) => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, self.mk_assign_op(respan(op.span, aop), lhs, rhs))
+                }
+                AssocOp::Assign => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, ExprKind::Assign(lhs, rhs, op.span))
+                }
+                AssocOp::Cast => {
+                    self.parse_assoc_op_cast(lhs, lhs_span, op.span, ExprKind::Cast)?
+                }
+                AssocOp::Range(limits) => self.parse_expr_range(min_prec, lhs, limits, op.span)?,
+            };
+
+            if let AssocOp::Range(_) = op.node {
+                break;
+            }
         }
 
         Ok((lhs, parsed_something))
@@ -346,55 +273,35 @@ impl<'a> Parser<'a> {
 
     /// Possibly translate the current token to an associative operator.
     /// The method does not advance the current token.
-    ///
-    /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     pub(super) fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
-        let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
-            // When parsing const expressions, stop parsing when encountering `>`.
-            (
-                Some(
-                    AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
-                    | AssocOp::AssignOp(AssignOpKind::ShrAssign),
-                ),
-                _,
-            ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
-                return None;
-            }
-            // When recovering patterns as expressions, stop parsing when encountering an
-            // assignment `=`, an alternative `|`, or a range `..`.
-            (
-                Some(
-                    AssocOp::Assign
-                    | AssocOp::AssignOp(_)
-                    | AssocOp::Binary(BinOpKind::BitOr)
-                    | AssocOp::Range(_),
-                ),
-                _,
-            ) if self.restrictions.contains(Restrictions::IS_PAT) => {
-                return None;
-            }
-            (Some(op), _) => (op, self.token.span),
-            (None, Some((Ident { name: sym::and, span }, IdentIsRaw::No)))
-                if self.may_recover() =>
-            {
-                self.dcx().emit_err(diagnostics::InvalidLogicalOperator {
-                    span: self.token.span,
-                    incorrect: "and".into(),
-                    sub: diagnostics::InvalidLogicalOperatorSub::Conjunction(self.token.span),
-                });
-                (AssocOp::Binary(BinOpKind::And), span)
-            }
-            (None, Some((Ident { name: sym::or, span }, IdentIsRaw::No))) if self.may_recover() => {
-                self.dcx().emit_err(diagnostics::InvalidLogicalOperator {
-                    span: self.token.span,
-                    incorrect: "or".into(),
-                    sub: diagnostics::InvalidLogicalOperatorSub::Disjunction(self.token.span),
-                });
-                (AssocOp::Binary(BinOpKind::Or), span)
-            }
-            _ => return None,
-        };
-        Some(respan(span, op))
+        let op = AssocOp::from_token(&self.token);
+
+        // When parsing const expressions, stop parsing when encountering `>`.
+        if self.restrictions.contains(Restrictions::CONST_EXPR)
+            && let Some(op) = op
+            && let AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
+            | AssocOp::AssignOp(AssignOpKind::ShrAssign) = op
+        {
+            return None;
+        }
+
+        // When recovering patterns as expressions, stop parsing when encountering an
+        // assignment `=`, an alternative `|`, or a range `..`.
+        if self.restrictions.contains(Restrictions::IS_PAT)
+            && let Some(op) = op
+            && let AssocOp::Assign
+            | AssocOp::AssignOp(_)
+            | AssocOp::Binary(BinOpKind::BitOr)
+            | AssocOp::Range(_) = op
+        {
+            return None;
+        }
+
+        if let Some(op) = op {
+            return Some(respan(self.token.span, op));
+        }
+
+        self.recover_from_alpha_logic_op()
     }
 
     /// Checks if this expression is a successfully parsed statement.
@@ -406,7 +313,7 @@ impl<'a> Parser<'a> {
     /// The other two variants are handled in `parse_prefix_range_expr` below.
     fn parse_expr_range(
         &mut self,
-        prec: ExprPrecedence,
+        min_prec: Bound<ExprPrecedence>,
         lhs: Box<Expr>,
         limits: RangeLimits,
         cur_op_span: Span,
@@ -414,7 +321,7 @@ impl<'a> Parser<'a> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
             let maybe_lt = self.token;
             Some(
-                self.parse_expr_assoc(Bound::Excluded(prec))
+                self.parse_expr_assoc(min_prec)
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
             )
         } else {
@@ -445,10 +352,7 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(err);
         }
 
-        // Check for deprecated `...` syntax.
-        if self.token == token::DotDotDot {
-            self.err_dotdotdot_syntax(self.token.span);
-        }
+        self.reject_dotdotdot_expr_op();
 
         debug_assert!(
             self.token.is_range_separator(),
@@ -539,8 +443,14 @@ impl<'a> Parser<'a> {
                 this.bump();
                 this.bump();
 
-                let operand_expr = this.parse_expr_dot_or_call(attrs)?;
-                this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
+                let operand = this.parse_expr_dot_or_call(attrs)?;
+                return Err(this.report_inc_dec_op(
+                    &operand,
+                    starts_stmt,
+                    errors::IncOrDec::Inc,
+                    errors::UnaryFixity::Pre,
+                    pre_span,
+                ));
             }
             token::Ident(..)
                 if this.token.is_keyword(kw::Move)
@@ -551,7 +461,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
-            _ => return this.parse_expr_dot_or_call(attrs),
+            _ => this.parse_expr_dot_or_call(attrs),
         }
     }
 
@@ -4131,14 +4041,6 @@ impl<'a> Parser<'a> {
             span: self.token.span,
             eq: field_name.span.shrink_to_hi().to(self.token.span),
         });
-    }
-
-    fn err_dotdotdot_syntax(&self, span: Span) {
-        self.dcx().emit_err(diagnostics::DotDotDot { span });
-    }
-
-    fn err_larrow_operator(&self, span: Span) {
-        self.dcx().emit_err(diagnostics::LeftArrowOperator { span });
     }
 
     fn mk_assign_op(&self, assign_op: AssignOp, lhs: Box<Expr>, rhs: Box<Expr>) -> ExprKind {
