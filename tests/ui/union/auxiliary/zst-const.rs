@@ -24,3 +24,9 @@ pub const HAS_NON_EXHAUSTIVE_TUPLE_FIELD_LIST: HasNonExhaustiveTupleFieldList =
     HasNonExhaustiveTupleFieldList();
 
 pub const NESTED_CONST: (HasPrivateField,) = (HAS_PRIVATE_FIELD,);
+
+#[derive(Clone, Copy)]
+pub union MixedVisibilityUnion {
+    pub zst: (),
+    not_pub: u8,
+}

@@ -287,21 +287,39 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
 
                     if self.in_union_destructure
                         && !has_rest
-                        && (single_variant.field_list_has_applicable_non_exhaustive()
-                            || single_variant
-                                .fields
-                                .iter()
-                                .any(|f| !f.vis.is_accessible_from(scope, self.tcx)))
+                        && (
+                            // Check if we are matching against a foreign `non_exhaustive` struct
+                            // without a rest pattern.
+                            // (This is only possible in patterns lowered from constants.)
+                            single_variant.field_list_has_applicable_non_exhaustive()
+                            // Check if we are matching against a struct containing inaccessible private fields
+                            // without a rest pattern.
+                            // (This is only possible in patterns lowered from constants.)
+                                || adt_def.is_struct()
+                                    && single_variant
+                                        .fields
+                                        .iter()
+                                        .any(|f| !f.vis.is_accessible_from(scope, self.tcx))
+                        )
                     {
-                        // This pattern must have been lowered from a constant.
-                        // Changes to private implementation details of said constant
-                        // must not affect whether we require `unsafe`.
+                        // Ensure we don't expose private implementation details of the const.
                         self.requires_unsafe(pat.span, AccessToUnionField);
                         return;
                     }
 
                     for subpat in subpatterns {
                         let field = &single_variant.fields[subpat.field];
+
+                        // This assert should always pass, because union constants can't be used as patterns,
+                        // and struct constants are handled by the check above.
+                        // But maybe with e.g. some weird future macro hygiene feature, there could be new ways
+                        // of referencing inaccessible private fields from a pattern.
+                        // So let's assert just in case.
+                        debug_assert!(
+                            !(self.in_union_destructure
+                                && !field.vis.is_accessible_from(scope, self.tcx))
+                        );
+
                         if field.safety.is_unsafe() {
                             self.requires_unsafe(subpat.pattern.span, UseOfUnsafeField);
                         }

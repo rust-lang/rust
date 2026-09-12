@@ -4,7 +4,7 @@ extern crate zst_const;
 use zst_const::{
     HAS_NON_EXHAUSTIVE_FIELD_LIST, HAS_NON_EXHAUSTIVE_TUPLE_FIELD_LIST, HAS_PRIVATE_FIELD,
     HAS_PRIVATE_TUPLE_FIELD, HasNonExhaustiveFieldList, HasNonExhaustiveTupleFieldList,
-    HasPrivateField, HasPrivateTupleField, NESTED_CONST,
+    HasPrivateField, HasPrivateTupleField, MixedVisibilityUnion, NESTED_CONST,
 };
 
 union Foo {
@@ -21,6 +21,7 @@ union Foo {
     has_non_exhaustive_tuple_field_list: HasNonExhaustiveTupleFieldList,
     local_non_exhaustive_field_list: LocalNonExhaustiveFieldList,
     nested_const: (HasPrivateField,),
+    mixed_visibility_union: MixedVisibilityUnion,
 }
 
 #[derive(Clone, Copy)]
@@ -155,6 +156,9 @@ pub fn main() {
     }
     match foo {
         Foo { local_non_exhaustive_field_list: LOCAL_NON_EXHAUSTIVE_FIELD_LIST } => {}
+    }
+    match foo {
+        Foo { mixed_visibility_union: MixedVisibilityUnion { zst: () } } => {}
     }
 
     // binding to wildcard is okay
