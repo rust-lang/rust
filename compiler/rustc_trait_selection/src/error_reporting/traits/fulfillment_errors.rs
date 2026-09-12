@@ -172,6 +172,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Err(guar) = leaf_trait_predicate.error_reported() {
                             return guar;
                         }
+                        let impl_assoc_type_self_trait_bound_param =
+                            if self.is_explicit_self_trait_bound_on_impl_assoc_type(
+                                obligation.cause.body_def_id,
+                                obligation.cause.code(),
+                                leaf_trait_predicate.def_id(),
+                            ) && let ty::Param(param_ty) =
+                                *leaf_trait_predicate.skip_binder().self_ty().kind()
+                            {
+                                Some(param_ty)
+                            } else {
+                                None
+                            };
+
+                        let is_explicit_self_sized_bound_on_impl_assoc_type =
+                            impl_assoc_type_self_trait_bound_param.is_some()
+                                && self
+                                    .tcx
+                                    .is_lang_item(leaf_trait_predicate.def_id(), LangItem::Sized);
+
+                        if let Some(param_ty) = impl_assoc_type_self_trait_bound_param {
+                            span = param_ty.span_from_generics(
+                                self.tcx,
+                                obligation.cause.body_def_id.to_def_id(),
+                            );
+                        }
                         // Silence redundant errors on binding access that are already
                         // reported on the binding definition (#56607).
                         if let Err(guar) = self.fn_arg_obligation(&obligation) {
@@ -389,9 +414,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             _ => DUMMY_SP,
                         };
                         if let Some(s) = label {
-                            // If it has a custom `#[rustc_on_unimplemented]`
-                            // error message, let's display it as the label!
-                            err.span_label(span, s);
+                            // Preserve custom `#[rustc_on_unimplemented]` labels for other traits;
+                            // the explicit `Self: Sized` associated-type case has targeted labeling.
+                            if !is_explicit_self_sized_bound_on_impl_assoc_type {
+                                err.span_label(span, s);
+                            }
                             if !matches!(leaf_trait_predicate.skip_binder().self_ty().kind(), ty::Param(_))
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point

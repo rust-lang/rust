@@ -3815,6 +3815,38 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         true
     }
+    /// Checks for an explicit `Self: Trait` bound on an associated type impl.
+    pub(super) fn is_explicit_self_trait_bound_on_impl_assoc_type(
+        &self,
+        body_def_id: LocalDefId,
+        cause_code: &ObligationCauseCode<'tcx>,
+        trait_def_id: DefId,
+    ) -> bool {
+        let ObligationCauseCode::WhereClause(item_def_id, span) = *cause_code.peel_derives() else {
+            return false;
+        };
+        let is_impl_trait_assoc_type = if let Some(assoc_item) =
+            self.tcx.opt_associated_item(body_def_id.to_def_id())
+            && let Some(trait_item_def_id) = assoc_item.trait_item_def_id()
+        {
+            trait_item_def_id == item_def_id
+                && matches!(assoc_item.kind, ty::AssocKind::Type { .. })
+        } else {
+            false
+        };
+
+        if !is_impl_trait_assoc_type {
+            return false;
+        }
+
+        self.tcx.clauses_of(item_def_id).instantiate_own_identity().any(|(clause, clause_span)| {
+            clause_span == span
+                && clause.skip_norm_wip().as_trait_clause().is_some_and(|trait_pred| {
+                    trait_pred.def_id() == trait_def_id
+                        && trait_pred.skip_binder().self_ty().is_self_param()
+                })
+        })
+    }
 
     pub(super) fn note_obligation_cause_code<G: EmissionGuarantee, T>(
         &self,
@@ -4011,6 +4043,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     this =
                                         "the implicit `Sized` requirement on this type parameter";
                                 }
+                                let is_explicit_self_sized_bound_on_impl_assoc_type = self
+                                    .is_explicit_self_trait_bound_on_impl_assoc_type(
+                                        body_def_id,
+                                        cause_code,
+                                        def_id,
+                                    );
+
+                                if is_explicit_self_sized_bound_on_impl_assoc_type
+                                    && let Some(generics) = tcx.hir_get_generics(body_def_id)
+                                    && !generics.where_clause_span.from_expansion()
+                                    && generics.where_clause_span.desugaring_kind().is_none()
+                                {
+                                    let tail_span = generics.tail_span_for_predicate_suggestion();
+                                    if tail_span.can_be_used_for_suggestions() {
+                                        err.span_suggestion_verbose(
+                                            tail_span,
+                                            "consider adding `where Self: Sized`",
+                                            format!(
+                                                "{} Self: Sized",
+                                                generics.add_where_or_trailing_comma()
+                                            ),
+                                            Applicability::MachineApplicable,
+                                        );
+                                    }
+                                }
+
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
                                     generics,
                                     kind: hir::TraitItemKind::Type(bounds, None),
@@ -4020,6 +4078,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     && !bounds.iter()
                                         .filter_map(|bound| bound.trait_ref())
                                         .any(|tr| tr.trait_def_id().is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized)))
+                                    && !is_explicit_self_sized_bound_on_impl_assoc_type
                                 {
                                     let (span, separator) = if let [.., last] = bounds {
                                         (last.span().shrink_to_hi(), " +")

@@ -1,0 +1,17 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/assoc-item-own-bound-issue-162368.rs:13:18
+   |
+LL | impl<T: ?Sized> Trait for T {
+   |      - this type parameter needs to be `Sized`
+LL |     type Assoc = i32;
+   |                  ^^^ doesn't have a size known at compile-time
+   |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - impl<T: ?Sized> Trait for T {
+LL + impl<T> Trait for T {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

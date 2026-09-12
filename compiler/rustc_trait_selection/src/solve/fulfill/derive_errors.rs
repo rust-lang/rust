@@ -368,19 +368,42 @@ impl<'tcx> BestObligation<'tcx> {
         alias: ty::AliasTerm<'tcx>,
     ) -> ControlFlow<PredicateObligation<'tcx>> {
         let tcx = goal.infcx().tcx;
-        let obligation = Obligation::new(
-            tcx,
-            self.obligation.cause.clone(),
-            goal.goal().param_env,
-            alias.trait_ref(tcx),
-        );
+
+        let trait_ref = alias.trait_ref(tcx);
+        let obligation =
+            Obligation::new(tcx, self.obligation.cause.clone(), goal.goal().param_env, trait_ref);
+
         self.with_derived_obligation(obligation, |this| {
             goal.infcx().visit_proof_tree_at_depth(
-                goal.goal().with(tcx, alias.trait_ref(tcx)),
+                goal.goal().with(tcx, trait_ref),
                 goal.depth() + 1,
                 this,
             )
-        })
+        })?;
+
+        let def_id = alias.expect_projection_def_id();
+
+        for (clause, span) in tcx.clauses_of(def_id).instantiate_own(tcx, alias.args) {
+            let clause = clause.skip_norm_wip();
+
+            let cause = ObligationCause::new(
+                self.obligation.cause.span,
+                self.obligation.cause.body_def_id,
+                ObligationCauseCode::WhereClause(def_id, span),
+            );
+
+            let obligation = Obligation::new(tcx, cause, goal.goal().param_env, clause);
+
+            self.with_derived_obligation(obligation, |this| {
+                goal.infcx().visit_proof_tree_at_depth(
+                    goal.goal().with(tcx, clause),
+                    goal.depth() + 1,
+                    this,
+                )
+            })?;
+        }
+
+        ControlFlow::Continue(())
     }
 
     /// If we have no candidates, then it's likely that there is a

@@ -1,0 +1,119 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:11:6
+   |
+LL | impl<T: ?Sized> TraitWithBound for T {
+   |      ^ this type parameter needs to be `Sized`
+   |
+note: required by a bound in `TraitWithBound::Assoc`
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:7:15
+   |
+LL |     type Assoc
+   |          ----- required by a bound in this associated type
+LL |     where
+LL |         Self: Sized,
+   |               ^^^^^ required by this bound in `TraitWithBound::Assoc`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - impl<T: ?Sized> TraitWithBound for T {
+LL + impl<T> TraitWithBound for T {
+   |
+help: consider adding `where Self: Sized`
+   |
+LL |         Self: 'static, Self: Sized;
+   |                      +++++++++++++
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:24:18
+   |
+LL |     type Assoc = [u8];
+   |                  ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by a bound in `NormalAssoc::Assoc`
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:20:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^^ required by this bound in `NormalAssoc::Assoc`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Assoc: ?Sized;
+   |               ++++++++
+
+error[E0277]: the trait bound `T: Marker` is not satisfied
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:50:6
+   |
+LL | impl<T> TraitWithMarker for T {
+   |      ^ the trait `Marker` is not implemented for `T`
+   |
+note: required by a bound in `TraitWithMarker::Assoc`
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:47:15
+   |
+LL |     type Assoc
+   |          ----- required by a bound in this associated type
+LL |     where
+LL |         Self: Marker;
+   |               ^^^^^^ required by this bound in `TraitWithMarker::Assoc`
+help: consider restricting type parameter `T` with trait `Marker`
+   |
+LL | impl<T: Marker> TraitWithMarker for T {
+   |       ++++++++
+
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:62:6
+   |
+LL | impl<T> TraitWithSend for T {
+   |      ^ `T` cannot be sent between threads safely
+   |
+note: required by a bound in `TraitWithSend::Assoc`
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:59:15
+   |
+LL |     type Assoc
+   |          ----- required by a bound in this associated type
+LL |     where
+LL |         Self: Send;
+   |               ^^^^ required by this bound in `TraitWithSend::Assoc`
+help: consider restricting type parameter `T` with trait `Send`
+   |
+LL | impl<T: std::marker::Send> TraitWithSend for T {
+   |       +++++++++++++++++++
+
+error[E0277]: the trait bound `T: NonImplTrait` is not satisfied
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:36:13
+   |
+LL |     let _: <T as NonImplTrait>::Assoc;
+   |             ^ the trait `NonImplTrait` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `NonImplTrait`
+   |
+LL | fn non_impl_use<T: ?Sized + NonImplTrait>() {
+   |                           ++++++++++++++
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:36:13
+   |
+LL | fn non_impl_use<T: ?Sized>() {
+   |                 - this type parameter needs to be `Sized`
+LL |     let _: <T as NonImplTrait>::Assoc;
+   |             ^ doesn't have a size known at compile-time
+   |
+note: required by a bound in `NonImplTrait::Assoc`
+  --> $DIR/assoc-item-own-bound-where-clause-suggestion.rs:32:15
+   |
+LL |     type Assoc
+   |          ----- required by a bound in this associated type
+LL |     where
+LL |         Self: Sized;
+   |               ^^^^^ required by this bound in `NonImplTrait::Assoc`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn non_impl_use<T: ?Sized>() {
+LL + fn non_impl_use<T>() {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Assoc: ?Sized
+   |               ++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
