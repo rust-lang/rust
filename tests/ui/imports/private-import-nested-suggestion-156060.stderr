@@ -14,6 +14,11 @@ note: ...and refers to the struct `One` which is defined here
    |
 LL |     pub struct One();
    |     ^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `One` directly
+   |
+LL ~     use crate::one::One;
+LL ~     use crate::two::Two;
+   |
 
 error: aborting due to 1 previous error
 
