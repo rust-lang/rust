@@ -15,9 +15,9 @@ extern "C" fn(i32, (), i32);
 ```
 */
 
-/*
- * ZST IN "C" IS ZERO-SIZED
- */
+//
+// ZST IN "C" IS ZERO-SIZED
+//
 
 //@ revisions: aarch64-darwin
 //@[aarch64-darwin] compile-flags: --target aarch64-apple-darwin
@@ -27,10 +27,9 @@ extern "C" fn(i32, (), i32);
 //@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64-linux] needs-llvm-components: x86
 
-
-/*
- * ZST IN "C" IS PASS-BY-POINTER
- */
+//
+// ZST IN "C" IS PASS-BY-POINTER
+//
 
 // according to the SRV4 ABI, an aggregate is always passed in registers,
 // and it so happens the GCC extension for ZSTs considers them as structs.
@@ -42,7 +41,11 @@ extern "C" fn(i32, (), i32);
 //@[s390x-linux] compile-flags: --target s390x-unknown-linux-gnu
 //@[s390x-linux] needs-llvm-components: systemz
 
-//@ revisions: sparc64-linux
+//@ revisions: sparc-none sparc-linux sparc64-linux
+//@[sparc-none] compile-flags: --target sparc-unknown-none-elf
+//@[sparc-none] needs-llvm-components: sparc
+//@[sparc-linux] compile-flags: --target sparc-unknown-linux-gnu
+//@[sparc-linux] needs-llvm-components: sparc
 //@[sparc64-linux] compile-flags: --target sparc64-unknown-linux-gnu
 //@[sparc64-linux] needs-llvm-components: sparc
 
@@ -52,7 +55,6 @@ extern "C" fn(i32, (), i32);
 //@[x86_64-pc-windows-gnu] compile-flags: --target x86_64-pc-windows-gnu
 //@[x86_64-pc-windows-gnu] needs-llvm-components: x86
 //@ ignore-backends: gcc
-
 
 #![feature(no_core, rustc_attrs)]
 #![no_core]

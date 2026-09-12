@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ revisions: arm-linux arm-android armv7-linux armv7-android mips thumb sparc
+//@ revisions: arm-linux arm-android armv7-linux armv7-android mips thumb
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[arm-linux] compile-flags: --target arm-unknown-linux-gnueabi
@@ -14,8 +14,6 @@
 //@[mips] needs-llvm-components: mips
 //@[thumb] compile-flags: --target thumbv7neon-linux-androideabi
 //@[thumb] needs-llvm-components: arm
-//@[sparc] compile-flags: --target sparc-unknown-linux-gnu
-//@[sparc] needs-llvm-components: sparc
 
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
