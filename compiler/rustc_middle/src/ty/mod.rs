@@ -2019,6 +2019,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     variant_fields,
                     variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),
+                    relocated_upvars: IndexVec::new(),
+                    pack: rustc_session::config::PackCoroutineLayout::No,
                 };
                 return Ok(self.arena.alloc(proxy_layout));
             } else {
