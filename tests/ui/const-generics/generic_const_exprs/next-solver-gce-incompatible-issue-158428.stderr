@@ -9,13 +9,13 @@ LL | #![feature(generic_const_exprs)]
    = note: the currently stable trait solver will be used for this crate
    = note: see issues #160895 <https://github.com/rust-lang/rust/issues/160895> for more information
 
-warning: union `AsBytes` is never used
-  --> $DIR/next-solver-gce-incompatible-issue-158428.rs:12:7
+error: `generic_const_args` requires -Znext-solver=globally to be enabled
+  --> $DIR/next-solver-gce-incompatible-issue-158428.rs:4:12
    |
-LL | union AsBytes<T> {
-   |       ^^^^^^^
+LL | #![feature(generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+   = help: enable all of these features
 
-warning: 2 warnings emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
