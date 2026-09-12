@@ -11,7 +11,7 @@ use tracing::debug;
 
 use super::data::*;
 use super::fs::*;
-use super::{clean, file_format, work_product};
+use super::{clean, file_format};
 use crate::assert_dep_graph::assert_dep_graph;
 use crate::diagnostics;
 
@@ -111,23 +111,6 @@ pub fn save_work_product_index(
         encode_work_product_index(&new_work_products, &mut e);
         e.finish()
     });
-
-    // We also need to clean out old work-products, as not all of them are
-    // deleted during invalidation. Some object files don't change their
-    // content, they are just not needed anymore.
-    let previous_work_products = dep_graph.previous_work_products();
-    for (id, wp) in previous_work_products.to_sorted_stable_ord() {
-        if !new_work_products.contains_key(id) {
-            work_product::delete_workproduct_files(sess, incr_comp_session.unwrap(), wp);
-            debug_assert!(
-                !wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(
-                    incr_comp_session.unwrap(),
-                    path
-                )
-                .exists())
-            );
-        }
-    }
 
     // Check that we did not delete one of the current work-products:
     debug_assert!({

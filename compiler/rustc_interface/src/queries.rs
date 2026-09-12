@@ -101,7 +101,6 @@ impl Linker {
                 incr_comp_session.as_ref().unwrap(),
                 "metadata",
                 &[("rmeta", path)],
-                &[],
             );
             work_products.insert(id, product);
         }
