@@ -4,7 +4,7 @@ use crate::fs::{create_dir, remove_dir, remove_file, rename};
 use crate::io::{self, Error, ErrorKind};
 use crate::path::{Path, PathBuf};
 use crate::sys::IntoInner;
-use crate::sys::fs::{File, FileAttr, OpenOptions};
+use crate::sys::fs::{File, FileAttr, OpenOptions, symlink};
 use crate::sys::helpers::ignore_notfound;
 use crate::{fmt, fs};
 
@@ -103,6 +103,10 @@ impl Dir {
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
         remove_dir(path)
+    }
+
+    pub fn symlink(&self, original: &Path, link: &Path) -> io::Result<()> {
+        symlink(original, link)
     }
 }
 
