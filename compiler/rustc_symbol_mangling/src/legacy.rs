@@ -487,19 +487,9 @@ impl<'tcx> PrettyPrinter<'tcx> for LegacySymbolMangler<'tcx> {
         false
     }
 
-    // Identical to `PrettyPrinter::comma_sep` except there is no space after each comma.
-    fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
-    where
-        T: Print<Self>,
-    {
-        if let Some(first) = elems.next() {
-            first.print(self)?;
-            for elem in elems {
-                self.write_str(",")?;
-                elem.print(self)?;
-            }
-        }
-        Ok(())
+    // In symbol mangling, there is no space after the commas in a comma-separated list.
+    fn comma_sep_has_space(&self) -> bool {
+        false
     }
 
     fn generic_delimiters(
