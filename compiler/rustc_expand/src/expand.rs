@@ -725,7 +725,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, span } => {
                 if let SyntaxExtensionKind::Bang(expander) = ext {
-                    match expander.expand(self.cx, span, mac.args.tokens.to_token_stream()) {
+                    match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
                                 ArenaTokenStream::from_stream(&tok_result),
@@ -747,17 +747,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
                 } else if let Some(expander) = ext.as_legacy_bang() {
-                    let tok_result =
-                        match expander.expand(self.cx, span, mac.args.tokens.to_token_stream()) {
-                            ExpandResult::Ready(tok_result) => tok_result,
-                            ExpandResult::Retry(_) => {
-                                // retry the original
-                                return ExpandResult::Retry(Invocation {
-                                    kind: InvocationKind::Bang { mac, span },
-                                    ..invoc
-                                });
-                            }
-                        };
+                    let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                        ExpandResult::Ready(tok_result) => tok_result,
+                        ExpandResult::Retry(_) => {
+                            // retry the original
+                            return ExpandResult::Retry(Invocation {
+                                kind: InvocationKind::Bang { mac, span },
+                                ..invoc
+                            });
+                        }
+                    };
                     if let Some(fragment) = fragment_kind.make_from(tok_result) {
                         if macro_stats {
                             update_bang_macro_stats(self.cx, fragment_kind, span, mac, &fragment);
@@ -782,7 +781,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         // we are invoking it on an out-of-line module or crate.
                         Annotatable::Crate(krate) => {
                             rustc_parse::fake_token_stream_for_crate(&self.cx.sess.psess, krate)
-                                .to_token_stream()
                         }
                         Annotatable::Item(item_inner)
                             if matches!(attr.style, AttrStyle::Inner)
@@ -801,7 +799,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 item_inner,
                                 Some(&attr),
                             )
-                            .to_token_stream()
                         }
                         Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_item(
@@ -809,7 +806,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 item_inner,
                                 None,
                             )
-                            .to_token_stream()
                         }
                         // When a function has EII implementations attached (via `eii_impl`),
                         // use fake tokens so the pretty-printer re-emits the EII attribute
@@ -826,14 +822,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 item_inner,
                                 None,
                             )
-                            .to_token_stream()
                         }
                         Annotatable::ForeignItem(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_foreign_item(
                                 &self.cx.sess.psess,
                                 item_inner,
                             )
-                            .to_token_stream()
                         }
                         _ => item.to_tokens(),
                     };
@@ -842,7 +836,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
-                    let inner_tokens = attr_item.args.inner_tokens().to_token_stream();
+                    let inner_tokens = attr_item.args.inner_tokens();
                     match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(

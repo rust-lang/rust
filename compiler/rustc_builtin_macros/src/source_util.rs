@@ -5,6 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast as ast;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{join_path_idents, token};
 use rustc_ast_pretty::pprust;
@@ -82,7 +83,7 @@ pub(crate) fn expand_stringify(
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    let s = pprust::tts_to_string(&tts);
+    let s = pprust::tts_to_string(&ArenaTokenStream::from_stream(&tts));
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&s))))
 }
 

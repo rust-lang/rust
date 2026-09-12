@@ -1,3 +1,4 @@
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::ExtCtxt;
 use rustc_middle::ty::{TyCtxt, tls};
@@ -76,7 +77,12 @@ pub(crate) fn derive_macro_expansion<'tcx>(
     let _ = tcx.crate_hash(invoc_id.expn_data().macro_def_id.unwrap().krate);
 
     QueryDeriveExpandCtx::with(|ecx, client| {
-        rustc_expand::proc_macro::expand_derive_macro(invoc_id, input.clone(), ecx, client)
-            .map(|ts| &*tcx.arena.alloc(ts))
+        rustc_expand::proc_macro::expand_derive_macro(
+            invoc_id,
+            ArenaTokenStream::from_stream(input),
+            ecx,
+            client,
+        )
+        .map(|ts| &*tcx.arena.alloc(ts))
     })
 }
