@@ -254,16 +254,16 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                Niche {
                    offset: Size(0 bytes),
                    value: u16,
-                   valid_range: (..=0) | (65535..),
+                   valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u16 is (..=0) | (65535..),
+               tag: u16 is 0..=1,
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
-                   niche_start: 65535,
+                   niche_start: 1,
                },
                tag_field: 0,
                variants: [

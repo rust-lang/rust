@@ -21,7 +21,7 @@ fn make_some_bool(x: bool) -> Option<bool> {
 fn make_none_bool() -> Option<bool> {
     // CHECK-LABEL: i8 @make_none_bool()
     // CHECK-NEXT: start:
-    // CHECK-NEXT: ret i8 2
+    // CHECK-NEXT: ret i8 -1
     None
 }
 
