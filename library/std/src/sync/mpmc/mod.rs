@@ -48,8 +48,6 @@
 //! Simple usage:
 //!
 //! ```
-//! #![feature(mpmc_channel)]
-//!
 //! use std::thread;
 //! use std::sync::mpmc::channel;
 //!
@@ -64,8 +62,6 @@
 //! Shared usage:
 //!
 //! ```
-//! #![feature(mpmc_channel)]
-//!
 //! use std::thread;
 //! use std::sync::mpmc::channel;
 //!
@@ -99,8 +95,6 @@
 //! Propagating panics:
 //!
 //! ```
-//! #![feature(mpmc_channel)]
-//!
 //! use std::sync::mpmc::channel;
 //!
 //! // The call to recv() will return an error because the channel has already
@@ -149,6 +143,7 @@ mod utils;
 mod waker;
 mod zero;
 
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 pub use error::*;
 
 use crate::fmt;
@@ -177,8 +172,6 @@ use crate::time::{Duration, Instant};
 /// # Examples
 ///
 /// ```
-/// #![feature(mpmc_channel)]
-///
 /// use std::sync::mpmc::channel;
 /// use std::thread;
 ///
@@ -196,7 +189,7 @@ use crate::time::{Duration, Instant};
 /// println!("{:?}", receiver.recv().unwrap());
 /// ```
 #[must_use]
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let (s, r) = counter::new(list::Channel::new());
     let s = Sender { flavor: SenderFlavor::List(s) };
@@ -231,7 +224,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// # Examples
 ///
 /// ```
-/// use std::sync::mpsc::sync_channel;
+/// use std::sync::mpmc::sync_channel;
 /// use std::thread;
 ///
 /// let (sender, receiver) = sync_channel(1);
@@ -248,7 +241,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// assert_eq!(receiver.recv().unwrap(), 2);
 /// ```
 #[must_use]
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
     if cap == 0 {
         let (s, r) = counter::new(zero::Channel::new());
@@ -275,8 +268,6 @@ pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(mpmc_channel)]
-///
 /// use std::sync::mpmc::channel;
 /// use std::thread;
 ///
@@ -298,7 +289,7 @@ pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
 ///
 /// assert_eq!(3, msg + msg2);
 /// ```
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "MpmcSender")]
 pub struct Sender<T> {
     flavor: SenderFlavor<T>,
@@ -316,14 +307,14 @@ enum SenderFlavor<T> {
     Zero(counter::Sender<zero::Channel<T>>),
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T: Send> Send for Sender<T> {}
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T: Send> Sync for Sender<T> {}
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> UnwindSafe for Sender<T> {}
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> RefUnwindSafe for Sender<T> {}
 
 impl<T> Sender<T> {
@@ -338,15 +329,13 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::{channel, Receiver, Sender};
     ///
     /// let (sender, _receiver): (Sender<i32>, Receiver<i32>) = channel();
     ///
     /// assert!(sender.try_send(1).is_ok());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.try_send(msg),
@@ -384,8 +373,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::channel;
     ///
     /// let (tx, rx) = channel();
@@ -397,7 +384,7 @@ impl<T> Sender<T> {
     /// drop(rx);
     /// assert!(tx.send(1).is_err());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.send(msg, None),
@@ -424,8 +411,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::channel;
     /// use std::time::Duration;
     ///
@@ -433,7 +418,7 @@ impl<T> Sender<T> {
     ///
     /// tx.send_timeout(1, Duration::from_millis(400)).unwrap();
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn send_timeout(&self, msg: T, timeout: Duration) -> Result<(), SendTimeoutError<T>> {
         match Instant::now().checked_add(timeout) {
             Some(deadline) => self.send_deadline(msg, deadline),
@@ -454,8 +439,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::channel;
     /// use std::time::{Duration, Instant};
     ///
@@ -464,7 +447,7 @@ impl<T> Sender<T> {
     /// let t = Instant::now() + Duration::from_millis(400);
     /// tx.send_deadline(1, t).unwrap();
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn send_deadline(&self, msg: T, deadline: Instant) -> Result<(), SendTimeoutError<T>> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.send(msg, Some(deadline)),
@@ -480,8 +463,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -500,7 +481,7 @@ impl<T> Sender<T> {
     ///
     /// assert!(!tx1.is_empty());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_empty(&self) -> bool {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.is_empty(),
@@ -516,8 +497,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -534,7 +513,7 @@ impl<T> Sender<T> {
     ///
     /// assert!(tx1.is_full());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_full(&self) -> bool {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.is_full(),
@@ -548,8 +527,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -566,7 +543,7 @@ impl<T> Sender<T> {
     ///
     /// assert_eq!(tx1.len(), 1);
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn len(&self) -> usize {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.len(),
@@ -580,8 +557,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -598,7 +573,7 @@ impl<T> Sender<T> {
     ///
     /// assert_eq!(tx1.capacity(), Some(3));
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn capacity(&self) -> Option<usize> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.capacity(),
@@ -612,8 +587,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     ///
     /// let (tx1, _) = mpmc::channel::<i32>();
@@ -622,7 +595,7 @@ impl<T> Sender<T> {
     /// assert!(tx1.same_channel(&tx1));
     /// assert!(!tx1.same_channel(&tx2));
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn same_channel(&self, other: &Sender<T>) -> bool {
         match (&self.flavor, &other.flavor) {
             (SenderFlavor::Array(a), SenderFlavor::Array(b)) => a == b,
@@ -641,8 +614,6 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::channel;
     ///
     /// let (tx, rx) = channel::<i32>();
@@ -650,7 +621,7 @@ impl<T> Sender<T> {
     /// drop(rx);
     /// assert!(tx.is_disconnected());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_disconnected(&self) -> bool {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.is_disconnected(),
@@ -660,7 +631,7 @@ impl<T> Sender<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
         unsafe {
@@ -673,7 +644,7 @@ impl<T> Drop for Sender<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
         let flavor = match &self.flavor {
@@ -686,7 +657,7 @@ impl<T> Clone for Sender<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Sender").finish_non_exhaustive()
@@ -703,8 +674,6 @@ impl<T> fmt::Debug for Sender<T> {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(mpmc_channel)]
-///
 /// use std::sync::mpmc::channel;
 /// use std::thread;
 /// use std::time::Duration;
@@ -729,7 +698,7 @@ impl<T> fmt::Debug for Sender<T> {
 /// rx_thread_1.join().unwrap();
 /// rx_thread_2.join().unwrap();
 /// ```
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "MpmcReceiver")]
 pub struct Receiver<T> {
     flavor: ReceiverFlavor<T>,
@@ -747,8 +716,6 @@ pub struct Receiver<T> {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(mpmc_channel)]
-///
 /// use std::sync::mpmc::channel;
 /// use std::thread;
 ///
@@ -764,7 +731,7 @@ pub struct Receiver<T> {
 ///     println!("Got: {x}");
 /// }
 /// ```
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug)]
 pub struct Iter<'a, T: 'a> {
     rx: &'a Receiver<T>,
@@ -786,8 +753,6 @@ pub struct Iter<'a, T: 'a> {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(mpmc_channel)]
-///
 /// use std::sync::mpmc::channel;
 /// use std::thread;
 /// use std::time::Duration;
@@ -811,7 +776,7 @@ pub struct Iter<'a, T: 'a> {
 ///     println!("Got: {x}");
 /// }
 /// ```
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug)]
 pub struct TryIter<'a, T: 'a> {
     rx: &'a Receiver<T>,
@@ -830,8 +795,6 @@ pub struct TryIter<'a, T: 'a> {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(mpmc_channel)]
-///
 /// use std::sync::mpmc::channel;
 /// use std::thread;
 ///
@@ -847,13 +810,13 @@ pub struct TryIter<'a, T: 'a> {
 ///     println!("Got: {x}");
 /// }
 /// ```
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
     rx: Receiver<T>,
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = T;
 
@@ -862,7 +825,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, T> Iterator for TryIter<'a, T> {
     type Item = T;
 
@@ -871,7 +834,7 @@ impl<'a, T> Iterator for TryIter<'a, T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, T> IntoIterator for &'a Receiver<T> {
     type Item = T;
     type IntoIter = Iter<'a, T>;
@@ -881,7 +844,7 @@ impl<'a, T> IntoIterator for &'a Receiver<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
@@ -889,7 +852,7 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> IntoIterator for Receiver<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -911,14 +874,14 @@ enum ReceiverFlavor<T> {
     Zero(counter::Receiver<zero::Channel<T>>),
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T: Send> Send for Receiver<T> {}
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T: Send> Sync for Receiver<T> {}
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> UnwindSafe for Receiver<T> {}
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> RefUnwindSafe for Receiver<T> {}
 
 impl<T> Receiver<T> {
@@ -944,15 +907,13 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::{Receiver, channel};
     ///
     /// let (_, receiver): (_, Receiver<i32>) = channel();
     ///
     /// assert!(receiver.try_recv().is_err());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.try_recv(),
@@ -978,8 +939,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -996,8 +955,6 @@ impl<T> Receiver<T> {
     /// Buffering behavior:
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     /// use std::sync::mpmc::RecvError;
@@ -1018,7 +975,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(Ok(3), recv.recv());
     /// assert_eq!(Err(RecvError), recv.recv());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn recv(&self) -> Result<T, RecvError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.recv(None),
@@ -1047,8 +1004,6 @@ impl<T> Receiver<T> {
     /// Successfully receiving value before encountering timeout:
     ///
     /// ```no_run
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::thread;
     /// use std::time::Duration;
     /// use std::sync::mpmc;
@@ -1068,8 +1023,6 @@ impl<T> Receiver<T> {
     /// Receiving an error upon reaching timeout:
     ///
     /// ```no_run
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::thread;
     /// use std::time::Duration;
     /// use std::sync::mpmc;
@@ -1086,7 +1039,7 @@ impl<T> Receiver<T> {
     ///     Err(mpmc::RecvTimeoutError::Timeout)
     /// );
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
         match Instant::now().checked_add(timeout) {
             Some(deadline) => self.recv_deadline(deadline),
@@ -1114,8 +1067,6 @@ impl<T> Receiver<T> {
     /// Successfully receiving value before reaching deadline:
     ///
     /// ```no_run
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::thread;
     /// use std::time::{Duration, Instant};
     /// use std::sync::mpmc;
@@ -1135,8 +1086,6 @@ impl<T> Receiver<T> {
     /// Receiving an error upon reaching deadline:
     ///
     /// ```no_run
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::thread;
     /// use std::time::{Duration, Instant};
     /// use std::sync::mpmc;
@@ -1153,7 +1102,7 @@ impl<T> Receiver<T> {
     ///     Err(mpmc::RecvTimeoutError::Timeout)
     /// );
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.recv(Some(deadline)),
@@ -1170,8 +1119,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::channel;
     /// use std::thread;
     /// use std::time::Duration;
@@ -1200,7 +1147,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_iter(&self) -> TryIter<'_, T> {
         TryIter { rx: self }
     }
@@ -1214,8 +1161,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -1231,7 +1176,7 @@ impl<T> Receiver<T> {
     ///
     /// assert!(!recv.is_empty());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_empty(&self) -> bool {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.is_empty(),
@@ -1247,8 +1192,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -1264,7 +1207,7 @@ impl<T> Receiver<T> {
     ///
     /// assert!(recv.is_full());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_full(&self) -> bool {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.is_full(),
@@ -1278,8 +1221,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -1295,7 +1236,7 @@ impl<T> Receiver<T> {
     ///
     /// assert_eq!(recv.len(), 1);
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn len(&self) -> usize {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.len(),
@@ -1309,8 +1250,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     /// use std::thread;
     ///
@@ -1326,7 +1265,7 @@ impl<T> Receiver<T> {
     ///
     /// assert_eq!(recv.capacity(), Some(3));
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn capacity(&self) -> Option<usize> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.capacity(),
@@ -1340,8 +1279,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc;
     ///
     /// let (_, rx1) = mpmc::channel::<i32>();
@@ -1350,7 +1287,7 @@ impl<T> Receiver<T> {
     /// assert!(rx1.same_channel(&rx1));
     /// assert!(!rx1.same_channel(&rx2));
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn same_channel(&self, other: &Receiver<T>) -> bool {
         match (&self.flavor, &other.flavor) {
             (ReceiverFlavor::Array(a), ReceiverFlavor::Array(b)) => a == b,
@@ -1366,8 +1303,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::channel;
     /// use std::thread;
     ///
@@ -1385,7 +1320,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { rx: self }
     }
@@ -1399,8 +1334,6 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mpmc_channel)]
-    ///
     /// use std::sync::mpmc::channel;
     ///
     /// let (tx, rx) = channel::<i32>();
@@ -1408,7 +1341,7 @@ impl<T> Receiver<T> {
     /// drop(tx);
     /// assert!(rx.is_disconnected());
     /// ```
-    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    #[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_disconnected(&self) -> bool {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.is_disconnected(),
@@ -1418,7 +1351,7 @@ impl<T> Receiver<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         unsafe {
@@ -1431,7 +1364,7 @@ impl<T> Drop for Receiver<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Clone for Receiver<T> {
     fn clone(&self) -> Self {
         let flavor = match &self.flavor {
@@ -1444,7 +1377,7 @@ impl<T> Clone for Receiver<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> fmt::Debug for Receiver<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Receiver").finish_non_exhaustive()
