@@ -4,16 +4,24 @@
 //! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
 use rustc_hir::def_id::{DefId, DefPathHash};
+use rustc_index::bit_set::DenseBitSet;
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::{ExpnHash, ExpnId};
 
 use crate::mir;
 use crate::query::on_disk_cache::CacheEncoder;
-use crate::ty::{Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 macro_rules! declare_hooks {
-    ($($(#[$attr:meta])*hook $name:ident($($arg:ident: $K:ty),*) -> $V:ty;)*) => {
+    (
+        $(
+            $(#[$attr:meta])*
+            hook $name:ident(
+                $( $arg:ident: $K:ty ),* $(,)?
+            ) -> $V:ty;
+        )*
+    ) => {
 
         impl<'tcx> TyCtxt<'tcx> {
             $(
@@ -107,6 +115,14 @@ declare_hooks! {
 
     /// Serializes all eligible query return values into the on-disk cache.
     hook encode_query_values(encoder: &mut CacheEncoder<'tcx>) -> ();
+
+    /// Identifies landing pads that don't do anything, allowing some post-monomorphization
+    /// simplifications during codegen.
+    hook find_noop_landing_pads_for_instance(
+        body: &mir::Body<'tcx>,
+        instance: ty::Instance<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> DenseBitSet<mir::BasicBlock>;
 }
 
 #[cold]

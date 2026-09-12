@@ -217,14 +217,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
-    let nop_landing_pads = rustc_mir_transform::remove_noop_landing_pads::find_noop_landing_pads(
-        mir,
-        Some(rustc_mir_transform::remove_noop_landing_pads::ExtraInfo {
-            tcx,
-            instance,
-            typing_env: cx.typing_env(),
-        }),
-    );
+    let nop_landing_pads = tcx.find_noop_landing_pads_for_instance(mir, instance, cx.typing_env());
 
     if tcx.features().ergonomic_clones() {
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
