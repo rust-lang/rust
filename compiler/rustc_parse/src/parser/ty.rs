@@ -444,14 +444,14 @@ impl<'a> Parser<'a> {
     /// 2. tuple type
     /// 3. bare trait object type where the first trait bound is parenthesized
     fn parse_paren_start_ty(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
-        let mut trailing_plus = false;
-        let (ts, trailing) = self.parse_paren_comma_seq(|p| {
+        let mut inside_has_trailing_plus = false;
+        let (ts, trailing_comma) = self.parse_paren_comma_seq(|p| {
             let ty = p.parse_ty()?;
-            trailing_plus = p.prev_token == TokenKind::Plus;
+            inside_has_trailing_plus = p.prev_token == TokenKind::Plus;
             Ok(ty)
         })?;
 
-        if ts.len() == 1 && matches!(trailing, Trailing::No) {
+        if ts.len() == 1 && matches!(trailing_comma, Trailing::No) {
             let ty = ts.into_iter().next().unwrap();
 
             // Let's check if we actually have a bare trait object type where the first trait bound
@@ -459,11 +459,12 @@ impl<'a> Parser<'a> {
             // what's contained between the parentheses resembles a *BareTraitBound*.
             //
             // For context, looking at bounds in general (see *Bound*), only trait bounds are
-            // allowed to be wrapped in parentheses, not however lifetime and use bounds.
-            let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
+            // allowed to be wrapped in parentheses, not however outlives and use bounds.
+            let outside_has_eligible_trailing_plus =
+                allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {
                 // `"(" TypePath ")" "+"`
-                TyKind::Path(None, path) if maybe_bounds => self
+                TyKind::Path(None, path) if outside_has_eligible_trailing_plus => self
                     .finish_parsing_bare_trait_object_ty(
                         ThinVec::new(),
                         path,
@@ -471,18 +472,18 @@ impl<'a> Parser<'a> {
                         true,
                         ast::Parens::Yes,
                     ),
-                // `"(" BareTraitBound\TypePath | UseBound ")" "+"`
+                // `"(" BareTraitBound\TypePath ")" "+"`
                 //
-                // * FIXME: As alluded to above, only trait bounds are meant to allow parens.
-                //   Arguably, it's an accident that we're permitting *UseBound*s and thus types
-                //   like `(use<>)+`. Might need a T-lang FCP to change this.
-                // * We're checking `!trailing_plus` to prevent us from accepting code like
-                //   `(T+)+` or `('a+)+`.
-                // * While we could be looking at `('a)+` which we don't want to accept, we
-                //   know that the `parse_ty` above has already emitted an error since the
-                //   lifetime isn't immediately followed by a `+`.
+                // We actually accept outlives bounds here, too, purely to reduce diagnostic output
+                // for ill-formed code like `('a)+`: We know for a fact that the `parse_ty` above
+                // has already emitted an error for the inner `'a` as it's not followed by `+`.
+                // This way we indirectly suppress unhelpful follow-up diagnostics like E0178
+                // ("bad `+` in type") and E0224 ("no trait bound in trait object type").
                 TyKind::TraitObject(mut bounds, TraitObjectSyntax::None)
-                    if maybe_bounds && bounds.len() == 1 && !trailing_plus =>
+                    if outside_has_eligible_trailing_plus
+                        && !inside_has_trailing_plus
+                        && let [ast::GenericBound::Trait(_) | ast::GenericBound::Outlives(_)] =
+                            bounds.as_slice() =>
                 {
                     self.eat_plus();
                     bounds.append(&mut self.parse_generic_bounds()?);
