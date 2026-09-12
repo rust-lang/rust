@@ -95,7 +95,7 @@ fn signal_reported_right() {
     }
 }
 
-pub fn run_output(mut cmd: Command) -> String {
+pub(crate) fn run_output(mut cmd: Command) -> String {
     let p = cmd.spawn();
     assert!(p.is_ok());
     let mut p = p.unwrap();
@@ -361,7 +361,7 @@ fn test_wait_with_output_once() {
 }
 
 #[cfg(all(unix, not(target_os = "android")))]
-pub fn env_cmd() -> Command {
+pub(crate) fn env_cmd() -> Command {
     Command::new("env")
 }
 #[cfg(target_os = "android")]
