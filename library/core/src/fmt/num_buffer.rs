@@ -84,3 +84,10 @@ impl<T: NumBufferTrait> NumBuffer<T> {
         NumBuffer { buf: T::DEFAULT, phantom: core::marker::PhantomData }
     }
 }
+
+#[stable(feature = "num_buffer_default", since = "CURRENT_RUSTC_VERSION")]
+impl<T: NumBufferTrait> Default for NumBuffer<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
