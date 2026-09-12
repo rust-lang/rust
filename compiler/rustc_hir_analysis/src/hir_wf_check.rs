@@ -189,6 +189,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                     vec![]
                 }
             }
+            hir::Node::Synthetic => vec![],
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
