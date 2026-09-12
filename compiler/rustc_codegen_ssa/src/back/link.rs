@@ -835,24 +835,33 @@ fn link_staticlib(
     let hide = sess.opts.unstable_opts.staticlib_hide_internal_symbols;
     let rename = sess.opts.unstable_opts.staticlib_rename_internal_symbols;
 
+    let hide_supported =
+        matches!(sess.target.binary_format, BinaryFormat::Elf | BinaryFormat::MachO);
+    // Rename only rewrites symbol names, so it also works on COFF; hide
+    // needs a visibility concept COFF lacks.
+    let rename_supported = matches!(
+        sess.target.binary_format,
+        BinaryFormat::Elf | BinaryFormat::MachO | BinaryFormat::Coff
+    );
+
     let exported_symbols = if hide || rename {
-        if !matches!(sess.target.binary_format, BinaryFormat::Elf | BinaryFormat::MachO) {
-            if hide {
-                sess.dcx().emit_warn(diagnostics::StaticlibHideInternalSymbolsUnsupported {
-                    binary_format: sess.target.archive_format.to_string(),
-                });
-            }
-            if rename {
-                sess.dcx().emit_warn(diagnostics::StaticlibRenameInternalSymbolsUnsupported {
-                    binary_format: sess.target.archive_format.to_string(),
-                });
-            }
-            None
-        } else {
+        if hide && !hide_supported {
+            sess.dcx().emit_warn(diagnostics::StaticlibHideInternalSymbolsUnsupported {
+                binary_format: sess.target.archive_format.to_string(),
+            });
+        }
+        if rename && !rename_supported {
+            sess.dcx().emit_warn(diagnostics::StaticlibRenameInternalSymbolsUnsupported {
+                binary_format: sess.target.archive_format.to_string(),
+            });
+        }
+        if (hide && hide_supported) || (rename && rename_supported) {
             crate_info
                 .exported_symbols
                 .get(&CrateType::StaticLib)
                 .map(|symbols| symbols.iter().map(|symbol| symbol.name.clone()).collect())
+        } else {
+            None
         }
     } else {
         None
@@ -861,7 +870,9 @@ fn link_staticlib(
     let symbols = exported_symbols.map(|exported| ArchiveSymbols {
         exported,
         rename_suffix: rename.then(|| crate_info.symbol_rename_suffix.clone()),
-        hide,
+        // A warning was already emitted above if hiding was requested for an
+        // unsupported format; don't also ask the backend to hide there.
+        hide: hide && hide_supported,
     });
 
     ab.build(out_filename, symbols);
