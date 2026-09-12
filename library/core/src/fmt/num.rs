@@ -149,6 +149,10 @@ macro_rules! impl_Display {
                     ${concat($fmt_fn, _small)}(*self as $T, true, f)
                 }
             }
+
+            fn size_hint(&self) -> Option<usize> {
+                Some((self.max(&1).ilog(10) + 1) as usize)
+            }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -169,6 +173,10 @@ macro_rules! impl_Display {
                     // this macro.
                     return ${concat($fmt_fn, _small)}(self.unsigned_abs() as $T, *self >= 0, f);
                 }
+            }
+
+            fn size_hint(&self) -> Option<usize> {
+                Some((self.abs().max(1).ilog(10) + 1) as usize + self.is_negative() as usize)
             }
         }
 
