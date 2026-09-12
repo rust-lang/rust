@@ -4,8 +4,8 @@
 //! etc. This is run by default on `./x.py test` and as part of the auto
 //! builders. The tidy checks can be executed with `./x.py test tidy`.
 
-use std::collections::VecDeque;
-use std::thread::{self, ScopedJoinHandle, scope};
+use std::num::NonZeroUsize;
+use std::thread::{self, scope};
 use std::{env, process};
 
 use tidy::arg_parser::TidyArgParser;
@@ -46,22 +46,9 @@ fn main() {
 
     let tidy_ctx = TidyCtx::new(&root_path, verbose, ci, TidyFlags::new(bless));
 
-    let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
-        // poll all threads for completion before awaiting the oldest one
-        for i in (0..handles.len()).rev() {
-            if handles[i].is_finished() {
-                handles.swap_remove_back(i).unwrap().join().unwrap();
-            }
-        }
-
-        while handles.len() >= concurrency {
-            handles.pop_front().unwrap().join().unwrap();
-        }
-    };
+    let sem = Semaphore::new(NonZeroUsize::new(concurrency).unwrap());
 
     scope(|s| {
-        let mut handles: VecDeque<ScopedJoinHandle<'_, ()>> = VecDeque::with_capacity(concurrency);
-
         macro_rules! check {
             ($p:ident) => {
                 check!(@ $p, name=format!("{}", stringify!($p)));
@@ -76,20 +63,19 @@ fn main() {
                 check!(@ $p, name=name, $path $(,$args)*);
             };
             (@ $p:ident, name=$name:expr $(, $args:expr)* ) => {
-                drain_handles(&mut handles);
-
+                let guard = sem.acquire();
                 let tidy_ctx = tidy_ctx.clone();
-                let handle = thread::Builder::new().name($name).spawn_scoped(s, || {
+                thread::Builder::new().name($name).spawn_scoped(s, || {
                     $p::check($($args, )* tidy_ctx);
+                    let _guard = guard;
                 }).unwrap();
-                handles.push_back(handle);
             }
         }
 
         check!(target_specific_tests, &tests_path);
 
         // Checks that are done on the cargo workspace.
-        check!(deps, &root_path, &cargo);
+        check!(deps, &root_path, &cargo, s, &sem);
         check!(extdeps, &root_path);
 
         // Checks over tests.
@@ -123,8 +109,8 @@ fn main() {
             check!(bins, &root_path);
         }
 
-        check!(style, &src_path);
         check!(style, &tests_path);
+        check!(style, &src_path);
         check!(style, &compiler_path);
         check!(style, &library_path);
 
@@ -145,8 +131,6 @@ fn main() {
         check!(filenames, &root_path);
 
         let collected = {
-            drain_handles(&mut handles);
-
             features::check(&src_path, &tests_path, &compiler_path, &library_path, tidy_ctx.clone())
         };
         check!(unstable_book, &src_path, collected);

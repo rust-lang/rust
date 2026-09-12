@@ -9,7 +9,7 @@ use crate::diagnostics::{CheckId, TidyCtx};
 const RUSTDOC_JSON_TYPES: &str = "src/rustdoc-json-types";
 
 pub fn check(src_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_json").path(src_path));
+    let check = tidy_ctx.start_check(CheckId::new("rustdoc_json").path(src_path));
 
     let Some(base_commit) = &tidy_ctx.base_commit else {
         check.verbose_msg("No base commit, skipping rustdoc_json check");

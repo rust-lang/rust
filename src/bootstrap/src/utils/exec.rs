@@ -331,6 +331,11 @@ impl<'a> BootstrapCommand {
         self
     }
 
+    #[track_caller]
+    pub fn start(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> DeferredCommand<'_> {
+        exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Capture)
+    }
+
     /// Run the command, while printing stdout and stderr.
     /// Returns true if the command has succeeded.
     #[track_caller]
