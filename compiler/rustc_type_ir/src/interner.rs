@@ -246,6 +246,8 @@ pub trait Interner:
         + SliceLike<Item = ty::OutlivesClause<Self, Self::GenericArg>>
         + TypeFoldable<Self>;
 
+    type TypingEnv: TypingEnv<Self>;
+
     // Predicates
     type ParamEnv: ParamEnv<Self>;
     type Predicate: Predicate<Self>;
@@ -356,6 +358,17 @@ pub trait Interner:
     fn assumptions_on_binders(self) -> bool;
 
     fn renormalize_rigid_aliases(self) -> bool;
+
+    fn param_env_normalized_for_post_analysis(self, defid: Self::DefId) -> Self::ParamEnv;
+
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T;
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<Self>,
+        span: Self::Span,
+    ) -> Result<Result<Self::ValTree, Self::Ty>, Option<Self::ErrorGuaranteed>>;
 
     fn coroutine_hidden_types(
         self,
