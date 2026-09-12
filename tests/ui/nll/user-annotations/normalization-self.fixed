@@ -8,9 +8,9 @@ impl<'a> Trait for &'a () { type Assoc = &'a (); }
 struct MyTuple<T>(T);
 impl MyTuple<<&'static () as Trait>::Assoc> {
     fn test(x: &(), y: &()) {
-        Self(x);
+        MyTuple(x);
         //~^ ERROR
-        let _: Self = MyTuple(y);
+        let _: MyTuple<<&() as Trait>::Assoc> = MyTuple(y);
         //~^ ERROR
     }
 }
@@ -18,9 +18,9 @@ impl MyTuple<<&'static () as Trait>::Assoc> {
 struct MyStruct<T> { val: T, }
 impl MyStruct<<&'static () as Trait>::Assoc> {
     fn test(x: &(), y: &()) {
-        Self { val: x };
+        MyStruct { val: x };
         //~^ ERROR
-        let _: Self = MyStruct { val: y };
+        let _: MyStruct<<&() as Trait>::Assoc> = MyStruct { val: y };
         //~^ ERROR
     }
 }
