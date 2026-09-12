@@ -2,9 +2,8 @@
 use core::cmp::min;
 use core::iter;
 
-
-use rustc_ast::LitKind;
 use hir::def_id::LocalDefId;
+use rustc_ast::LitKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
@@ -22,8 +21,8 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
-    self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
-    suggest_constraining_type_params, IntTy, UintTy, FloatTy
+    self, Article, Binder, FloatTy, IntTy, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, UintTy,
+    Unnormalized, Upcast, suggest_constraining_type_params,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
@@ -2511,19 +2510,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        if !expr_ty.is_imm_ref_str() && !matches!(
-            expr_ty.kind(),
-            ty::Adt(adt, _) if self.tcx.is_lang_item(adt.did(), LangItem::String)
-        ) {
+        if !expr_ty.is_imm_ref_str()
+            && !matches!(
+                expr_ty.kind(),
+                ty::Adt(adt, _) if self.tcx.is_lang_item(adt.did(), LangItem::String)
+            )
+        {
             return false;
         }
 
         // Check kind of expression (literal, variable)
         match expr.kind {
             ExprKind::Lit(lit) if matches!(lit.node, LitKind::Str(_, _)) => {
-                let LitKind::Str(sym, _) = lit.node else { return false; };
+                let LitKind::Str(sym, _) = lit.node else {
+                    return false;
+                };
                 let str_val = sym.as_str();
-                
+
                 let parses_ok = match expected.kind() {
                     ty::Int(int_ty) => match int_ty {
                         IntTy::Isize => str_val.parse::<isize>().is_ok(),
@@ -2540,13 +2543,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         UintTy::U32 => str_val.parse::<u32>().is_ok(),
                         UintTy::U64 => str_val.parse::<u64>().is_ok(),
                         UintTy::U128 => str_val.parse::<u128>().is_ok(),
-                    }
+                    },
                     ty::Float(flt_ty) => match flt_ty {
                         FloatTy::F32 => str_val.parse::<f32>().is_ok(),
                         FloatTy::F64 => str_val.parse::<f64>().is_ok(),
                         FloatTy::F16 | FloatTy::F128 => return false,
-                    }
-                    _ => false
+                    },
+                    _ => false,
                 };
 
                 if !parses_ok {
@@ -2554,7 +2557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let target_type_str = expected.to_string();
-                
+
                 err.span_suggestion_verbose(
                     expr.span.shrink_to_hi(),
                     "consider parsing the string literal to numeric type",
@@ -2563,10 +2566,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 return true;
-            },
-            
+            }
+
             // Todo: implement the logic for vars
-            _ => { return false; },
+            _ => {
+                return false;
+            }
         }
     }
 

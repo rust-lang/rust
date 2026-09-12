@@ -302,12 +302,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         let target_ty_str = self.cast_ty.to_string();
                         err.multipart_suggestion(
                             "consider parsing the string into a numeric type instead",
-                            vec![
-                                (
-                                    self.expr_span.shrink_to_hi().to(self.cast_span),
-                                    format!(".parse::<{target_ty_str}>().unwrap_or_default()"),
-                                ),
-                            ],
+                            vec![(
+                                self.expr_span.shrink_to_hi().to(self.cast_span),
+                                format!(".parse::<{target_ty_str}>().unwrap_or_default()"),
+                            )],
                             rustc_errors::Applicability::MaybeIncorrect,
                         );
                     }
@@ -601,7 +599,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     if let Some(note) = note {
                         err.note(note);
                     }
-                    
+
                     if self.cast_ty.is_numeric() {
                         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
 
@@ -614,12 +612,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                             err.multipart_suggestion(
                                 "consider parsing the string into a numeric type instead",
-                                vec![
-                                    (
-                                        self.expr_span.shrink_to_hi().to(self.cast_span),
-                                        format!(".parse::<{target_ty_str}>().unwrap_or_default()")
-                                    ),
-                                ],
+                                vec![(
+                                    self.expr_span.shrink_to_hi().to(self.cast_span),
+                                    format!(".parse::<{target_ty_str}>().unwrap_or_default()"),
+                                )],
                                 rustc_errors::Applicability::MaybeIncorrect,
                             );
                         }
