@@ -76,8 +76,13 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // Unlike the `RegionInferenceContext`, we only care about free regions
         // and fully ignore liveness and placeholders.
         let placeholder_indices = Default::default();
-        let mut scc_values =
-            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
+        let mut scc_values = RegionValues::new(
+            location_map,
+            constraint_sccs.num_sccs(),
+            universal_regions.len(),
+            placeholder_indices,
+        );
+
         for (variable, definition) in definitions.iter_enumerated() {
             let scc = constraint_sccs.scc(variable);
             match definition.origin {
