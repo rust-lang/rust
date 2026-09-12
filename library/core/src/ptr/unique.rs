@@ -1,6 +1,6 @@
 use crate::clone::TrivialClone;
 use crate::fmt;
-use crate::marker::{PhantomData, PointeeSized, Unsize};
+use crate::marker::{Freeze, PhantomData, PointeeSized, Unsize};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::NonNull;
 
@@ -55,6 +55,11 @@ unsafe impl<T: Send + PointeeSized> Send for Unique<T> {}
 /// `Unique` must enforce it.
 #[unstable(feature = "ptr_internals", issue = "none")]
 unsafe impl<T: Sync + PointeeSized> Sync for Unique<T> {}
+
+/// `Unique` pointers are always `Freeze` since any interior mutability that might exist in `T` is
+/// masked by the pointer indirection.
+#[unstable(feature = "ptr_internals", issue = "none")]
+unsafe impl<T: ?Sized> Freeze for Unique<T> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 impl<T: Sized> Unique<T> {
