@@ -29,6 +29,40 @@ pub use crate::sys::{cvt, cvt_r};
 #[expect(non_camel_case_types)]
 pub type wrlen_t = size_t;
 
+const SOCK_CLOEXEC: c_int = cfg_select! {
+    // On platforms that support it we pass the SOCK_CLOEXEC flag to atomically
+    // create the socket and set it as CLOEXEC. On Linux this was added in 2.6.27.
+    any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "illumos",
+        target_os = "hurd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
+        target_os = "nto",
+        target_os = "qnx",
+        target_os = "solaris",
+    ) => libc::SOCK_CLOEXEC,
+    _ => 0,
+};
+
+cfg_select! {
+    // `MSG_NOSIGNAL` was only added to the XNU kernel in macOS version 11.0.
+    // On older systems, the `SO_NOSIGPIPE` option is the only way to disable
+    // `SIGPIPE` emission on writes to disconnected sockets.
+    target_vendor = "apple" => {
+        const SO_NOSIGPIPE: c_int = libc::SO_NOSIGPIPE;
+        pub const MSG_NOSIGNAL: c_int = 0;
+    }
+    _ => {
+        const SO_NOSIGPIPE: c_int = 0;
+        pub const MSG_NOSIGNAL: c_int = libc::MSG_NOSIGNAL;
+    }
+}
+
 pub struct Socket(FileDesc);
 
 pub fn init() {}
@@ -63,53 +97,29 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 }
 
 impl Socket {
-    pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
-        cfg_select! {
-            any(
-                target_os = "android",
-                target_os = "dragonfly",
-                target_os = "freebsd",
-                target_os = "illumos",
-                target_os = "hurd",
-                target_os = "linux",
-                target_os = "netbsd",
-                target_os = "openbsd",
-                target_os = "cygwin",
-                target_os = "nto",
-                target_os = "qnx",
-                target_os = "solaris",
-            ) => {
-                // On platforms that support it we pass the SOCK_CLOEXEC
-                // flag to atomically create the socket and set it as
-                // CLOEXEC. On Linux this was added in 2.6.27.
-                let fd = cvt(unsafe { libc::socket(family, ty | libc::SOCK_CLOEXEC, 0) })?;
-                let socket = Socket(unsafe { FileDesc::from_raw_fd(fd) });
-
-                // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
-                // flag to disable `SIGPIPE` emission on socket.
-                #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
-                unsafe {
-                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?
-                };
-
-                Ok(socket)
-            }
-            _ => {
-                let fd = cvt(unsafe { libc::socket(family, ty, 0) })?;
-                let fd = unsafe { FileDesc::from_raw_fd(fd) };
-                fd.set_cloexec()?;
-                let socket = Socket(fd);
-
-                // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
-                // flag to disable `SIGPIPE` emission on socket.
-                #[cfg(target_vendor = "apple")]
-                unsafe {
-                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?
-                };
-
-                Ok(socket)
-            }
+    fn from_fresh_fd(fd: FileDesc) -> io::Result<Socket> {
+        if SOCK_CLOEXEC != 0 {
+            debug_assert!(
+                fd.cloexec().unwrap(),
+                "CLOEXEC should have been set upon socket creation"
+            );
+        } else {
+            fd.set_cloexec()?;
         }
+
+        let socket = Socket(fd);
+
+        if SO_NOSIGPIPE != 0 {
+            unsafe { setsockopt(&socket, libc::SOL_SOCKET, SO_NOSIGPIPE, 1)? };
+        }
+
+        Ok(socket)
+    }
+
+    pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
+        let fd = cvt(unsafe { libc::socket(family, ty | SOCK_CLOEXEC, 0) })?;
+        let fd = unsafe { FileDesc::from_raw_fd(fd) };
+        Socket::from_fresh_fd(fd)
     }
 
     #[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
@@ -117,36 +127,14 @@ impl Socket {
         unsafe {
             let mut fds = [0, 0];
 
-            cfg_select! {
-                any(
-                    target_os = "android",
-                    target_os = "dragonfly",
-                    target_os = "freebsd",
-                    target_os = "illumos",
-                    target_os = "linux",
-                    target_os = "hurd",
-                    target_os = "netbsd",
-                    target_os = "openbsd",
-                    target_os = "cygwin",
-                    target_os = "nto",
-                    target_os = "qnx",
-                ) => {
-                    // Like above, set cloexec atomically
-                    cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
-                    Ok((
-                        Socket(FileDesc::from_raw_fd(fds[0])),
-                        Socket(FileDesc::from_raw_fd(fds[1])),
-                    ))
-                }
-                _ => {
-                    cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
-                    let a = FileDesc::from_raw_fd(fds[0]);
-                    let b = FileDesc::from_raw_fd(fds[1]);
-                    a.set_cloexec()?;
-                    b.set_cloexec()?;
-                    Ok((Socket(a), Socket(b)))
-                }
-            }
+            cvt(libc::socketpair(fam, ty | SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
+
+            let a = FileDesc::from_raw_fd(fds[0]);
+            let b = FileDesc::from_raw_fd(fds[1]);
+            let a = Socket::from_fresh_fd(a)?;
+            let b = Socket::from_fresh_fd(b)?;
+
+            Ok((a, b))
         }
     }
 
@@ -255,24 +243,31 @@ impl Socket {
         cfg_select! {
             any(
                 target_os = "android",
+                target_os = "cygwin",
                 target_os = "dragonfly",
                 target_os = "freebsd",
+                target_os = "hurd",
                 target_os = "illumos",
                 target_os = "linux",
-                target_os = "hurd",
                 target_os = "netbsd",
                 target_os = "openbsd",
-                target_os = "cygwin",
+                target_os = "solaris",
             ) => unsafe {
-                let fd =
-                    cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
-                Ok(Socket(FileDesc::from_raw_fd(fd)))
+                let fd = cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, SOCK_CLOEXEC))?;
+                let fd = FileDesc::from_raw_fd(fd);
+                Socket::from_fresh_fd(fd)
             },
             _ => unsafe {
                 let fd = cvt_r(|| libc::accept(self.as_raw_fd(), storage, len))?;
                 let fd = FileDesc::from_raw_fd(fd);
-                fd.set_cloexec()?;
-                Ok(Socket(fd))
+
+                // QNX has SOCK_CLOEXEC, but not accept4, so we need to set the
+                // CLOEXEC flag here instead of in `Socket::from_fresh_fd`.
+                if SOCK_CLOEXEC != 0 {
+                    fd.set_cloexec()?;
+                }
+
+                Socket::from_fresh_fd(fd)
             },
         }
     }

@@ -562,62 +562,64 @@ impl FileDesc {
         }
     }
 
-    #[cfg(not(any(
-        target_env = "newlib",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_os = "l4re",
-        target_os = "linux",
-        target_os = "cygwin",
-        target_os = "haiku",
-        target_os = "redox",
-        target_os = "vxworks",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "wasi",
-    )))]
-    pub fn set_cloexec(&self) -> io::Result<()> {
-        unsafe {
-            cvt(libc::ioctl(self.as_raw_fd(), libc::FIOCLEX))?;
-            Ok(())
-        }
-    }
-    #[cfg(any(
-        all(
-            target_env = "newlib",
-            not(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))
-        ),
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "emscripten",
-        target_os = "fuchsia",
-        target_os = "l4re",
-        target_os = "linux",
-        target_os = "cygwin",
-        target_os = "haiku",
-        target_os = "redox",
-        target_os = "vxworks",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "wasi",
-    ))]
-    pub fn set_cloexec(&self) -> io::Result<()> {
-        unsafe {
-            let previous = cvt(libc::fcntl(self.as_raw_fd(), libc::F_GETFD))?;
-            let new = previous | libc::FD_CLOEXEC;
-            if new != previous {
-                cvt(libc::fcntl(self.as_raw_fd(), libc::F_SETFD, new))?;
-            }
-            Ok(())
-        }
-    }
-    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
-    pub fn set_cloexec(&self) -> io::Result<()> {
+    cfg_select! {
         // FD_CLOEXEC is not supported in ESP-IDF, Horizon OS and Vita but there's no need to,
         // because none of them supports spawning processes.
-        Ok(())
+        any(target_os = "espidf", target_os = "horizon", target_os = "vita") => {
+            pub fn cloexec(&self) -> io::Result<bool> {
+                Ok(true)
+            }
+
+            pub fn set_cloexec(&self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        _ => {
+            pub fn cloexec(&self) -> io::Result<bool> {
+                let flags = cvt(unsafe { libc::fcntl(self.as_raw_fd(), libc::F_GETFD) })?;
+                Ok(flags & libc::FD_CLOEXEC != 0)
+            }
+
+            cfg_select! {
+                any(
+                    target_env = "newlib",
+                    target_os = "solaris",
+                    target_os = "illumos",
+                    target_os = "emscripten",
+                    target_os = "fuchsia",
+                    target_os = "l4re",
+                    target_os = "linux",
+                    target_os = "cygwin",
+                    target_os = "haiku",
+                    target_os = "redox",
+                    target_os = "vxworks",
+                    target_os = "nto",
+                    target_os = "qnx",
+                    target_os = "wasi",
+                ) => {
+                    pub fn set_cloexec(&self) -> io::Result<()> {
+                        unsafe {
+                            let previous = cvt(libc::fcntl(self.as_raw_fd(), libc::F_GETFD))?;
+                            let new = previous | libc::FD_CLOEXEC;
+                            if new != previous {
+                                cvt(libc::fcntl(self.as_raw_fd(), libc::F_SETFD, new))?;
+                            }
+                            Ok(())
+                        }
+                    }
+                }
+                // Use the ioctl-based version on all platforms that have it since
+                // it only requires a single syscall.
+                _ => {
+                    pub fn set_cloexec(&self) -> io::Result<()> {
+                        unsafe {
+                            cvt(libc::ioctl(self.as_raw_fd(), libc::FIOCLEX))?;
+                            Ok(())
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[cfg(target_os = "linux")]
