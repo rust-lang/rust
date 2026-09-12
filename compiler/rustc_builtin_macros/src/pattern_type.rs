@@ -1,3 +1,4 @@
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast, token};
 use rustc_errors::PResult;
@@ -25,7 +26,7 @@ fn parse_pat_ty<'a>(
     cx: &mut ExtCtxt<'a>,
     stream: TokenStream,
 ) -> PResult<'a, (Box<Ty>, Box<TyPat>)> {
-    let mut parser = cx.new_parser_from_tts(stream);
+    let mut parser = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&stream));
 
     let ty = parser.parse_ty()?;
     parser.expect_keyword(exp!(Is))?;

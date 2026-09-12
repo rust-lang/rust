@@ -1,4 +1,5 @@
 use rustc_ast::token::TokenKind;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{Ty, ast};
 use rustc_errors::PResult;
@@ -26,7 +27,7 @@ fn parse_view_ty<'a>(
     cx: &mut ExtCtxt<'a>,
     stream: TokenStream,
 ) -> PResult<'a, (Box<Ty>, ThinVec<Ident>)> {
-    let mut parser = cx.new_parser_from_tts(stream);
+    let mut parser = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&stream));
 
     let ty = parser.parse_ty()?;
 

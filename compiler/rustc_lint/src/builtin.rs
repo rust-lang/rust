@@ -1751,7 +1751,7 @@ declare_lint_pass!(
 struct UnderMacro(bool);
 
 impl KeywordIdents {
-    fn check_tokens(&mut self, cx: &EarlyContext<'_>, tokens: ArenaTokenTreeIter) {
+    fn check_tokens(&mut self, cx: &EarlyContext<'_>, tokens: ArenaTokenTreeIter<'_>) {
         // Check if the preceding token is `$`, because we want to allow `$async`, etc.
         let mut prev_dollar = false;
         let stream = tokens.stream().clone();

@@ -42,6 +42,7 @@ enum PositionUsedAs {
     Width,
 }
 use PositionUsedAs::*;
+use rustc_ast::tokenarena::ArenaTokenStream;
 
 #[derive(Debug)]
 struct MacroInput {
@@ -69,7 +70,7 @@ struct MacroInput {
 /// Ok((fmtstr, parsed arguments))
 /// ```
 fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
-    let mut p = ecx.new_parser_from_tts(tts);
+    let mut p = ecx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts));
 
     // parse the format string
     let fmtstr = match p.token.kind {

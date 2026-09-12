@@ -111,7 +111,7 @@ fn expr_if_not(
 }
 
 fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {
-    let mut parser = cx.new_parser_from_tts(stream);
+    let mut parser = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&stream));
 
     if parser.token == token::Eof {
         return Err(cx.dcx().create_err(diagnostics::AssertRequiresBoolean { span: sp }));
