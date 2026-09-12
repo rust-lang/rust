@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
     Target {
         // LLVM does not currently have a separate illumos target,
         // so we still pass Solaris to it
-        llvm_target: "x86_64-pc-solaris".into(),
+        llvm_target: "x86_64-unknown-solaris".into(),
         metadata: TargetMetadata {
             description: Some("illumos".into()),
             tier: Some(2),
