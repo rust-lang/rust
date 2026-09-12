@@ -7,7 +7,12 @@ use crate::spec::{
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        cfg_abi: CfgAbi::VecExtAbi,
+        // It makes no sense to set "vec-extabi" here without also actually configuring LLVM to use
+        // that ABI. This needs a new target spec knob to control the relevant LLVM flag. If you are
+        // adding such a knob, make sure to also:
+        // - adjust the logic in `asm/powerpc.rs` to check that knob instead of checking `cfg_abi`.
+        // - adjust the logic in `spec/consistency.rs` to correlate that knob with `cfg_abi`.
+        cfg_abi: CfgAbi::VecDefault,
         code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
         os: Os::Aix,

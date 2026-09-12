@@ -107,6 +107,10 @@ fn reserved_v20to31(
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if target.is_like_aix {
+        // FIXME: using `cfg_abi` here is wrong -- that's not a source of truth, it's just
+        // what we display to the user. Instead we need to check the knob that controls
+        // whether the ABI is actually used. Currently there is no such knob, a Rust target
+        // can therefore never actually use `vec-extabi`.
         match &target.options.cfg_abi {
             CfgAbi::VecDefault => Err("v20-v31 (vs52-vs63) are reserved on vec-default ABI"),
             CfgAbi::VecExtAbi => Ok(()),
