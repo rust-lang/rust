@@ -674,6 +674,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "Add possibility to expand macros in the HTML source code pages",
             "",
         ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "feature-documentation",
+            "Add a feature with its documentation in the generated output",
+            "name=value",
+        ),
         // deprecated / removed options
         opt(
             Stable,
@@ -836,7 +844,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (input, options, render_options, loaded_paths) =
+    let (input, mut options, render_options, loaded_paths) =
         match config::Options::from_matches(early_dcx, &matches, args) {
             Some(opts) => opts,
             None => return,
@@ -971,6 +979,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let bin_crate = options.bin_crate;
 
     let output_format = options.output_format;
+    let documented_features = std::mem::take(&mut options.documented_features);
     let config = core::create_config(input, options, &render_options);
     let registered_lints = config.register_lints.is_some();
 
@@ -1002,9 +1011,15 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
-            let (krate, render_opts, mut cache, expanded_macros) = sess
-                .time("run_global_ctxt", || {
-                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
+            let (krate, render_opts, mut cache, expanded_macros) =
+                sess.time("run_global_ctxt", || {
+                    core::run_global_ctxt(
+                        tcx,
+                        show_coverage,
+                        render_options,
+                        output_format,
+                        documented_features,
+                    )
                 });
             info!("finished with rustc");
 

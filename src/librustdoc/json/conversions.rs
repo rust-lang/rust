@@ -440,9 +440,9 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             )
             .map(|stab| stab.into_json(renderer)),
         },
-        // `convert_item` early returns `None` for stripped items, keywords, attributes and
-        // "special" macro rules.
-        KeywordItem | AttributeItem => unreachable!(),
+        // `convert_item` early returns `None` for stripped items, keywords, attributes, features
+        // and "special" macro rules.
+        KeywordItem | AttributeItem | FeatureItem => unreachable!(),
         StrippedItem(inner) => {
             match inner.as_ref() {
                 ModuleItem(m) => ItemEnum::Module(Module {
@@ -1004,6 +1004,7 @@ impl FromClean<ItemType> for ItemKind {
             ForeignType => ItemKind::ExternType,
             Keyword => ItemKind::Keyword,
             Attribute => ItemKind::Attribute,
+            Feature => ItemKind::Feature,
             TraitAlias => ItemKind::TraitAlias,
             ProcAttribute | DeclMacroAttribute => ItemKind::ProcAttribute,
             ProcDerive | DeclMacroDerive => ItemKind::ProcDerive,

@@ -139,6 +139,8 @@ impl DocFolder for Stripper<'_, '_> {
             clean::KeywordItem => {}
             // Attributes are never stripped
             clean::AttributeItem => {}
+            // Features are never stripped
+            clean::FeatureItem => {}
         }
 
         let fastreturn = match i.kind {

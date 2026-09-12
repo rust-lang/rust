@@ -1121,3 +1121,25 @@ pub struct S;
 // There will be no mention of `feature = "a"` in the documentation.
 pub use dep::S as Y;
 ```
+
+## `--feature-documentation`: Generate documentation for a build (cfg) feature
+
+This command line flag allows to add documentation for a build (cfg) feature. For example if you
+have in your code:
+
+```rust
+#[cfg(feature = "something")]
+pub struct X;
+```
+
+You can add the documentation of the `something` feature like this:
+
+```console
+rustdoc --feature-documentation 'something=This feature gives access to the `X` struct'
+```
+
+The name of the feature and its documentation must be separated with a `=` character. If you put
+nothing after the `=` character, the feature will still be present in the documentation, but with
+no associated documentation.
+
+For now, intra-doc links don't work with the features documentation.

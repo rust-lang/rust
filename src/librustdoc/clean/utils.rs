@@ -16,6 +16,7 @@ use rustc_hir::find_attr;
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use rustc_resolve::rustdoc::DocFragment;
 use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
@@ -24,11 +25,12 @@ use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    AssocItemConstraint, AssocItemConstraintKind, Crate, ExternalCrate, Generic, GenericArg,
-    GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
-    PrimitiveType, Term, Type, clean_doc_module, clean_middle_const, clean_middle_region,
-    clean_middle_ty, inline,
+    AssocItemConstraint, AssocItemConstraintKind, Attributes, Crate, ExternalCrate, Generic,
+    GenericArg, GenericArgs, ImportSource, Item, ItemId, ItemInner, ItemKind, Lifetime, Module,
+    Path, PathSegment, Primitive, PrimitiveType, Term, Type, clean_doc_module, clean_middle_const,
+    clean_middle_region, clean_middle_ty, inline,
 };
+use crate::config::Feature;
 use crate::core::DocContext;
 use crate::display::Joined as _;
 use crate::formats::item_type::ItemType;
@@ -36,7 +38,7 @@ use crate::formats::item_type::ItemType;
 #[cfg(test)]
 mod tests;
 
-pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn krate(cx: &mut DocContext<'_>, features: Vec<Feature>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
@@ -83,9 +85,46 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
         m.items.extend(documented_attributes.into_iter().map(|(def_id, kw)| {
             Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::AttributeItem, cx.tcx)
         }));
+        clean_features(m, features);
     }
 
     Crate { module, external_traits: Box::new(mem::take(&mut cx.external_traits)) }
+}
+
+fn clean_features(module: &mut Module, features: Vec<Feature>) {
+    for feature in features {
+        module.items.push(clean_feature(feature));
+    }
+}
+
+fn clean_feature(Feature { name, documentation }: Feature) -> Item {
+    use rustc_ast::token::{CommentKind, DocFragmentKind};
+
+    let item = ItemInner {
+        name: Some(Symbol::intern(&name)),
+        kind: ItemKind::FeatureItem,
+        attrs: Attributes {
+            // We need to convert the command line argument into something rustdoc and rustc
+            // understand.
+            doc_strings: vec![DocFragment {
+                span: rustc_span::DUMMY_SP,
+                item_id: None,
+                doc: documentation
+                    .as_ref()
+                    .map(|doc| Symbol::intern(doc))
+                    .unwrap_or(rustc_span::symbol::sym::empty),
+                kind: DocFragmentKind::Sugared(CommentKind::Block),
+                indent: 0,
+                from_expansion: false,
+            }],
+            other_attrs: ThinVec::new(),
+        },
+        stability: None,
+        item_id: ItemId::from(rustc_hir::def_id::CRATE_DEF_ID.to_def_id()),
+        inline_stmt_id: None,
+        cfg: None,
+    };
+    Item { inner: Box::new(item) }
 }
 
 pub(crate) fn clean_middle_generic_args<'tcx>(
