@@ -1,3 +1,4 @@
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
 use rustc_attr_parsing::{AttributeTemplate, validate_attr};
@@ -206,7 +207,7 @@ pub(crate) fn get_single_expr_from_tts(
     tts: TokenStream,
     name: &str,
 ) -> ExpandResult<Result<Box<ast::Expr>, ErrorGuaranteed>, ()> {
-    let mut p = cx.new_parser_from_tts(tts);
+    let mut p = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts));
     if p.token == token::Eof {
         let guar = cx.dcx().emit_err(diagnostics::OnlyOneArgument { span, name });
         return ExpandResult::Ready(Err(guar));
@@ -229,7 +230,7 @@ pub(crate) fn get_exprs_from_tts(
     cx: &mut ExtCtxt<'_>,
     tts: TokenStream,
 ) -> ExpandResult<Result<Vec<Box<ast::Expr>>, ErrorGuaranteed>, ()> {
-    let mut p = cx.new_parser_from_tts(tts);
+    let mut p = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts));
     let mut es = Vec::new();
     while p.token != token::Eof {
         let expr = match parse_expr(&mut p) {

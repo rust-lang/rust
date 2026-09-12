@@ -1,3 +1,4 @@
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{CoroutineKind, CoroutineMarker, Expr, ast, token};
 use rustc_errors::PResult;
@@ -24,7 +25,7 @@ fn parse_closure<'a>(
     span: Span,
     stream: TokenStream,
 ) -> PResult<'a, Box<Expr>> {
-    let mut closure_parser = cx.new_parser_from_tts(stream);
+    let mut closure_parser = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&stream));
 
     let coroutine_marker = Some(CoroutineMarker::new(CoroutineKind::Gen, span));
 

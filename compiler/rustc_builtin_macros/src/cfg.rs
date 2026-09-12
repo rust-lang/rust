@@ -2,6 +2,7 @@
 //! a literal `true` or `false` based on whether the given cfg matches the
 //! current compilation environment.
 
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, token};
 use rustc_attr_ir::target::Target;
@@ -36,7 +37,7 @@ pub(crate) fn expand_cfg(
 }
 
 fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry, ErrorGuaranteed> {
-    let mut parser = cx.new_parser_from_tts(tts);
+    let mut parser = cx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts));
     if parser.token == token::Eof {
         return Err(cx.dcx().emit_err(diagnostics::RequiresCfgPattern { span }));
     }
