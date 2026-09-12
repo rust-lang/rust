@@ -9,10 +9,11 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
+use rustc_middle::ty;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::{bug, ty};
 use rustc_session::{Session, config};
+use rustc_span::bug;
 use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };

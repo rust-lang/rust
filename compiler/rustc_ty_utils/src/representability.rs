@@ -1,8 +1,8 @@
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::bug;
 use rustc_span::def_id::LocalDefId;
 
 pub(crate) fn provide(providers: &mut Providers) {

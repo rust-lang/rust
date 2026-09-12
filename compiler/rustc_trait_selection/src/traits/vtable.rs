@@ -3,13 +3,12 @@ use std::ops::ControlFlow;
 
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::PredicateSet;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     VtblEntry,
 };
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 

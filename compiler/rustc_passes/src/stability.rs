@@ -24,9 +24,8 @@ use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, EvalResult};
 use rustc_middle::query::{LocalCrate, Providers};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{AssocContainer, TyCtxt};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, span_bug, sym};
 use tracing::instrument;
 
 use crate::diagnostics;

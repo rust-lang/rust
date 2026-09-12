@@ -1,10 +1,10 @@
 use std::iter;
 
+use rustc_span::bug;
 pub use rustc_type_ir::relate::*;
 
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::{self as ty, Ty, TyCtxt};
-
 pub type RelateResult<'tcx, T> = rustc_type_ir::relate::RelateResult<TyCtxt<'tcx>, T>;
 
 impl<'tcx> Relate<TyCtxt<'tcx>> for Ty<'tcx> {

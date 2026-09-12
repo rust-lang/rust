@@ -36,10 +36,10 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults,
     Unnormalized, Upcast, suggest_arbitrary_trait_bound, suggest_constraining_type_param,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, bug, kw, span_bug,
+    sym,
 };
 use tracing::{debug, instrument};
 

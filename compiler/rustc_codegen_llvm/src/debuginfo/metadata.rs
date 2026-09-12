@@ -10,7 +10,6 @@ use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginf
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::bug;
 use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
 };
@@ -18,7 +17,9 @@ use rustc_middle::ty::{
     self, AdtDef, AdtKind, ExistentialTraitRef, Instance, Ty, TyCtxt, Unnormalized, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
-use rustc_span::{DUMMY_SP, FileName, RemapPathScopeComponents, SourceFile, Span, Symbol, hygiene};
+use rustc_span::{
+    DUMMY_SP, FileName, RemapPathScopeComponents, SourceFile, Span, Symbol, bug, hygiene,
+};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::spec::{Arch, DebuginfoKind};
 use smallvec::smallvec;

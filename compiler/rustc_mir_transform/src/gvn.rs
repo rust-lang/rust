@@ -111,14 +111,13 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexVec, newtype_index};
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 

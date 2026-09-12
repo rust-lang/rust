@@ -6,8 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized, fold_regions};
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, bug, span_bug};
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {

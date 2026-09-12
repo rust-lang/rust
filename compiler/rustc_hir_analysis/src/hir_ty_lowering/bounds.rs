@@ -8,12 +8,11 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{PolyTraitRef, find_attr};
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
+use rustc_span::{ErrorGuaranteed, Ident, Span, bug, kw};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 

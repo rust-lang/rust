@@ -8,7 +8,6 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node};
-use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::{
@@ -17,7 +16,7 @@ use rustc_middle::mir::{
     StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_span::{BytePos, DesugaringKind, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DesugaringKind, Span, Symbol, bug, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;

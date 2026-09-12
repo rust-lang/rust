@@ -22,8 +22,7 @@ use rustc_middle::middle::dead_code::{DeadCodeLivenessSnapshot, DeadCodeLiveness
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Symbol, kw};
+use rustc_span::{Symbol, bug, kw, span_bug};
 use rustc_structures::CrateType;
 
 use crate::diagnostics::{

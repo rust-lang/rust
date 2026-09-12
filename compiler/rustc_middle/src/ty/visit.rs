@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_span::bug;
 use rustc_type_ir::TypeFoldable;
 
 use crate::ty::{

@@ -7,6 +7,7 @@ use rustc_hir::def::Namespace;
 use rustc_macros::{
     Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension,
 };
+use rustc_span::bug;
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};

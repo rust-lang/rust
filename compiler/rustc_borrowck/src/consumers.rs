@@ -3,9 +3,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
-use rustc_middle::bug;
 use rustc_middle::mir::{Body, Promoted};
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 
 pub use super::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 pub use super::constraints::OutlivesConstraint;

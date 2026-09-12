@@ -12,9 +12,9 @@ use rustc_codegen_ssa::{TargetConfig, target_features};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
-use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
+use rustc_span::bug;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
 };

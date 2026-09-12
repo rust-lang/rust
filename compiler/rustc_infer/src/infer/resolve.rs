@@ -1,8 +1,8 @@
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Const, DelayedMap, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
+use rustc_span::bug;
 use rustc_type_ir::PredicateProxy;
 
 use super::{FixupError, FixupResult, InferCtxt};

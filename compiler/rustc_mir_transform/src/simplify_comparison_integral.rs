@@ -1,11 +1,11 @@
 use std::iter;
 
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{
     BasicBlock, BinOp, Body, Operand, Place, Rvalue, StatementKind, SwitchTargets, TerminatorKind,
 };
 use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_span::bug;
 use tracing::trace;
 
 use crate::PassPolicy;

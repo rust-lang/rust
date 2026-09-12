@@ -4,13 +4,12 @@ use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
-use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
     OverloadedDeref, PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, span_bug, sym};
 use tracing::debug;
 
 use crate::method::{MethodCallee, TreatNotYetDefinedOpaques};

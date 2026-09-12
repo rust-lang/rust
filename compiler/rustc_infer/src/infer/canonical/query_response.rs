@@ -12,9 +12,9 @@ use std::iter;
 
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalVarKind, QueryRegionConstraint};
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value};

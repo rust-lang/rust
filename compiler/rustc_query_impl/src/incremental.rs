@@ -1,6 +1,5 @@
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::unord::UnordMap;
-use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{
@@ -12,6 +11,7 @@ use rustc_middle::query::{QueryCache, QueryState, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::bug;
 
 use crate::query_vtables::for_each_query_vtable;
 
