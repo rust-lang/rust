@@ -59,7 +59,9 @@ extern crate macro_helpers as _;
 /* lang and libs implicitly in scope */
 
 // tool/extern -> extern
-#[type_ns::inner] //~ ERROR cannot find `inner` in `type_ns`
+#[type_ns::inner]
+//~^ ERROR attribute macro `type_ns::inner` is ambiguous
+//~| ERROR cannot find `inner` in `type_ns`
 fn t1() {}
 
 // tool/lang -> tool
