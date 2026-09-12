@@ -198,7 +198,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     && self.unique_predecessors.contains(otherwise.block)
                 {
                     assert_ne!(location.block, otherwise.block);
-                    let range = if val.get() == 0 {
+                    let range = if val.to_u128() == 0 {
                         WrappingRange { start: 1, end: 1 }
                     } else {
                         WrappingRange { start: 0, end: 0 }
