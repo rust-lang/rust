@@ -74,6 +74,7 @@ struct NoField;
 #[repr(transparent)]
 struct Field(());
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 enum NonExhaustive {}
 

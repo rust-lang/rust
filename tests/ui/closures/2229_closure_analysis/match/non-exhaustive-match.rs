@@ -8,9 +8,11 @@
  */
 
 // Ignore non_exhaustive in the same crate
+#[expect(unused_attributes)]
 #[non_exhaustive]
 enum L1 { A, B }
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 enum L2 { C }
 
