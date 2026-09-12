@@ -317,7 +317,7 @@ function isFnLikeTy(ty) {
  * @return {boolean}
  */
 function isSeparatorCharacter(c) {
-    return c === "," || c === "=";
+    return c === "," || c === "=" || c === ";";
 }
 
 /**
