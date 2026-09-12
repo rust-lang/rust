@@ -1,0 +1,19 @@
+error[E0038]: the trait `HasNonTypeAssocConst` is not dyn compatible
+  --> $DIR/lack-of-wfcheck-generic-const-args.rs:13:1
+   |
+LL | type TyAlias = dyn HasNonTypeAssocConst;
+   | ^^^^^^^^^^^^ `HasNonTypeAssocConst` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/lack-of-wfcheck-generic-const-args.rs:17:24
+   |
+LL | trait HasNonTypeAssocConst {
+   |       -------------------- this trait is not dyn compatible...
+LL |     /*non-type */const N: usize;
+   |                        ^ ...because it contains associated const `N`
+   = help: consider moving `N` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,45 @@
+error[E0038]: the trait `Sized` is not dyn compatible
+  --> $DIR/in-unchecked-type-alias.rs:3:1
+   |
+LL | type DynIncompat0 = dyn Sized;
+   | ^^^^^^^^^^^^^^^^^ `Sized` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error[E0038]: the trait `HasAssocConst` is not dyn compatible
+  --> $DIR/in-unchecked-type-alias.rs:8:1
+   |
+LL | type DynIncompat1 = dyn HasAssocConst;
+   | ^^^^^^^^^^^^^^^^^ `HasAssocConst` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/in-unchecked-type-alias.rs:12:29
+   |
+LL | trait HasAssocConst { const N: usize; }
+   |       -------------         ^ ...because it contains associated const `N`
+   |       |
+   |       this trait is not dyn compatible...
+   = help: consider moving `N` to another trait
+
+error[E0038]: the trait `HasGenericAssocType` is not dyn compatible
+  --> $DIR/in-unchecked-type-alias.rs:10:1
+   |
+LL | type DynIncompat2<'a> = dyn HasGenericAssocType<Type<()> = ()>;
+   | ^^^^^^^^^^^^^^^^^^^^^ `HasGenericAssocType` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/in-unchecked-type-alias.rs:13:34
+   |
+LL | trait HasGenericAssocType { type Type<T>; }
+   |       -------------------        ^^^^ ...because it contains generic associated type `Type`
+   |       |
+   |       this trait is not dyn compatible...
+   = help: consider moving `Type` to another trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.
