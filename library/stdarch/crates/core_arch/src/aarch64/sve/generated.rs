@@ -2625,10 +2625,7 @@ pub fn svasr_n_s64_z(pg: svbool_t, op1: svint64_t, op2: u64) -> svint64_t {
 #[cfg_attr(test, assert_instr(asr))]
 pub fn svasr_wide_s8_m(pg: svbool_t, op1: svint8_t, op2: svuint64_t) -> svint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.asr.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.asr.wide.nxv16i8")]
         fn _svasr_wide_s8_m(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svint8_t;
     }
     unsafe { _svasr_wide_s8_m(pg, op1, op2.as_signed()) }
@@ -2686,10 +2683,7 @@ pub fn svasr_wide_n_s8_z(pg: svbool_t, op1: svint8_t, op2: u64) -> svint8_t {
 #[cfg_attr(test, assert_instr(asr))]
 pub fn svasr_wide_s16_m(pg: svbool_t, op1: svint16_t, op2: svuint64_t) -> svint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.asr.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.asr.wide.nxv8i16")]
         fn _svasr_wide_s16_m(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svint16_t;
     }
     unsafe { _svasr_wide_s16_m(pg.sve_into(), op1, op2.as_signed()) }
@@ -2747,10 +2741,7 @@ pub fn svasr_wide_n_s16_z(pg: svbool_t, op1: svint16_t, op2: u64) -> svint16_t {
 #[cfg_attr(test, assert_instr(asr))]
 pub fn svasr_wide_s32_m(pg: svbool_t, op1: svint32_t, op2: svuint64_t) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.asr.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.asr.wide.nxv4i32")]
         fn _svasr_wide_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svint32_t;
     }
     unsafe { _svasr_wide_s32_m(pg.sve_into(), op1, op2.as_signed()) }
@@ -3462,10 +3453,7 @@ pub fn svbrkn_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(brkpa))]
 pub fn svbrkpa_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.brkpa.z.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.brkpa.z.nxv16i1")]
         fn _svbrkpa_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
     unsafe { _svbrkpa_b_z(pg, op1, op2) }
@@ -3478,10 +3466,7 @@ pub fn svbrkpa_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(brkpb))]
 pub fn svbrkpb_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.brkpb.z.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.brkpb.z.nxv16i1")]
         fn _svbrkpb_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
     unsafe { _svbrkpb_b_z(pg, op1, op2) }
@@ -3706,10 +3691,7 @@ pub fn svclasta_u64(pg: svbool_t, fallback: svuint64_t, data: svuint64_t) -> svu
 #[cfg_attr(test, assert_instr(clasta))]
 pub fn svclasta_n_f32(pg: svbool_t, fallback: f32, data: svfloat32_t) -> f32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clasta.n.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clasta.n.nxv4f32")]
         fn _svclasta_n_f32(pg: svbool4_t, fallback: f32, data: svfloat32_t) -> f32;
     }
     unsafe { _svclasta_n_f32(pg.sve_into(), fallback, data) }
@@ -3722,10 +3704,7 @@ pub fn svclasta_n_f32(pg: svbool_t, fallback: f32, data: svfloat32_t) -> f32 {
 #[cfg_attr(test, assert_instr(clasta))]
 pub fn svclasta_n_f64(pg: svbool_t, fallback: f64, data: svfloat64_t) -> f64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clasta.n.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clasta.n.nxv2f64")]
         fn _svclasta_n_f64(pg: svbool2_t, fallback: f64, data: svfloat64_t) -> f64;
     }
     unsafe { _svclasta_n_f64(pg.sve_into(), fallback, data) }
@@ -3738,10 +3717,7 @@ pub fn svclasta_n_f64(pg: svbool_t, fallback: f64, data: svfloat64_t) -> f64 {
 #[cfg_attr(test, assert_instr(clasta))]
 pub fn svclasta_n_s8(pg: svbool_t, fallback: i8, data: svint8_t) -> i8 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clasta.n.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clasta.n.nxv16i8")]
         fn _svclasta_n_s8(pg: svbool_t, fallback: i8, data: svint8_t) -> i8;
     }
     unsafe { _svclasta_n_s8(pg, fallback, data) }
@@ -3754,10 +3730,7 @@ pub fn svclasta_n_s8(pg: svbool_t, fallback: i8, data: svint8_t) -> i8 {
 #[cfg_attr(test, assert_instr(clasta))]
 pub fn svclasta_n_s16(pg: svbool_t, fallback: i16, data: svint16_t) -> i16 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clasta.n.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clasta.n.nxv8i16")]
         fn _svclasta_n_s16(pg: svbool8_t, fallback: i16, data: svint16_t) -> i16;
     }
     unsafe { _svclasta_n_s16(pg.sve_into(), fallback, data) }
@@ -3770,10 +3743,7 @@ pub fn svclasta_n_s16(pg: svbool_t, fallback: i16, data: svint16_t) -> i16 {
 #[cfg_attr(test, assert_instr(clasta))]
 pub fn svclasta_n_s32(pg: svbool_t, fallback: i32, data: svint32_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clasta.n.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clasta.n.nxv4i32")]
         fn _svclasta_n_s32(pg: svbool4_t, fallback: i32, data: svint32_t) -> i32;
     }
     unsafe { _svclasta_n_s32(pg.sve_into(), fallback, data) }
@@ -3786,10 +3756,7 @@ pub fn svclasta_n_s32(pg: svbool_t, fallback: i32, data: svint32_t) -> i32 {
 #[cfg_attr(test, assert_instr(clasta))]
 pub fn svclasta_n_s64(pg: svbool_t, fallback: i64, data: svint64_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clasta.n.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clasta.n.nxv2i64")]
         fn _svclasta_n_s64(pg: svbool2_t, fallback: i64, data: svint64_t) -> i64;
     }
     unsafe { _svclasta_n_s64(pg.sve_into(), fallback, data) }
@@ -3952,10 +3919,7 @@ pub fn svclastb_u64(pg: svbool_t, fallback: svuint64_t, data: svuint64_t) -> svu
 #[cfg_attr(test, assert_instr(clastb))]
 pub fn svclastb_n_f32(pg: svbool_t, fallback: f32, data: svfloat32_t) -> f32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clastb.n.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clastb.n.nxv4f32")]
         fn _svclastb_n_f32(pg: svbool4_t, fallback: f32, data: svfloat32_t) -> f32;
     }
     unsafe { _svclastb_n_f32(pg.sve_into(), fallback, data) }
@@ -3968,10 +3932,7 @@ pub fn svclastb_n_f32(pg: svbool_t, fallback: f32, data: svfloat32_t) -> f32 {
 #[cfg_attr(test, assert_instr(clastb))]
 pub fn svclastb_n_f64(pg: svbool_t, fallback: f64, data: svfloat64_t) -> f64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clastb.n.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clastb.n.nxv2f64")]
         fn _svclastb_n_f64(pg: svbool2_t, fallback: f64, data: svfloat64_t) -> f64;
     }
     unsafe { _svclastb_n_f64(pg.sve_into(), fallback, data) }
@@ -3984,10 +3945,7 @@ pub fn svclastb_n_f64(pg: svbool_t, fallback: f64, data: svfloat64_t) -> f64 {
 #[cfg_attr(test, assert_instr(clastb))]
 pub fn svclastb_n_s8(pg: svbool_t, fallback: i8, data: svint8_t) -> i8 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clastb.n.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clastb.n.nxv16i8")]
         fn _svclastb_n_s8(pg: svbool_t, fallback: i8, data: svint8_t) -> i8;
     }
     unsafe { _svclastb_n_s8(pg, fallback, data) }
@@ -4000,10 +3958,7 @@ pub fn svclastb_n_s8(pg: svbool_t, fallback: i8, data: svint8_t) -> i8 {
 #[cfg_attr(test, assert_instr(clastb))]
 pub fn svclastb_n_s16(pg: svbool_t, fallback: i16, data: svint16_t) -> i16 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clastb.n.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clastb.n.nxv8i16")]
         fn _svclastb_n_s16(pg: svbool8_t, fallback: i16, data: svint16_t) -> i16;
     }
     unsafe { _svclastb_n_s16(pg.sve_into(), fallback, data) }
@@ -4016,10 +3971,7 @@ pub fn svclastb_n_s16(pg: svbool_t, fallback: i16, data: svint16_t) -> i16 {
 #[cfg_attr(test, assert_instr(clastb))]
 pub fn svclastb_n_s32(pg: svbool_t, fallback: i32, data: svint32_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clastb.n.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clastb.n.nxv4i32")]
         fn _svclastb_n_s32(pg: svbool4_t, fallback: i32, data: svint32_t) -> i32;
     }
     unsafe { _svclastb_n_s32(pg.sve_into(), fallback, data) }
@@ -4032,10 +3984,7 @@ pub fn svclastb_n_s32(pg: svbool_t, fallback: i32, data: svint32_t) -> i32 {
 #[cfg_attr(test, assert_instr(clastb))]
 pub fn svclastb_n_s64(pg: svbool_t, fallback: i64, data: svint64_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.clastb.n.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.clastb.n.nxv2i64")]
         fn _svclastb_n_s64(pg: svbool2_t, fallback: i64, data: svint64_t) -> i64;
     }
     unsafe { _svclastb_n_s64(pg.sve_into(), fallback, data) }
@@ -4558,10 +4507,7 @@ pub fn svcmla_lane_f32<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
         IMM_ROTATION == 0 || IMM_ROTATION == 90 || IMM_ROTATION == 180 || IMM_ROTATION == 270
     );
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fcmla.lane.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcmla.lane.nxv4f32")]
         fn _svcmla_lane_f32(
             op1: svfloat32_t,
             op2: svfloat32_t,
@@ -4784,10 +4730,7 @@ pub fn svcmpeq_n_u64(pg: svbool_t, op1: svuint64_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpeq))]
 pub fn svcmpeq_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpeq.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpeq.wide.nxv16i8")]
         fn _svcmpeq_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmpeq_wide_s8(pg, op1, op2) }
@@ -4809,10 +4752,7 @@ pub fn svcmpeq_wide_n_s8(pg: svbool_t, op1: svint8_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpeq))]
 pub fn svcmpeq_wide_s16(pg: svbool_t, op1: svint16_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpeq.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpeq.wide.nxv8i16")]
         fn _svcmpeq_wide_s16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmpeq_wide_s16(pg.sve_into(), op1, op2).sve_into() }
@@ -4834,10 +4774,7 @@ pub fn svcmpeq_wide_n_s16(pg: svbool_t, op1: svint16_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpeq))]
 pub fn svcmpeq_wide_s32(pg: svbool_t, op1: svint32_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpeq.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpeq.wide.nxv4i32")]
         fn _svcmpeq_wide_s32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmpeq_wide_s32(pg.sve_into(), op1, op2).sve_into() }
@@ -5079,10 +5016,7 @@ pub fn svcmpge_n_u64(pg: svbool_t, op1: svuint64_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpge))]
 pub fn svcmpge_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpge.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpge.wide.nxv16i8")]
         fn _svcmpge_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmpge_wide_s8(pg, op1, op2) }
@@ -5104,10 +5038,7 @@ pub fn svcmpge_wide_n_s8(pg: svbool_t, op1: svint8_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpge))]
 pub fn svcmpge_wide_s16(pg: svbool_t, op1: svint16_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpge.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpge.wide.nxv8i16")]
         fn _svcmpge_wide_s16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmpge_wide_s16(pg.sve_into(), op1, op2).sve_into() }
@@ -5129,10 +5060,7 @@ pub fn svcmpge_wide_n_s16(pg: svbool_t, op1: svint16_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpge))]
 pub fn svcmpge_wide_s32(pg: svbool_t, op1: svint32_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpge.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpge.wide.nxv4i32")]
         fn _svcmpge_wide_s32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmpge_wide_s32(pg.sve_into(), op1, op2).sve_into() }
@@ -5154,10 +5082,7 @@ pub fn svcmpge_wide_n_s32(pg: svbool_t, op1: svint32_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmphs))]
 pub fn svcmpge_wide_u8(pg: svbool_t, op1: svuint8_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmphs.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmphs.wide.nxv16i8")]
         fn _svcmpge_wide_u8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmpge_wide_u8(pg, op1.as_signed(), op2.as_signed()) }
@@ -5179,10 +5104,7 @@ pub fn svcmpge_wide_n_u8(pg: svbool_t, op1: svuint8_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmphs))]
 pub fn svcmpge_wide_u16(pg: svbool_t, op1: svuint16_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmphs.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmphs.wide.nxv8i16")]
         fn _svcmpge_wide_u16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmpge_wide_u16(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -5204,10 +5126,7 @@ pub fn svcmpge_wide_n_u16(pg: svbool_t, op1: svuint16_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmphs))]
 pub fn svcmpge_wide_u32(pg: svbool_t, op1: svuint32_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmphs.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmphs.wide.nxv4i32")]
         fn _svcmpge_wide_u32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmpge_wide_u32(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -5449,10 +5368,7 @@ pub fn svcmpgt_n_u64(pg: svbool_t, op1: svuint64_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpgt))]
 pub fn svcmpgt_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpgt.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpgt.wide.nxv16i8")]
         fn _svcmpgt_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmpgt_wide_s8(pg, op1, op2) }
@@ -5474,10 +5390,7 @@ pub fn svcmpgt_wide_n_s8(pg: svbool_t, op1: svint8_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpgt))]
 pub fn svcmpgt_wide_s16(pg: svbool_t, op1: svint16_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpgt.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpgt.wide.nxv8i16")]
         fn _svcmpgt_wide_s16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmpgt_wide_s16(pg.sve_into(), op1, op2).sve_into() }
@@ -5499,10 +5412,7 @@ pub fn svcmpgt_wide_n_s16(pg: svbool_t, op1: svint16_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpgt))]
 pub fn svcmpgt_wide_s32(pg: svbool_t, op1: svint32_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpgt.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpgt.wide.nxv4i32")]
         fn _svcmpgt_wide_s32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmpgt_wide_s32(pg.sve_into(), op1, op2).sve_into() }
@@ -5524,10 +5434,7 @@ pub fn svcmpgt_wide_n_s32(pg: svbool_t, op1: svint32_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmphi))]
 pub fn svcmpgt_wide_u8(pg: svbool_t, op1: svuint8_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmphi.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmphi.wide.nxv16i8")]
         fn _svcmpgt_wide_u8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmpgt_wide_u8(pg, op1.as_signed(), op2.as_signed()) }
@@ -5549,10 +5456,7 @@ pub fn svcmpgt_wide_n_u8(pg: svbool_t, op1: svuint8_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmphi))]
 pub fn svcmpgt_wide_u16(pg: svbool_t, op1: svuint16_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmphi.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmphi.wide.nxv8i16")]
         fn _svcmpgt_wide_u16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmpgt_wide_u16(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -5574,10 +5478,7 @@ pub fn svcmpgt_wide_n_u16(pg: svbool_t, op1: svuint16_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmphi))]
 pub fn svcmpgt_wide_u32(pg: svbool_t, op1: svuint32_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmphi.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmphi.wide.nxv4i32")]
         fn _svcmpgt_wide_u32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmpgt_wide_u32(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -5779,10 +5680,7 @@ pub fn svcmple_n_u64(pg: svbool_t, op1: svuint64_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmple))]
 pub fn svcmple_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmple.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmple.wide.nxv16i8")]
         fn _svcmple_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmple_wide_s8(pg, op1, op2) }
@@ -5804,10 +5702,7 @@ pub fn svcmple_wide_n_s8(pg: svbool_t, op1: svint8_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmple))]
 pub fn svcmple_wide_s16(pg: svbool_t, op1: svint16_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmple.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmple.wide.nxv8i16")]
         fn _svcmple_wide_s16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmple_wide_s16(pg.sve_into(), op1, op2).sve_into() }
@@ -5829,10 +5724,7 @@ pub fn svcmple_wide_n_s16(pg: svbool_t, op1: svint16_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmple))]
 pub fn svcmple_wide_s32(pg: svbool_t, op1: svint32_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmple.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmple.wide.nxv4i32")]
         fn _svcmple_wide_s32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmple_wide_s32(pg.sve_into(), op1, op2).sve_into() }
@@ -5854,10 +5746,7 @@ pub fn svcmple_wide_n_s32(pg: svbool_t, op1: svint32_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpls))]
 pub fn svcmple_wide_u8(pg: svbool_t, op1: svuint8_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpls.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpls.wide.nxv16i8")]
         fn _svcmple_wide_u8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmple_wide_u8(pg, op1.as_signed(), op2.as_signed()) }
@@ -5879,10 +5768,7 @@ pub fn svcmple_wide_n_u8(pg: svbool_t, op1: svuint8_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpls))]
 pub fn svcmple_wide_u16(pg: svbool_t, op1: svuint16_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpls.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpls.wide.nxv8i16")]
         fn _svcmple_wide_u16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmple_wide_u16(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -5904,10 +5790,7 @@ pub fn svcmple_wide_n_u16(pg: svbool_t, op1: svuint16_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpls))]
 pub fn svcmple_wide_u32(pg: svbool_t, op1: svuint32_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpls.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpls.wide.nxv4i32")]
         fn _svcmple_wide_u32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmple_wide_u32(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -6109,10 +5992,7 @@ pub fn svcmplt_n_u64(pg: svbool_t, op1: svuint64_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmplt))]
 pub fn svcmplt_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmplt.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmplt.wide.nxv16i8")]
         fn _svcmplt_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmplt_wide_s8(pg, op1, op2) }
@@ -6134,10 +6014,7 @@ pub fn svcmplt_wide_n_s8(pg: svbool_t, op1: svint8_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmplt))]
 pub fn svcmplt_wide_s16(pg: svbool_t, op1: svint16_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmplt.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmplt.wide.nxv8i16")]
         fn _svcmplt_wide_s16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmplt_wide_s16(pg.sve_into(), op1, op2).sve_into() }
@@ -6159,10 +6036,7 @@ pub fn svcmplt_wide_n_s16(pg: svbool_t, op1: svint16_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmplt))]
 pub fn svcmplt_wide_s32(pg: svbool_t, op1: svint32_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmplt.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmplt.wide.nxv4i32")]
         fn _svcmplt_wide_s32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmplt_wide_s32(pg.sve_into(), op1, op2).sve_into() }
@@ -6184,10 +6058,7 @@ pub fn svcmplt_wide_n_s32(pg: svbool_t, op1: svint32_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmplo))]
 pub fn svcmplt_wide_u8(pg: svbool_t, op1: svuint8_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmplo.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmplo.wide.nxv16i8")]
         fn _svcmplt_wide_u8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmplt_wide_u8(pg, op1.as_signed(), op2.as_signed()) }
@@ -6209,10 +6080,7 @@ pub fn svcmplt_wide_n_u8(pg: svbool_t, op1: svuint8_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmplo))]
 pub fn svcmplt_wide_u16(pg: svbool_t, op1: svuint16_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmplo.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmplo.wide.nxv8i16")]
         fn _svcmplt_wide_u16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmplt_wide_u16(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -6234,10 +6102,7 @@ pub fn svcmplt_wide_n_u16(pg: svbool_t, op1: svuint16_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmplo))]
 pub fn svcmplt_wide_u32(pg: svbool_t, op1: svuint32_t, op2: svuint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmplo.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmplo.wide.nxv4i32")]
         fn _svcmplt_wide_u32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmplt_wide_u32(pg.sve_into(), op1.as_signed(), op2.as_signed()).sve_into() }
@@ -6463,10 +6328,7 @@ pub fn svcmpne_n_u64(pg: svbool_t, op1: svuint64_t, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpne))]
 pub fn svcmpne_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpne.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpne.wide.nxv16i8")]
         fn _svcmpne_wide_s8(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svbool_t;
     }
     unsafe { _svcmpne_wide_s8(pg, op1, op2) }
@@ -6488,10 +6350,7 @@ pub fn svcmpne_wide_n_s8(pg: svbool_t, op1: svint8_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpne))]
 pub fn svcmpne_wide_s16(pg: svbool_t, op1: svint16_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpne.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpne.wide.nxv8i16")]
         fn _svcmpne_wide_s16(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svbool8_t;
     }
     unsafe { _svcmpne_wide_s16(pg.sve_into(), op1, op2).sve_into() }
@@ -6513,10 +6372,7 @@ pub fn svcmpne_wide_n_s16(pg: svbool_t, op1: svint16_t, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(cmpne))]
 pub fn svcmpne_wide_s32(pg: svbool_t, op1: svint32_t, op2: svint64_t) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.cmpne.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cmpne.wide.nxv4i32")]
         fn _svcmpne_wide_s32(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svbool4_t;
     }
     unsafe { _svcmpne_wide_s32(pg.sve_into(), op1, op2).sve_into() }
@@ -7249,10 +7105,7 @@ pub fn svcntp_b64(pg: svbool_t, op: svbool_t) -> u64 {
 #[cfg_attr(test, assert_instr(compact))]
 pub fn svcompact_f32(pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.compact.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv4f32")]
         fn _svcompact_f32(pg: svbool4_t, op: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svcompact_f32(pg.sve_into(), op) }
@@ -7265,10 +7118,7 @@ pub fn svcompact_f32(pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(compact))]
 pub fn svcompact_f64(pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.compact.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv2f64")]
         fn _svcompact_f64(pg: svbool2_t, op: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svcompact_f64(pg.sve_into(), op) }
@@ -7281,10 +7131,7 @@ pub fn svcompact_f64(pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(compact))]
 pub fn svcompact_s32(pg: svbool_t, op: svint32_t) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.compact.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv4i32")]
         fn _svcompact_s32(pg: svbool4_t, op: svint32_t) -> svint32_t;
     }
     unsafe { _svcompact_s32(pg.sve_into(), op) }
@@ -7297,10 +7144,7 @@ pub fn svcompact_s32(pg: svbool_t, op: svint32_t) -> svint32_t {
 #[cfg_attr(test, assert_instr(compact))]
 pub fn svcompact_s64(pg: svbool_t, op: svint64_t) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.compact.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv2i64")]
         fn _svcompact_s64(pg: svbool2_t, op: svint64_t) -> svint64_t;
     }
     unsafe { _svcompact_s64(pg.sve_into(), op) }
@@ -7658,10 +7502,7 @@ pub fn svcvt_f64_f32_z(pg: svbool_t, op: svfloat32_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(scvtf))]
 pub fn svcvt_f32_s32_m(inactive: svfloat32_t, pg: svbool_t, op: svint32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.scvtf.nxv4f32.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.scvtf.nxv4f32.nxv4i32")]
         fn _svcvt_f32_s32_m(inactive: svfloat32_t, pg: svbool4_t, op: svint32_t) -> svfloat32_t;
     }
     unsafe { _svcvt_f32_s32_m(inactive, pg.sve_into(), op) }
@@ -7692,10 +7533,7 @@ pub fn svcvt_f32_s32_z(pg: svbool_t, op: svint32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(ucvtf))]
 pub fn svcvt_f32_u32_m(inactive: svfloat32_t, pg: svbool_t, op: svuint32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ucvtf.nxv4f32.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ucvtf.nxv4f32.nxv4i32")]
         fn _svcvt_f32_u32_m(inactive: svfloat32_t, pg: svbool4_t, op: svint32_t) -> svfloat32_t;
     }
     unsafe { _svcvt_f32_u32_m(inactive, pg.sve_into(), op.as_signed()) }
@@ -7726,10 +7564,7 @@ pub fn svcvt_f32_u32_z(pg: svbool_t, op: svuint32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(scvtf))]
 pub fn svcvt_f64_s64_m(inactive: svfloat64_t, pg: svbool_t, op: svint64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.scvtf.nxv2f64.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.scvtf.nxv2f64.nxv2i64")]
         fn _svcvt_f64_s64_m(inactive: svfloat64_t, pg: svbool2_t, op: svint64_t) -> svfloat64_t;
     }
     unsafe { _svcvt_f64_s64_m(inactive, pg.sve_into(), op) }
@@ -7760,10 +7595,7 @@ pub fn svcvt_f64_s64_z(pg: svbool_t, op: svint64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(ucvtf))]
 pub fn svcvt_f64_u64_m(inactive: svfloat64_t, pg: svbool_t, op: svuint64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ucvtf.nxv2f64.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ucvtf.nxv2f64.nxv2i64")]
         fn _svcvt_f64_u64_m(inactive: svfloat64_t, pg: svbool2_t, op: svint64_t) -> svfloat64_t;
     }
     unsafe { _svcvt_f64_u64_m(inactive, pg.sve_into(), op.as_signed()) }
@@ -7918,10 +7750,7 @@ pub fn svcvt_f64_u32_z(pg: svbool_t, op: svuint32_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub fn svcvt_s32_f32_m(inactive: svint32_t, pg: svbool_t, op: svfloat32_t) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fcvtzs.nxv4i32.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzs.nxv4i32.nxv4f32")]
         fn _svcvt_s32_f32_m(inactive: svint32_t, pg: svbool4_t, op: svfloat32_t) -> svint32_t;
     }
     unsafe { _svcvt_s32_f32_m(inactive, pg.sve_into(), op) }
@@ -7952,10 +7781,7 @@ pub fn svcvt_s32_f32_z(pg: svbool_t, op: svfloat32_t) -> svint32_t {
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub fn svcvt_s64_f64_m(inactive: svint64_t, pg: svbool_t, op: svfloat64_t) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fcvtzs.nxv2i64.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzs.nxv2i64.nxv2f64")]
         fn _svcvt_s64_f64_m(inactive: svint64_t, pg: svbool2_t, op: svfloat64_t) -> svint64_t;
     }
     unsafe { _svcvt_s64_f64_m(inactive, pg.sve_into(), op) }
@@ -7986,10 +7812,7 @@ pub fn svcvt_s64_f64_z(pg: svbool_t, op: svfloat64_t) -> svint64_t {
 #[cfg_attr(test, assert_instr(fcvtzu))]
 pub fn svcvt_u32_f32_m(inactive: svuint32_t, pg: svbool_t, op: svfloat32_t) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fcvtzu.nxv4i32.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzu.nxv4i32.nxv4f32")]
         fn _svcvt_u32_f32_m(inactive: svint32_t, pg: svbool4_t, op: svfloat32_t) -> svint32_t;
     }
     unsafe { _svcvt_u32_f32_m(inactive.as_signed(), pg.sve_into(), op).as_unsigned() }
@@ -8020,10 +7843,7 @@ pub fn svcvt_u32_f32_z(pg: svbool_t, op: svfloat32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(fcvtzu))]
 pub fn svcvt_u64_f64_m(inactive: svuint64_t, pg: svbool_t, op: svfloat64_t) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fcvtzu.nxv2i64.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzu.nxv2i64.nxv2f64")]
         fn _svcvt_u64_f64_m(inactive: svint64_t, pg: svbool2_t, op: svfloat64_t) -> svint64_t;
     }
     unsafe { _svcvt_u64_f64_m(inactive.as_signed(), pg.sve_into(), op).as_unsigned() }
@@ -8879,10 +8699,7 @@ pub fn svdot_lane_s32<const IMM_INDEX: i32>(
 ) -> svint32_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sdot.lane.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sdot.lane.nxv4i32")]
         fn _svdot_lane_s32(
             op1: svint32_t,
             op2: svint8_t,
@@ -8905,10 +8722,7 @@ pub fn svdot_lane_s64<const IMM_INDEX: i32>(
 ) -> svint64_t {
     static_assert_range!(IMM_INDEX, 0..=1);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sdot.lane.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sdot.lane.nxv2i64")]
         fn _svdot_lane_s64(
             op1: svint64_t,
             op2: svint16_t,
@@ -8931,10 +8745,7 @@ pub fn svdot_lane_u32<const IMM_INDEX: i32>(
 ) -> svuint32_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.udot.lane.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.udot.lane.nxv4i32")]
         fn _svdot_lane_u32(
             op1: svint32_t,
             op2: svint8_t,
@@ -8959,10 +8770,7 @@ pub fn svdot_lane_u64<const IMM_INDEX: i32>(
 ) -> svuint64_t {
     static_assert_range!(IMM_INDEX, 0..=1);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.udot.lane.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.udot.lane.nxv2i64")]
         fn _svdot_lane_u64(
             op1: svint64_t,
             op2: svint16_t,
@@ -9624,10 +9432,7 @@ pub fn svdup_n_u64_z(pg: svbool_t, op: u64) -> svuint64_t {
 #[cfg_attr(test, assert_instr(tbl))]
 pub fn svdupq_lane_f32(data: svfloat32_t, index: u64) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.dupq.lane.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dupq.lane.nxv4f32")]
         fn _svdupq_lane_f32(data: svfloat32_t, index: i64) -> svfloat32_t;
     }
     unsafe { _svdupq_lane_f32(data, index.as_signed()) }
@@ -9640,10 +9445,7 @@ pub fn svdupq_lane_f32(data: svfloat32_t, index: u64) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(tbl))]
 pub fn svdupq_lane_f64(data: svfloat64_t, index: u64) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.dupq.lane.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dupq.lane.nxv2f64")]
         fn _svdupq_lane_f64(data: svfloat64_t, index: i64) -> svfloat64_t;
     }
     unsafe { _svdupq_lane_f64(data, index.as_signed()) }
@@ -9656,10 +9458,7 @@ pub fn svdupq_lane_f64(data: svfloat64_t, index: u64) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(tbl))]
 pub fn svdupq_lane_s8(data: svint8_t, index: u64) -> svint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.dupq.lane.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dupq.lane.nxv16i8")]
         fn _svdupq_lane_s8(data: svint8_t, index: i64) -> svint8_t;
     }
     unsafe { _svdupq_lane_s8(data, index.as_signed()) }
@@ -9672,10 +9471,7 @@ pub fn svdupq_lane_s8(data: svint8_t, index: u64) -> svint8_t {
 #[cfg_attr(test, assert_instr(tbl))]
 pub fn svdupq_lane_s16(data: svint16_t, index: u64) -> svint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.dupq.lane.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dupq.lane.nxv8i16")]
         fn _svdupq_lane_s16(data: svint16_t, index: i64) -> svint16_t;
     }
     unsafe { _svdupq_lane_s16(data, index.as_signed()) }
@@ -9688,10 +9484,7 @@ pub fn svdupq_lane_s16(data: svint16_t, index: u64) -> svint16_t {
 #[cfg_attr(test, assert_instr(tbl))]
 pub fn svdupq_lane_s32(data: svint32_t, index: u64) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.dupq.lane.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dupq.lane.nxv4i32")]
         fn _svdupq_lane_s32(data: svint32_t, index: i64) -> svint32_t;
     }
     unsafe { _svdupq_lane_s32(data, index.as_signed()) }
@@ -9704,10 +9497,7 @@ pub fn svdupq_lane_s32(data: svint32_t, index: u64) -> svint32_t {
 #[cfg_attr(test, assert_instr(tbl))]
 pub fn svdupq_lane_s64(data: svint64_t, index: u64) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.dupq.lane.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dupq.lane.nxv2i64")]
         fn _svdupq_lane_s64(data: svint64_t, index: i64) -> svint64_t;
     }
     unsafe { _svdupq_lane_s64(data, index.as_signed()) }
@@ -9822,10 +9612,7 @@ pub fn svdupq_n_b8(
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub fn svdupq_n_f32(x0: f32, x1: f32, x2: f32, x3: f32) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.vector.insert.nxv4f32.v4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.insert.nxv4f32.v4f32")]
         fn _svdupq_n_f32(op0: svfloat32_t, op1: float32x4_t, idx: i64) -> svfloat32_t;
     }
     unsafe {
@@ -9840,10 +9627,7 @@ pub fn svdupq_n_f32(x0: f32, x1: f32, x2: f32, x3: f32) -> svfloat32_t {
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub fn svdupq_n_s32(x0: i32, x1: i32, x2: i32, x3: i32) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.vector.insert.nxv4i32.v4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.insert.nxv4i32.v4i32")]
         fn _svdupq_n_s32(op0: svint32_t, op1: int32x4_t, idx: i64) -> svint32_t;
     }
     unsafe {
@@ -9858,13 +9642,7 @@ pub fn svdupq_n_s32(x0: i32, x1: i32, x2: i32, x3: i32) -> svint32_t {
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub fn svdupq_n_u32(x0: u32, x1: u32, x2: u32, x3: u32) -> svuint32_t {
     unsafe {
-        svdupq_n_s32(
-            x0.as_signed(),
-            x1.as_signed(),
-            x2.as_signed(),
-            x3.as_signed(),
-        )
-        .as_unsigned()
+        svdupq_n_s32(x0.as_signed(), x1.as_signed(), x2.as_signed(), x3.as_signed()).as_unsigned()
     }
 }
 #[doc = "Broadcast a quadword of scalars"]
@@ -9874,10 +9652,7 @@ pub fn svdupq_n_u32(x0: u32, x1: u32, x2: u32, x3: u32) -> svuint32_t {
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub fn svdupq_n_f64(x0: f64, x1: f64) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.vector.insert.nxv2f64.v2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.insert.nxv2f64.v2f64")]
         fn _svdupq_n_f64(op0: svfloat64_t, op1: float64x2_t, idx: i64) -> svfloat64_t;
     }
     unsafe {
@@ -9892,10 +9667,7 @@ pub fn svdupq_n_f64(x0: f64, x1: f64) -> svfloat64_t {
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub fn svdupq_n_s64(x0: i64, x1: i64) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.vector.insert.nxv2i64.v2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.insert.nxv2i64.v2i64")]
         fn _svdupq_n_s64(op0: svint64_t, op1: int64x2_t, idx: i64) -> svint64_t;
     }
     unsafe {
@@ -9927,10 +9699,7 @@ pub fn svdupq_n_s16(
     x7: i16,
 ) -> svint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.vector.insert.nxv8i16.v8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.insert.nxv8i16.v8i16")]
         fn _svdupq_n_s16(op0: svint16_t, op1: int16x8_t, idx: i64) -> svint16_t;
     }
     unsafe {
@@ -9995,10 +9764,7 @@ pub fn svdupq_n_s8(
     x15: i8,
 ) -> svint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.vector.insert.nxv16i8.v16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.insert.nxv16i8.v16i8")]
         fn _svdupq_n_s8(op0: svint8_t, op1: int8x16_t, idx: i64) -> svint8_t;
     }
     unsafe {
@@ -10614,10 +10380,7 @@ pub fn sveorv_u64(pg: svbool_t, op: svuint64_t) -> u64 {
 #[cfg_attr(test, assert_instr(fexpa))]
 pub fn svexpa_f32(op: svuint32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fexpa.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fexpa.x.nxv4f32")]
         fn _svexpa_f32(op: svint32_t) -> svfloat32_t;
     }
     unsafe { _svexpa_f32(op.as_signed()) }
@@ -10630,10 +10393,7 @@ pub fn svexpa_f32(op: svuint32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(fexpa))]
 pub fn svexpa_f64(op: svuint64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fexpa.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fexpa.x.nxv2f64")]
         fn _svexpa_f64(op: svint64_t) -> svfloat64_t;
     }
     unsafe { _svexpa_f64(op.as_signed()) }
@@ -12251,10 +12011,7 @@ pub unsafe fn svld1_gather_s32offset_f32(
     offsets: svint32_t,
 ) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4f32")]
         fn _svld1_gather_s32offset_f32(
             pg: svbool4_t,
             base: *const f32,
@@ -12278,10 +12035,7 @@ pub unsafe fn svld1_gather_s32offset_s32(
     offsets: svint32_t,
 ) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i32")]
         fn _svld1_gather_s32offset_s32(
             pg: svbool4_t,
             base: *const i32,
@@ -12321,10 +12075,7 @@ pub unsafe fn svld1_gather_s64offset_f64(
     offsets: svint64_t,
 ) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2f64")]
         fn _svld1_gather_s64offset_f64(
             pg: svbool2_t,
             base: *const f64,
@@ -12348,10 +12099,7 @@ pub unsafe fn svld1_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i64")]
         fn _svld1_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i64,
@@ -12391,10 +12139,7 @@ pub unsafe fn svld1_gather_u32offset_f32(
     offsets: svuint32_t,
 ) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4f32")]
         fn _svld1_gather_u32offset_f32(
             pg: svbool4_t,
             base: *const f32,
@@ -12418,10 +12163,7 @@ pub unsafe fn svld1_gather_u32offset_s32(
     offsets: svuint32_t,
 ) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i32")]
         fn _svld1_gather_u32offset_s32(
             pg: svbool4_t,
             base: *const i32,
@@ -13243,10 +12985,7 @@ pub unsafe fn svld1sb_gather_s32offset_s32(
     offsets: svint32_t,
 ) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i8")]
         fn _svld1sb_gather_s32offset_s32(
             pg: svbool4_t,
             base: *const i8,
@@ -13270,10 +13009,7 @@ pub unsafe fn svld1sh_gather_s32offset_s32(
     offsets: svint32_t,
 ) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i16")]
         fn _svld1sh_gather_s32offset_s32(
             pg: svbool4_t,
             base: *const i16,
@@ -13329,10 +13065,7 @@ pub unsafe fn svld1sb_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i8")]
         fn _svld1sb_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i8,
@@ -13356,10 +13089,7 @@ pub unsafe fn svld1sh_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16")]
         fn _svld1sh_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i16,
@@ -13383,10 +13113,7 @@ pub unsafe fn svld1sw_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i32")]
         fn _svld1sw_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i32,
@@ -13458,10 +13185,7 @@ pub unsafe fn svld1sb_gather_u32offset_s32(
     offsets: svuint32_t,
 ) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i8")]
         fn _svld1sb_gather_u32offset_s32(
             pg: svbool4_t,
             base: *const i8,
@@ -13489,10 +13213,7 @@ pub unsafe fn svld1sh_gather_u32offset_s32(
     offsets: svuint32_t,
 ) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i16")]
         fn _svld1sh_gather_u32offset_s32(
             pg: svbool4_t,
             base: *const i16,
@@ -14709,10 +14430,7 @@ pub unsafe fn svld1ub_gather_s32offset_u32(
     offsets: svint32_t,
 ) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i8")]
         fn _svld1ub_gather_s32offset_u32(
             pg: svbool4_t,
             base: *const i8,
@@ -14738,10 +14456,7 @@ pub unsafe fn svld1uh_gather_s32offset_u32(
     offsets: svint32_t,
 ) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.sxtw.nxv4i16")]
         fn _svld1uh_gather_s32offset_u32(
             pg: svbool4_t,
             base: *const i16,
@@ -14815,10 +14530,7 @@ pub unsafe fn svld1ub_gather_s64offset_u64(
     offsets: svint64_t,
 ) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i8")]
         fn _svld1ub_gather_s64offset_u64(
             pg: svbool2_t,
             base: *const i8,
@@ -14844,10 +14556,7 @@ pub unsafe fn svld1uh_gather_s64offset_u64(
     offsets: svint64_t,
 ) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16")]
         fn _svld1uh_gather_s64offset_u64(
             pg: svbool2_t,
             base: *const i16,
@@ -14873,10 +14582,7 @@ pub unsafe fn svld1uw_gather_s64offset_u64(
     offsets: svint64_t,
 ) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i32")]
         fn _svld1uw_gather_s64offset_u64(
             pg: svbool2_t,
             base: *const i32,
@@ -14934,10 +14640,7 @@ pub unsafe fn svld1ub_gather_u32offset_u32(
     offsets: svuint32_t,
 ) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i8")]
         fn _svld1ub_gather_u32offset_u32(
             pg: svbool4_t,
             base: *const i8,
@@ -14964,10 +14667,7 @@ pub unsafe fn svld1uh_gather_u32offset_u32(
     offsets: svuint32_t,
 ) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.uxtw.nxv4i16")]
         fn _svld1uh_gather_u32offset_u32(
             pg: svbool4_t,
             base: *const i16,
@@ -16122,10 +15822,7 @@ pub unsafe fn svld1uw_gather_u64base_index_u64(
 #[cfg_attr(test, assert_instr(ld2w))]
 pub unsafe fn svld2_f32(pg: svbool_t, base: *const f32) -> svfloat32x2_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld2.sret.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv4f32")]
         fn _svld2_f32(pg: svbool4_t, base: *const f32) -> svfloat32x2_t;
     }
     _svld2_f32(pg.sve_into(), base)
@@ -16141,10 +15838,7 @@ pub unsafe fn svld2_f32(pg: svbool_t, base: *const f32) -> svfloat32x2_t {
 #[cfg_attr(test, assert_instr(ld2d))]
 pub unsafe fn svld2_f64(pg: svbool_t, base: *const f64) -> svfloat64x2_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld2.sret.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv2f64")]
         fn _svld2_f64(pg: svbool2_t, base: *const f64) -> svfloat64x2_t;
     }
     _svld2_f64(pg.sve_into(), base)
@@ -16160,10 +15854,7 @@ pub unsafe fn svld2_f64(pg: svbool_t, base: *const f64) -> svfloat64x2_t {
 #[cfg_attr(test, assert_instr(ld2b))]
 pub unsafe fn svld2_s8(pg: svbool_t, base: *const i8) -> svint8x2_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld2.sret.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv16i8")]
         fn _svld2_s8(pg: svbool_t, base: *const i8) -> svint8x2_t;
     }
     _svld2_s8(pg, base)
@@ -16179,10 +15870,7 @@ pub unsafe fn svld2_s8(pg: svbool_t, base: *const i8) -> svint8x2_t {
 #[cfg_attr(test, assert_instr(ld2h))]
 pub unsafe fn svld2_s16(pg: svbool_t, base: *const i16) -> svint16x2_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld2.sret.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv8i16")]
         fn _svld2_s16(pg: svbool8_t, base: *const i16) -> svint16x2_t;
     }
     _svld2_s16(pg.sve_into(), base)
@@ -16198,10 +15886,7 @@ pub unsafe fn svld2_s16(pg: svbool_t, base: *const i16) -> svint16x2_t {
 #[cfg_attr(test, assert_instr(ld2w))]
 pub unsafe fn svld2_s32(pg: svbool_t, base: *const i32) -> svint32x2_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld2.sret.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv4i32")]
         fn _svld2_s32(pg: svbool4_t, base: *const i32) -> svint32x2_t;
     }
     _svld2_s32(pg.sve_into(), base)
@@ -16217,10 +15902,7 @@ pub unsafe fn svld2_s32(pg: svbool_t, base: *const i32) -> svint32x2_t {
 #[cfg_attr(test, assert_instr(ld2d))]
 pub unsafe fn svld2_s64(pg: svbool_t, base: *const i64) -> svint64x2_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld2.sret.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld2.sret.nxv2i64")]
         fn _svld2_s64(pg: svbool2_t, base: *const i64) -> svint64x2_t;
     }
     _svld2_s64(pg.sve_into(), base)
@@ -16404,10 +16086,7 @@ pub unsafe fn svld2_vnum_u64(pg: svbool_t, base: *const u64, vnum: i64) -> svuin
 #[cfg_attr(test, assert_instr(ld3w))]
 pub unsafe fn svld3_f32(pg: svbool_t, base: *const f32) -> svfloat32x3_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld3.sret.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld3.sret.nxv4f32")]
         fn _svld3_f32(pg: svbool4_t, base: *const f32) -> svfloat32x3_t;
     }
     _svld3_f32(pg.sve_into(), base)
@@ -16423,10 +16102,7 @@ pub unsafe fn svld3_f32(pg: svbool_t, base: *const f32) -> svfloat32x3_t {
 #[cfg_attr(test, assert_instr(ld3d))]
 pub unsafe fn svld3_f64(pg: svbool_t, base: *const f64) -> svfloat64x3_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld3.sret.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld3.sret.nxv2f64")]
         fn _svld3_f64(pg: svbool2_t, base: *const f64) -> svfloat64x3_t;
     }
     _svld3_f64(pg.sve_into(), base)
@@ -16442,10 +16118,7 @@ pub unsafe fn svld3_f64(pg: svbool_t, base: *const f64) -> svfloat64x3_t {
 #[cfg_attr(test, assert_instr(ld3b))]
 pub unsafe fn svld3_s8(pg: svbool_t, base: *const i8) -> svint8x3_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld3.sret.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld3.sret.nxv16i8")]
         fn _svld3_s8(pg: svbool_t, base: *const i8) -> svint8x3_t;
     }
     _svld3_s8(pg, base)
@@ -16461,10 +16134,7 @@ pub unsafe fn svld3_s8(pg: svbool_t, base: *const i8) -> svint8x3_t {
 #[cfg_attr(test, assert_instr(ld3h))]
 pub unsafe fn svld3_s16(pg: svbool_t, base: *const i16) -> svint16x3_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld3.sret.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld3.sret.nxv8i16")]
         fn _svld3_s16(pg: svbool8_t, base: *const i16) -> svint16x3_t;
     }
     _svld3_s16(pg.sve_into(), base)
@@ -16480,10 +16150,7 @@ pub unsafe fn svld3_s16(pg: svbool_t, base: *const i16) -> svint16x3_t {
 #[cfg_attr(test, assert_instr(ld3w))]
 pub unsafe fn svld3_s32(pg: svbool_t, base: *const i32) -> svint32x3_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld3.sret.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld3.sret.nxv4i32")]
         fn _svld3_s32(pg: svbool4_t, base: *const i32) -> svint32x3_t;
     }
     _svld3_s32(pg.sve_into(), base)
@@ -16499,10 +16166,7 @@ pub unsafe fn svld3_s32(pg: svbool_t, base: *const i32) -> svint32x3_t {
 #[cfg_attr(test, assert_instr(ld3d))]
 pub unsafe fn svld3_s64(pg: svbool_t, base: *const i64) -> svint64x3_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld3.sret.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld3.sret.nxv2i64")]
         fn _svld3_s64(pg: svbool2_t, base: *const i64) -> svint64x3_t;
     }
     _svld3_s64(pg.sve_into(), base)
@@ -16686,10 +16350,7 @@ pub unsafe fn svld3_vnum_u64(pg: svbool_t, base: *const u64, vnum: i64) -> svuin
 #[cfg_attr(test, assert_instr(ld4w))]
 pub unsafe fn svld4_f32(pg: svbool_t, base: *const f32) -> svfloat32x4_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld4.sret.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld4.sret.nxv4f32")]
         fn _svld4_f32(pg: svbool4_t, base: *const f32) -> svfloat32x4_t;
     }
     _svld4_f32(pg.sve_into(), base)
@@ -16705,10 +16366,7 @@ pub unsafe fn svld4_f32(pg: svbool_t, base: *const f32) -> svfloat32x4_t {
 #[cfg_attr(test, assert_instr(ld4d))]
 pub unsafe fn svld4_f64(pg: svbool_t, base: *const f64) -> svfloat64x4_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld4.sret.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld4.sret.nxv2f64")]
         fn _svld4_f64(pg: svbool2_t, base: *const f64) -> svfloat64x4_t;
     }
     _svld4_f64(pg.sve_into(), base)
@@ -16724,10 +16382,7 @@ pub unsafe fn svld4_f64(pg: svbool_t, base: *const f64) -> svfloat64x4_t {
 #[cfg_attr(test, assert_instr(ld4b))]
 pub unsafe fn svld4_s8(pg: svbool_t, base: *const i8) -> svint8x4_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld4.sret.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld4.sret.nxv16i8")]
         fn _svld4_s8(pg: svbool_t, base: *const i8) -> svint8x4_t;
     }
     _svld4_s8(pg, base)
@@ -16743,10 +16398,7 @@ pub unsafe fn svld4_s8(pg: svbool_t, base: *const i8) -> svint8x4_t {
 #[cfg_attr(test, assert_instr(ld4h))]
 pub unsafe fn svld4_s16(pg: svbool_t, base: *const i16) -> svint16x4_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld4.sret.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld4.sret.nxv8i16")]
         fn _svld4_s16(pg: svbool8_t, base: *const i16) -> svint16x4_t;
     }
     _svld4_s16(pg.sve_into(), base)
@@ -16762,10 +16414,7 @@ pub unsafe fn svld4_s16(pg: svbool_t, base: *const i16) -> svint16x4_t {
 #[cfg_attr(test, assert_instr(ld4w))]
 pub unsafe fn svld4_s32(pg: svbool_t, base: *const i32) -> svint32x4_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld4.sret.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld4.sret.nxv4i32")]
         fn _svld4_s32(pg: svbool4_t, base: *const i32) -> svint32x4_t;
     }
     _svld4_s32(pg.sve_into(), base)
@@ -16781,10 +16430,7 @@ pub unsafe fn svld4_s32(pg: svbool_t, base: *const i32) -> svint32x4_t {
 #[cfg_attr(test, assert_instr(ld4d))]
 pub unsafe fn svld4_s64(pg: svbool_t, base: *const i64) -> svint64x4_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld4.sret.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld4.sret.nxv2i64")]
         fn _svld4_s64(pg: svbool2_t, base: *const i64) -> svint64x4_t;
     }
     _svld4_s64(pg.sve_into(), base)
@@ -17470,10 +17116,7 @@ pub unsafe fn svldff1_gather_s64offset_f64(
     offsets: svint64_t,
 ) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2f64")]
         fn _svldff1_gather_s64offset_f64(
             pg: svbool2_t,
             base: *const f64,
@@ -17498,10 +17141,7 @@ pub unsafe fn svldff1_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i64")]
         fn _svldff1_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i64,
@@ -18239,10 +17879,7 @@ pub unsafe fn svldff1sb_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i8")]
         fn _svldff1sb_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i8,
@@ -18271,10 +17908,7 @@ pub unsafe fn svldff1sh_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i16")]
         fn _svldff1sh_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i16,
@@ -18303,10 +17937,7 @@ pub unsafe fn svldff1sw_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i32")]
         fn _svldff1sw_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i32,
@@ -19822,10 +19453,7 @@ pub unsafe fn svldff1ub_gather_s64offset_u64(
     offsets: svint64_t,
 ) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i8")]
         fn _svldff1ub_gather_s64offset_u64(
             pg: svbool2_t,
             base: *const i8,
@@ -19852,10 +19480,7 @@ pub unsafe fn svldff1uh_gather_s64offset_u64(
     offsets: svint64_t,
 ) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i16")]
         fn _svldff1uh_gather_s64offset_u64(
             pg: svbool2_t,
             base: *const i16,
@@ -19882,10 +19507,7 @@ pub unsafe fn svldff1uw_gather_s64offset_u64(
     offsets: svint64_t,
 ) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ldff1.gather.nxv2i32")]
         fn _svldff1uw_gather_s64offset_u64(
             pg: svbool2_t,
             base: *const i32,
@@ -22995,10 +22617,7 @@ pub fn svlsl_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 #[cfg_attr(test, assert_instr(lsl))]
 pub fn svlsl_wide_s8_m(pg: svbool_t, op1: svint8_t, op2: svuint64_t) -> svint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.lsl.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lsl.wide.nxv16i8")]
         fn _svlsl_wide_s8_m(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svint8_t;
     }
     unsafe { _svlsl_wide_s8_m(pg, op1, op2.as_signed()) }
@@ -23056,10 +22675,7 @@ pub fn svlsl_wide_n_s8_z(pg: svbool_t, op1: svint8_t, op2: u64) -> svint8_t {
 #[cfg_attr(test, assert_instr(lsl))]
 pub fn svlsl_wide_s16_m(pg: svbool_t, op1: svint16_t, op2: svuint64_t) -> svint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.lsl.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lsl.wide.nxv8i16")]
         fn _svlsl_wide_s16_m(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svint16_t;
     }
     unsafe { _svlsl_wide_s16_m(pg.sve_into(), op1, op2.as_signed()) }
@@ -23117,10 +22733,7 @@ pub fn svlsl_wide_n_s16_z(pg: svbool_t, op1: svint16_t, op2: u64) -> svint16_t {
 #[cfg_attr(test, assert_instr(lsl))]
 pub fn svlsl_wide_s32_m(pg: svbool_t, op1: svint32_t, op2: svuint64_t) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.lsl.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lsl.wide.nxv4i32")]
         fn _svlsl_wide_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svint32_t;
     }
     unsafe { _svlsl_wide_s32_m(pg.sve_into(), op1, op2.as_signed()) }
@@ -23572,10 +23185,7 @@ pub fn svlsr_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 #[cfg_attr(test, assert_instr(lsr))]
 pub fn svlsr_wide_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint64_t) -> svuint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.lsr.wide.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lsr.wide.nxv16i8")]
         fn _svlsr_wide_u8_m(pg: svbool_t, op1: svint8_t, op2: svint64_t) -> svint8_t;
     }
     unsafe { _svlsr_wide_u8_m(pg, op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -23633,10 +23243,7 @@ pub fn svlsr_wide_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u64) -> svuint8_t {
 #[cfg_attr(test, assert_instr(lsr))]
 pub fn svlsr_wide_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint64_t) -> svuint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.lsr.wide.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lsr.wide.nxv8i16")]
         fn _svlsr_wide_u16_m(pg: svbool8_t, op1: svint16_t, op2: svint64_t) -> svint16_t;
     }
     unsafe { _svlsr_wide_u16_m(pg.sve_into(), op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -23694,10 +23301,7 @@ pub fn svlsr_wide_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u64) -> svuint16_t
 #[cfg_attr(test, assert_instr(lsr))]
 pub fn svlsr_wide_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint64_t) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.lsr.wide.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lsr.wide.nxv4i32")]
         fn _svlsr_wide_u32_m(pg: svbool4_t, op1: svint32_t, op2: svint64_t) -> svint32_t;
     }
     unsafe { _svlsr_wide_u32_m(pg.sve_into(), op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -23971,7 +23575,7 @@ pub fn svmad_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mad.nxv8i16")]
         fn _svmad_s16_m(pg: svbool8_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
-            -> svint16_t;
+        -> svint16_t;
     }
     unsafe { _svmad_s16_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -24030,7 +23634,7 @@ pub fn svmad_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mad.nxv4i32")]
         fn _svmad_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
-            -> svint32_t;
+        -> svint32_t;
     }
     unsafe { _svmad_s32_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -24089,7 +23693,7 @@ pub fn svmad_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mad.nxv2i64")]
         fn _svmad_s64_m(pg: svbool2_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
-            -> svint64_t;
+        -> svint64_t;
     }
     unsafe { _svmad_s64_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -25058,10 +24662,7 @@ pub fn svmaxnm_n_f64_z(pg: svbool_t, op1: svfloat64_t, op2: f64) -> svfloat64_t 
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn svmaxnmv_f32(pg: svbool_t, op: svfloat32_t) -> f32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmaxnmv.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmaxnmv.nxv4f32")]
         fn _svmaxnmv_f32(pg: svbool4_t, op: svfloat32_t) -> f32;
     }
     unsafe { _svmaxnmv_f32(pg.sve_into(), op) }
@@ -25074,10 +24675,7 @@ pub fn svmaxnmv_f32(pg: svbool_t, op: svfloat32_t) -> f32 {
 #[cfg_attr(test, assert_instr(fmaxnmv))]
 pub fn svmaxnmv_f64(pg: svbool_t, op: svfloat64_t) -> f64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmaxnmv.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmaxnmv.nxv2f64")]
         fn _svmaxnmv_f64(pg: svbool2_t, op: svfloat64_t) -> f64;
     }
     unsafe { _svmaxnmv_f64(pg.sve_into(), op) }
@@ -25916,10 +25514,7 @@ pub fn svminnm_n_f64_z(pg: svbool_t, op1: svfloat64_t, op2: f64) -> svfloat64_t 
 #[cfg_attr(test, assert_instr(fminnmv))]
 pub fn svminnmv_f32(pg: svbool_t, op: svfloat32_t) -> f32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fminnmv.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fminnmv.nxv4f32")]
         fn _svminnmv_f32(pg: svbool4_t, op: svfloat32_t) -> f32;
     }
     unsafe { _svminnmv_f32(pg.sve_into(), op) }
@@ -25932,10 +25527,7 @@ pub fn svminnmv_f32(pg: svbool_t, op: svfloat32_t) -> f32 {
 #[cfg_attr(test, assert_instr(fminnmv))]
 pub fn svminnmv_f64(pg: svbool_t, op: svfloat64_t) -> f64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fminnmv.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fminnmv.nxv2f64")]
         fn _svminnmv_f64(pg: svbool2_t, op: svfloat64_t) -> f64;
     }
     unsafe { _svminnmv_f64(pg.sve_into(), op) }
@@ -26294,7 +25886,7 @@ pub fn svmla_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mla.nxv8i16")]
         fn _svmla_s16_m(pg: svbool8_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
-            -> svint16_t;
+        -> svint16_t;
     }
     unsafe { _svmla_s16_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -26353,7 +25945,7 @@ pub fn svmla_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mla.nxv4i32")]
         fn _svmla_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
-            -> svint32_t;
+        -> svint32_t;
     }
     unsafe { _svmla_s32_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -26412,7 +26004,7 @@ pub fn svmla_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mla.nxv2i64")]
         fn _svmla_s64_m(pg: svbool2_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
-            -> svint64_t;
+        -> svint64_t;
     }
     unsafe { _svmla_s64_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -26690,10 +26282,7 @@ pub fn svmla_lane_f32<const IMM_INDEX: i32>(
 ) -> svfloat32_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmla.lane.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmla.lane.nxv4f32")]
         fn _svmla_lane_f32(
             op1: svfloat32_t,
             op2: svfloat32_t,
@@ -26716,10 +26305,7 @@ pub fn svmla_lane_f64<const IMM_INDEX: i32>(
 ) -> svfloat64_t {
     static_assert_range!(IMM_INDEX, 0..=1);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmla.lane.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmla.lane.nxv2f64")]
         fn _svmla_lane_f64(
             op1: svfloat64_t,
             op2: svfloat64_t,
@@ -26953,7 +26539,7 @@ pub fn svmls_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mls.nxv8i16")]
         fn _svmls_s16_m(pg: svbool8_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
-            -> svint16_t;
+        -> svint16_t;
     }
     unsafe { _svmls_s16_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -27012,7 +26598,7 @@ pub fn svmls_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mls.nxv4i32")]
         fn _svmls_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
-            -> svint32_t;
+        -> svint32_t;
     }
     unsafe { _svmls_s32_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -27071,7 +26657,7 @@ pub fn svmls_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.mls.nxv2i64")]
         fn _svmls_s64_m(pg: svbool2_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
-            -> svint64_t;
+        -> svint64_t;
     }
     unsafe { _svmls_s64_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -27349,10 +26935,7 @@ pub fn svmls_lane_f32<const IMM_INDEX: i32>(
 ) -> svfloat32_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmls.lane.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmls.lane.nxv4f32")]
         fn _svmls_lane_f32(
             op1: svfloat32_t,
             op2: svfloat32_t,
@@ -27375,10 +26958,7 @@ pub fn svmls_lane_f64<const IMM_INDEX: i32>(
 ) -> svfloat64_t {
     static_assert_range!(IMM_INDEX, 0..=1);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmls.lane.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmls.lane.nxv2f64")]
         fn _svmls_lane_f64(
             op1: svfloat64_t,
             op2: svfloat64_t,
@@ -27396,10 +26976,7 @@ pub fn svmls_lane_f64<const IMM_INDEX: i32>(
 #[cfg_attr(test, assert_instr(fmmla))]
 pub fn svmmla_f32(op1: svfloat32_t, op2: svfloat32_t, op3: svfloat32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmmla.nxv4f32.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmmla.nxv4f32.nxv4f32")]
         fn _svmmla_f32(op1: svfloat32_t, op2: svfloat32_t, op3: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svmmla_f32(op1, op2, op3) }
@@ -27412,10 +26989,7 @@ pub fn svmmla_f32(op1: svfloat32_t, op2: svfloat32_t, op3: svfloat32_t) -> svflo
 #[cfg_attr(test, assert_instr(fmmla))]
 pub fn svmmla_f64(op1: svfloat64_t, op2: svfloat64_t, op3: svfloat64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fmmla.nxv2f64.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmmla.nxv2f64.nxv2f64")]
         fn _svmmla_f64(op1: svfloat64_t, op2: svfloat64_t, op3: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svmmla_f64(op1, op2, op3) }
@@ -27679,7 +27253,7 @@ pub fn svmsb_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.msb.nxv8i16")]
         fn _svmsb_s16_m(pg: svbool8_t, op1: svint16_t, op2: svint16_t, op3: svint16_t)
-            -> svint16_t;
+        -> svint16_t;
     }
     unsafe { _svmsb_s16_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -27738,7 +27312,7 @@ pub fn svmsb_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.msb.nxv4i32")]
         fn _svmsb_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint32_t, op3: svint32_t)
-            -> svint32_t;
+        -> svint32_t;
     }
     unsafe { _svmsb_s32_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -27797,7 +27371,7 @@ pub fn svmsb_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.msb.nxv2i64")]
         fn _svmsb_s64_m(pg: svbool2_t, op1: svint64_t, op2: svint64_t, op3: svint64_t)
-            -> svint64_t;
+        -> svint64_t;
     }
     unsafe { _svmsb_s64_m(pg.sve_into(), op1, op2, op3) }
 }
@@ -31006,12 +30580,7 @@ pub unsafe fn svprfb_gather_s32offset<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfb_gather_s32offset(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        offsets,
-        OP,
-    )
+    _svprfb_gather_s32offset(pg.sve_into(), base as *const crate::ffi::c_void, offsets, OP)
 }
 #[doc = "Prefetch halfwords"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfh_gather_[s32]index)"]
@@ -31038,12 +30607,7 @@ pub unsafe fn svprfh_gather_s32index<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfh_gather_s32index(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        indices,
-        OP,
-    )
+    _svprfh_gather_s32index(pg.sve_into(), base as *const crate::ffi::c_void, indices, OP)
 }
 #[doc = "Prefetch words"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfw_gather_[s32]index)"]
@@ -31070,12 +30634,7 @@ pub unsafe fn svprfw_gather_s32index<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfw_gather_s32index(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        indices,
-        OP,
-    )
+    _svprfw_gather_s32index(pg.sve_into(), base as *const crate::ffi::c_void, indices, OP)
 }
 #[doc = "Prefetch doublewords"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfd_gather_[s32]index)"]
@@ -31102,12 +30661,7 @@ pub unsafe fn svprfd_gather_s32index<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfd_gather_s32index(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        indices,
-        OP,
-    )
+    _svprfd_gather_s32index(pg.sve_into(), base as *const crate::ffi::c_void, indices, OP)
 }
 #[doc = "Prefetch bytes"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfb_gather_[s64]offset)"]
@@ -31134,12 +30688,7 @@ pub unsafe fn svprfb_gather_s64offset<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfb_gather_s64offset(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        offsets,
-        OP,
-    )
+    _svprfb_gather_s64offset(pg.sve_into(), base as *const crate::ffi::c_void, offsets, OP)
 }
 #[doc = "Prefetch halfwords"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfh_gather_[s64]index)"]
@@ -31166,12 +30715,7 @@ pub unsafe fn svprfh_gather_s64index<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfh_gather_s64index(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        indices,
-        OP,
-    )
+    _svprfh_gather_s64index(pg.sve_into(), base as *const crate::ffi::c_void, indices, OP)
 }
 #[doc = "Prefetch words"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfw_gather_[s64]index)"]
@@ -31198,12 +30742,7 @@ pub unsafe fn svprfw_gather_s64index<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfw_gather_s64index(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        indices,
-        OP,
-    )
+    _svprfw_gather_s64index(pg.sve_into(), base as *const crate::ffi::c_void, indices, OP)
 }
 #[doc = "Prefetch doublewords"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfd_gather_[s64]index)"]
@@ -31230,12 +30769,7 @@ pub unsafe fn svprfd_gather_s64index<const OP: svprfop, T>(
             op: svprfop,
         );
     }
-    _svprfd_gather_s64index(
-        pg.sve_into(),
-        base as *const crate::ffi::c_void,
-        indices,
-        OP,
-    )
+    _svprfd_gather_s64index(pg.sve_into(), base as *const crate::ffi::c_void, indices, OP)
 }
 #[doc = "Prefetch bytes"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svprfb_gather_[u32]offset)"]
@@ -31813,10 +31347,7 @@ pub unsafe fn svprfd_vnum<const OP: svprfop, T>(pg: svbool_t, base: *const T, vn
 #[cfg_attr(test, assert_instr(ptest))]
 pub fn svptest_any(pg: svbool_t, op: svbool_t) -> bool {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ptest.any.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ptest.any.nxv16i1")]
         fn _svptest_any(pg: svbool_t, op: svbool_t) -> bool;
     }
     unsafe { _svptest_any(pg, op) }
@@ -31829,10 +31360,7 @@ pub fn svptest_any(pg: svbool_t, op: svbool_t) -> bool {
 #[cfg_attr(test, assert_instr(ptest))]
 pub fn svptest_first(pg: svbool_t, op: svbool_t) -> bool {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ptest.first.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ptest.first.nxv16i1")]
         fn _svptest_first(pg: svbool_t, op: svbool_t) -> bool;
     }
     unsafe { _svptest_first(pg, op) }
@@ -31845,10 +31373,7 @@ pub fn svptest_first(pg: svbool_t, op: svbool_t) -> bool {
 #[cfg_attr(test, assert_instr(ptest))]
 pub fn svptest_last(pg: svbool_t, op: svbool_t) -> bool {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ptest.last.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ptest.last.nxv16i1")]
         fn _svptest_last(pg: svbool_t, op: svbool_t) -> bool;
     }
     unsafe { _svptest_last(pg, op) }
@@ -31949,10 +31474,7 @@ pub fn svptrue_pat_b64<const PATTERN: svpattern>() -> svbool_t {
 #[cfg_attr(test, assert_instr(sqadd))]
 pub fn svqadd_s8(op1: svint8_t, op2: svint8_t) -> svint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqadd.x.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv16i8")]
         fn _svqadd_s8(op1: svint8_t, op2: svint8_t) -> svint8_t;
     }
     unsafe { _svqadd_s8(op1, op2) }
@@ -31974,10 +31496,7 @@ pub fn svqadd_n_s8(op1: svint8_t, op2: i8) -> svint8_t {
 #[cfg_attr(test, assert_instr(sqadd))]
 pub fn svqadd_s16(op1: svint16_t, op2: svint16_t) -> svint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqadd.x.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv8i16")]
         fn _svqadd_s16(op1: svint16_t, op2: svint16_t) -> svint16_t;
     }
     unsafe { _svqadd_s16(op1, op2) }
@@ -31999,10 +31518,7 @@ pub fn svqadd_n_s16(op1: svint16_t, op2: i16) -> svint16_t {
 #[cfg_attr(test, assert_instr(sqadd))]
 pub fn svqadd_s32(op1: svint32_t, op2: svint32_t) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqadd.x.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv4i32")]
         fn _svqadd_s32(op1: svint32_t, op2: svint32_t) -> svint32_t;
     }
     unsafe { _svqadd_s32(op1, op2) }
@@ -32024,10 +31540,7 @@ pub fn svqadd_n_s32(op1: svint32_t, op2: i32) -> svint32_t {
 #[cfg_attr(test, assert_instr(sqadd))]
 pub fn svqadd_s64(op1: svint64_t, op2: svint64_t) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqadd.x.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv2i64")]
         fn _svqadd_s64(op1: svint64_t, op2: svint64_t) -> svint64_t;
     }
     unsafe { _svqadd_s64(op1, op2) }
@@ -32049,10 +31562,7 @@ pub fn svqadd_n_s64(op1: svint64_t, op2: i64) -> svint64_t {
 #[cfg_attr(test, assert_instr(uqadd))]
 pub fn svqadd_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqadd.x.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv16i8")]
         fn _svqadd_u8(op1: svint8_t, op2: svint8_t) -> svint8_t;
     }
     unsafe { _svqadd_u8(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -32074,10 +31584,7 @@ pub fn svqadd_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 #[cfg_attr(test, assert_instr(uqadd))]
 pub fn svqadd_u16(op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqadd.x.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv8i16")]
         fn _svqadd_u16(op1: svint16_t, op2: svint16_t) -> svint16_t;
     }
     unsafe { _svqadd_u16(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -32099,10 +31606,7 @@ pub fn svqadd_n_u16(op1: svuint16_t, op2: u16) -> svuint16_t {
 #[cfg_attr(test, assert_instr(uqadd))]
 pub fn svqadd_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqadd.x.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv4i32")]
         fn _svqadd_u32(op1: svint32_t, op2: svint32_t) -> svint32_t;
     }
     unsafe { _svqadd_u32(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -32124,10 +31628,7 @@ pub fn svqadd_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
 #[cfg_attr(test, assert_instr(uqadd))]
 pub fn svqadd_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqadd.x.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv2i64")]
         fn _svqadd_u64(op1: svint64_t, op2: svint64_t) -> svint64_t;
     }
     unsafe { _svqadd_u64(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -32667,10 +32168,7 @@ pub fn svqdecd_u64<const IMM_FACTOR: i32>(op: svuint64_t) -> svuint64_t {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s32_b8(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n32.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n32.nxv16i1")]
         fn _svqdecp_n_s32_b8(op: i32, pg: svbool_t) -> i32;
     }
     unsafe { _svqdecp_n_s32_b8(op, pg) }
@@ -32683,10 +32181,7 @@ pub fn svqdecp_n_s32_b8(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s32_b16(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n32.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n32.nxv8i1")]
         fn _svqdecp_n_s32_b16(op: i32, pg: svbool8_t) -> i32;
     }
     unsafe { _svqdecp_n_s32_b16(op, pg.sve_into()) }
@@ -32699,10 +32194,7 @@ pub fn svqdecp_n_s32_b16(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s32_b32(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n32.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n32.nxv4i1")]
         fn _svqdecp_n_s32_b32(op: i32, pg: svbool4_t) -> i32;
     }
     unsafe { _svqdecp_n_s32_b32(op, pg.sve_into()) }
@@ -32715,10 +32207,7 @@ pub fn svqdecp_n_s32_b32(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s32_b64(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n32.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n32.nxv2i1")]
         fn _svqdecp_n_s32_b64(op: i32, pg: svbool2_t) -> i32;
     }
     unsafe { _svqdecp_n_s32_b64(op, pg.sve_into()) }
@@ -32731,10 +32220,7 @@ pub fn svqdecp_n_s32_b64(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s64_b8(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n64.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n64.nxv16i1")]
         fn _svqdecp_n_s64_b8(op: i64, pg: svbool_t) -> i64;
     }
     unsafe { _svqdecp_n_s64_b8(op, pg) }
@@ -32747,10 +32233,7 @@ pub fn svqdecp_n_s64_b8(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s64_b16(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n64.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n64.nxv8i1")]
         fn _svqdecp_n_s64_b16(op: i64, pg: svbool8_t) -> i64;
     }
     unsafe { _svqdecp_n_s64_b16(op, pg.sve_into()) }
@@ -32763,10 +32246,7 @@ pub fn svqdecp_n_s64_b16(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s64_b32(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n64.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n64.nxv4i1")]
         fn _svqdecp_n_s64_b32(op: i64, pg: svbool4_t) -> i64;
     }
     unsafe { _svqdecp_n_s64_b32(op, pg.sve_into()) }
@@ -32779,10 +32259,7 @@ pub fn svqdecp_n_s64_b32(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(sqdecp))]
 pub fn svqdecp_n_s64_b64(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqdecp.n64.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqdecp.n64.nxv2i1")]
         fn _svqdecp_n_s64_b64(op: i64, pg: svbool2_t) -> i64;
     }
     unsafe { _svqdecp_n_s64_b64(op, pg.sve_into()) }
@@ -32795,10 +32272,7 @@ pub fn svqdecp_n_s64_b64(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u32_b8(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n32.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n32.nxv16i1")]
         fn _svqdecp_n_u32_b8(op: i32, pg: svbool_t) -> i32;
     }
     unsafe { _svqdecp_n_u32_b8(op.as_signed(), pg).as_unsigned() }
@@ -32811,10 +32285,7 @@ pub fn svqdecp_n_u32_b8(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u32_b16(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n32.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n32.nxv8i1")]
         fn _svqdecp_n_u32_b16(op: i32, pg: svbool8_t) -> i32;
     }
     unsafe { _svqdecp_n_u32_b16(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -32827,10 +32298,7 @@ pub fn svqdecp_n_u32_b16(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u32_b32(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n32.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n32.nxv4i1")]
         fn _svqdecp_n_u32_b32(op: i32, pg: svbool4_t) -> i32;
     }
     unsafe { _svqdecp_n_u32_b32(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -32843,10 +32311,7 @@ pub fn svqdecp_n_u32_b32(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u32_b64(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n32.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n32.nxv2i1")]
         fn _svqdecp_n_u32_b64(op: i32, pg: svbool2_t) -> i32;
     }
     unsafe { _svqdecp_n_u32_b64(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -32859,10 +32324,7 @@ pub fn svqdecp_n_u32_b64(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u64_b8(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n64.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n64.nxv16i1")]
         fn _svqdecp_n_u64_b8(op: i64, pg: svbool_t) -> i64;
     }
     unsafe { _svqdecp_n_u64_b8(op.as_signed(), pg).as_unsigned() }
@@ -32875,10 +32337,7 @@ pub fn svqdecp_n_u64_b8(op: u64, pg: svbool_t) -> u64 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u64_b16(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n64.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n64.nxv8i1")]
         fn _svqdecp_n_u64_b16(op: i64, pg: svbool8_t) -> i64;
     }
     unsafe { _svqdecp_n_u64_b16(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -32891,10 +32350,7 @@ pub fn svqdecp_n_u64_b16(op: u64, pg: svbool_t) -> u64 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u64_b32(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n64.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n64.nxv4i1")]
         fn _svqdecp_n_u64_b32(op: i64, pg: svbool4_t) -> i64;
     }
     unsafe { _svqdecp_n_u64_b32(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -32907,10 +32363,7 @@ pub fn svqdecp_n_u64_b32(op: u64, pg: svbool_t) -> u64 {
 #[cfg_attr(test, assert_instr(uqdecp))]
 pub fn svqdecp_n_u64_b64(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqdecp.n64.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqdecp.n64.nxv2i1")]
         fn _svqdecp_n_u64_b64(op: i64, pg: svbool2_t) -> i64;
     }
     unsafe { _svqdecp_n_u64_b64(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -33519,10 +32972,7 @@ pub fn svqincd_u64<const IMM_FACTOR: i32>(op: svuint64_t) -> svuint64_t {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s32_b8(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n32.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n32.nxv16i1")]
         fn _svqincp_n_s32_b8(op: i32, pg: svbool_t) -> i32;
     }
     unsafe { _svqincp_n_s32_b8(op, pg) }
@@ -33535,10 +32985,7 @@ pub fn svqincp_n_s32_b8(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s32_b16(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n32.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n32.nxv8i1")]
         fn _svqincp_n_s32_b16(op: i32, pg: svbool8_t) -> i32;
     }
     unsafe { _svqincp_n_s32_b16(op, pg.sve_into()) }
@@ -33551,10 +32998,7 @@ pub fn svqincp_n_s32_b16(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s32_b32(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n32.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n32.nxv4i1")]
         fn _svqincp_n_s32_b32(op: i32, pg: svbool4_t) -> i32;
     }
     unsafe { _svqincp_n_s32_b32(op, pg.sve_into()) }
@@ -33567,10 +33011,7 @@ pub fn svqincp_n_s32_b32(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s32_b64(op: i32, pg: svbool_t) -> i32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n32.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n32.nxv2i1")]
         fn _svqincp_n_s32_b64(op: i32, pg: svbool2_t) -> i32;
     }
     unsafe { _svqincp_n_s32_b64(op, pg.sve_into()) }
@@ -33583,10 +33024,7 @@ pub fn svqincp_n_s32_b64(op: i32, pg: svbool_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s64_b8(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n64.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n64.nxv16i1")]
         fn _svqincp_n_s64_b8(op: i64, pg: svbool_t) -> i64;
     }
     unsafe { _svqincp_n_s64_b8(op, pg) }
@@ -33599,10 +33037,7 @@ pub fn svqincp_n_s64_b8(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s64_b16(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n64.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n64.nxv8i1")]
         fn _svqincp_n_s64_b16(op: i64, pg: svbool8_t) -> i64;
     }
     unsafe { _svqincp_n_s64_b16(op, pg.sve_into()) }
@@ -33615,10 +33050,7 @@ pub fn svqincp_n_s64_b16(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s64_b32(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n64.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n64.nxv4i1")]
         fn _svqincp_n_s64_b32(op: i64, pg: svbool4_t) -> i64;
     }
     unsafe { _svqincp_n_s64_b32(op, pg.sve_into()) }
@@ -33631,10 +33063,7 @@ pub fn svqincp_n_s64_b32(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(sqincp))]
 pub fn svqincp_n_s64_b64(op: i64, pg: svbool_t) -> i64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqincp.n64.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqincp.n64.nxv2i1")]
         fn _svqincp_n_s64_b64(op: i64, pg: svbool2_t) -> i64;
     }
     unsafe { _svqincp_n_s64_b64(op, pg.sve_into()) }
@@ -33647,10 +33076,7 @@ pub fn svqincp_n_s64_b64(op: i64, pg: svbool_t) -> i64 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u32_b8(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n32.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n32.nxv16i1")]
         fn _svqincp_n_u32_b8(op: i32, pg: svbool_t) -> i32;
     }
     unsafe { _svqincp_n_u32_b8(op.as_signed(), pg).as_unsigned() }
@@ -33663,10 +33089,7 @@ pub fn svqincp_n_u32_b8(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u32_b16(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n32.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n32.nxv8i1")]
         fn _svqincp_n_u32_b16(op: i32, pg: svbool8_t) -> i32;
     }
     unsafe { _svqincp_n_u32_b16(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -33679,10 +33102,7 @@ pub fn svqincp_n_u32_b16(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u32_b32(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n32.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n32.nxv4i1")]
         fn _svqincp_n_u32_b32(op: i32, pg: svbool4_t) -> i32;
     }
     unsafe { _svqincp_n_u32_b32(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -33695,10 +33115,7 @@ pub fn svqincp_n_u32_b32(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u32_b64(op: u32, pg: svbool_t) -> u32 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n32.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n32.nxv2i1")]
         fn _svqincp_n_u32_b64(op: i32, pg: svbool2_t) -> i32;
     }
     unsafe { _svqincp_n_u32_b64(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -33711,10 +33128,7 @@ pub fn svqincp_n_u32_b64(op: u32, pg: svbool_t) -> u32 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u64_b8(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n64.nxv16i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n64.nxv16i1")]
         fn _svqincp_n_u64_b8(op: i64, pg: svbool_t) -> i64;
     }
     unsafe { _svqincp_n_u64_b8(op.as_signed(), pg).as_unsigned() }
@@ -33727,10 +33141,7 @@ pub fn svqincp_n_u64_b8(op: u64, pg: svbool_t) -> u64 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u64_b16(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n64.nxv8i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n64.nxv8i1")]
         fn _svqincp_n_u64_b16(op: i64, pg: svbool8_t) -> i64;
     }
     unsafe { _svqincp_n_u64_b16(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -33743,10 +33154,7 @@ pub fn svqincp_n_u64_b16(op: u64, pg: svbool_t) -> u64 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u64_b32(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n64.nxv4i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n64.nxv4i1")]
         fn _svqincp_n_u64_b32(op: i64, pg: svbool4_t) -> i64;
     }
     unsafe { _svqincp_n_u64_b32(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -33759,10 +33167,7 @@ pub fn svqincp_n_u64_b32(op: u64, pg: svbool_t) -> u64 {
 #[cfg_attr(test, assert_instr(uqincp))]
 pub fn svqincp_n_u64_b64(op: u64, pg: svbool_t) -> u64 {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqincp.n64.nxv2i1"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqincp.n64.nxv2i1")]
         fn _svqincp_n_u64_b64(op: i64, pg: svbool2_t) -> i64;
     }
     unsafe { _svqincp_n_u64_b64(op.as_signed(), pg.sve_into()).as_unsigned() }
@@ -33853,10 +33258,7 @@ pub fn svqincp_u64(op: svuint64_t, pg: svbool_t) -> svuint64_t {
 #[cfg_attr(test, assert_instr(sqsub))]
 pub fn svqsub_s8(op1: svint8_t, op2: svint8_t) -> svint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqsub.x.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqsub.x.nxv16i8")]
         fn _svqsub_s8(op1: svint8_t, op2: svint8_t) -> svint8_t;
     }
     unsafe { _svqsub_s8(op1, op2) }
@@ -33878,10 +33280,7 @@ pub fn svqsub_n_s8(op1: svint8_t, op2: i8) -> svint8_t {
 #[cfg_attr(test, assert_instr(sqsub))]
 pub fn svqsub_s16(op1: svint16_t, op2: svint16_t) -> svint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqsub.x.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqsub.x.nxv8i16")]
         fn _svqsub_s16(op1: svint16_t, op2: svint16_t) -> svint16_t;
     }
     unsafe { _svqsub_s16(op1, op2) }
@@ -33903,10 +33302,7 @@ pub fn svqsub_n_s16(op1: svint16_t, op2: i16) -> svint16_t {
 #[cfg_attr(test, assert_instr(sqsub))]
 pub fn svqsub_s32(op1: svint32_t, op2: svint32_t) -> svint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqsub.x.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqsub.x.nxv4i32")]
         fn _svqsub_s32(op1: svint32_t, op2: svint32_t) -> svint32_t;
     }
     unsafe { _svqsub_s32(op1, op2) }
@@ -33928,10 +33324,7 @@ pub fn svqsub_n_s32(op1: svint32_t, op2: i32) -> svint32_t {
 #[cfg_attr(test, assert_instr(sqsub))]
 pub fn svqsub_s64(op1: svint64_t, op2: svint64_t) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sqsub.x.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqsub.x.nxv2i64")]
         fn _svqsub_s64(op1: svint64_t, op2: svint64_t) -> svint64_t;
     }
     unsafe { _svqsub_s64(op1, op2) }
@@ -33953,10 +33346,7 @@ pub fn svqsub_n_s64(op1: svint64_t, op2: i64) -> svint64_t {
 #[cfg_attr(test, assert_instr(uqsub))]
 pub fn svqsub_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqsub.x.nxv16i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqsub.x.nxv16i8")]
         fn _svqsub_u8(op1: svint8_t, op2: svint8_t) -> svint8_t;
     }
     unsafe { _svqsub_u8(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -33978,10 +33368,7 @@ pub fn svqsub_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 #[cfg_attr(test, assert_instr(uqsub))]
 pub fn svqsub_u16(op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqsub.x.nxv8i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqsub.x.nxv8i16")]
         fn _svqsub_u16(op1: svint16_t, op2: svint16_t) -> svint16_t;
     }
     unsafe { _svqsub_u16(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -34003,10 +33390,7 @@ pub fn svqsub_n_u16(op1: svuint16_t, op2: u16) -> svuint16_t {
 #[cfg_attr(test, assert_instr(uqsub))]
 pub fn svqsub_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqsub.x.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqsub.x.nxv4i32")]
         fn _svqsub_u32(op1: svint32_t, op2: svint32_t) -> svint32_t;
     }
     unsafe { _svqsub_u32(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -34028,10 +33412,7 @@ pub fn svqsub_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
 #[cfg_attr(test, assert_instr(uqsub))]
 pub fn svqsub_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.uqsub.x.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqsub.x.nxv2i64")]
         fn _svqsub_u64(op1: svint64_t, op2: svint64_t) -> svint64_t;
     }
     unsafe { _svqsub_u64(op1.as_signed(), op2.as_signed()).as_unsigned() }
@@ -34307,10 +33688,7 @@ pub fn svrdffr_z(pg: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(frecpe))]
 pub fn svrecpe_f32(op: svfloat32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frecpe.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frecpe.x.nxv4f32")]
         fn _svrecpe_f32(op: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svrecpe_f32(op) }
@@ -34323,10 +33701,7 @@ pub fn svrecpe_f32(op: svfloat32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(frecpe))]
 pub fn svrecpe_f64(op: svfloat64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frecpe.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frecpe.x.nxv2f64")]
         fn _svrecpe_f64(op: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svrecpe_f64(op) }
@@ -34339,10 +33714,7 @@ pub fn svrecpe_f64(op: svfloat64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(frecps))]
 pub fn svrecps_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frecps.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frecps.x.nxv4f32")]
         fn _svrecps_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svrecps_f32(op1, op2) }
@@ -34355,10 +33727,7 @@ pub fn svrecps_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(frecps))]
 pub fn svrecps_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frecps.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frecps.x.nxv2f64")]
         fn _svrecps_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svrecps_f64(op1, op2) }
@@ -36181,10 +35550,7 @@ pub fn svrintz_f64_z(pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(frsqrte))]
 pub fn svrsqrte_f32(op: svfloat32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frsqrte.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frsqrte.x.nxv4f32")]
         fn _svrsqrte_f32(op: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svrsqrte_f32(op) }
@@ -36197,10 +35563,7 @@ pub fn svrsqrte_f32(op: svfloat32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(frsqrte))]
 pub fn svrsqrte_f64(op: svfloat64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frsqrte.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frsqrte.x.nxv2f64")]
         fn _svrsqrte_f64(op: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svrsqrte_f64(op) }
@@ -36213,10 +35576,7 @@ pub fn svrsqrte_f64(op: svfloat64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(frsqrts))]
 pub fn svrsqrts_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frsqrts.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frsqrts.x.nxv4f32")]
         fn _svrsqrts_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svrsqrts_f32(op1, op2) }
@@ -36229,10 +35589,7 @@ pub fn svrsqrts_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(frsqrts))]
 pub fn svrsqrts_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frsqrts.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frsqrts.x.nxv2f64")]
         fn _svrsqrts_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svrsqrts_f64(op1, op2) }
@@ -37422,10 +36779,7 @@ pub unsafe fn svst1_scatter_s64offset_f64(
     data: svfloat64_t,
 ) {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.st1.scatter.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.nxv2f64")]
         fn _svst1_scatter_s64offset_f64(
             data: svfloat64_t,
             pg: svbool2_t,
@@ -37451,10 +36805,7 @@ pub unsafe fn svst1_scatter_s64offset_s64(
     data: svint64_t,
 ) {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.st1.scatter.nxv2i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.nxv2i64")]
         fn _svst1_scatter_s64offset_s64(
             data: svint64_t,
             pg: svbool2_t,
@@ -38083,11 +37434,7 @@ pub unsafe fn svst1b_s16(pg: svbool_t, base: *mut i8, data: svint16_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv8i8")]
         fn _svst1b_s16(data: nxv8i8, pg: svbool8_t, ptr: *mut i8);
     }
-    _svst1b_s16(
-        crate::intrinsics::simd::simd_cast(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst1b_s16(crate::intrinsics::simd::simd_cast(data), pg.sve_into(), base)
 }
 #[doc = "Truncate to 8 bits and store"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1b[_s32])"]
@@ -38103,11 +37450,7 @@ pub unsafe fn svst1b_s32(pg: svbool_t, base: *mut i8, data: svint32_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv4i8")]
         fn _svst1b_s32(data: nxv4i8, pg: svbool4_t, ptr: *mut i8);
     }
-    _svst1b_s32(
-        crate::intrinsics::simd::simd_cast(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst1b_s32(crate::intrinsics::simd::simd_cast(data), pg.sve_into(), base)
 }
 #[doc = "Truncate to 16 bits and store"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1h[_s32])"]
@@ -38123,11 +37466,7 @@ pub unsafe fn svst1h_s32(pg: svbool_t, base: *mut i16, data: svint32_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv4i16")]
         fn _svst1h_s32(data: nxv4i16, pg: svbool4_t, ptr: *mut i16);
     }
-    _svst1h_s32(
-        crate::intrinsics::simd::simd_cast(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst1h_s32(crate::intrinsics::simd::simd_cast(data), pg.sve_into(), base)
 }
 #[doc = "Truncate to 8 bits and store"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1b[_s64])"]
@@ -38143,11 +37482,7 @@ pub unsafe fn svst1b_s64(pg: svbool_t, base: *mut i8, data: svint64_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv2i8")]
         fn _svst1b_s64(data: nxv2i8, pg: svbool2_t, ptr: *mut i8);
     }
-    _svst1b_s64(
-        crate::intrinsics::simd::simd_cast(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst1b_s64(crate::intrinsics::simd::simd_cast(data), pg.sve_into(), base)
 }
 #[doc = "Truncate to 16 bits and store"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1h[_s64])"]
@@ -38163,11 +37498,7 @@ pub unsafe fn svst1h_s64(pg: svbool_t, base: *mut i16, data: svint64_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv2i16")]
         fn _svst1h_s64(data: nxv2i16, pg: svbool2_t, ptr: *mut i16);
     }
-    _svst1h_s64(
-        crate::intrinsics::simd::simd_cast(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst1h_s64(crate::intrinsics::simd::simd_cast(data), pg.sve_into(), base)
 }
 #[doc = "Truncate to 32 bits and store"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1w[_s64])"]
@@ -38183,11 +37514,7 @@ pub unsafe fn svst1w_s64(pg: svbool_t, base: *mut i32, data: svint64_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv2i32")]
         fn _svst1w_s64(data: nxv2i32, pg: svbool2_t, ptr: *mut i32);
     }
-    _svst1w_s64(
-        crate::intrinsics::simd::simd_cast(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst1w_s64(crate::intrinsics::simd::simd_cast(data), pg.sve_into(), base)
 }
 #[doc = "Truncate to 8 bits and store"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1b[_u16])"]
@@ -38277,10 +37604,7 @@ pub unsafe fn svst1b_scatter_s32offset_s32(
     data: svint32_t,
 ) {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.st1.scatter.sxtw.nxv4i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.sxtw.nxv4i8")]
         fn _svst1b_scatter_s32offset_s32(
             data: nxv4i8,
             pg: svbool4_t,
@@ -38379,10 +37703,7 @@ pub unsafe fn svst1b_scatter_s64offset_s64(
     data: svint64_t,
 ) {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.st1.scatter.nxv2i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.nxv2i8")]
         fn _svst1b_scatter_s64offset_s64(
             data: nxv2i8,
             pg: svbool2_t,
@@ -38413,10 +37734,7 @@ pub unsafe fn svst1h_scatter_s64offset_s64(
     data: svint64_t,
 ) {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.st1.scatter.nxv2i16"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.nxv2i16")]
         fn _svst1h_scatter_s64offset_s64(
             data: nxv2i16,
             pg: svbool2_t,
@@ -38447,10 +37765,7 @@ pub unsafe fn svst1w_scatter_s64offset_s64(
     data: svint64_t,
 ) {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.st1.scatter.nxv2i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.nxv2i32")]
         fn _svst1w_scatter_s64offset_s64(
             data: nxv2i32,
             pg: svbool2_t,
@@ -38532,10 +37847,7 @@ pub unsafe fn svst1b_scatter_u32offset_s32(
     data: svint32_t,
 ) {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.st1.scatter.uxtw.nxv4i8"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.uxtw.nxv4i8")]
         fn _svst1b_scatter_u32offset_s32(
             data: nxv4i8,
             pg: svbool4_t,
@@ -39653,12 +38965,7 @@ pub unsafe fn svst2_f32(pg: svbool_t, base: *mut f32, data: svfloat32x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st2.nxv4f32")]
         fn _svst2_f32(data0: svfloat32_t, data1: svfloat32_t, pg: svbool4_t, ptr: *mut f32);
     }
-    _svst2_f32(
-        svget2_f32::<0>(data),
-        svget2_f32::<1>(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst2_f32(svget2_f32::<0>(data), svget2_f32::<1>(data), pg.sve_into(), base)
 }
 #[doc = "Store two vectors into two-element tuples"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst2[_f64])"]
@@ -39674,12 +38981,7 @@ pub unsafe fn svst2_f64(pg: svbool_t, base: *mut f64, data: svfloat64x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st2.nxv2f64")]
         fn _svst2_f64(data0: svfloat64_t, data1: svfloat64_t, pg: svbool2_t, ptr: *mut f64);
     }
-    _svst2_f64(
-        svget2_f64::<0>(data),
-        svget2_f64::<1>(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst2_f64(svget2_f64::<0>(data), svget2_f64::<1>(data), pg.sve_into(), base)
 }
 #[doc = "Store two vectors into two-element tuples"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst2[_s8])"]
@@ -39711,12 +39013,7 @@ pub unsafe fn svst2_s16(pg: svbool_t, base: *mut i16, data: svint16x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st2.nxv8i16")]
         fn _svst2_s16(data0: svint16_t, data1: svint16_t, pg: svbool8_t, ptr: *mut i16);
     }
-    _svst2_s16(
-        svget2_s16::<0>(data),
-        svget2_s16::<1>(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst2_s16(svget2_s16::<0>(data), svget2_s16::<1>(data), pg.sve_into(), base)
 }
 #[doc = "Store two vectors into two-element tuples"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst2[_s32])"]
@@ -39732,12 +39029,7 @@ pub unsafe fn svst2_s32(pg: svbool_t, base: *mut i32, data: svint32x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st2.nxv4i32")]
         fn _svst2_s32(data0: svint32_t, data1: svint32_t, pg: svbool4_t, ptr: *mut i32);
     }
-    _svst2_s32(
-        svget2_s32::<0>(data),
-        svget2_s32::<1>(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst2_s32(svget2_s32::<0>(data), svget2_s32::<1>(data), pg.sve_into(), base)
 }
 #[doc = "Store two vectors into two-element tuples"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst2[_s64])"]
@@ -39753,12 +39045,7 @@ pub unsafe fn svst2_s64(pg: svbool_t, base: *mut i64, data: svint64x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st2.nxv2i64")]
         fn _svst2_s64(data0: svint64_t, data1: svint64_t, pg: svbool2_t, ptr: *mut i64);
     }
-    _svst2_s64(
-        svget2_s64::<0>(data),
-        svget2_s64::<1>(data),
-        pg.sve_into(),
-        base,
-    )
+    _svst2_s64(svget2_s64::<0>(data), svget2_s64::<1>(data), pg.sve_into(), base)
 }
 #[doc = "Store two vectors into two-element tuples"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst2[_u8])"]
@@ -39998,13 +39285,7 @@ pub unsafe fn svst3_s8(pg: svbool_t, base: *mut i8, data: svint8x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st3.nxv16i8")]
         fn _svst3_s8(data0: svint8_t, data1: svint8_t, data2: svint8_t, pg: svbool_t, ptr: *mut i8);
     }
-    _svst3_s8(
-        svget3_s8::<0>(data),
-        svget3_s8::<1>(data),
-        svget3_s8::<2>(data),
-        pg,
-        base,
-    )
+    _svst3_s8(svget3_s8::<0>(data), svget3_s8::<1>(data), svget3_s8::<2>(data), pg, base)
 }
 #[doc = "Store three vectors into three-element tuples"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst3[_s16])"]
@@ -42031,10 +41312,7 @@ pub fn svsudot_lane_s32<const IMM_INDEX: i32>(
 ) -> svint32_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.sudot.lane.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sudot.lane.nxv4i32")]
         fn _svsudot_lane_s32(
             op1: svint32_t,
             op2: svint8_t,
@@ -42185,10 +41463,7 @@ pub fn svtbl_u64(data: svuint64_t, indices: svuint64_t) -> svuint64_t {
 pub fn svtmad_f32<const IMM3: i32>(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
     static_assert_range!(IMM3, 0..=7);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ftmad.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ftmad.x.nxv4f32")]
         fn _svtmad_f32(op1: svfloat32_t, op2: svfloat32_t, imm3: i32) -> svfloat32_t;
     }
     unsafe { _svtmad_f32(op1, op2, IMM3) }
@@ -42202,10 +41477,7 @@ pub fn svtmad_f32<const IMM3: i32>(op1: svfloat32_t, op2: svfloat32_t) -> svfloa
 pub fn svtmad_f64<const IMM3: i32>(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
     static_assert_range!(IMM3, 0..=7);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ftmad.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ftmad.x.nxv2f64")]
         fn _svtmad_f64(op1: svfloat64_t, op2: svfloat64_t, imm3: i32) -> svfloat64_t;
     }
     unsafe { _svtmad_f64(op1, op2, IMM3) }
@@ -42778,10 +42050,7 @@ pub fn svtrn2q_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 #[cfg_attr(test, assert_instr(ftsmul))]
 pub fn svtsmul_f32(op1: svfloat32_t, op2: svuint32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ftsmul.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ftsmul.x.nxv4f32")]
         fn _svtsmul_f32(op1: svfloat32_t, op2: svint32_t) -> svfloat32_t;
     }
     unsafe { _svtsmul_f32(op1, op2.as_signed()) }
@@ -42794,10 +42063,7 @@ pub fn svtsmul_f32(op1: svfloat32_t, op2: svuint32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(ftsmul))]
 pub fn svtsmul_f64(op1: svfloat64_t, op2: svuint64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ftsmul.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ftsmul.x.nxv2f64")]
         fn _svtsmul_f64(op1: svfloat64_t, op2: svint64_t) -> svfloat64_t;
     }
     unsafe { _svtsmul_f64(op1, op2.as_signed()) }
@@ -42810,10 +42076,7 @@ pub fn svtsmul_f64(op1: svfloat64_t, op2: svuint64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(ftssel))]
 pub fn svtssel_f32(op1: svfloat32_t, op2: svuint32_t) -> svfloat32_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ftssel.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ftssel.x.nxv4f32")]
         fn _svtssel_f32(op1: svfloat32_t, op2: svint32_t) -> svfloat32_t;
     }
     unsafe { _svtssel_f32(op1, op2.as_signed()) }
@@ -42826,10 +42089,7 @@ pub fn svtssel_f32(op1: svfloat32_t, op2: svuint32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(ftssel))]
 pub fn svtssel_f64(op1: svfloat64_t, op2: svuint64_t) -> svfloat64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ftssel.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ftssel.x.nxv2f64")]
         fn _svtssel_f64(op1: svfloat64_t, op2: svint64_t) -> svfloat64_t;
     }
     unsafe { _svtssel_f64(op1, op2.as_signed()) }
@@ -43042,12 +42302,7 @@ pub unsafe fn svundef3_u64() -> svuint64x3_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_f32() -> svfloat32x4_t {
-    svcreate4_f32(
-        svdup_n_f32(0f32),
-        svdup_n_f32(0f32),
-        svdup_n_f32(0f32),
-        svdup_n_f32(0f32),
-    )
+    svcreate4_f32(svdup_n_f32(0f32), svdup_n_f32(0f32), svdup_n_f32(0f32), svdup_n_f32(0f32))
 }
 #[doc = "Create an uninitialized tuple of four vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef4_f64)"]
@@ -43057,12 +42312,7 @@ pub unsafe fn svundef4_f32() -> svfloat32x4_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_f64() -> svfloat64x4_t {
-    svcreate4_f64(
-        svdup_n_f64(0f64),
-        svdup_n_f64(0f64),
-        svdup_n_f64(0f64),
-        svdup_n_f64(0f64),
-    )
+    svcreate4_f64(svdup_n_f64(0f64), svdup_n_f64(0f64), svdup_n_f64(0f64), svdup_n_f64(0f64))
 }
 #[doc = "Create an uninitialized tuple of four vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef4_s8)"]
@@ -43082,12 +42332,7 @@ pub unsafe fn svundef4_s8() -> svint8x4_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_s16() -> svint16x4_t {
-    svcreate4_s16(
-        svdup_n_s16(0),
-        svdup_n_s16(0),
-        svdup_n_s16(0),
-        svdup_n_s16(0),
-    )
+    svcreate4_s16(svdup_n_s16(0), svdup_n_s16(0), svdup_n_s16(0), svdup_n_s16(0))
 }
 #[doc = "Create an uninitialized tuple of four vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef4_s32)"]
@@ -43097,12 +42342,7 @@ pub unsafe fn svundef4_s16() -> svint16x4_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_s32() -> svint32x4_t {
-    svcreate4_s32(
-        svdup_n_s32(0),
-        svdup_n_s32(0),
-        svdup_n_s32(0),
-        svdup_n_s32(0),
-    )
+    svcreate4_s32(svdup_n_s32(0), svdup_n_s32(0), svdup_n_s32(0), svdup_n_s32(0))
 }
 #[doc = "Create an uninitialized tuple of four vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef4_s64)"]
@@ -43112,12 +42352,7 @@ pub unsafe fn svundef4_s32() -> svint32x4_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_s64() -> svint64x4_t {
-    svcreate4_s64(
-        svdup_n_s64(0),
-        svdup_n_s64(0),
-        svdup_n_s64(0),
-        svdup_n_s64(0),
-    )
+    svcreate4_s64(svdup_n_s64(0), svdup_n_s64(0), svdup_n_s64(0), svdup_n_s64(0))
 }
 #[doc = "Create an uninitialized tuple of four vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef4_u8)"]
@@ -43137,12 +42372,7 @@ pub unsafe fn svundef4_u8() -> svuint8x4_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_u16() -> svuint16x4_t {
-    svcreate4_u16(
-        svdup_n_u16(0),
-        svdup_n_u16(0),
-        svdup_n_u16(0),
-        svdup_n_u16(0),
-    )
+    svcreate4_u16(svdup_n_u16(0), svdup_n_u16(0), svdup_n_u16(0), svdup_n_u16(0))
 }
 #[doc = "Create an uninitialized tuple of four vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef4_u32)"]
@@ -43152,12 +42382,7 @@ pub unsafe fn svundef4_u16() -> svuint16x4_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_u32() -> svuint32x4_t {
-    svcreate4_u32(
-        svdup_n_u32(0),
-        svdup_n_u32(0),
-        svdup_n_u32(0),
-        svdup_n_u32(0),
-    )
+    svcreate4_u32(svdup_n_u32(0), svdup_n_u32(0), svdup_n_u32(0), svdup_n_u32(0))
 }
 #[doc = "Create an uninitialized tuple of four vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef4_u64)"]
@@ -43167,12 +42392,7 @@ pub unsafe fn svundef4_u32() -> svuint32x4_t {
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 pub unsafe fn svundef4_u64() -> svuint64x4_t {
-    svcreate4_u64(
-        svdup_n_u64(0),
-        svdup_n_u64(0),
-        svdup_n_u64(0),
-        svdup_n_u64(0),
-    )
+    svcreate4_u64(svdup_n_u64(0), svdup_n_u64(0), svdup_n_u64(0), svdup_n_u64(0))
 }
 #[doc = "Create an uninitialized vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svundef_f32)"]
@@ -43287,10 +42507,7 @@ pub fn svusdot_lane_s32<const IMM_INDEX: i32>(
 ) -> svint32_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.usdot.lane.nxv4i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.usdot.lane.nxv4i32")]
         fn _svusdot_lane_s32(
             op1: svint32_t,
             op2: svint8_t,
@@ -43903,10 +43120,7 @@ pub fn svuzp2q_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b8_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv16i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv16i1.i32")]
         fn _svwhilele_b8_s32(op1: i32, op2: i32) -> svbool_t;
     }
     unsafe { _svwhilele_b8_s32(op1, op2) }
@@ -43919,10 +43133,7 @@ pub fn svwhilele_b8_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b16_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv8i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv8i1.i32")]
         fn _svwhilele_b16_s32(op1: i32, op2: i32) -> svbool8_t;
     }
     unsafe { _svwhilele_b16_s32(op1, op2).sve_into() }
@@ -43935,10 +43146,7 @@ pub fn svwhilele_b16_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b32_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv4i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv4i1.i32")]
         fn _svwhilele_b32_s32(op1: i32, op2: i32) -> svbool4_t;
     }
     unsafe { _svwhilele_b32_s32(op1, op2).sve_into() }
@@ -43951,10 +43159,7 @@ pub fn svwhilele_b32_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b64_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv2i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv2i1.i32")]
         fn _svwhilele_b64_s32(op1: i32, op2: i32) -> svbool2_t;
     }
     unsafe { _svwhilele_b64_s32(op1, op2).sve_into() }
@@ -43967,10 +43172,7 @@ pub fn svwhilele_b64_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b8_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv16i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv16i1.i64")]
         fn _svwhilele_b8_s64(op1: i64, op2: i64) -> svbool_t;
     }
     unsafe { _svwhilele_b8_s64(op1, op2) }
@@ -43983,10 +43185,7 @@ pub fn svwhilele_b8_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b16_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv8i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv8i1.i64")]
         fn _svwhilele_b16_s64(op1: i64, op2: i64) -> svbool8_t;
     }
     unsafe { _svwhilele_b16_s64(op1, op2).sve_into() }
@@ -43999,10 +43198,7 @@ pub fn svwhilele_b16_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b32_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv4i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv4i1.i64")]
         fn _svwhilele_b32_s64(op1: i64, op2: i64) -> svbool4_t;
     }
     unsafe { _svwhilele_b32_s64(op1, op2).sve_into() }
@@ -44015,10 +43211,7 @@ pub fn svwhilele_b32_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilele))]
 pub fn svwhilele_b64_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilele.nxv2i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilele.nxv2i1.i64")]
         fn _svwhilele_b64_s64(op1: i64, op2: i64) -> svbool2_t;
     }
     unsafe { _svwhilele_b64_s64(op1, op2).sve_into() }
@@ -44031,10 +43224,7 @@ pub fn svwhilele_b64_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b8_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv16i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv16i1.i32")]
         fn _svwhilele_b8_u32(op1: i32, op2: i32) -> svbool_t;
     }
     unsafe { _svwhilele_b8_u32(op1.as_signed(), op2.as_signed()) }
@@ -44047,10 +43237,7 @@ pub fn svwhilele_b8_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b16_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv8i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv8i1.i32")]
         fn _svwhilele_b16_u32(op1: i32, op2: i32) -> svbool8_t;
     }
     unsafe { _svwhilele_b16_u32(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44063,10 +43250,7 @@ pub fn svwhilele_b16_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b32_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv4i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv4i1.i32")]
         fn _svwhilele_b32_u32(op1: i32, op2: i32) -> svbool4_t;
     }
     unsafe { _svwhilele_b32_u32(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44079,10 +43263,7 @@ pub fn svwhilele_b32_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b64_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv2i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv2i1.i32")]
         fn _svwhilele_b64_u32(op1: i32, op2: i32) -> svbool2_t;
     }
     unsafe { _svwhilele_b64_u32(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44095,10 +43276,7 @@ pub fn svwhilele_b64_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b8_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv16i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv16i1.i64")]
         fn _svwhilele_b8_u64(op1: i64, op2: i64) -> svbool_t;
     }
     unsafe { _svwhilele_b8_u64(op1.as_signed(), op2.as_signed()) }
@@ -44111,10 +43289,7 @@ pub fn svwhilele_b8_u64(op1: u64, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b16_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv8i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv8i1.i64")]
         fn _svwhilele_b16_u64(op1: i64, op2: i64) -> svbool8_t;
     }
     unsafe { _svwhilele_b16_u64(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44127,10 +43302,7 @@ pub fn svwhilele_b16_u64(op1: u64, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b32_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv4i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv4i1.i64")]
         fn _svwhilele_b32_u64(op1: i64, op2: i64) -> svbool4_t;
     }
     unsafe { _svwhilele_b32_u64(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44143,10 +43315,7 @@ pub fn svwhilele_b32_u64(op1: u64, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilels))]
 pub fn svwhilele_b64_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilels.nxv2i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilels.nxv2i1.i64")]
         fn _svwhilele_b64_u64(op1: i64, op2: i64) -> svbool2_t;
     }
     unsafe { _svwhilele_b64_u64(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44159,10 +43328,7 @@ pub fn svwhilele_b64_u64(op1: u64, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b8_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv16i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv16i1.i32")]
         fn _svwhilelt_b8_s32(op1: i32, op2: i32) -> svbool_t;
     }
     unsafe { _svwhilelt_b8_s32(op1, op2) }
@@ -44175,10 +43341,7 @@ pub fn svwhilelt_b8_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b16_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv8i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv8i1.i32")]
         fn _svwhilelt_b16_s32(op1: i32, op2: i32) -> svbool8_t;
     }
     unsafe { _svwhilelt_b16_s32(op1, op2).sve_into() }
@@ -44191,10 +43354,7 @@ pub fn svwhilelt_b16_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b32_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv4i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv4i1.i32")]
         fn _svwhilelt_b32_s32(op1: i32, op2: i32) -> svbool4_t;
     }
     unsafe { _svwhilelt_b32_s32(op1, op2).sve_into() }
@@ -44207,10 +43367,7 @@ pub fn svwhilelt_b32_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b64_s32(op1: i32, op2: i32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv2i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv2i1.i32")]
         fn _svwhilelt_b64_s32(op1: i32, op2: i32) -> svbool2_t;
     }
     unsafe { _svwhilelt_b64_s32(op1, op2).sve_into() }
@@ -44223,10 +43380,7 @@ pub fn svwhilelt_b64_s32(op1: i32, op2: i32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b8_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv16i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv16i1.i64")]
         fn _svwhilelt_b8_s64(op1: i64, op2: i64) -> svbool_t;
     }
     unsafe { _svwhilelt_b8_s64(op1, op2) }
@@ -44239,10 +43393,7 @@ pub fn svwhilelt_b8_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b16_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv8i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv8i1.i64")]
         fn _svwhilelt_b16_s64(op1: i64, op2: i64) -> svbool8_t;
     }
     unsafe { _svwhilelt_b16_s64(op1, op2).sve_into() }
@@ -44255,10 +43406,7 @@ pub fn svwhilelt_b16_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b32_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv4i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv4i1.i64")]
         fn _svwhilelt_b32_s64(op1: i64, op2: i64) -> svbool4_t;
     }
     unsafe { _svwhilelt_b32_s64(op1, op2).sve_into() }
@@ -44271,10 +43419,7 @@ pub fn svwhilelt_b32_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelt))]
 pub fn svwhilelt_b64_s64(op1: i64, op2: i64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelt.nxv2i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelt.nxv2i1.i64")]
         fn _svwhilelt_b64_s64(op1: i64, op2: i64) -> svbool2_t;
     }
     unsafe { _svwhilelt_b64_s64(op1, op2).sve_into() }
@@ -44287,10 +43432,7 @@ pub fn svwhilelt_b64_s64(op1: i64, op2: i64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b8_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv16i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv16i1.i32")]
         fn _svwhilelt_b8_u32(op1: i32, op2: i32) -> svbool_t;
     }
     unsafe { _svwhilelt_b8_u32(op1.as_signed(), op2.as_signed()) }
@@ -44303,10 +43445,7 @@ pub fn svwhilelt_b8_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b16_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv8i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv8i1.i32")]
         fn _svwhilelt_b16_u32(op1: i32, op2: i32) -> svbool8_t;
     }
     unsafe { _svwhilelt_b16_u32(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44319,10 +43458,7 @@ pub fn svwhilelt_b16_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b32_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv4i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv4i1.i32")]
         fn _svwhilelt_b32_u32(op1: i32, op2: i32) -> svbool4_t;
     }
     unsafe { _svwhilelt_b32_u32(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44335,10 +43471,7 @@ pub fn svwhilelt_b32_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b64_u32(op1: u32, op2: u32) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv2i1.i32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv2i1.i32")]
         fn _svwhilelt_b64_u32(op1: i32, op2: i32) -> svbool2_t;
     }
     unsafe { _svwhilelt_b64_u32(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44351,10 +43484,7 @@ pub fn svwhilelt_b64_u32(op1: u32, op2: u32) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b8_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv16i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv16i1.i64")]
         fn _svwhilelt_b8_u64(op1: i64, op2: i64) -> svbool_t;
     }
     unsafe { _svwhilelt_b8_u64(op1.as_signed(), op2.as_signed()) }
@@ -44367,10 +43497,7 @@ pub fn svwhilelt_b8_u64(op1: u64, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b16_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv8i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv8i1.i64")]
         fn _svwhilelt_b16_u64(op1: i64, op2: i64) -> svbool8_t;
     }
     unsafe { _svwhilelt_b16_u64(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44383,10 +43510,7 @@ pub fn svwhilelt_b16_u64(op1: u64, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b32_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv4i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv4i1.i64")]
         fn _svwhilelt_b32_u64(op1: i64, op2: i64) -> svbool4_t;
     }
     unsafe { _svwhilelt_b32_u64(op1.as_signed(), op2.as_signed()).sve_into() }
@@ -44399,10 +43523,7 @@ pub fn svwhilelt_b32_u64(op1: u64, op2: u64) -> svbool_t {
 #[cfg_attr(test, assert_instr(whilelo))]
 pub fn svwhilelt_b64_u64(op1: u64, op2: u64) -> svbool_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.whilelo.nxv2i1.i64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.whilelo.nxv2i1.i64")]
         fn _svwhilelt_b64_u64(op1: i64, op2: i64) -> svbool2_t;
     }
     unsafe { _svwhilelt_b64_u64(op1.as_signed(), op2.as_signed()).sve_into() }
