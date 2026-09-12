@@ -1,0 +1,66 @@
+Function name: <proc_macro_derive_span::Unused>::demo (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 1e, 0a, 00, 0e]
+Number of files: 1
+- file 0 => $DIR/proc_macro_derive_span.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 30, 10) to (start + 0, 14)
+Highest counter ID seen: (none)
+
+Function name: <proc_macro_derive_span::Unused>::never_called (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 1e, 0a, 00, 0e]
+Number of files: 1
+- file 0 => $DIR/proc_macro_derive_span.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 30, 10) to (start + 0, 14)
+Highest counter ID seen: (none)
+
+Function name: <proc_macro_derive_span::Used>::demo
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 19, 0a, 00, 0e]
+Number of files: 1
+- file 0 => $DIR/proc_macro_derive_span.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 25, 10) to (start + 0, 14)
+Highest counter ID seen: c0
+
+Function name: <proc_macro_derive_span::Used>::never_called (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 19, 0a, 00, 0e]
+Number of files: 1
+- file 0 => $DIR/proc_macro_derive_span.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 25, 10) to (start + 0, 14)
+Highest counter ID seen: (none)
+
+Function name: proc_macro_derive_span::attr_generated
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 23, 01, 00, 11]
+Number of files: 1
+- file 0 => $DIR/proc_macro_derive_span.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 35, 1) to (start + 0, 17)
+Highest counter ID seen: c0
+
+Function name: proc_macro_derive_span::main
+Raw bytes (69): 0x[01, 01, 00, 0d, 01, 26, 01, 00, 0a, 01, 01, 05, 00, 0f, 01, 00, 10, 00, 14, 01, 00, 15, 00, 19, 05, 01, 05, 00, 0f, 05, 00, 10, 00, 14, 05, 00, 15, 00, 19, 09, 01, 05, 00, 0f, 09, 00, 10, 00, 14, 09, 00, 15, 00, 19, 0d, 01, 05, 00, 0f, 0d, 00, 10, 00, 1e, 11, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/proc_macro_derive_span.rs
+Number of expressions: 0
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 38, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 16) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 0, 21) to (start + 0, 25)
+- Code(Counter(1)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(1)) at (prev + 0, 16) to (start + 0, 20)
+- Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
+- Code(Counter(2)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(2)) at (prev + 0, 16) to (start + 0, 20)
+- Code(Counter(2)) at (prev + 0, 21) to (start + 0, 25)
+- Code(Counter(3)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(3)) at (prev + 0, 16) to (start + 0, 30)
+- Code(Counter(4)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c4
+
