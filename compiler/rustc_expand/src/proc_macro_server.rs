@@ -584,7 +584,7 @@ impl server::Server for Rustc<'_, '_> {
     }
 
     fn ts_to_string(&mut self, stream: &Self::TokenStream) -> String {
-        pprust::tts_to_string(stream)
+        pprust::tts_to_string(&ArenaTokenStream::from_stream(stream))
     }
 
     fn ts_expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {

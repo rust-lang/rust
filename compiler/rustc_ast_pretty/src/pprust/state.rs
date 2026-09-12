@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree, DelimitedData};
-use rustc_ast::tokenstream::{Spacing, TokenStream};
+use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
@@ -1185,8 +1185,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_attr_item(ai, ai.path.span))
     }
 
-    fn tts_to_string(&self, tokens: &TokenStream) -> String {
-        Self::to_string(|s| s.print_tts(&ArenaTokenStream::from_stream(tokens), false))
+    fn tts_to_string(&self, stream: &ArenaTokenStream) -> String {
+        Self::to_string(|s| s.print_tts(stream, false))
     }
 
     fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {

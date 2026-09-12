@@ -1,4 +1,5 @@
 use rustc_ast::token;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_errors::ErrorGuaranteed;
 use rustc_expand::base::{AttrProcMacro, ExtCtxt};
@@ -14,8 +15,8 @@ impl AttrProcMacro for ExpandRequires {
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        annotation: TokenStream,
-        annotated: TokenStream,
+        annotation: ArenaTokenStream,
+        annotated: ArenaTokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
         expand_contract_clause_tts(ecx, span, annotation, annotated, kw::ContractRequires)
     }
@@ -26,8 +27,8 @@ impl AttrProcMacro for ExpandEnsures {
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        annotation: TokenStream,
-        annotated: TokenStream,
+        annotation: ArenaTokenStream,
+        annotated: ArenaTokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
         expand_contract_clause_tts(ecx, span, annotation, annotated, kw::ContractEnsures)
     }
@@ -133,8 +134,8 @@ fn expand_contract_clause(
 fn expand_contract_clause_tts(
     ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
-    annotation: TokenStream,
-    annotated: TokenStream,
+    annotation: ArenaTokenStream,
+    annotated: ArenaTokenStream,
     clause_keyword: rustc_span::Symbol,
 ) -> Result<TokenStream, ErrorGuaranteed> {
     if annotation.is_empty() {
@@ -149,11 +150,11 @@ fn expand_contract_clause_tts(
         );
         // Returning `Err` would replace it with a dummy fragment and cause cascading name-resolution errors.
         // Instead, we return the original token stream so that there is no later noises.
-        return Ok(annotated);
+        return Ok(annotated.to_token_stream());
     }
 
     let feature_span = ecx.with_def_site_ctxt(attr_span);
-    expand_contract_clause(ecx, attr_span, annotated, |new_tts| {
+    expand_contract_clause(ecx, attr_span, annotated.to_token_stream(), |new_tts| {
         new_tts.push(TokenTree::Token(
             token::Token::from_ast_ident(Ident::new(clause_keyword, feature_span)),
             Spacing::Joint,
@@ -162,7 +163,7 @@ fn expand_contract_clause_tts(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
             token::Delimiter::Brace,
-            annotation,
+            annotation.to_token_stream(),
         ));
         Ok(())
     })

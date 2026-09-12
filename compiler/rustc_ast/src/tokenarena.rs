@@ -160,6 +160,48 @@ impl ArenaTokenStreamBuilder {
         self.close_delimited(start, delimited_data);
     }
 
+    /// Copy `stream` into this builder, while possibly adding additional tokens or skipping
+    /// existing tokens.
+    pub fn build_from_stream<F>(&mut self, stream: &ArenaTokenStream, mut func: F)
+    where
+        F: FnMut(&mut Self, &ArenaTokenTree) -> PerTreeOp,
+    {
+        fn fill(
+            builder: &mut ArenaTokenStreamBuilder,
+            func: &mut dyn FnMut(&mut ArenaTokenStreamBuilder, &ArenaTokenTree) -> PerTreeOp,
+            tree: &ArenaTokenTree,
+            stream: &ArenaTokenStream,
+        ) {
+            match func(builder, tree) {
+                PerTreeOp::Continue => {}
+                PerTreeOp::Skip => {
+                    return;
+                }
+            }
+            match tree {
+                ArenaTokenTree::Token(token, spacing) => {
+                    builder.push_token(*token, *spacing);
+                }
+                ArenaTokenTree::DelimitedStart(bounds, data) => {
+                    let start = builder.start_delimited();
+                    fill_iter(builder, func, stream.iter_delimited(bounds));
+                    builder.close_delimited(start, *data);
+                }
+            }
+        }
+        fn fill_iter(
+            builder: &mut ArenaTokenStreamBuilder,
+            func: &mut dyn FnMut(&mut ArenaTokenStreamBuilder, &ArenaTokenTree) -> PerTreeOp,
+            iter: ArenaTokenTreeIter<'_>,
+        ) {
+            let stream = iter.stream().clone();
+            for tree in iter {
+                fill(builder, func, tree, &stream);
+            }
+        }
+        fill_iter(self, &mut func, stream.iter_top_level_trees());
+    }
+
     /// Insert trees from `builder` at the start of a delimited sequence specified by
     /// `bounds`.
     pub fn insert_at_start_of_delimited(
@@ -233,6 +275,13 @@ impl ArenaTokenStreamBuilder {
             self.push_token_tree(tt);
         }
     }
+}
+
+pub enum PerTreeOp {
+    /// Continue processing the tree as normally.
+    Continue,
+    /// Skip the tree, do not insert it.
+    Skip,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]

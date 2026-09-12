@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, PerTreeOp};
+use rustc_ast::tokenstream::Spacing;
 use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
@@ -22,7 +23,7 @@ use crate::mbe::macro_rules::{
 
 pub(super) enum FailedMacro<'a> {
     Func,
-    Attr(&'a TokenStream),
+    Attr(&'a ArenaTokenStream),
     Derive,
 }
 
@@ -32,7 +33,7 @@ pub(super) fn failed_to_match_macro(
     def_span: Span,
     name: Ident,
     args: FailedMacro<'_>,
-    body: &TokenStream,
+    body: &ArenaTokenStream,
     rules: &[MacroRule],
     on_unmatched_args: Option<&Directive>,
 ) -> (Span, ErrorGuaranteed) {
@@ -48,7 +49,7 @@ pub(super) fn failed_to_match_macro(
     let mut tracker = CollectTrackerAndEmitter::new(name, psess.dcx(), sp);
 
     let try_success_result = match args {
-        FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
+        FailedMacro::Func => try_match_macro(psess, name, &body, rules, &mut tracker),
         FailedMacro::Attr(attr_args) => {
             try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
         }
@@ -117,7 +118,7 @@ pub(super) fn failed_to_match_macro(
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let FailedMacro::Func = args
-        && let Some((body, comma_span)) = body.add_comma()
+        && let Some((body, comma_span)) = add_comma(body)
     {
         for rule in rules {
             let MacroRule::Func { lhs, .. } = rule else { continue };
@@ -142,6 +143,45 @@ pub(super) fn failed_to_match_macro(
     }
     let guar = err.emit();
     (sp, guar)
+}
+
+/// Given an `ArenaTokenStream` with a `Stream` of only two arguments, return a new `ArenaTokenStream`
+/// separating the two arguments with a comma for diagnostic suggestions.
+fn add_comma(stream: &ArenaTokenStream) -> Option<(ArenaTokenStream, Span)> {
+    // Used to suggest if a user writes `foo!(a b);`
+    let mut suggestion = None;
+    let mut iter = stream.iter_top_level_trees().enumerate().peekable();
+    while let Some((pos, ts)) = iter.next() {
+        if let Some((_, next)) = iter.peek() {
+            let sp = match (&ts, &next) {
+                (_, ArenaTokenTree::Token(Token { kind: token::Comma, .. }, _)) => continue,
+                (
+                    ArenaTokenTree::Token(token_left, Spacing::Alone),
+                    ArenaTokenTree::Token(token_right, _),
+                ) if (token_left.is_non_reserved_ident() || token_left.is_lit())
+                    && (token_right.is_non_reserved_ident() || token_right.is_lit()) =>
+                {
+                    token_left.span
+                }
+                (ArenaTokenTree::DelimitedStart(_, data), _) => data.span.entire(),
+                _ => continue,
+            };
+            let sp = sp.shrink_to_hi();
+            let comma = Token::new(token::Comma, sp);
+            suggestion = Some((pos, comma, sp));
+        }
+    }
+    if let Some((pos, token, sp)) = suggestion {
+        let mut builder = ArenaTokenStreamBuilder::with_capacity(stream.length() + 1);
+        builder.build_from_stream(stream, |builder, _| {
+            if builder.length() == pos + 1 {
+                builder.push_token(token, Spacing::Alone);
+            }
+            PerTreeOp::Continue
+        });
+        return Some((builder.finish(), sp));
+    }
+    None
 }
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
