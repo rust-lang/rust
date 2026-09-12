@@ -52,20 +52,20 @@ mod hidden_reexport {
 
 mod use_site {
     fn check() {
-        let _: super::nested_alias::inner::Alias;
+        let _: crate::public_reexport::Item;
         //~^ ERROR struct import `Alias` is private
         // Keep pointing at a re-export when the original import path is accessible here.
-        let _: super::absolute_alias::Alias;
+        let _: crate::public_reexport::Item;
         //~^ ERROR struct import `Alias` is private
         // Finding another public re-export does not make `hidden_reexport::private` accessible.
-        let _: super::hidden_reexport::inner::Alias;
+        let _: crate::public_reexport::Item;
         //~^ ERROR struct import `Alias` is private
     }
 }
 
 fn main() {
-    let _ = accessible_parent::fruit;
+    let _ = accessible_parent::fruits::PEAR;
     //~^ ERROR constant import `fruit` is private
-    let _ = accessible_parent_without_self::fruit;
+    let _ = accessible_parent_without_self::fruits::PEAR;
     //~^ ERROR constant import `fruit` is private
 }
