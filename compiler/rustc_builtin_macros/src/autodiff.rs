@@ -10,7 +10,7 @@ mod llvm_enzyme {
     use rustc_ast::expand::autodiff_attrs::{
         DiffActivity, DiffMode, valid_input_activity, valid_ret_activity, valid_ty_for_activity,
     };
-    use rustc_ast::token::{Lit, LitKind, Token, TokenKind};
+    use rustc_ast::token::{IdentKind, Lit, LitKind, Token, TokenKind};
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
@@ -264,7 +264,8 @@ mod llvm_enzyme {
         };
 
         // Insert mode token
-        let mode_token = Token::new(TokenKind::Ident(mode_symbol, false.into()), Span::default());
+        let mode_token =
+            Token::new(TokenKind::Ident(mode_symbol, IdentKind::Normal), Span::default());
         ts.insert(0, TokenTree::Token(mode_token, Spacing::Joint));
         ts.insert(
             1,
@@ -299,7 +300,7 @@ mod llvm_enzyme {
         if !has_ret {
             // We don't want users to provide a return activity if the function doesn't return anything.
             // For simplicity, we just add a dummy token to the end of the list.
-            let t = Token::new(TokenKind::Ident(sym::None, false.into()), Span::default());
+            let t = Token::new(TokenKind::Ident(sym::None, IdentKind::Normal), Span::default());
             ts.push(TokenTree::Token(t, Spacing::Joint));
             ts.push(TokenTree::Token(comma, Spacing::Alone));
         }
@@ -346,7 +347,7 @@ mod llvm_enzyme {
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
         let ts2: Vec<TokenTree> = vec![TokenTree::Token(
-            Token::new(TokenKind::Ident(sym::never, false.into()), span),
+            Token::new(TokenKind::Ident(sym::never, IdentKind::Normal), span),
             Spacing::Joint,
         )];
         let never_arg = ast::DelimArgs {

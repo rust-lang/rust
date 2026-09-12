@@ -364,20 +364,16 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
 
         // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
         (
-            Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _),
+            Tok(tk::Token { kind: tk::Ident(sym, kind), span }, _),
             Tok(tk::Token { kind: tk::Bang, .. }, _),
-        ) if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, tk::IdentIsRaw::Yes) => {
-            false
-        }
+        ) if !Ident::new(*sym, *span).is_reserved() || matches!(kind, tk::IdentKind::Raw) => false,
 
         // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
         //      but `let (a, b) = (1, 2)` needs a space after the `let`
-        (Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _), Del(_, _, Parenthesis, _))
-            if !Ident::new(*sym, *span).is_reserved()
-                || *sym == kw::Fn
-                || *sym == kw::SelfUpper
-                || *sym == kw::Pub
-                || matches!(is_raw, tk::IdentIsRaw::Yes) =>
+        (&Tok(tk::Token { kind: tk::Ident(sym, kind), span }, _), Del(_, _, Parenthesis, _))
+            if kind == tk::IdentKind::Raw
+                || matches!(sym, kw::Fn | kw::SelfUpper | kw::Pub)
+                || !Ident::new(sym, span).is_reserved() =>
         {
             false
         }
@@ -1076,17 +1072,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             tk::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
-            tk::Ident(name, is_raw) => {
-                IdentPrinter::new(name, is_raw.to_print_mode_ident(), convert_dollar_crate)
+            tk::Ident(name, kind) => {
+                IdentPrinter::new(name, kind.to_print_mode_ident(), convert_dollar_crate)
                     .to_string()
                     .into()
             }
-            tk::NtIdent(ident, is_raw) => {
-                IdentPrinter::for_ast_ident(ident, is_raw.to_print_mode_ident()).to_string().into()
+            tk::NtIdent(ident, kind) => {
+                IdentPrinter::for_ast_ident(ident, kind.to_print_mode_ident()).to_string().into()
             }
 
-            tk::Lifetime(name, is_raw) | tk::NtLifetime(Ident { name, .. }, is_raw) => {
-                IdentPrinter::new(name, is_raw.to_print_mode_lifetime(), None).to_string().into()
+            tk::Lifetime(name, kind) | tk::NtLifetime(Ident { name, .. }, kind) => {
+                IdentPrinter::new(name, kind.to_print_mode_lifetime(), None).to_string().into()
             }
 
             /* Other */
@@ -1442,7 +1438,7 @@ impl<'a> State<'a> {
                 self.print_ty_pat(pat);
             }
             ast::TyKind::FieldOf(ty, variant, field) => {
-                self.word("builtin # field_of");
+                self.word("k#field_of");
                 self.popen();
                 let ib = self.ibox(0);
                 self.print_type(ty);
@@ -2012,7 +2008,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Deref(inner) => {
-                self.word("deref!");
+                self.word("k#deref");
                 self.popen();
                 self.print_pat(inner);
                 self.pclose();

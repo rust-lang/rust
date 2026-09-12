@@ -1,32 +1,23 @@
-#![feature(builtin_syntax)]
+//@ edition: 2021..
+#![feature(forced_keywords, internal_syntax)]
 
-// For the exposed macro we already test these errors in the other files,
-// but this test helps to make sure the builtin construct also errors.
-// This has the same examples as offset-of-arg-count.rs
+use std::mem::offset_of;
 
 fn main() {
-    builtin # offset_of(NotEnoughArguments); //~ ERROR expected one of
-}
-fn t1() {
-    builtin # offset_of(NotEnoughArgumentsWithAComma, ); //~ ERROR expected expression
-}
-fn t2() {
-    builtin # offset_of(S, f, too many arguments); //~ ERROR expected `)`, found `too`
-}
-fn t3() {
-    builtin # offset_of(S, f); // compiles fine
-}
-fn t4() {
-    builtin # offset_of(S, f.); //~ ERROR unexpected token
-}
-fn t5() {
-    builtin # offset_of(S, f.,); //~ ERROR unexpected token
-}
-fn t6() {
-    builtin # offset_of(S, f..); //~ ERROR offset_of expects dot-separated field and variant names
-}
-fn t7() {
-    builtin # offset_of(S, f..,); //~ ERROR offset_of expects dot-separated field and variant names
-}
+    offset_of!((u8, u8), _0); //~ ERROR no field `_0`
+    offset_of!((u8, u8), 01); //~ ERROR no field `01`
+    offset_of!((u8, u8), 1e2); //~ ERROR no field `1e2`
+    offset_of!((u8, u8), 1_u8); //~ ERROR no field `1_`
+    //~| ERROR suffixes on a tuple index
 
-struct S { f: u8, }
+    k#offset_of((u8, u8), 1e2); //~ ERROR no field `1e2`
+    k#offset_of((u8, u8), _0); //~ ERROR no field `_0`
+    k#offset_of((u8, u8), 01); //~ ERROR no field `01`
+    k#offset_of((u8, u8), 1_u8); //~ ERROR no field `1_`
+    //~| ERROR suffixes on a tuple index
+
+    offset_of!(((u8, u16), (u32, u16, u8)), 0.2); //~ ERROR no field `2`
+    offset_of!(((u8, u16), (u32, u16, u8)), 0.1e2); //~ ERROR no field `1e2`
+    offset_of!(((u8, u16), (u32, u16, u8)), 1.2);
+    offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0); //~ ERROR no field `0`
+}

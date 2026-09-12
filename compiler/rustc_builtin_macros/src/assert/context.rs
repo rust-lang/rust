@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw};
+use rustc_ast::token::{self, Delimiter, IdentKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{
     BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall,
@@ -165,7 +165,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let captures = self.capture_decls.iter().flat_map(|cap| {
             [
                 TokenTree::token_joint(
-                    token::Ident(cap.ident.name, IdentIsRaw::No),
+                    token::Ident(cap.ident.name, IdentKind::Normal),
                     cap.ident.span,
                 ),
                 TokenTree::token_alone(token::Comma, self.span),
