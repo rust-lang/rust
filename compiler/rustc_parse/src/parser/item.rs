@@ -5,7 +5,8 @@ use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, MetaVarKind, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree};
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
@@ -1096,7 +1097,7 @@ impl<'a> Parser<'a> {
             SUFFIXES.iter().any(|suffix| {
                 suffix.iter().enumerate().all(|(i, kw)| {
                     self.tree_look_ahead(i + 2, |t| {
-                        if let TokenTree::Token(token, _) = t {
+                        if let ArenaTokenTree::Token(token, _) = t {
                             token.is_keyword(*kw)
                         } else {
                             false
@@ -1640,7 +1641,7 @@ impl<'a> Parser<'a> {
         // might be a metavariable i.e. an invisible-delimited sequence, and
         // `tree_look_ahead` will consider that a single element when looking
         // ahead.
-        self.tree_look_ahead(n, |t| matches!(t, TokenTree::Delimited(_, _, Delimiter::Brace, _)))
+        self.tree_look_ahead(n, |t| matches!(t, ArenaTokenTree::DelimitedStart(_, data) if matches!(data.delimiter, Delimiter::Brace)))
             == Some(true)
     }
 
@@ -2580,8 +2581,9 @@ impl<'a> Parser<'a> {
             let body = self.parse_token_tree(); // `MacBody`
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
             let bspan = body.span();
-            let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
-            let tokens = TokenStream::new(vec![params, arrow, body]);
+            let arrow = ArenaTokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
+            let tokens =
+                ArenaTokenStream::new_reparented(&[params, arrow, body], &self.token_cursor.stream);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             Box::new(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {

@@ -11,6 +11,7 @@ mod llvm_enzyme {
         DiffActivity, DiffMode, valid_input_activity, valid_ret_activity, valid_ty_for_activity,
     };
     use rustc_ast::token::{Lit, LitKind, Token, TokenKind};
+    use rustc_ast::tokenarena::ArenaTokenStream;
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
@@ -153,12 +154,12 @@ mod llvm_enzyme {
         }
     }
 
-    fn meta_item_inner_to_ts(t: &MetaItemInner, ts: &mut Vec<TokenTree>) {
+    fn meta_item_inner_to_ts(t: &MetaItemInner, ts: &mut Vec<(Token, Spacing)>) {
         let comma: Token = Token::new(TokenKind::Comma, Span::default());
         let val = first_ident(t);
         let t = Token::from_ast_ident(val);
-        ts.push(TokenTree::Token(t, Spacing::Joint));
-        ts.push(TokenTree::Token(comma, Spacing::Alone));
+        ts.push((t, Spacing::Joint));
+        ts.push((comma, Spacing::Alone));
     }
 
     pub(crate) fn expand_forward(
@@ -250,7 +251,7 @@ mod llvm_enzyme {
 
         // create TokenStream from vec elemtents:
         // meta_item doesn't have a .tokens field
-        let mut ts: Vec<TokenTree> = vec![];
+        let mut ts: Vec<(Token, Spacing)> = vec![];
         if meta_item_vec.is_empty() {
             // At the bare minimum, we need a fnc name.
             dcx.emit_err(diagnostics::AutoDiffMissingConfig { span: item.span() });
@@ -265,11 +266,8 @@ mod llvm_enzyme {
 
         // Insert mode token
         let mode_token = Token::new(TokenKind::Ident(mode_symbol, false.into()), Span::default());
-        ts.insert(0, TokenTree::Token(mode_token, Spacing::Joint));
-        ts.insert(
-            1,
-            TokenTree::Token(Token::new(TokenKind::Comma, Span::default()), Spacing::Alone),
-        );
+        ts.insert(0, (mode_token, Spacing::Joint));
+        ts.insert(1, (Token::new(TokenKind::Comma, Span::default()), Spacing::Alone));
 
         // Now, if the user gave a width (vector aka batch-mode ad), then we copy it.
         // If it is not given, we default to 1 (scalar mode).
@@ -289,8 +287,8 @@ mod llvm_enzyme {
         let l: Lit = Lit { kind, symbol, suffix: None };
         let t = Token::new(TokenKind::Literal(l), Span::default());
         let comma = Token::new(TokenKind::Comma, Span::default());
-        ts.push(TokenTree::Token(t, Spacing::Joint));
-        ts.push(TokenTree::Token(comma, Spacing::Alone));
+        ts.push((t, Spacing::Joint));
+        ts.push((comma, Spacing::Alone));
 
         for t in meta_item_vec.clone()[start_position..].iter() {
             meta_item_inner_to_ts(t, &mut ts);
@@ -300,12 +298,11 @@ mod llvm_enzyme {
             // We don't want users to provide a return activity if the function doesn't return anything.
             // For simplicity, we just add a dummy token to the end of the list.
             let t = Token::new(TokenKind::Ident(sym::None, false.into()), Span::default());
-            ts.push(TokenTree::Token(t, Spacing::Joint));
-            ts.push(TokenTree::Token(comma, Spacing::Alone));
+            ts.push((t, Spacing::Joint));
+            ts.push((comma, Spacing::Alone));
         }
         // We remove the last, trailing comma.
         ts.pop();
-        let ts: TokenStream = TokenStream::from_iter(ts);
 
         let x: RustcAutodiff = from_ast(ecx, &meta_item_vec, has_ret, mode);
         if !x.is_active() {
@@ -345,14 +342,13 @@ mod llvm_enzyme {
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
-        let ts2: Vec<TokenTree> = vec![TokenTree::Token(
-            Token::new(TokenKind::Ident(sym::never, false.into()), span),
-            Spacing::Joint,
-        )];
         let never_arg = ast::DelimArgs {
             dspan: DelimSpan::from_single(span),
             delim: ast::token::Delimiter::Parenthesis,
-            tokens: TokenStream::from_iter(ts2),
+            tokens: ArenaTokenStream::from_token(
+                Token::new(TokenKind::Ident(sym::never, false.into()), span),
+                Spacing::Joint,
+            ),
         };
         let inline_item = ast::AttrItem {
             unsafety: ast::Safety::Default,
@@ -423,7 +419,7 @@ mod llvm_enzyme {
         rustc_ad_attr.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
             dspan: DelimSpan::dummy(),
             delim: rustc_ast::token::Delimiter::Parenthesis,
-            tokens: ts,
+            tokens: ArenaTokenStream::from_token_vec(ts),
         });
 
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();

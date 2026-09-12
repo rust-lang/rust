@@ -125,7 +125,9 @@ impl<'a> Parser<'a> {
         // we always capture tokens for any nonterminal that needs them.
         match kind {
             // Note that TT is treated differently to all the others.
-            NonterminalKind::TT => Ok(ParseNtResult::Tt(self.parse_token_tree())),
+            NonterminalKind::TT => Ok(ParseNtResult::Tt(
+                self.parse_token_tree().to_token_tree(&self.token_cursor.stream),
+            )),
             NonterminalKind::Item => match self
                 .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
             {

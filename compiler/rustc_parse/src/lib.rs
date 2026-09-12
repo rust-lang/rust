@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
 pub use rustc_lexer::UNICODE_VERSION;
@@ -29,6 +29,9 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 #[macro_use]
 pub mod parser;
 use parser::Parser;
+use rustc_ast::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedData,
+};
 
 use crate::lexer::StripTokens;
 
@@ -245,7 +248,7 @@ pub fn source_str_to_stream(
     name: FileName,
     source: String,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<Diag<'_>>> {
+) -> Result<ArenaTokenStream, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
     // FIXME(frontmatter): Consider stripping frontmatter in a future edition. We can't strip them
     // in the current edition since that would be breaking.
@@ -262,7 +265,7 @@ fn source_file_to_stream<'psess>(
     source_file: Arc<SourceFile>,
     override_span: Option<Span>,
     strip_tokens: StripTokens,
-) -> Result<TokenStream, Vec<Diag<'psess>>> {
+) -> Result<ArenaTokenStream, Vec<Diag<'psess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         psess.dcx().bug(format!(
             "cannot lex `source_file` without source: {}",
@@ -270,17 +273,26 @@ fn source_file_to_stream<'psess>(
         ));
     });
 
-    lexer::lex_token_trees(psess, src.as_str(), source_file.start_pos, override_span, strip_tokens)
+    let mut token_builder = ArenaTokenStreamBuilder::default();
+    lexer::lex_token_trees(
+        psess,
+        src.as_str(),
+        source_file.start_pos,
+        &mut token_builder,
+        override_span,
+        strip_tokens,
+    )?;
+    Ok(token_builder.finish())
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
 pub fn parse_in<'a, T>(
     psess: &'a ParseSess,
-    tts: TokenStream,
+    arena: ArenaTokenStream,
     name: &'static str,
     mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(psess, tts, Some(name));
+    let mut parser = Parser::new(psess, arena, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;
@@ -292,9 +304,9 @@ pub fn fake_token_stream_for_item(
     psess: &ParseSess,
     item: &ast::Item,
     attr_to_exclude: Option<&ast::Attribute>,
-) -> TokenStream {
-    if let Some(tokens) = fake_token_stream_for_file_mod(psess, item, attr_to_exclude) {
-        return tokens;
+) -> ArenaTokenStream {
+    if let Some(stream) = fake_token_stream_for_file_mod(psess, item, attr_to_exclude) {
+        return stream;
     }
 
     let source = pprust::item_to_string(item);
@@ -306,7 +318,7 @@ fn fake_token_stream_for_file_mod(
     psess: &ParseSess,
     item: &ast::Item,
     attr_to_exclude: Option<&ast::Attribute>,
-) -> Option<TokenStream> {
+) -> Option<ArenaTokenStream> {
     let ast::ItemKind::Mod(_, _, ast::ModKind::Loaded(_, ast::Inline::No { .. }, spans)) =
         &item.kind
     else {
@@ -316,59 +328,62 @@ fn fake_token_stream_for_file_mod(
     let attr = attr_to_exclude.expect("file modules must have an attribute to exclude");
     assert_eq!(attr.style, ast::AttrStyle::Inner);
 
-    let mut body_tts = Vec::new();
-    body_tts.extend(lex_token_trees_for_span(psess, spans.inner_span.until(attr.span))?);
-    body_tts.extend(lex_token_trees_for_span(
-        psess,
-        attr.span.between(spans.inner_span.shrink_to_hi()),
-    )?);
+    let mut arena = ArenaTokenStreamBuilder::default();
 
-    let mut wrapper_tts = Vec::new();
     for attr in item.attrs.iter().filter(|attr| attr.style == ast::AttrStyle::Outer) {
-        wrapper_tts.extend(attr.token_trees());
+        attr.push_token_trees(&mut arena);
     }
-    wrapper_tts.extend(lex_token_trees_for_span(psess, item.span)?);
-    let Some(TokenTree::Token(semi, _)) = wrapper_tts.pop() else {
+    lex_token_trees_for_span(psess, item.span, &mut arena)?;
+    let Some(ArenaTokenTree::Token(semi, _)) = arena.pop() else {
         return None;
     };
     if semi.kind != token::Semi {
         return None;
     }
-    wrapper_tts.push(TokenTree::Delimited(
-        DelimSpan::from_single(semi.span),
-        DelimSpacing::new(Spacing::Alone, Spacing::Alone),
-        token::Delimiter::Brace,
-        TokenStream::new(body_tts),
-    ));
 
-    Some(TokenStream::new(wrapper_tts))
+    let start = arena.start_delimited();
+    lex_token_trees_for_span(psess, spans.inner_span.until(attr.span), &mut arena)?;
+    lex_token_trees_for_span(
+        psess,
+        attr.span.between(spans.inner_span.shrink_to_hi()),
+        &mut arena,
+    )?;
+    arena.close_delimited(
+        start,
+        DelimitedData {
+            span: DelimSpan::from_single(semi.span),
+            spacing: DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+            delimiter: token::Delimiter::Brace,
+        },
+    );
+    Some(arena.finish())
 }
 
 fn lex_token_trees_for_span(
     psess: &ParseSess,
     span: Span,
-) -> Option<impl Iterator<Item = TokenTree>> {
+    arena: &mut ArenaTokenStreamBuilder,
+) -> Option<()> {
     let src = psess.source_map().span_to_snippet(span).ok()?;
-    let stream = match lexer::lex_token_trees(psess, &src, span.lo(), None, StripTokens::Nothing) {
-        Ok(stream) => stream,
+    match lexer::lex_token_trees(psess, &src, span.lo(), arena, None, StripTokens::Nothing) {
+        Ok(_) => Some(()),
         Err(errs) => {
             errs.into_iter().for_each(|err| err.cancel());
-            return None;
+            None
         }
-    };
-    Some((0..).map_while(move |index| stream.get(index).cloned()))
+    }
 }
 
 pub fn fake_token_stream_for_foreign_item(
     psess: &ParseSess,
     item: &ast::ForeignItem,
-) -> TokenStream {
+) -> ArenaTokenStream {
     let source = pprust::foreign_item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
     unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
 }
 
-pub fn fake_token_stream_for_crate(psess: &ParseSess, krate: &ast::Crate) -> TokenStream {
+pub fn fake_token_stream_for_crate(psess: &ParseSess, krate: &ast::Crate) -> ArenaTokenStream {
     let source = pprust::crate_to_string_for_macros(krate);
     let filename = FileName::macro_expansion_source_code(&source);
     unwrap_or_emit_fatal(source_str_to_stream(

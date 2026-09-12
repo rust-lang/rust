@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast::attr::MarkedAttrs;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
@@ -117,16 +118,16 @@ impl Annotatable {
     }
 
     /// Converts the `Annotatable` to a token stream, e.g. to hand to a proc macro.
-    pub fn to_tokens(&self) -> TokenStream {
+    pub fn to_tokens(&self) -> ArenaTokenStream {
         match self {
-            Annotatable::Item(node) => TokenStream::from_ast(node),
-            Annotatable::AssocItem(node, _) => TokenStream::from_ast(node),
-            Annotatable::ForeignItem(node) => TokenStream::from_ast(node),
+            Annotatable::Item(node) => ArenaTokenStream::from_ast(node),
+            Annotatable::AssocItem(node, _) => ArenaTokenStream::from_ast(node),
+            Annotatable::ForeignItem(node) => ArenaTokenStream::from_ast(node),
             Annotatable::Stmt(node) => {
                 assert!(!matches!(node.kind, ast::StmtKind::Empty));
-                TokenStream::from_ast(node)
+                ArenaTokenStream::from_ast(node)
             }
-            Annotatable::Expr(node) => TokenStream::from_ast(node),
+            Annotatable::Expr(node) => ArenaTokenStream::from_ast(node),
             Annotatable::Arm(..)
             | Annotatable::ExprField(..)
             | Annotatable::PatField(..)
@@ -315,20 +316,20 @@ pub trait BangProcMacro {
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        ts: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed>;
+        ts: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed>;
 }
 
 impl<F> BangProcMacro for F
 where
-    F: Fn(&mut ExtCtxt<'_>, Span, TokenStream) -> Result<TokenStream, ErrorGuaranteed>,
+    F: Fn(&mut ExtCtxt<'_>, Span, ArenaTokenStream) -> Result<ArenaTokenStream, ErrorGuaranteed>,
 {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        ts: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        ts: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         // FIXME setup implicit context in TLS before calling self.
         self(ecx, span, ts)
     }
@@ -339,9 +340,9 @@ pub trait AttrProcMacro {
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        annotation: TokenStream,
-        annotated: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed>;
+        annotation: ArenaTokenStream,
+        annotated: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed>;
 
     // Default implementation for safe attributes; override if the attribute can be unsafe.
     fn expand_with_safety<'cx>(
@@ -349,9 +350,9 @@ pub trait AttrProcMacro {
         ecx: &'cx mut ExtCtxt<'_>,
         safety: Safety,
         span: Span,
-        annotation: TokenStream,
-        annotated: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        annotation: ArenaTokenStream,
+        annotated: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         if let Safety::Unsafe(span) = safety {
             ecx.dcx().span_err(span, "unnecessary `unsafe` on safe attribute");
         }
@@ -361,15 +362,15 @@ pub trait AttrProcMacro {
 
 impl<F> AttrProcMacro for F
 where
-    F: Fn(TokenStream, TokenStream) -> TokenStream,
+    F: Fn(ArenaTokenStream, ArenaTokenStream) -> ArenaTokenStream,
 {
     fn expand<'cx>(
         &self,
         _ecx: &'cx mut ExtCtxt<'_>,
         _span: Span,
-        annotation: TokenStream,
-        annotated: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        annotation: ArenaTokenStream,
+        annotated: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         // FIXME setup implicit context in TLS before calling self.
         Ok(self(annotation, annotated))
     }
@@ -381,24 +382,24 @@ pub trait TTMacroExpander: Any {
         &'a self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        input: TokenStream,
+        input: ArenaTokenStream,
     ) -> MacroExpanderResult<'cx>;
 }
 
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, ArenaTokenStream) -> MacroExpanderResult<'cx>;
 
 impl<F: 'static> TTMacroExpander for F
 where
-    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
+    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, ArenaTokenStream) -> MacroExpanderResult<'cx>,
 {
     fn expand<'cx, 'a: 'cx>(
         &'a self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        input: TokenStream,
+        input: ArenaTokenStream,
     ) -> MacroExpanderResult<'cx> {
         self(ecx, span, input)
     }
@@ -934,8 +935,8 @@ impl SyntaxExtension {
         fn expand(
             ecx: &mut ExtCtxt<'_>,
             span: Span,
-            _ts: TokenStream,
-        ) -> Result<TokenStream, ErrorGuaranteed> {
+            _ts: ArenaTokenStream,
+        ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
             Err(ecx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"))
         }
         SyntaxExtension::default(SyntaxExtensionKind::Bang(Arc::new(expand)), edition)
@@ -1257,7 +1258,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self, true)
     }
-    pub fn new_parser_from_tts(&self, stream: TokenStream) -> Parser<'a> {
+    pub fn new_parser_from_tts(&self, stream: ArenaTokenStream) -> Parser<'a> {
         Parser::new(&self.sess.psess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap {

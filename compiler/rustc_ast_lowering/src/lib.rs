@@ -43,6 +43,7 @@ use std::sync::Arc;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
@@ -631,7 +632,7 @@ fn index_ast<'tcx>(
             dummy: impl FnOnce(Box<MacCall>) -> K,
         ) -> Box<Item<K>> {
             use rustc_ast::token::Delimiter;
-            use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+            use rustc_ast::tokenstream::DelimSpan;
             use thin_vec::thin_vec;
 
             Box::new(Item {
@@ -646,7 +647,7 @@ fn index_ast<'tcx>(
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,
-                        tokens: TokenStream::new(Vec::new()),
+                        tokens: ArenaTokenStream::default(),
                     }),
                 })),
                 tokens: None,

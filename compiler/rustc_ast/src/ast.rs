@@ -38,7 +38,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use crate::tokenstream::{DelimSpan, LazyAttrTokenStream};
 use crate::util::parser::{ExprPrecedence, Fixity};
 use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
@@ -378,6 +378,7 @@ impl ParenthesizedArgs {
 }
 
 pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
+use crate::tokenarena::ArenaTokenStream;
 
 /// Modifiers on a trait bound like `[const]`, `?` and `!`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Walkable)]
@@ -2090,11 +2091,11 @@ impl AttrArgs {
 
     /// Tokens inside the delimiters or after `=`.
     /// Proc macros see these tokens, for example.
-    pub fn inner_tokens(&self) -> TokenStream {
+    pub fn inner_tokens(&self) -> ArenaTokenStream {
         match self {
-            AttrArgs::Empty => TokenStream::default(),
+            AttrArgs::Empty => ArenaTokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr),
+            AttrArgs::Eq { expr, .. } => ArenaTokenStream::from_ast(expr),
         }
     }
 }
@@ -2104,7 +2105,7 @@ impl AttrArgs {
 pub struct DelimArgs {
     pub dspan: DelimSpan,
     pub delim: Delimiter, // Note: `Delimiter::Invisible` never occurs
-    pub tokens: TokenStream,
+    pub tokens: ArenaTokenStream,
 }
 
 impl DelimArgs {

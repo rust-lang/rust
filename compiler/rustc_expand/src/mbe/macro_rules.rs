@@ -1,14 +1,18 @@
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
-use std::{mem, slice};
+use std::{cmp, mem, slice};
 
 use ast::token::IdentIsRaw;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
-use rustc_ast::tokenstream::{self, DelimSpan, TokenStream};
-use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId, Safety};
+use rustc_ast::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedBounds, DelimitedData,
+    PerTreeOp,
+};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream};
+use rustc_ast::{self as ast, AttrStyle, DUMMY_NODE_ID, NodeId, Safety};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::diagnostic::Directive;
 use rustc_attr_ir::{self as attrs, find_attr};
@@ -132,7 +136,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         matched_rule_bindings: &'b [MatcherLoc],
     ) -> Self {
         Self {
-            parser: Parser::new(&cx.sess.psess, tts, None),
+            parser: Parser::new(&cx.sess.psess, ArenaTokenStream::from_stream(&tts), None),
 
             // Pass along the original expansion site and the name of the macro
             // so we can print a useful error message if the parse of the expanded
@@ -231,7 +235,7 @@ impl MacroRulesMacroExpander {
         &self,
         cx: &mut ExtCtxt<'_>,
         sp: Span,
-        body: &TokenStream,
+        body: &ArenaTokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
         // This is similar to `expand_macro`, but they have very different signatures, and will
         // diverge further once derives support arguments.
@@ -258,7 +262,10 @@ impl MacroRulesMacroExpander {
                     .map_err(|e| e.emit())?;
 
                 if cx.trace_macros() {
-                    let msg = format!("to `{}`", pprust::tts_to_string(&tts));
+                    let msg = format!(
+                        "to `{}`",
+                        pprust::tts_to_string(&ArenaTokenStream::from_stream(&tts))
+                    );
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
@@ -292,7 +299,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         &'a self,
         cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
-        input: TokenStream,
+        input: ArenaTokenStream,
     ) -> MacroExpanderResult<'cx> {
         ExpandResult::Ready(expand_macro(
             cx,
@@ -313,9 +320,9 @@ impl AttrProcMacro for MacroRulesMacroExpander {
         &self,
         _cx: &mut ExtCtxt<'_>,
         _sp: Span,
-        _args: TokenStream,
-        _body: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        _args: ArenaTokenStream,
+        _body: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         unreachable!("`expand` called on `MacroRulesMacroExpander`, expected `expand_with_safety`")
     }
 
@@ -324,9 +331,9 @@ impl AttrProcMacro for MacroRulesMacroExpander {
         cx: &mut ExtCtxt<'_>,
         safety: Safety,
         sp: Span,
-        args: TokenStream,
-        body: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        args: ArenaTokenStream,
+        body: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         expand_macro_attr(
             cx,
             sp,
@@ -350,8 +357,8 @@ impl BangProcMacro for DummyBang {
         &self,
         _: &'cx mut ExtCtxt<'_>,
         _: Span,
-        _: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        _: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         Err(self.0)
     }
 }
@@ -435,7 +442,7 @@ fn expand_macro<'cx, 'a: 'cx>(
     node_id: NodeId,
     name: Ident,
     transparency: Transparency,
-    arg: TokenStream,
+    arg: ArenaTokenStream,
     rules: &'a [MacroRule],
     on_unmatched_args: Option<&Directive>,
 ) -> Box<dyn MacResult + 'cx> {
@@ -470,7 +477,8 @@ fn expand_macro<'cx, 'a: 'cx>(
             };
 
             if cx.trace_macros() {
-                let msg = format!("to `{}`", pprust::tts_to_string(&tts));
+                let msg =
+                    format!("to `{}`", pprust::tts_to_string(&ArenaTokenStream::from_stream(&tts)));
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
@@ -514,11 +522,11 @@ fn expand_macro_attr(
     name: Ident,
     transparency: Transparency,
     safety: Safety,
-    args: TokenStream,
-    body: TokenStream,
+    args: ArenaTokenStream,
+    body: ArenaTokenStream,
     rules: &[MacroRule],
     on_unmatched_args: Option<&Directive>,
-) -> Result<TokenStream, ErrorGuaranteed> {
+) -> Result<ArenaTokenStream, ErrorGuaranteed> {
     let psess = &cx.sess.psess;
     // Macros defined in the current crate have a real node id,
     // whereas macros from an external crate have a dummy id.
@@ -563,6 +571,7 @@ fn expand_macro_attr(
             let id = cx.current_expansion.id;
             let tts = transcribe(psess, &named_matches, rhs, *rhs_span, transparency, id)
                 .map_err(|e| e.emit())?;
+            let tts = ArenaTokenStream::from_stream(&tts);
 
             if cx.trace_macros() {
                 let msg = format!("to `{}`", pprust::tts_to_string(&tts));
@@ -607,7 +616,7 @@ pub(super) enum CanRetry {
 pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
     name: Ident,
-    arg: &TokenStream,
+    arg: &ArenaTokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
@@ -687,8 +696,8 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
     name: Ident,
-    attr_args: &TokenStream,
-    attr_body: &TokenStream,
+    attr_args: &ArenaTokenStream,
+    attr_body: &ArenaTokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
@@ -744,7 +753,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
     name: Ident,
-    body: &TokenStream,
+    body: &ArenaTokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
@@ -822,9 +831,17 @@ pub fn compile_declarative_macro(
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr args") {
                 return dummy_syn_ext(guar);
             }
-            let args = p.parse_token_tree();
-            check_args_parens(sess, sym::attr, &args);
-            let args = parse_one_tt(args, RulePart::Pattern, sess, node_id, features, edition);
+            let tt = p.parse_token_tree();
+            let args = tt.to_delimited_data();
+            check_args_parens(sess, sym::attr, args);
+            let args = parse_one_tt(
+                tt.to_token_tree(p.token_stream()),
+                RulePart::Pattern,
+                sess,
+                node_id,
+                features,
+                edition,
+            );
             check_emission(check_lhs(sess, features, node_id, &args));
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr body") {
                 return dummy_syn_ext(guar);
@@ -844,9 +861,10 @@ pub fn compile_declarative_macro(
             if let Some(guar) = check_no_eof(sess, &p, "expected `()` after `derive`") {
                 return dummy_syn_ext(guar);
             }
-            let args = p.parse_token_tree();
-            check_args_parens(sess, sym::derive, &args);
-            let args_empty_result = check_args_empty(sess, &args);
+            let tt = p.parse_token_tree();
+            let args = tt.to_delimited_data();
+            check_args_parens(sess, sym::derive, args);
+            let args_empty_result = check_args_empty(sess, tt.to_delimited_bounds(), tt.span());
             let args_not_empty = args_empty_result.is_err();
             check_emission(args_empty_result);
             if let Some(guar) = check_no_eof(sess, &p, "expected macro derive body") {
@@ -872,7 +890,7 @@ pub fn compile_declarative_macro(
             }
             (None, false)
         };
-        let lhs_tt = p.parse_token_tree();
+        let lhs_tt = p.parse_token_tree().to_token_tree(p.token_stream());
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
         check_emission(check_lhs(sess, features, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
@@ -881,7 +899,7 @@ pub fn compile_declarative_macro(
         if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
-        let rhs = p.parse_token_tree();
+        let rhs = p.parse_token_tree().to_token_tree(p.token_stream());
         let rhs = parse_one_tt(rhs, RulePart::Body, sess, node_id, features, edition);
         check_emission(check_rhs(sess, &rhs));
         check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs));
@@ -961,25 +979,32 @@ fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<Err
     None
 }
 
-fn check_args_parens(sess: &Session, rule_kw: Symbol, args: &tokenstream::TokenTree) {
+fn check_args_parens(sess: &Session, rule_kw: Symbol, args: Option<&DelimitedData>) {
     // This does not handle the non-delimited case; that gets handled separately by `check_lhs`.
-    if let tokenstream::TokenTree::Delimited(dspan, _, delim, _) = args
-        && *delim != Delimiter::Parenthesis
+    if let Some(data) = args
+        && data.delimiter != Delimiter::Parenthesis
     {
         sess.dcx().emit_err(diagnostics::MacroArgsBadDelim {
-            span: dspan.entire(),
-            sugg: diagnostics::MacroArgsBadDelimSugg { open: dspan.open, close: dspan.close },
+            span: data.span.entire(),
+            sugg: diagnostics::MacroArgsBadDelimSugg {
+                open: data.span.open,
+                close: data.span.close,
+            },
             rule_kw,
         });
     }
 }
 
-fn check_args_empty(sess: &Session, args: &tokenstream::TokenTree) -> Result<(), ErrorGuaranteed> {
+fn check_args_empty(
+    sess: &Session,
+    args: Option<&DelimitedBounds>,
+    span: Span,
+) -> Result<(), ErrorGuaranteed> {
     match args {
-        tokenstream::TokenTree::Delimited(.., delimited) if delimited.is_empty() => Ok(()),
+        Some(bounds) if bounds.is_empty() => Ok(()),
         _ => {
             let msg = "`derive` rules do not accept arguments; `derive` must be followed by `()`";
-            Err(sess.dcx().span_err(args.span(), msg))
+            Err(sess.dcx().span_err(span, msg))
         }
     }
 }
@@ -1865,9 +1890,82 @@ fn is_defined_in_current_crate(node_id: NodeId) -> bool {
 
 pub(super) fn parser_from_cx(
     psess: &ParseSess,
-    mut tts: TokenStream,
+    tts: ArenaTokenStream,
     recovery: Recovery,
 ) -> Parser<'_> {
-    tts.desugar_doc_comments();
+    let tts = desugar_doc_comments(tts);
     Parser::new(psess, tts, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
+}
+
+/// Desugar doc comments like `/// foo` in the stream into `#[doc =
+/// r"foo"]`.
+fn desugar_doc_comments(stream: ArenaTokenStream) -> ArenaTokenStream {
+    // Fast path to avoid modifications
+    let mut doc_comment_found = false;
+    for tree in stream.iter_top_level_trees() {
+        if let ArenaTokenTree::Token(Token { kind: token::DocComment(..), .. }, ..) = tree {
+            doc_comment_found = true;
+            break;
+        }
+    }
+    if !doc_comment_found {
+        return stream;
+    }
+
+    let mut builder = ArenaTokenStreamBuilder::with_capacity(stream.length());
+    builder.build_from_stream(&stream, |builder, tree| {
+        if let ArenaTokenTree::Token(
+            Token { kind: token::DocComment(_, attr_style, data), span },
+            _,
+        ) = tree
+        {
+            let span = *span;
+            // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
+            // required to wrap the text. E.g.
+            // - `abc d` is wrapped as `r"abc d"` (num_of_hashes = 0)
+            // - `abc "d"` is wrapped as `r#"abc "d""#` (num_of_hashes = 1)
+            // - `abc "##d##"` is wrapped as `r###"abc ##"d"##"###` (num_of_hashes = 3)
+            let mut num_of_hashes = 0;
+            let mut count = 0;
+            for ch in data.as_str().chars() {
+                count = match ch {
+                    '"' => 1,
+                    '#' if count > 0 => count + 1,
+                    _ => 0,
+                };
+                num_of_hashes = cmp::max(num_of_hashes, count);
+            }
+
+            if *attr_style == AttrStyle::Inner {
+                builder.push_token(Token::new(token::Pound, span), Spacing::Joint);
+                builder.push_token(Token::new(token::Bang, span), Spacing::JointHidden);
+            } else {
+                builder.push_token(Token::new(token::Pound, span), Spacing::JointHidden);
+            }
+
+            // `/// foo` becomes `[doc = r"foo"]`.
+            let delim_span = DelimSpan::from_single(span);
+            let start = builder.start_delimited();
+            builder
+                .push_token_alone(Token::new(token::Ident(sym::doc, token::IdentIsRaw::No), span));
+            builder.push_token_alone(Token::new(token::Eq, span));
+            builder.push_token_alone(Token::new(
+                TokenKind::lit(token::StrRaw(num_of_hashes), *data, None),
+                span,
+            ));
+            builder.close_delimited(
+                start,
+                DelimitedData {
+                    span: delim_span,
+                    delimiter: Delimiter::Bracket,
+                    spacing: DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                },
+            );
+
+            PerTreeOp::Skip
+        } else {
+            PerTreeOp::Continue
+        }
+    });
+    builder.finish()
 }

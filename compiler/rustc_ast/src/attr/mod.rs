@@ -19,9 +19,12 @@ use crate::ast::{
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
+use crate::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, ArenaTokenTreeIter, DelimitedData,
+};
 use crate::tokenstream::{
     AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
-    TokenStream, TokenStreamIter, TokenTree,
+    TokenTree,
 };
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -308,6 +311,25 @@ impl Attribute {
         }
     }
 
+    pub fn push_token_trees(&self, builder: &mut ArenaTokenStreamBuilder) {
+        match self.kind {
+            AttrKind::Normal(ref normal) => {
+                normal
+                    .tokens
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
+                    .to_attr_token_stream()
+                    .push_token_trees(builder);
+            }
+            // Empty tokens here ensures synthetic attributes are invisible to proc macros.
+            AttrKind::Synthetic(..) => {}
+            AttrKind::DocComment(comment_kind, data) => builder.push_token_alone(Token::new(
+                token::DocComment(comment_kind, self.style, data),
+                self.span,
+            )),
+        }
+    }
+
     pub fn deprecation_note(&self) -> Option<Ident> {
         match &self.kind {
             AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
@@ -345,7 +367,7 @@ impl AttrItem {
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.args {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
-                MetaItemKind::list_from_tokens(args.tokens.clone())
+                MetaItemKind::list_from_tokens(&args.tokens)
             }
             AttrArgs::Delimited(_) | AttrArgs::Eq { .. } | AttrArgs::Empty => None,
         }
@@ -475,16 +497,16 @@ impl MetaItem {
         }
     }
 
-    fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItem> {
+    fn from_tokens(iter: &mut ArenaTokenTreeIter<'_>) -> Option<MetaItem> {
         // FIXME: Share code with `parse_path`.
-        let tt = iter.next().map(|tt| TokenTree::uninterpolate(tt));
+        let tt = iter.next().map(|tt| ArenaTokenTree::uninterpolate(tt));
         let path = match tt.as_deref() {
-            Some(&TokenTree::Token(
+            Some(&ArenaTokenTree::Token(
                 Token { kind: ref kind @ (token::Ident(..) | token::PathSep), span },
                 _,
             )) => 'arm: {
                 let mut segments = if let &token::Ident(name, _) = kind {
-                    if let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
+                    if let Some(ArenaTokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
                         iter.peek()
                     {
                         iter.next();
@@ -496,13 +518,16 @@ impl MetaItem {
                     thin_vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    let Some(&TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
-                        iter.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref()
+                    let Some(&ArenaTokenTree::Token(
+                        Token { kind: token::Ident(name, _), span },
+                        _,
+                    )) = iter.next().map(|tt| ArenaTokenTree::uninterpolate(tt)).as_deref()
                     else {
                         return None;
                     };
                     segments.push(PathSegment::from_ident(Ident::new(name, span)));
-                    let Some(TokenTree::Token(Token { kind: token::PathSep, .. }, _)) = iter.peek()
+                    let Some(ArenaTokenTree::Token(Token { kind: token::PathSep, .. }, _)) =
+                        iter.peek()
                     else {
                         break;
                     };
@@ -511,18 +536,21 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments }
             }
-            Some(TokenTree::Delimited(
-                _span,
-                _spacing,
-                Delimiter::Invisible(InvisibleOrigin::MetaVar(
-                    MetaVarKind::Meta { .. } | MetaVarKind::Path,
-                )),
-                _stream,
+            Some(ArenaTokenTree::DelimitedStart(
+                _,
+                DelimitedData {
+                    delimiter:
+                        Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                            MetaVarKind::Meta { .. } | MetaVarKind::Path,
+                        )),
+                    span: _,
+                    spacing: _,
+                },
             )) => {
                 // This path is currently unreachable in the test suite.
                 unreachable!()
             }
-            Some(TokenTree::Token(Token { kind, .. }, _)) if kind.is_delim() => {
+            Some(ArenaTokenTree::Token(Token { kind, .. }, _)) if kind.is_delim() => {
                 panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tt);
             }
             _ => return None,
@@ -544,41 +572,48 @@ impl MetaItem {
 
 impl MetaItemKind {
     // public because it can be called in the hir
-    pub fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<MetaItemInner>> {
-        let mut iter = tokens.iter();
+    pub fn list_from_tokens(tokens: &ArenaTokenStream) -> Option<ThinVec<MetaItemInner>> {
+        let mut iter = tokens.iter_top_level_trees();
         let mut result = ThinVec::new();
         while iter.peek().is_some() {
             let item = MetaItemInner::from_tokens(&mut iter)?;
             result.push(item);
             match iter.next() {
-                None | Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) => {}
+                None | Some(ArenaTokenTree::Token(Token { kind: token::Comma, .. }, _)) => {}
                 _ => return None,
             }
         }
         Some(result)
     }
 
-    fn name_value_from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItemKind> {
+    fn name_value_from_tokens(iter: &mut ArenaTokenTreeIter<'_>) -> Option<MetaItemKind> {
         match iter.next() {
-            Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
-                MetaItemKind::name_value_from_tokens(&mut inner_tokens.iter())
-            }
-            Some(TokenTree::Token(token, _)) => {
+            Some(ArenaTokenTree::DelimitedStart(
+                bounds,
+                DelimitedData { delimiter: Delimiter::Invisible(_), .. },
+            )) => MetaItemKind::name_value_from_tokens(&mut iter.stream().iter_delimited(bounds)),
+            Some(ArenaTokenTree::Token(token, _)) => {
                 MetaItemLit::from_token(token).map(MetaItemKind::NameValue)
             }
             _ => None,
         }
     }
 
-    fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItemKind> {
+    fn from_tokens(iter: &mut ArenaTokenTreeIter<'_>) -> Option<MetaItemKind> {
         match iter.peek() {
-            Some(TokenTree::Delimited(.., Delimiter::Parenthesis, inner_tokens)) => {
-                let inner_tokens = inner_tokens.clone();
+            Some(ArenaTokenTree::DelimitedStart(
+                bounds,
+                DelimitedData { delimiter: Delimiter::Parenthesis, .. },
+            )) => {
                 iter.next();
-                MetaItemKind::list_from_tokens(inner_tokens).map(MetaItemKind::List)
+                MetaItemKind::list_from_tokens(&ArenaTokenStream::separate_delimited_inner(
+                    *bounds,
+                    iter.stream(),
+                ))
+                .map(MetaItemKind::List)
             }
-            Some(TokenTree::Delimited(..)) => None,
-            Some(TokenTree::Token(Token { kind: token::Eq, .. }, _)) => {
+            Some(ArenaTokenTree::DelimitedStart(..)) => None,
+            Some(ArenaTokenTree::Token(Token { kind: token::Eq, .. }, _)) => {
                 iter.next();
                 MetaItemKind::name_value_from_tokens(iter)
             }
@@ -590,7 +625,7 @@ impl MetaItemKind {
         match args {
             AttrArgs::Empty => Some(MetaItemKind::Word),
             AttrArgs::Delimited(DelimArgs { dspan: _, delim: Delimiter::Parenthesis, tokens }) => {
-                MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List)
+                MetaItemKind::list_from_tokens(tokens).map(MetaItemKind::List)
             }
             AttrArgs::Delimited(..) => None,
             AttrArgs::Eq { expr, .. } => match expr.kind {
@@ -705,15 +740,17 @@ impl MetaItemInner {
         self.meta_item().is_some()
     }
 
-    fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItemInner> {
+    fn from_tokens(iter: &mut ArenaTokenTreeIter<'_>) -> Option<MetaItemInner> {
         match iter.peek() {
-            Some(TokenTree::Token(token, _)) if let Some(lit) = MetaItemLit::from_token(token) => {
+            Some(ArenaTokenTree::Token(token, _))
+                if let Some(lit) = MetaItemLit::from_token(token) =>
+            {
                 iter.next();
                 return Some(MetaItemInner::Lit(lit));
             }
-            Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
+            Some(ArenaTokenTree::DelimitedStart(bounds, _)) => {
                 iter.next();
-                return MetaItemInner::from_tokens(&mut inner_tokens.iter());
+                return MetaItemInner::from_tokens(&mut iter.stream().iter_delimited(bounds));
             }
             _ => {}
         }
@@ -803,10 +840,10 @@ pub fn mk_attr_nested_word(
     inner: Symbol,
     span: Span,
 ) -> Attribute {
-    let inner_tokens = TokenStream::new(vec![TokenTree::Token(
+    let inner_tokens = ArenaTokenStream::from_token(
         Token::from_ast_ident(Ident::new(inner, span)),
         Spacing::Alone,
-    )]);
+    );
     let outer_ident = Ident::new(outer, span);
     let path = Path::from_ident(outer_ident);
     let attr_args = AttrArgs::Delimited(DelimArgs {

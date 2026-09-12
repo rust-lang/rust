@@ -1,5 +1,5 @@
 use rustc_ast::ast;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::Span;
 
@@ -8,7 +8,7 @@ use crate::util::get_single_expr_from_tts;
 pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     span: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let ExpandResult::Ready(expr) = get_single_expr_from_tts(cx, span, tts, "direct_const_arg!")
     else {

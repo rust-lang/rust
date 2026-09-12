@@ -29,8 +29,9 @@ pub use path::PathStyle;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree};
 use rustc_ast::tokenstream::{
-    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
+    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenTree, WithTokens,
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -243,11 +244,17 @@ pub struct Parser<'a> {
     pub fn_body_missing_semi_guar: Option<ErrorGuaranteed> = None,
 }
 
+impl<'a> Parser<'a> {
+    pub fn token_stream(&self) -> &ArenaTokenStream {
+        &self.token_cursor.stream
+    }
+}
+
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
 // nonterminals. Make sure it doesn't unintentionally get bigger. We only check a few arches
 // though, because `TokenTypeSet(u128)` alignment varies on others, changing the total size.
 #[cfg(all(target_pointer_width = "64", any(target_arch = "aarch64", target_arch = "x86_64")))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 288);
+rustc_data_structures::static_assert_size!(Parser<'_>, 304);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
@@ -342,7 +349,7 @@ pub fn token_descr(token: &Token) -> String {
 impl<'a> Parser<'a> {
     pub fn new(
         psess: &'a ParseSess,
-        stream: TokenStream,
+        stream: ArenaTokenStream,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
@@ -503,7 +510,7 @@ impl<'a> Parser<'a> {
     fn check_noexpect_past_close_delim(&self, tok: &TokenKind) -> bool {
         matches!(
             self.token_cursor.look_ahead_past_close_delim(),
-            Some(TokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
+            Some(ArenaTokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
         )
     }
 
@@ -1156,10 +1163,13 @@ impl<'a> Parser<'a> {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
                     match tree {
-                        TokenTree::Token(token, _) => return looker(token),
-                        &TokenTree::Delimited(dspan, _, delim, _) => {
-                            if !delim.skip() {
-                                return looker(&Token::new(delim.as_open_token_kind(), dspan.open));
+                        ArenaTokenTree::Token(token, _) => return looker(token),
+                        &ArenaTokenTree::DelimitedStart(_, data) => {
+                            if !data.delimiter.skip() {
+                                return looker(&Token::new(
+                                    data.delimiter.as_open_token_kind(),
+                                    data.span.open,
+                                ));
                             }
                         }
                     }
@@ -1200,7 +1210,7 @@ impl<'a> Parser<'a> {
     pub fn tree_look_ahead<R>(
         &self,
         dist: usize,
-        looker: impl FnOnce(&TokenTree) -> R,
+        looker: impl FnOnce(&ArenaTokenTree) -> R,
     ) -> Option<R> {
         self.token_cursor.look_ahead(dist).map(looker)
     }
@@ -1376,20 +1386,27 @@ impl<'a> Parser<'a> {
             || self.check(exp!(OpenBrace));
 
         delimited.then(|| {
-            let TokenTree::Delimited(dspan, _, delim, tokens) = self.parse_token_tree() else {
+            let ArenaTokenTree::DelimitedStart(bounds, data) = self.parse_token_tree() else {
                 unreachable!()
             };
-            DelimArgs { dspan, delim, tokens }
+            DelimArgs {
+                dspan: data.span,
+                delim: data.delimiter,
+                tokens: ArenaTokenStream::separate_delimited_inner(
+                    bounds,
+                    &self.token_cursor.stream,
+                ),
+            }
         })
     }
 
     /// Parses a single token tree from the input.
-    pub fn parse_token_tree(&mut self) -> TokenTree {
+    pub fn parse_token_tree(&mut self) -> ArenaTokenTree {
         if self.token.kind.open_delim().is_some() {
             // Clone the `TokenTree::Delimited` that we are currently
             // within. That's what we are going to return.
             let tree = self.token_cursor.clone_enclosing_delim();
-            debug_assert_matches!(tree, TokenTree::Delimited(..));
+            debug_assert_matches!(tree, ArenaTokenTree::DelimitedStart(..));
 
             // Advance the token cursor through the entire delimited
             // sequence. After getting the `OpenDelim` we are *within* the
@@ -1425,20 +1442,22 @@ impl<'a> Parser<'a> {
             assert!(!self.token.kind.is_close_delim_or_eof());
             let prev_spacing = self.token_spacing;
             self.bump();
-            TokenTree::Token(self.prev_token, prev_spacing)
+            ArenaTokenTree::Token(self.prev_token, prev_spacing)
         }
     }
 
-    pub fn parse_tokens(&mut self) -> TokenStream {
-        let mut result = Vec::new();
+    pub fn parse_tokens(&mut self) -> ArenaTokenStream {
+        let mut builder = ArenaTokenStreamBuilder::default();
         loop {
             if self.token.kind.is_close_delim_or_eof() {
                 break;
             } else {
-                result.push(self.parse_token_tree());
+                builder.push_token_tree(
+                    &self.parse_token_tree().to_token_tree(&self.token_cursor.stream),
+                );
             }
         }
-        TokenStream::new(result)
+        builder.finish()
     }
 
     /// Evaluates the closure with restrictions in place.

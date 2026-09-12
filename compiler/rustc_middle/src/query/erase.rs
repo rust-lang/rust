@@ -10,7 +10,7 @@ use std::intrinsics::transmute_unchecked;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_index::{Idx, IndexSlice};
@@ -204,7 +204,7 @@ impl_erasable_for_types_with_no_type_params! {
     Option<ty::EarlyBinder<'_, ty::Const<'_>>>,
     Option<ty::Value<'_>>,
     Option<usize>,
-    Result<&'_ TokenStream, ()>,
+    Result<&'_ ArenaTokenStream, ()>,
     Result<&'_ rustc_target::callconv::FnAbi<'_, Ty<'_>>, &'_ ty::layout::FnAbiError<'_>>,
     Result<&'_ traits::ImplSource<'_, ()>, traits::CodegenObligationError>,
     Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop>,

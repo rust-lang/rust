@@ -1,4 +1,5 @@
 use rustc_ast::attr::AttrIdGenerator;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrKind, Expr, SyntheticAttr, ast};
 use rustc_attr_ir::CfgEntry;
@@ -118,7 +119,7 @@ impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
 pub(super) fn expand_cfg_select<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(
         match parse_cfg_select(

@@ -180,7 +180,8 @@ use std::{iter, vec};
 pub(crate) use SubstructureFields::*;
 pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
+use rustc_ast::tokenarena::ArenaTokenStream;
+use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::{
     AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
     Mutability, PatKind, Safety, SelfKind, VariantData,
@@ -782,20 +783,20 @@ impl<'a> TraitDef<'a> {
                         args: AttrArgs::Delimited(DelimArgs {
                             dspan: DelimSpan::from_single(self.span),
                             delim: rustc_ast::token::Delimiter::Parenthesis,
-                            tokens: [
-                                TokenKind::Ident(sym::feature, IdentIsRaw::No),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const, None),
-                                TokenKind::Comma,
-                                TokenKind::Ident(sym::issue, IdentIsRaw::No),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
-                            ]
-                            .into_iter()
-                            .map(|kind| {
-                                TokenTree::Token(Token { kind, span: self.span }, Spacing::Alone)
-                            })
-                            .collect(),
+                            tokens: ArenaTokenStream::from_token_vec(
+                                [
+                                    TokenKind::Ident(sym::feature, IdentIsRaw::No),
+                                    TokenKind::Eq,
+                                    TokenKind::lit(LitKind::Str, sym::derive_const, None),
+                                    TokenKind::Comma,
+                                    TokenKind::Ident(sym::issue, IdentIsRaw::No),
+                                    TokenKind::Eq,
+                                    TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
+                                ]
+                                .into_iter()
+                                .map(|kind| (Token { kind, span: self.span }, Spacing::Alone))
+                                .collect(),
+                            ),
                         }),
                         span: self.span,
                     },

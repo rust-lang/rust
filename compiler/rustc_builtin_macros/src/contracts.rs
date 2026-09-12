@@ -1,5 +1,9 @@
 use rustc_ast::token;
-use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::token::Delimiter;
+use rustc_ast::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedData, PerTreeOp,
+};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_errors::ErrorGuaranteed;
 use rustc_expand::base::{AttrProcMacro, ExtCtxt};
 use rustc_span::Span;
@@ -14,9 +18,9 @@ impl AttrProcMacro for ExpandRequires {
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        annotation: TokenStream,
-        annotated: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        annotation: ArenaTokenStream,
+        annotated: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         expand_contract_clause_tts(ecx, span, annotation, annotated, kw::ContractRequires)
     }
 }
@@ -26,9 +30,9 @@ impl AttrProcMacro for ExpandEnsures {
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        annotation: TokenStream,
-        annotated: TokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+        annotation: ArenaTokenStream,
+        annotated: ArenaTokenStream,
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         expand_contract_clause_tts(ecx, span, annotation, annotated, kw::ContractEnsures)
     }
 }
@@ -47,20 +51,20 @@ impl AttrProcMacro for ExpandEnsures {
 fn expand_contract_clause(
     ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
-    annotated: TokenStream,
-    inject: impl FnOnce(&mut Vec<TokenTree>) -> Result<(), ErrorGuaranteed>,
-) -> Result<TokenStream, ErrorGuaranteed> {
-    let mut new_tts = vec![];
-    let mut cursor = annotated.iter();
+    annotated: ArenaTokenStream,
+    inject: impl FnOnce(&mut ArenaTokenStreamBuilder) -> Result<(), ErrorGuaranteed>,
+) -> Result<ArenaTokenStream, ErrorGuaranteed> {
+    let mut builder = ArenaTokenStreamBuilder::with_capacity(annotated.length());
+    let mut cursor = annotated.iter_top_level_trees();
 
-    let is_kw = |tt: &TokenTree, sym: Symbol| {
-        if let TokenTree::Token(token, _) = tt { token.is_ident_named(sym) } else { false }
+    let is_kw = |tt: &ArenaTokenTree, sym: Symbol| {
+        if let ArenaTokenTree::Token(token, _) = tt { token.is_ident_named(sym) } else { false }
     };
 
     // Find the `fn` keyword to check if this is a function.
     if cursor
         .find(|tt| {
-            new_tts.push((*tt).clone());
+            builder.push_token_tree(&tt.to_token_tree(&annotated));
             is_kw(tt, kw::Fn)
         })
         .is_none()
@@ -72,7 +76,7 @@ fn expand_contract_clause(
     }
 
     // Contracts are not yet supported on async/gen functions
-    if new_tts.iter().any(|tt| is_kw(tt, kw::Async) || is_kw(tt, kw::Gen)) {
+    if builder.tokens().iter().any(|tt| is_kw(tt, kw::Async) || is_kw(tt, kw::Gen)) {
         return Err(ecx.sess.dcx().span_err(
             attr_span,
             "contract annotations are not yet supported on async or gen functions",
@@ -89,7 +93,11 @@ fn expand_contract_clause(
         };
         // If `tt` is the last element. Check if it is the function body.
         if cursor.peek().is_none() {
-            if let TokenTree::Delimited(_, _, token::Delimiter::Brace, _) = tt {
+            if let ArenaTokenTree::DelimitedStart(
+                _,
+                DelimitedData { delimiter: token::Delimiter::Brace, .. },
+            ) = tt
+            {
                 break tt;
             } else {
                 return Err(ecx.sess.dcx().span_err(
@@ -102,7 +110,7 @@ fn expand_contract_clause(
         if is_kw(tt, kw::Where) {
             break tt;
         }
-        new_tts.push(tt.clone());
+        builder.push_token_tree(&tt.to_token_tree(&annotated));
     };
 
     // At this point, we've transcribed everything from the `fn` through the formal parameter list
@@ -110,15 +118,21 @@ fn expand_contract_clause(
     //
     // Now inject the AST contract form.
     //
-    inject(&mut new_tts)?;
+    inject(&mut builder)?;
 
     // Above we injected the internal AST requires/ensures construct. Now copy over all the other
     // token trees.
-    new_tts.push(next_tt.clone());
+    builder.push_token_tree(&next_tt.to_token_tree(&annotated));
     while let Some(tt) = cursor.next() {
-        new_tts.push(tt.clone());
+        builder.push_token_tree(&tt.to_token_tree(&annotated));
         if cursor.peek().is_none()
-            && !matches!(tt, TokenTree::Delimited(_, _, token::Delimiter::Brace, _))
+            && !matches!(
+                tt,
+                ArenaTokenTree::DelimitedStart(
+                    _,
+                    DelimitedData { delimiter: token::Delimiter::Brace, .. }
+                )
+            )
         {
             return Err(ecx.sess.dcx().span_err(
                 attr_span,
@@ -127,16 +141,16 @@ fn expand_contract_clause(
         }
     }
 
-    Ok(TokenStream::new(new_tts))
+    Ok(builder.finish())
 }
 
 fn expand_contract_clause_tts(
     ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
-    annotation: TokenStream,
-    annotated: TokenStream,
+    annotation: ArenaTokenStream,
+    annotated: ArenaTokenStream,
     clause_keyword: rustc_span::Symbol,
-) -> Result<TokenStream, ErrorGuaranteed> {
+) -> Result<ArenaTokenStream, ErrorGuaranteed> {
     if annotation.is_empty() {
         let (name, example) = if clause_keyword == kw::ContractRequires {
             ("requires", "condition")
@@ -153,17 +167,21 @@ fn expand_contract_clause_tts(
     }
 
     let feature_span = ecx.with_def_site_ctxt(attr_span);
-    expand_contract_clause(ecx, attr_span, annotated, |new_tts| {
-        new_tts.push(TokenTree::Token(
+    expand_contract_clause(ecx, attr_span, annotated, |builder| {
+        builder.push_token(
             token::Token::from_ast_ident(Ident::new(clause_keyword, feature_span)),
             Spacing::Joint,
-        ));
-        new_tts.push(TokenTree::Delimited(
-            DelimSpan::from_single(attr_span),
-            DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
-            token::Delimiter::Brace,
-            annotation,
-        ));
+        );
+        let start = builder.start_delimited();
+        builder.build_from_stream(&annotation, |_, _| PerTreeOp::Continue);
+        builder.close_delimited(
+            start,
+            DelimitedData {
+                span: DelimSpan::from_single(attr_span),
+                spacing: DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
+                delimiter: Delimiter::Brace,
+            },
+        );
         Ok(())
     })
 }

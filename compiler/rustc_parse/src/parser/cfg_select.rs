@@ -1,4 +1,5 @@
 use rustc_ast::token;
+use rustc_ast::tokenarena::ArenaTokenTree;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_errors::PResult;
@@ -20,11 +21,14 @@ impl<'a> Parser<'a> {
         if self.token == token::OpenBrace {
             // Strip the outer '{' and '}'.
             match self.parse_token_tree() {
-                TokenTree::Token(..) => unreachable!("because the current token is a '{{'"),
-                TokenTree::Delimited(.., tts) => {
+                ArenaTokenTree::Token(..) => unreachable!("because the current token is a '{{'"),
+                tree @ ArenaTokenTree::DelimitedStart(..) => {
                     // Optionally end with a comma.
                     let _ = self.eat(exp!(Comma));
-                    return Ok(tts);
+                    return Ok(match tree.to_token_tree(&self.token_cursor.stream) {
+                        TokenTree::Token(_, _) => unreachable!(),
+                        TokenTree::Delimited(_, _, _, tts) => tts,
+                    });
                 }
             }
         }

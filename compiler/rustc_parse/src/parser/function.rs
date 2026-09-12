@@ -2,7 +2,7 @@ use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, TokenKind};
-use rustc_ast::tokenstream::TokenTree;
+use rustc_ast::tokenarena::ArenaTokenTree;
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
@@ -356,8 +356,8 @@ impl<'a> Parser<'a> {
                 && self.look_ahead(1, |t| t.can_begin_string_literal())
                 && (self.tree_look_ahead(2, |tt| {
                     match tt {
-                        TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
-                        TokenTree::Delimited(..) => false,
+                        ArenaTokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
+                        ArenaTokenTree::DelimitedStart(..) => false,
                     }
                 }) == Some(true) ||
                     // This branch is only for better diagnostics; `pub`, `unsafe`, etc. are not
@@ -365,17 +365,17 @@ impl<'a> Parser<'a> {
                     (self.may_recover()
                         && self.tree_look_ahead(2, |tt| {
                             match tt {
-                                TokenTree::Token(t, _) =>
+                                ArenaTokenTree::Token(t, _) =>
                                     ALL_QUALS.iter().any(|exp| {
                                         t.is_keyword(exp.kw)
                                     }),
-                                TokenTree::Delimited(..) => false,
+                                ArenaTokenTree::DelimitedStart(..) => false,
                             }
                         }) == Some(true)
                         && self.tree_look_ahead(3, |tt| {
                             match tt {
-                                TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
-                                TokenTree::Delimited(..) => false,
+                                ArenaTokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
+                                ArenaTokenTree::DelimitedStart(..) => false,
                             }
                         }) == Some(true)
                     )

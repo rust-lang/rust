@@ -1,5 +1,6 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token};
+use rustc_ast::tokenarena::ArenaTokenStream;
+use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::{
     BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall,
     Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind,
@@ -145,30 +146,33 @@ impl<'cx, 'a> Context<'cx, 'a> {
     fn build_panic(&self, expr_str: &str, panic_path: Path) -> Box<Expr> {
         let escaped_expr_str = escape_to_fmt(expr_str);
         let initial = [
-            TokenTree::token_joint(
-                token::Literal(token::Lit {
-                    kind: token::LitKind::Str,
-                    symbol: Symbol::intern(&if self.fmt_string.is_empty() {
-                        format!("Assertion failed: {escaped_expr_str}")
-                    } else {
-                        format!(
-                            "Assertion failed: {escaped_expr_str}\nWith captures:\n{}",
-                            self.fmt_string
-                        )
+            (
+                Token::new(
+                    token::Literal(token::Lit {
+                        kind: token::LitKind::Str,
+                        symbol: Symbol::intern(&if self.fmt_string.is_empty() {
+                            format!("Assertion failed: {escaped_expr_str}")
+                        } else {
+                            format!(
+                                "Assertion failed: {escaped_expr_str}\nWith captures:\n{}",
+                                self.fmt_string
+                            )
+                        }),
+                        suffix: None,
                     }),
-                    suffix: None,
-                }),
-                self.span,
+                    self.span,
+                ),
+                Spacing::Joint,
             ),
-            TokenTree::token_alone(token::Comma, self.span),
+            (Token::new(token::Comma, self.span), Spacing::Alone),
         ];
         let captures = self.capture_decls.iter().flat_map(|cap| {
             [
-                TokenTree::token_joint(
-                    token::Ident(cap.ident.name, IdentIsRaw::No),
-                    cap.ident.span,
+                (
+                    Token::new(token::Ident(cap.ident.name, IdentIsRaw::No), cap.ident.span),
+                    Spacing::Joint,
                 ),
-                TokenTree::token_alone(token::Comma, self.span),
+                (Token::new(token::Comma, self.span), Spacing::Alone),
             ]
         });
         self.cx.expr(
@@ -178,7 +182,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(self.span),
                     delim: Delimiter::Parenthesis,
-                    tokens: initial.into_iter().chain(captures).collect::<TokenStream>(),
+                    tokens: ArenaTokenStream::from_token_vec(
+                        initial.into_iter().chain(captures).collect(),
+                    ),
                 }),
             })),
         )

@@ -17,7 +17,7 @@ use std::fmt::Write;
 
 use ast::token::TokenKind;
 use rustc_abi::BackendRepr;
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenTree, ArenaTokenTreeIter};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
@@ -1751,13 +1751,14 @@ declare_lint_pass!(
 struct UnderMacro(bool);
 
 impl KeywordIdents {
-    fn check_tokens(&mut self, cx: &EarlyContext<'_>, tokens: &TokenStream) {
+    fn check_tokens(&mut self, cx: &EarlyContext<'_>, tokens: ArenaTokenTreeIter<'_>) {
         // Check if the preceding token is `$`, because we want to allow `$async`, etc.
         let mut prev_dollar = false;
-        for tt in tokens.iter() {
+        let stream = tokens.stream().clone();
+        for tt in tokens {
             match tt {
                 // Only report non-raw idents.
-                TokenTree::Token(token, _) => {
+                ArenaTokenTree::Token(token, _) => {
                     if let Some((ident, token::IdentIsRaw::No)) = token.ident() {
                         if !prev_dollar {
                             self.check_ident_token(cx, UnderMacro(true), ident, "");
@@ -1774,7 +1775,9 @@ impl KeywordIdents {
                         continue;
                     }
                 }
-                TokenTree::Delimited(.., tts) => self.check_tokens(cx, tts),
+                ArenaTokenTree::DelimitedStart(bounds, ..) => {
+                    self.check_tokens(cx, stream.iter_delimited(bounds))
+                }
             }
             prev_dollar = false;
         }
@@ -1826,10 +1829,10 @@ impl KeywordIdents {
 
 impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
-        self.check_tokens(cx, &mac_def.body.tokens);
+        self.check_tokens(cx, mac_def.body.tokens.iter_top_level_trees());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        self.check_tokens(cx, &mac.args.tokens);
+        self.check_tokens(cx, mac.args.tokens.iter_top_level_trees());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: &Ident) {
         if ident.name.as_str().starts_with('\'') {

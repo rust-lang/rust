@@ -1,4 +1,4 @@
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{AttrVec, VisibilityKind, ast, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::Span;
@@ -9,7 +9,7 @@ use crate::diagnostics;
 pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     span: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let name = "test_binder_constraints!";
     let mut p = cx.new_parser_from_tts(tts);
