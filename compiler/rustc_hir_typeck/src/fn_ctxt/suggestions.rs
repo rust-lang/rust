@@ -2562,7 +2562,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expr.span.shrink_to_hi(),
                     "consider parsing the string literal to numeric type",
                     format!(".parse::<{target_type_str}>().unwrap_or_default()"),
-                    Applicability::MaybeIncorrect,
+                    Applicability::MachineApplicable,
                 );
 
                 return true;
