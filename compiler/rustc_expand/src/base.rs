@@ -389,11 +389,11 @@ pub trait TTMacroExpander: Any {
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, ArenaTokenStream) -> MacroExpanderResult<'cx>;
 
 impl<F: 'static> TTMacroExpander for F
 where
-    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
+    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, ArenaTokenStream) -> MacroExpanderResult<'cx>,
 {
     fn expand<'cx, 'a: 'cx>(
         &'a self,
@@ -401,7 +401,7 @@ where
         span: Span,
         input: ArenaTokenStream,
     ) -> MacroExpanderResult<'cx> {
-        self(ecx, span, input.to_token_stream())
+        self(ecx, span, input)
     }
 }
 
