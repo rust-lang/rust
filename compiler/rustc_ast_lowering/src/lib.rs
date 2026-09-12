@@ -41,7 +41,6 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
