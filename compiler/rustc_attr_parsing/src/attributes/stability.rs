@@ -1,6 +1,6 @@
 use std::num::NonZero;
 
-use rustc_attr_ir::target::{AssocCtxt, GenericParamKind, MethodKind, Target};
+use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_attr_ir::{
     DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
     UnstableReason, UnstableRemovedFeature, VERSION_PLACEHOLDER,
@@ -40,7 +40,7 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::TyAlias),
     Allow(Target::Variant),
     Allow(Target::Field),
-    Allow(Target::GenericParam { kind: GenericParamKind::Type, has_default: true }),
+    Allow(Target::TypeParam),
     Allow(Target::Static),
     Allow(Target::ForeignFn),
     Allow(Target::ForeignStatic),
