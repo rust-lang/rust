@@ -349,7 +349,6 @@
 #![feature(fmt_internals)]
 #![feature(fn_static)]
 #![feature(formatting_options)]
-#![feature(funnel_shifts)]
 #![feature(generic_atomic)]
 #![feature(hash_map_internals)]
 #![feature(hash_map_macro)]
