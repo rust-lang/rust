@@ -596,7 +596,7 @@ impl Item {
     }
 
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
-        use crate::html::format::{href, link_tooltip};
+        use crate::html::format::{href_with_path_check, link_tooltip};
 
         let Some(links) = cx.cache().intra_doc_links.get(&self.item_or_reexport_id()) else {
             return vec![];
@@ -605,7 +605,7 @@ impl Item {
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
-                if let Ok(HrefInfo { mut url, .. }) = href(*id, cx) {
+                if let Ok(HrefInfo { mut url, .. }) = href_with_path_check(*id, cx, link_text) {
                     debug!(?url);
                     match fragment {
                         Some(UrlFragment::Item(def_id)) => {
@@ -621,7 +621,7 @@ impl Item {
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx).to_string(),
+                        tooltip: link_tooltip(*id, fragment, cx, Some(link_text)).to_string(),
                         href: url,
                     })
                 } else {
