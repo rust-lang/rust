@@ -173,8 +173,8 @@ pub fn f128_rem_assign(a: &mut f128, b: f128) {
 
 // x86-sse-LABEL: <2 x i8> @f128_as_f16(
 // x86-nosse-LABEL: i16 @f128_as_f16(
-// bits32-LABEL: half @f128_as_f16(
-// bits64-LABEL: half @f128_as_f16(
+// bit32-LABEL: half @f128_as_f16(
+// bit64-LABEL: half @f128_as_f16(
 #[no_mangle]
 pub fn f128_as_f16(a: f128) -> f16 {
     // CHECK: fptrunc fp128 %{{.+}} to half
