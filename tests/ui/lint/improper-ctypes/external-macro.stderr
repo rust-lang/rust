@@ -1,0 +1,13 @@
+warning: `extern` fn uses type `String`, which is not FFI-safe
+  --> $DIR/external-macro.rs:9:1
+   |
+LL | cross_crate_macro::make_extern_fn!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+   = note: this warning originates in the macro `cross_crate_macro::make_extern_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 1 warning emitted
+
