@@ -126,6 +126,92 @@ help: import `fruit` directly
 LL |     let _ = accessible_parent_without_self::fruits::PEAR;
    |                                                  +++++++
 
-error: aborting due to 5 previous errors
+error[E0603]: struct import `Alias` is private
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:83:35
+   |
+LL |     let _: crate_visible::nested::Alias;
+   |                                   ^^^^^ private struct import
+   |
+note: the struct import `Alias` is defined here...
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:77:13
+   |
+LL |         use crate::crate_visible::Item as Alias;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct `Item` which is defined here
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:74:5
+   |
+LL |     pub(crate) struct Item;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `Alias` directly
+   |
+LL -     let _: crate_visible::nested::Alias;
+LL +     let _: crate::crate_visible::Item;
+   |
+
+error[E0603]: struct import `Alias` is private
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:105:35
+   |
+LL |             let _: super::nested::Alias;
+   |                                   ^^^^^ private struct import
+   |
+note: the struct import `Alias` is defined here...
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:99:13
+   |
+LL |         use super::Item as Alias;
+   |             ^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct import `Item` which is defined here...
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:96:9
+   |
+LL |     use crate::public_reexport::Item;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this re-export
+note: ...and refers to the struct import `Item` which is defined here...
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:30:13
+   |
+LL |     pub use self::private::Item;
+   |             ^^^^^^^^^^^^^^^^^^^ you could import this re-export
+note: ...and refers to the struct `Item` which is defined here
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:27:9
+   |
+LL |         pub struct Item;
+   |         ^^^^^^^^^^^^^^^^
+help: import `Alias` through the re-export
+   |
+LL -             let _: super::nested::Alias;
+LL +             let _: super::Item;
+   |
+
+error[E0603]: struct import `Alias` is private
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:109:56
+   |
+LL |             let _: crate::inaccessible_import::nested::Alias;
+   |                                                        ^^^^^ private struct import
+   |
+note: the struct import `Alias` is defined here...
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:91:13
+   |
+LL |         use super::Item as Alias;
+   |             ^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct import `Item` which is defined here...
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:88:9
+   |
+LL |     use crate::public_reexport::Item;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct import `Item` which is defined here...
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:30:13
+   |
+LL |     pub use self::private::Item;
+   |             ^^^^^^^^^^^^^^^^^^^ you could import this re-export
+note: ...and refers to the struct `Item` which is defined here
+  --> $DIR/private-import-alias-public-parent-issue-149418.rs:27:9
+   |
+LL |         pub struct Item;
+   |         ^^^^^^^^^^^^^^^^
+help: import `Alias` through the re-export
+   |
+LL -             let _: crate::inaccessible_import::nested::Alias;
+LL +             let _: super::Item;
+   |
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0603`.

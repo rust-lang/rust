@@ -2802,7 +2802,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
             if !first
-                && binding.vis().is_public()
+                // The same `Res` may be reachable through a different import binding.
+                && self.is_accessible_from(binding.vis(), parent_scope.module)
                 && path_to_binding_accessible
                 // A circular import chain can lead back to the failing import itself.
                 && !binding.span.contains(ident.span)

@@ -69,3 +69,45 @@ fn main() {
     let _ = accessible_parent_without_self::fruit;
     //~^ ERROR constant import `fruit` is private
 }
+
+mod crate_visible {
+    pub(crate) struct Item;
+
+    pub mod nested {
+        use crate::crate_visible::Item as Alias;
+    }
+}
+
+fn check_crate_visible() {
+    // A crate-visible definition can be recommended from within the same crate.
+    let _: crate_visible::nested::Alias;
+    //~^ ERROR struct import `Alias` is private
+}
+
+mod inaccessible_import {
+    use crate::public_reexport::Item;
+
+    pub mod nested {
+        use super::Item as Alias;
+    }
+}
+
+mod accessible_import {
+    use crate::public_reexport::Item;
+
+    mod nested {
+        use super::Item as Alias;
+    }
+
+    mod use_site {
+        fn check() {
+            // The private import in our parent module is accessible here.
+            let _: super::nested::Alias;
+            //~^ ERROR struct import `Alias` is private
+            // `super::Item` resolves here, but not through `inaccessible_import::Item`.
+            // Do not recommend that inaccessible binding merely because its `Res` matches.
+            let _: crate::inaccessible_import::nested::Alias;
+            //~^ ERROR struct import `Alias` is private
+        }
+    }
+}
