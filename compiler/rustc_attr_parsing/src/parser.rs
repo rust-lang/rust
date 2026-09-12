@@ -15,7 +15,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
     AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
 };
@@ -133,7 +132,7 @@ impl ArgParser {
                 // Therefore we can substitute with a dummy value on invalid syntax.
                 if matches!(parts, [sym::rustc_dummy] | [sym::diagnostic, ..]) {
                     match MetaItemListParser::new(
-                        &args.tokens.to_token_stream(),
+                        args.tokens.clone(),
                         args.dspan.entire(),
                         psess,
                         ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
@@ -164,7 +163,7 @@ impl ArgParser {
 
                 Self::List(
                     MetaItemListParser::new(
-                        &args.tokens.to_token_stream(),
+                        args.tokens.clone(),
                         args.dspan.entire(),
                         psess,
                         should_emit,
@@ -757,20 +756,14 @@ pub struct MetaItemListParser {
 }
 
 impl MetaItemListParser {
-    pub(crate) fn new<'sess>(
-        tokens: &TokenStream,
+    pub(crate) fn new(
+        tokens: ArenaTokenStream,
         span: Span,
-        psess: &'sess ParseSess,
+        psess: &ParseSess,
         should_emit: ShouldEmit,
         allow_expr_metavar: AllowExprMetavar,
-    ) -> Result<Self, Diag<'sess>> {
-        MetaItemListParserContext::parse(
-            ArenaTokenStream::from_stream(tokens),
-            psess,
-            span,
-            should_emit,
-            allow_expr_metavar,
-        )
+    ) -> Result<Self, Diag<'_>> {
+        MetaItemListParserContext::parse(tokens, psess, span, should_emit, allow_expr_metavar)
     }
 
     /// Lets you pick and choose as what you want to parse each element in the list
