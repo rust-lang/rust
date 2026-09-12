@@ -1,0 +1,35 @@
+error: struct literals are not allowed here
+  --> $DIR/ambiguous-struct-literal-condition-issue-147877.rs:17:23
+   |
+LL |     let _ = if foo == Foo { x } { x } else { 0 };
+   |                       ^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     let _ = if foo == (Foo { x }) { x } else { 0 };
+   |                       +         +
+
+error: struct literals are not allowed here
+  --> $DIR/ambiguous-struct-literal-condition-issue-147877.rs:24:25
+   |
+LL |     consume(if &foo == &Foo { x } { x } else { 0 });
+   |                         ^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     consume(if &foo == &(Foo { x }) { x } else { 0 });
+   |                         +         +
+
+error: struct literals are not allowed here
+  --> $DIR/ambiguous-struct-literal-condition-issue-147877.rs:31:26
+   |
+LL |     let _ = while foo == Foo { x } {};
+   |                          ^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     let _ = while foo == (Foo { x }) {};
+   |                          +         +
+
+error: aborting due to 3 previous errors
+
