@@ -4,8 +4,7 @@ use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
-    MultiSpan, StashKey,
+    Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, Level, MultiSpan, StashKey,
 };
 use rustc_feature::{GateIssue, find_feature_issue};
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -96,11 +95,7 @@ pub fn feature_warn_issue(
 
 /// Adds the diagnostics for a feature to an existing error.
 /// Must be a language feature!
-pub fn add_feature_diagnostics<G: EmissionGuarantee>(
-    err: &mut Diag<'_, G>,
-    sess: &Session,
-    feature: Symbol,
-) {
+pub fn add_feature_diagnostics<G>(err: &mut Diag<'_, G>, sess: &Session, feature: Symbol) {
     add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
 }
 
@@ -109,7 +104,7 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
-pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
+pub fn add_feature_diagnostics_for_issue<G>(
     err: &mut Diag<'_, G>,
     sess: &Session,
     feature: Symbol,
@@ -197,7 +192,7 @@ pub(crate) struct FeatureGateError {
     pub(crate) explain: DiagMessage,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
+impl<'a, G> Diagnostic<'a, G> for FeatureGateError {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)

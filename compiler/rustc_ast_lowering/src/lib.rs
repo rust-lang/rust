@@ -1798,9 +1798,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
             // FIXME(mgca): make this non-fatal once we have a better way to handle
             // nested items in invalid `direct_const_arg!()` arguments.
-            self.dcx().struct_span_fatal(span, msg).emit()
+            self.dcx().span_fatal(span, msg)
         } else {
-            self.dcx().struct_span_err(span, msg).emit()
+            self.dcx().span_err(span, msg)
         }
     }
 
@@ -2961,9 +2961,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let literal = self.lower_lit(literal, span);
 
                 let kind = if !matches!(literal.node, LitKind::Int(..)) {
-                    let err =
-                        self.dcx().struct_span_err(expr.span, "negated literal must be an integer");
-                    hir::ConstArgKind::Error(err.emit())
+                    let err = self.dcx().span_err(expr.span, "negated literal must be an integer");
+                    hir::ConstArgKind::Error(err)
                 } else {
                     hir::ConstArgKind::Literal { lit: literal.node, negated: true }
                 };
@@ -3367,9 +3366,9 @@ impl UnrepresentableConstArgError {
             // FIXME(mgca): make this non-fatal once we have a better way to handle
             // nested items in const args
             // Issue: https://github.com/rust-lang/rust/issues/154539
-            lowering_context.dcx().struct_span_fatal(self.span, msg).emit()
+            lowering_context.dcx().span_fatal(self.span, msg)
         } else {
-            lowering_context.dcx().struct_span_err(self.span, msg).emit()
+            lowering_context.dcx().span_err(self.span, msg)
         };
 
         ConstArg {

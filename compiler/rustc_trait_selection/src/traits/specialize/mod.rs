@@ -12,8 +12,8 @@
 pub mod specialization_graph;
 
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::Diag;
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::COHERENCE_LEAK_CHECK;
@@ -528,7 +528,7 @@ fn report_conflicting_impls<'tcx>(
     // Work to be done after we've built the Diag. We have to define it now
     // because the lint emit methods don't return back the Diag that's passed
     // in.
-    fn decorate<'tcx, G: EmissionGuarantee>(
+    fn decorate<'tcx, G>(
         tcx: TyCtxt<'tcx>,
         overlap: &OverlapError<'tcx>,
         impl_span: Span,
