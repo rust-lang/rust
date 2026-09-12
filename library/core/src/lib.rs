@@ -138,6 +138,7 @@
 #![feature(lang_items)]
 #![feature(link_cfg)]
 #![feature(link_llvm_intrinsics)]
+#![feature(macro_guard_matcher)]
 #![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(marker_trait_attr)]
