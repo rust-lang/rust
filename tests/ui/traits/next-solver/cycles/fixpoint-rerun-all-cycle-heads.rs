@@ -19,6 +19,7 @@ impl<'a, 'b, T> Trait<'a, 'b> for A<T> where B<T>: Trait<'a, 'b> {}
 // not have a cycle with `A<T>`. This candidate never applies because of
 // the `A<T>: NotImplemented` bound.
 impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+//~^ ERROR: type annotations needed: cannot satisfy `B<T>: Trait<'a, 'b>` [E0283]
 where
     A<T>: Trait<'a, 'b>,
     A<T>: NotImplemented,
@@ -33,6 +34,7 @@ where
 // regions in the `A<T>: Trait<'a, 'b>` where-bound. As both the impl above
 // and the impl below now apply with some constraints, we failed with ambiguity.
 impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+//~^ ERROR: type annotations needed: cannot satisfy `B<T>: Trait<'a, 'b>` [E0283]
 where
     A<T>: NotImplemented,
 {}
