@@ -2516,6 +2516,14 @@ options! {
         (default: no)"),
     fixed_x18: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: FixedX18 },
         "make the x18 register reserved on AArch64 (default: no)"),
+    fine_grained_generic_cgus: bool = (false, parse_bool, [TRACKED],
+        "shard monomorphized instances of a generic function across a bounded number of \
+        volatile codegen units (scaled to -C codegen-units, floored at the host's available \
+        parallelism so the codegen backend always has enough independent shards to keep \
+        every core busy) instead of merging all of them into one bucket by defining module, \
+        so a change to a generic function's body only invalidates the shards whose \
+        instantiations happen to hash into them, not every instantiation in the module \
+        (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
         (default: yes)"),

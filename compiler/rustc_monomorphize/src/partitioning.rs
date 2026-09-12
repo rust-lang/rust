@@ -241,6 +241,31 @@ where
             None => fallback_cgu_name(cgu_name_builder),
         };
 
+        // Normally every monomorphized instance of a generic function sharing
+        // the same defining module collapses into the same "volatile" CGU
+        // (see the module docs above): the cache key in
+        // `compute_codegen_unit_name` is keyed on the definition's module,
+        // not on which concrete type arguments produced this instance. That
+        // means editing the body of one instantiation invalidates every
+        // other instantiation's CGU too, even ones that never touch the
+        // changed code path. With this flag, split each volatile bucket into
+        // a bounded number of sub-buckets (shards) by hashing the
+        // instantiation's own symbol name, instead of either the one
+        // module-wide bucket (0% fragmentation, 100% false invalidation) or
+        // a separate CGU per instantiation (0% false invalidation, but
+        // unbounded fragmentation -- on `polars-core` to blow past
+        // `merge_codegen_units`'s ability to recombine cold builds and to
+        // make incremental rebuilds *slower* than no splitting at all,
+        // because the linker eats hundreds of tiny object files one at a
+        // time). Sharding trades a fraction of false invalidation (~1 /
+        // shard_count of unrelated instantiations still get swept in) for a
+        // hard cap on how many extra CGUs a volatile bucket can ever produce.
+        let cgu_name = if is_volatile && cx.tcx.sess.opts.unstable_opts.fine_grained_generic_cgus {
+            fine_grained_cgu_name(cx.tcx, cgu_name, &mono_item)
+        } else {
+            cgu_name
+        };
+
         let cgu = codegen_units.entry(cgu_name).or_insert_with(|| CodegenUnit::new(cgu_name));
 
         let mut can_be_internalized = true;
@@ -753,6 +778,55 @@ fn compute_codegen_unit_name(
 // Anything we can't find a proper codegen unit for goes into this.
 fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
+}
+
+// Assigns a generic instantiation to one of a bounded number of shards
+// within its volatile bucket, derived from a hash of its fully mangled
+// (per-instantiation-unique) symbol name, instead of either (a) sharing the
+// single volatile bucket every other instantiation from the same module
+// would otherwise land in, or (b) giving every instantiation its own
+// globally unique CGU. (b) is what an earlier version of this patch did,
+// and it regresses real crates with high monomorphization volume: with no
+// cap, a module-wide bucket for e.g. `impl<T: PolarsDataType>
+// ChunkedArray<T>` fragments into one CGU per (method x dtype)
+// instantiation -- hundreds of tiny object files that `merge_codegen_units`
+// can't recombine under incremental (it's intentionally skipped there so
+// each CGU stays independently cacheable), so the fragmentation cost from
+// emitting and linking hundreds of tiny objects dominates and makes both
+// cold and incremental builds slower than doing nothing. Sharding into a
+// number of buckets on the same order as the crate's own `-C
+// codegen-units` target keeps the CGU count in the same ballpark a normal
+// build would already produce, while still meaning an edit to one
+// instantiation's code path only invalidates the ~1/shard_count of
+// instantiations that happen to hash into the same shard, not all of them.
+fn fine_grained_cgu_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    base: Symbol,
+    mono_item: &MonoItem<'tcx>,
+) -> Symbol {
+    use std::hash::{Hash, Hasher};
+    let symbol_name = mono_item.symbol_name(tcx).name;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    symbol_name.hash(&mut hasher);
+    // Clamped rather than used verbatim: an explicit `-C codegen-units=1`
+    // would otherwise defeat sharding entirely (1 shard == the pre-patch
+    // behavior), and an explicit very large value would reproduce the
+    // unbounded-fragmentation regression this replaces. The clamp keeps
+    // shard count in the same order of magnitude as a normal build's CGU
+    // count regardless of what the crate's own `-C codegen-units` says.
+    //
+    // Floored at the host's available parallelism (not just
+    // `-C codegen-units`) so the shard count itself doesn't leave cores
+    // idle during codegen: codegen backend work is already parallelized
+    // per-CGU, so on a machine with more cores than the crate's configured
+    // codegen-units, sharding a volatile bucket that low would hand the
+    // backend fewer independent units than it has threads to run them on.
+    let available_parallelism = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let shard_count =
+        tcx.sess.opts.cg.codegen_units.unwrap_or(16).max(available_parallelism).clamp(4, 128)
+            as u64;
+    let shard = hasher.finish() % shard_count;
+    Symbol::intern(&format!("{base}.shard{shard:03}"))
 }
 
 fn mono_item_linkage_and_visibility<'tcx>(
