@@ -1,0 +1,2 @@
+error: `--reproducible`: expected of of `none`, `binaries`, `diagnostics`, or `binaries,diagnostics`
+
