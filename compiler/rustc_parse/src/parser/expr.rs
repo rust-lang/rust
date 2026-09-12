@@ -27,7 +27,7 @@ use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
-use super::diagnostics::SnapshotParser;
+use super::diagnostics::{SnapshotParser, sugg_missing_turbofish};
 use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
@@ -87,7 +87,36 @@ impl<'a> Parser<'a> {
 
     /// Parses a sequence of expressions delimited by parentheses.
     fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<Box<Expr>>> {
-        self.parse_paren_comma_seq(Self::parse_expr).map(|(r, _)| r)
+        let mut candidates = Vec::new();
+
+        self.parse_paren_comma_seq(|p| match p.parse_expr() {
+            Ok(expr) => {
+                if p.may_recover()
+                    && let ExprKind::Binary(binop, _, _) = &expr.kind
+                    && binop.node == BinOpKind::Lt
+                {
+                    candidates.push((p.create_snapshot_for_diagnostic(), binop.span));
+                }
+                Ok(expr)
+            }
+            Err(mut err) => {
+                if candidates.is_empty() {
+                    return Err(err);
+                }
+                let failed = p.create_snapshot_for_diagnostic();
+                let failed_pos = p.approx_token_stream_pos();
+                while let Some((snapshot, binop_span)) = candidates.pop() {
+                    p.restore_snapshot(snapshot);
+                    if p.probe_missing_turbofish() && p.approx_token_stream_pos() > failed_pos {
+                        sugg_missing_turbofish(&mut err, binop_span);
+                        break;
+                    }
+                }
+                p.restore_snapshot(failed);
+                Err(err)
+            }
+        })
+        .map(|(r, _)| r)
     }
 
     /// Parses an expression, subject to the given restrictions.
