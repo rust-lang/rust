@@ -2,7 +2,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::DenseBitSet;
+use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -40,7 +40,6 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
             let all_dead_locals = replace_flattened_locals(tcx, body, replacements);
             if !all_dead_locals.is_empty() {
                 excluded.union(&all_dead_locals);
-                excluded = excluded.enlarge(body.local_decls.len());
             } else {
                 break;
             }
@@ -57,7 +56,7 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
 ///   client code.
 fn escaping_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
-    excluded: &DenseBitSet<Local>,
+    excluded: &GrowableBitSet<Local>,
     body: &Body<'tcx>,
 ) -> DenseBitSet<Local> {
     let is_excluded_ty = |ty: Ty<'tcx>| {
@@ -208,9 +207,11 @@ fn replace_flattened_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     replacements: ReplacementMap<'tcx>,
-) -> DenseBitSet<Local> {
-    let mut all_dead_locals = DenseBitSet::new_empty(replacements.fragments.len());
-    for (local, replacements) in replacements.fragments.iter_enumerated() {
+) -> GrowableBitSet<Local> {
+    // Start with an empty GrowableBitSet, to avoid allocation if nothing is dead.
+    // Then fill the set in descending order so that it allocates at most once.
+    let mut all_dead_locals = GrowableBitSet::new_empty();
+    for (local, replacements) in replacements.fragments.iter_enumerated().rev() {
         if replacements.is_some() {
             all_dead_locals.insert(local);
         }
@@ -249,7 +250,7 @@ struct ReplacementVisitor<'tcx, 'll> {
     /// Work to do.
     replacements: &'ll ReplacementMap<'tcx>,
     /// This is used to check that we are not leaving references to replaced locals behind.
-    all_dead_locals: DenseBitSet<Local>,
+    all_dead_locals: GrowableBitSet<Local>,
     patch: MirPatch<'tcx>,
 }
 
