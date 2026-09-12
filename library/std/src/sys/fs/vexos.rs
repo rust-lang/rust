@@ -477,6 +477,13 @@ impl Drop for File {
     }
 }
 
+impl Drop for ReadDir {
+    fn drop(&mut self) {
+        // Dummy Drop so that `needs_drop::<ReadDir>()` is true independent of platform.
+        self.0
+    }
+}
+
 pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
     // While there *is* a userspace function for reading file directories,
     // the necessary implementation cannot currently be done cleanly, as
