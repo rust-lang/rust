@@ -362,6 +362,8 @@ impl<'a> Parser<'a> {
                 }) == Some(true) ||
                     // This branch is only for better diagnostics; `pub`, `unsafe`, etc. are not
                     // allowed here.
+                    // This branch also follows `$qual fn` or `$qual $qual` rule
+                    // above since a valid `fn` can be after `extern`.
                     (self.may_recover()
                         && self.tree_look_ahead(2, |tt| {
                             match tt {
@@ -374,7 +376,12 @@ impl<'a> Parser<'a> {
                         }) == Some(true)
                         && self.tree_look_ahead(3, |tt| {
                             match tt {
-                                TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
+                                TokenTree::Token(t, _) => {
+                                    t.is_keyword_case(kw::Fn, case) ||
+                                    ALL_QUALS.iter().any(|exp| {
+                                        t.is_keyword(exp.kw)
+                                    })
+                                },
                                 TokenTree::Delimited(..) => false,
                             }
                         }) == Some(true)
