@@ -204,6 +204,7 @@ const TARGET_FEATURE_IMPLICATIONS_RAW: &[(&str, &[&str])] = &[
     // RISC-V
     ("a", &["zaamo", "zalrsc"]),
     ("d", &["f"]),
+    ("m", &["zmmul"]),
     ("zabha", &["zaamo"]),
     ("zdinx", &["zfinx"]),
     ("zfh", &["zfhmin"]),

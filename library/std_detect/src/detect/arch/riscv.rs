@@ -104,6 +104,7 @@ features! {
     /// | `"zksed"`       | Zksed       | 6.8                 |
     /// | `"zksh"`        | Zksh        | 6.8                 |
     /// | `"zkt"`         | Zkt         | 6.8                 |
+    /// | `"zmmul"`       | Zmmul       | No [^ima] [^dep]    |
     /// | `"ztso"`        | Ztso        | 6.8                 |
     /// | `"zvbb"`        | Zvbb        | 6.8                 |
     /// | `"zvbc"`        | Zvbc        | 6.8                 |
@@ -220,6 +221,8 @@ features! {
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] m: "m";
     /// "M" Extension for Integer Multiplication and Division
+    @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zmmul: "zmmul";
+    /// "Zmmul" Extension for Integer Multiplication
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] a: "a";
     /// "A" Extension for Atomic Instructions
