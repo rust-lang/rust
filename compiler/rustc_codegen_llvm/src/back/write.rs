@@ -100,17 +100,12 @@ fn write_output_file<'ll>(
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
 }
 
-/// If `for_cfg` is `true` then we are creating this machine for the purpose of populating
-/// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
-/// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
-pub(crate) fn create_informational_target_machine(
-    sess: &Session,
-    for_cfg: bool,
-) -> OwnedTargetMachine {
+pub(crate) fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, for_cfg);
+    let features = llvm_util::global_llvm_features(sess, /* for_cfg */ false);
+
     target_machine_factory(sess, config::OptLevel::No, &features)(sess.dcx(), config)
 }
 
@@ -212,7 +207,6 @@ pub(crate) fn target_machine_factory(
 
     let code_model = to_llvm_code_model(sess.code_model());
 
-    // This is used to set cfg_has_threads, so all logic must be in this method.
     let singlethread = sess.target.singlethread(&sess.internal_target_features);
 
     let triple = SmallCStr::new(&versioned_llvm_target(sess));
