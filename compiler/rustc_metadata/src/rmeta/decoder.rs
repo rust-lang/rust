@@ -25,7 +25,7 @@ use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::codec::{RefDecodable, TyDecoder};
 use rustc_middle::ty::{RestrictionKind, Visibility};
 use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
@@ -667,12 +667,6 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
-    fn decode(d: &mut MetadataDecodeContext<'a, 'tcx>) -> Self {
-        ty::codec::RefDecodable::decode(d)
-    }
-}
-
 impl<D: LazyDecoder, T> Decodable<D> for LazyValue<T> {
     fn decode(decoder: &mut D) -> Self {
         decoder.read_lazy()
@@ -693,6 +687,38 @@ impl<I: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<I, T> {
         let len = decoder.read_usize();
         decoder.read_lazy_table(width, len)
     }
+}
+
+/// Implements [`Decodable`] for `&'tcx T`, where [`T: RefDecodable`](RefDecodable)
+/// and T is foreign, i.e. _not_ defined in this crate (`rustc_middle`).
+/// Note that slices/tuples/collections of local types are considered foreign types.
+///
+/// Due to orphan-rule restrictions, these foreign impls cannot use a blanket
+/// [`D: TyDecoder`](TyDecoder), and must instead implement [`Decodable`] for a
+/// specific decoder, which in this case is [`MetadataDecodeContext`].
+///
+/// For types defined in this crate, add an entry to
+/// `impl_decodable_via_ref_decodable_for_local_type!` instead.
+macro_rules! impl_decodable_via_ref_decodable_for_foreign_type {
+    (
+        $(
+            &'tcx $T:ty,
+        )*
+    ) => {
+        $(
+            impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for &'tcx $T {
+                fn decode(decoder: &mut MetadataDecodeContext<'a, 'tcx>) -> Self {
+                    RefDecodable::decode(decoder)
+                }
+            }
+        )*
+    }
+}
+
+impl_decodable_via_ref_decodable_for_foreign_type! {
+    // tidy-alphabetical-start
+    &'tcx [(ty::Clause<'tcx>, Span)],
+    // tidy-alphabetical-end
 }
 
 mod meta {
