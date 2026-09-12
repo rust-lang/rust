@@ -34,3 +34,12 @@ fn test_combine_with_defaults_safestack_cfi() {
         SanitizerSet::CFI | SanitizerSet::SAFESTACK
     );
 }
+
+#[test]
+fn test_combine_with_defaults_empty_side_identity() {
+    for bits in 0..=u16::MAX {
+        let mask = SanitizerSet::from_bits_retain(bits);
+        assert_eq!(mask.combine_with_defaults(SanitizerSet::empty()), mask);
+        assert_eq!(SanitizerSet::empty().combine_with_defaults(mask), mask);
+    }
+}
