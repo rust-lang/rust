@@ -560,7 +560,7 @@ fn impl_intersection_has_negative_obligation(
     .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
 }
 
-fn plug_infer_with_placeholders<'tcx>(
+pub(super) fn plug_infer_with_placeholders<'tcx>(
     infcx: &InferCtxt<'tcx>,
     universe: ty::UniverseIndex,
     value: impl TypeVisitable<TyCtxt<'tcx>>,
