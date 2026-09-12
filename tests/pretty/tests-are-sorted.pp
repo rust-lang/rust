@@ -11,7 +11,7 @@ use ::std::prelude::rust_2015::*;
 extern crate test;
 #[rustc_test_marker = "m_test"]
 #[doc(hidden)]
-pub const m_test: test::TestDescAndFn =
+pub static m_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: test::StaticTestName("m_test"),
@@ -35,7 +35,7 @@ fn m_test() {}
 extern crate test;
 #[rustc_test_marker = "z_test"]
 #[doc(hidden)]
-pub const z_test: test::TestDescAndFn =
+pub static z_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: test::StaticTestName("z_test"),
@@ -60,7 +60,7 @@ fn z_test() {}
 extern crate test;
 #[rustc_test_marker = "a_test"]
 #[doc(hidden)]
-pub const a_test: test::TestDescAndFn =
+pub static a_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: test::StaticTestName("a_test"),
@@ -85,5 +85,5 @@ fn a_test() {}
 #[doc(hidden)]
 pub fn main() -> () {
     extern crate test;
-    test::test_main_static(&[&a_test, &m_test, &z_test])
+    test::test_main_env_args(&[&a_test, &m_test, &z_test])
 }

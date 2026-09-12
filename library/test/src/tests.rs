@@ -55,7 +55,7 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 no_run: false,
                 test_type: TestType::Unknown,
             },
-            testfn: DynTestFn(Box::new(move || Ok(()))),
+            testfn: DynTestFn(Arc::new(move || Ok(()))),
         },
         TestDescAndFn {
             desc: TestDesc {
@@ -72,9 +72,18 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 no_run: false,
                 test_type: TestType::Unknown,
             },
-            testfn: DynTestFn(Box::new(move || Ok(()))),
+            testfn: DynTestFn(Arc::new(move || Ok(()))),
         },
     ]
+}
+
+fn filter_tests_owned(
+    opts: &TestOpts,
+    (tests, order): (Vec<TestDescAndFn>, TestListOrder),
+) -> Vec<TestDescAndFn> {
+    let tests_bor = tests.iter().collect::<Vec<_>>();
+    let tests = TestList::new(&tests_bor, order);
+    filter_tests(opts, tests)
 }
 
 #[test]
@@ -97,7 +106,7 @@ fn do_not_run_ignored_tests() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
@@ -125,7 +134,7 @@ fn ignored_tests_result_in_ignored() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
@@ -154,7 +163,7 @@ fn test_should_panic() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
@@ -183,7 +192,7 @@ fn test_should_panic_good_message() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
@@ -217,7 +226,7 @@ fn test_should_panic_bad_message() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
@@ -256,7 +265,7 @@ fn test_should_panic_non_string_message_type() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
@@ -288,7 +297,7 @@ fn test_should_panic_but_succeeds() {
                 no_run: false,
                 test_type: TestType::Unknown,
             },
-            testfn: DynTestFn(Box::new(f)),
+            testfn: DynTestFn(Arc::new(f)),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
@@ -321,7 +330,7 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     let time_options = if report_time { Some(TestTimeOptions::default()) } else { None };
 
@@ -363,7 +372,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
             no_run: false,
             test_type,
         },
-        testfn: DynTestFn(Box::new(f)),
+        testfn: DynTestFn(Arc::new(f)),
     };
     // `Default` will initialize all the thresholds to 0 milliseconds.
     let mut time_options = TestTimeOptions::default();
@@ -477,8 +486,8 @@ fn filter_for_ignored_option() {
     opts.run_tests = true;
     opts.run_ignored = RunIgnored::Only;
 
-    let tests = TestList::new(one_ignored_one_unignored_test(), TestListOrder::Unsorted);
-    let filtered = filter_tests(&opts, tests);
+    let tests = (one_ignored_one_unignored_test(), TestListOrder::Unsorted);
+    let filtered = filter_tests_owned(&opts, tests);
 
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].desc.name.to_string(), "1");
@@ -494,8 +503,8 @@ fn run_include_ignored_option() {
     opts.run_tests = true;
     opts.run_ignored = RunIgnored::Yes;
 
-    let tests = TestList::new(one_ignored_one_unignored_test(), TestListOrder::Unsorted);
-    let filtered = filter_tests(&opts, tests);
+    let tests = (one_ignored_one_unignored_test(), TestListOrder::Unsorted);
+    let filtered = filter_tests_owned(&opts, tests);
 
     assert_eq!(filtered.len(), 2);
     assert!(!filtered[0].desc.ignore);
@@ -524,10 +533,10 @@ fn exclude_should_panic_option() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynTestFn(Box::new(move || Ok(()))),
+        testfn: DynTestFn(Arc::new(move || Ok(()))),
     });
 
-    let filtered = filter_tests(&opts, TestList::new(tests, TestListOrder::Unsorted));
+    let filtered = filter_tests_owned(&opts, (tests, TestListOrder::Unsorted));
 
     assert_eq!(filtered.len(), 2);
     assert!(filtered.iter().all(|test| test.desc.should_panic == ShouldPanic::No));
@@ -535,7 +544,7 @@ fn exclude_should_panic_option() {
 
 #[test]
 fn exact_filter_match() {
-    fn tests() -> TestList {
+    fn tests() -> (Vec<TestDescAndFn>, TestListOrder) {
         let tests = ["base", "base::test", "base::test1", "base::test2"]
             .into_iter()
             .map(|name| TestDescAndFn {
@@ -553,59 +562,63 @@ fn exact_filter_match() {
                     no_run: false,
                     test_type: TestType::Unknown,
                 },
-                testfn: DynTestFn(Box::new(move || Ok(()))),
+                testfn: DynTestFn(Arc::new(move || Ok(()))),
             })
             .collect();
-        TestList::new(tests, TestListOrder::Sorted)
+        (tests, TestListOrder::Sorted)
     }
 
     let substr =
-        filter_tests(&TestOpts { filters: vec!["base".into()], ..TestOpts::new() }, tests());
+        filter_tests_owned(&TestOpts { filters: vec!["base".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 4);
 
     let substr =
-        filter_tests(&TestOpts { filters: vec!["bas".into()], ..TestOpts::new() }, tests());
+        filter_tests_owned(&TestOpts { filters: vec!["bas".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 4);
 
-    let substr =
-        filter_tests(&TestOpts { filters: vec!["::test".into()], ..TestOpts::new() }, tests());
+    let substr = filter_tests_owned(
+        &TestOpts { filters: vec!["::test".into()], ..TestOpts::new() },
+        tests(),
+    );
     assert_eq!(substr.len(), 3);
 
-    let substr =
-        filter_tests(&TestOpts { filters: vec!["base::test".into()], ..TestOpts::new() }, tests());
+    let substr = filter_tests_owned(
+        &TestOpts { filters: vec!["base::test".into()], ..TestOpts::new() },
+        tests(),
+    );
     assert_eq!(substr.len(), 3);
 
-    let substr = filter_tests(
+    let substr = filter_tests_owned(
         &TestOpts { filters: vec!["test1".into(), "test2".into()], ..TestOpts::new() },
         tests(),
     );
     assert_eq!(substr.len(), 2);
 
-    let exact = filter_tests(
+    let exact = filter_tests_owned(
         &TestOpts { filters: vec!["base".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
 
-    let exact = filter_tests(
+    let exact = filter_tests_owned(
         &TestOpts { filters: vec!["bas".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
-    let exact = filter_tests(
+    let exact = filter_tests_owned(
         &TestOpts { filters: vec!["::test".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
-    let exact = filter_tests(
+    let exact = filter_tests_owned(
         &TestOpts { filters: vec!["base::test".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
 
-    let exact = filter_tests(
+    let exact = filter_tests_owned(
         &TestOpts {
             filters: vec!["base".into(), "base::test".into()],
             filter_exact: true,
@@ -650,7 +663,7 @@ fn sample_tests() -> Vec<TestDescAndFn> {
                 no_run: false,
                 test_type: TestType::Unknown,
             },
-            testfn: DynTestFn(Box::new(testfn)),
+            testfn: DynTestFn(Arc::new(testfn)),
         };
         tests.push(test);
     }
@@ -900,7 +913,7 @@ fn test_dyn_bench_returning_err_fails_when_run_as_test() {
             no_run: false,
             test_type: TestType::Unknown,
         },
-        testfn: DynBenchFn(Box::new(f)),
+        testfn: DynBenchFn(Arc::new(f)),
     };
     let (tx, rx) = channel();
     let notify = move |event: TestEvent| {
@@ -909,8 +922,10 @@ fn test_dyn_bench_returning_err_fails_when_run_as_test() {
         }
         Ok(())
     };
-    let tests = TestList::new(vec![desc], TestListOrder::Unsorted);
-    run_tests(&TestOpts { run_tests: true, ..TestOpts::new() }, tests, notify).unwrap();
+    let opts = TestOpts { run_tests: true, ..TestOpts::new() };
+    let tests = (vec![desc], TestListOrder::Unsorted);
+    let filtered_tests = filter_tests_owned(&opts, tests);
+    run_tests(&opts, filtered_tests, 1, notify).unwrap();
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrFailed);
 }
