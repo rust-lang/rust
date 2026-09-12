@@ -82,13 +82,10 @@ enum CurrentGoalKind {
 impl CurrentGoalKind {
     fn from_query_input<I: Interner>(cx: I, input: QueryInput<I, I::Predicate>) -> CurrentGoalKind {
         match input.goal.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                if cx.trait_is_coinductive(pred.trait_ref.def_id) {
-                    CurrentGoalKind::CoinductiveTrait
-                } else {
-                    CurrentGoalKind::Misc
-                }
-            }
+            ty::PredicateKind::Clause(
+                ty::ClauseKind::Trait(ty::TraitClause { trait_ref, .. })
+                | ty::ClauseKind::HostEffect(ty::HostEffectClause { trait_ref, .. }),
+            ) if cx.trait_is_coinductive(trait_ref.def_id) => CurrentGoalKind::CoinductiveTrait,
             ty::PredicateKind::NormalizesTo(_) => {
                 CurrentGoalKind::ProjectionComputeAssocTermCandidate
             }
