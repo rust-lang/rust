@@ -3194,29 +3194,28 @@ pub mod nightly_options {
             if really_allows_unstable_options {
                 continue;
             }
-            match opt.stability {
-                OptionStability::Unstable => {
-                    nightly_options_on_stable += 1;
-                    let msg = format!(
-                        "the option `{}` is only accepted on the nightly compiler",
-                        opt.name
-                    );
-                    // The non-zero nightly_options_on_stable will force an early_fatal eventually.
-                    let _ = early_dcx.early_err(msg);
-                }
-                OptionStability::Stable => {}
-            }
+
+            nightly_options_on_stable += 1;
+            let msg = format!("the option `{}` is only accepted on the nightly compiler", opt.name);
+            // The non-zero nightly_options_on_stable will force an early_fatal eventually.
+            let _ = early_dcx.early_err(msg);
         }
+
         if nightly_options_on_stable > 0 {
-            early_dcx
-                .early_help("consider switching to a nightly toolchain: `rustup default nightly`");
-            early_dcx.early_note("selecting a toolchain with `+toolchain` arguments require a rustup proxy; see <https://rust-lang.github.io/rustup/concepts/index.html>");
-            early_dcx.early_note("for more information about Rust's stability policy, see <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>");
-            early_dcx.early_fatal(format!(
-                "{} nightly option{} were parsed",
-                nightly_options_on_stable,
-                if nightly_options_on_stable > 1 { "s" } else { "" }
+            let (s, were) = if nightly_options_on_stable > 1 { ("s", "were") } else { ("", "was") };
+            let mut err = early_dcx.early_struct_fatal(format!(
+                "{nightly_options_on_stable} nightly option{s} {were} parsed",
             ));
+            err.help("consider switching to a nightly toolchain: `rustup default nightly`");
+            err.note(
+                "selecting a toolchain with `+toolchain` arguments require a rustup proxy; \
+                see <https://rust-lang.github.io/rustup/concepts/index.html>",
+            );
+            err.note(
+                "for more information about Rust's stability policy, see \
+                <https://doc.rust-lang.org/book/appendix-07-nightly-rust.html#unstable-features>",
+            );
+            err.emit();
         }
     }
 }

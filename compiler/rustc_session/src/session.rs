@@ -1789,14 +1789,6 @@ impl EarlyDiagCtxt {
         self.dcx = DiagCtxt::new(emitter);
     }
 
-    pub fn early_note(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.handle().note(msg)
-    }
-
-    pub fn early_help(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.handle().struct_help(msg).emit()
-    }
-
     #[must_use = "raise_fatal must be called on the returned ErrorGuaranteed in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.dcx.handle().err(msg)
