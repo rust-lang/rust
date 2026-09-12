@@ -244,7 +244,7 @@ impl MacroRulesMacroExpander {
             trace_macros_note(&mut cx.expansions, sp, msg);
         }
 
-        match try_match_macro_derive(psess, name, body, rules, &mut NoopTracker) {
+        match try_match_macro_derive(psess, body, rules, &mut NoopTracker) {
             Ok((rule_index, rule, named_matches)) => {
                 let MacroRule::Derive { rhs, .. } = rule else {
                     panic!("try_match_macro_derive returned non-derive rule");
@@ -447,7 +447,7 @@ fn expand_macro<'cx, 'a: 'cx>(
     }
 
     // Track nothing for the best performance.
-    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut NoopTracker);
+    let try_success_result = try_match_macro(psess, &arg, rules, &mut NoopTracker);
 
     match try_success_result {
         Ok((rule_index, rule, named_matches)) => {
@@ -538,7 +538,7 @@ fn expand_macro_attr(
     }
 
     // Track nothing for the best performance.
-    match try_match_macro_attr(psess, name, &args, &body, rules, &mut NoopTracker) {
+    match try_match_macro_attr(psess, &args, &body, rules, &mut NoopTracker) {
         Ok((i, rule, named_matches)) => {
             let MacroRule::Attr { rhs, unsafe_rule, .. } = rule else {
                 panic!("try_macro_match_attr returned non-attr rule");
@@ -606,7 +606,6 @@ pub(super) enum CanRetry {
 #[instrument(level = "debug", skip(psess, arg, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     arg: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
@@ -686,7 +685,6 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 #[instrument(level = "debug", skip(psess, attr_args, attr_body, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     attr_args: &TokenStream,
     attr_body: &TokenStream,
     rules: &'matcher [MacroRule],
@@ -743,7 +741,6 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 #[instrument(level = "debug", skip(psess, body, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     body: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,

@@ -794,7 +794,6 @@ where
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
-            goal.param_env,
             &orig_values,
             response,
             self.origin_span,
@@ -1955,7 +1954,6 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
 
     let (normalization_nested_goals, _certainty) = instantiate_and_apply_query_response(
         delegate,
-        goal.param_env,
         &proof_tree.orig_values,
         response,
         origin_span,
