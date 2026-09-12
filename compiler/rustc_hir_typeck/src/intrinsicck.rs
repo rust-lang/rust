@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
+use rustc_middle::ty::offload_meta::is_region_ty;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::ErrorGuaranteed;
 use rustc_span::def_id::LocalDefId;
@@ -135,6 +136,10 @@ fn check_transmute<'tcx>(
     }
 }
 
+fn is_offload_region_ref<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    matches!(ty.kind(), ty::Ref(_, inner, _) if is_region_ty(tcx, *inner))
+}
+
 fn check_offload<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
@@ -206,7 +211,21 @@ fn check_offload<'tcx>(
     {
         let norm_input_ty = normalize(input_ty);
         let norm_arg_ty = normalize(arg_ty);
-        if norm_input_ty != norm_arg_ty {
+
+        if is_offload_region_ref(tcx, norm_input_ty) || is_offload_region_ref(tcx, norm_arg_ty) {
+            let err = tcx
+                .sess
+                .dcx()
+                .struct_span_err(
+                    span,
+                    format!(
+                        "offload kernel argument {i} is a reference to a `Region`. Pass the \
+                        `Region` by value so it can be mapped like a slice"
+                    ),
+                )
+                .emit();
+            result = Err(err);
+        } else if norm_input_ty != norm_arg_ty {
             let err = tcx
                 .sess
                 .dcx()

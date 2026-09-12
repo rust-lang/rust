@@ -1,0 +1,13 @@
+error[E0382]: borrow of moved value: `a`
+  --> $DIR/region_not_copy.rs:16:34
+   |
+LL |     let mut a = Region::<f32, Dummy>::new(&mut x[..]);
+   |         ----- move occurs because `a` has type `Region<'_, f32, Dummy>`, which does not implement the `Copy` trait
+LL |     let mut b = a;
+   |                 - value moved here
+LL |     if let (Some(_), Some(_)) = (a.get_mut(), b.get_mut()) {
+   |                                  ^ value borrowed here after move
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
