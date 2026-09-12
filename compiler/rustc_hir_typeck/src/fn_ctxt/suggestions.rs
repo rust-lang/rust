@@ -8,7 +8,6 @@ use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
-use rustc_hir::PrimTy::Uint;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
@@ -2508,14 +2507,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Return if:
         //  expected ty is not numeric
         //  assigned ty is not str or String
-        if (!expected.is_numeric()) {
+        if !expected.is_numeric() {
             return false;
         }
 
-        if (!expr_ty.is_str() && !matches!(
+        if !expr_ty.is_imm_ref_str() && !matches!(
             expr_ty.kind(),
             ty::Adt(adt, _) if self.tcx.is_lang_item(adt.did(), LangItem::String)
-        )) {
+        ) {
             return false;
         }
 
