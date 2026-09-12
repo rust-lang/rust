@@ -1,19 +1,19 @@
 error[E0603]: module import `bar` is private
-  --> $DIR/shadowed-use-visibility.rs:9:21
+  --> $DIR/shadowed-use-visibility.rs:15:21
    |
 LL |     use crate::foo::bar::f as g;
    |                     ^^^ private module import
    |
 note: the module import `bar` is defined here...
-  --> $DIR/shadowed-use-visibility.rs:4:9
+  --> $DIR/shadowed-use-visibility.rs:10:9
    |
 LL |     use crate::foo as bar;
    |         ^^^^^^^^^^^^^^^^^
 note: ...and refers to the module `foo` which is defined here
-  --> $DIR/shadowed-use-visibility.rs:1:1
+  --> $DIR/shadowed-use-visibility.rs:7:1
    |
 LL | mod foo {
-   | ^^^^^^^
+   | ^^^^^^^ you could import this directly
 help: consider importing this function instead
    |
 LL -     use crate::foo::bar::f as g;
@@ -21,21 +21,21 @@ LL +     use foo::f as g;
    |
 
 error[E0603]: module import `f` is private
-  --> $DIR/shadowed-use-visibility.rs:15:10
+  --> $DIR/shadowed-use-visibility.rs:21:10
    |
 LL | use bar::f::f;
    |          ^ private module import
    |
 note: the module import `f` is defined here...
-  --> $DIR/shadowed-use-visibility.rs:11:9
+  --> $DIR/shadowed-use-visibility.rs:17:9
    |
 LL |     use crate::foo as f;
    |         ^^^^^^^^^^^^^^^
 note: ...and refers to the module `foo` which is defined here
-  --> $DIR/shadowed-use-visibility.rs:1:1
+  --> $DIR/shadowed-use-visibility.rs:7:1
    |
 LL | mod foo {
-   | ^^^^^^^
+   | ^^^^^^^ you could import this directly
 help: consider importing this function through its public re-export instead
    |
 LL - use bar::f::f;
