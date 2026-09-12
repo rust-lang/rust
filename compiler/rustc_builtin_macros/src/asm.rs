@@ -1,4 +1,5 @@
 use rustc_ast as ast;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -32,7 +33,11 @@ fn parse_args<'a>(
     tts: TokenStream,
     asm_macro: AsmMacro,
 ) -> PResult<'a, ValidatedAsmArgs> {
-    let args = parse_asm_args(&mut ecx.new_parser_from_tts(tts), sp, asm_macro)?;
+    let args = parse_asm_args(
+        &mut ecx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts)),
+        sp,
+        asm_macro,
+    )?;
     validate_asm_args(ecx, asm_macro, args)
 }
 

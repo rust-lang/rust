@@ -1,4 +1,5 @@
 use rustc_ast::attr::AttrIdGenerator;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrKind, Expr, SyntheticAttr, ast};
 use rustc_attr_ir::CfgEntry;
@@ -122,7 +123,7 @@ pub(super) fn expand_cfg_select<'cx>(
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(
         match parse_cfg_select(
-            &mut ecx.new_parser_from_tts(tts),
+            &mut ecx.new_parser_from_tts(ArenaTokenStream::from_stream(&tts)),
             ecx.sess,
             Some(ecx.ecfg.features),
             ecx.current_expansion.lint_node_id,
