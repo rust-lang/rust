@@ -60,7 +60,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
             || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty)
             || self.suggest_returning_value_after_loop(err, expr, expected)
-            || self.suggest_literal_to_numeric(err, expr, expr_ty, expected);
+            || self.suggest_string_to_numeric(err, expr, expr_ty, expected);
 
         if !suggested {
             self.note_source_of_type_mismatch_constraint(

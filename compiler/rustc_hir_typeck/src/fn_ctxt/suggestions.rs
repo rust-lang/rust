@@ -2496,7 +2496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // suggest using .parse::<type>() when incorrect type assignment
-    pub(crate) fn suggest_literal_to_numeric(
+    pub(crate) fn suggest_string_to_numeric(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
@@ -2568,9 +2568,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
 
-            // Todo: implement the logic for vars
+            // For everything else (functions calls, variables, etc.) just suggest parsing directly
             _ => {
-                return false;
+                err.span_suggestion_verbose(
+                    expr.span.shrink_to_hi(),
+                    "consider parsing the string to numeric type",
+                    format!("parse::<{}>().unwrap_or_default()", expected.to_string()),
+                    Applicability::MaybeIncorrect,
+                );
+
+                return true;
             }
         }
     }
