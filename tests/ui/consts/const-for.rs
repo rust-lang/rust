@@ -1,9 +1,8 @@
-#![feature(const_for)]
+//@ check-pass
+#![feature(const_trait_impl,const_iter,const_for)]
 
 const _: () = {
     for _ in 0..5 {}
-    //~^ ERROR cannot use `for`
-    //~| ERROR cannot use `for`
 };
 
 fn main() {}
