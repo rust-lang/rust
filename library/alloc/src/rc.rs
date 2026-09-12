@@ -2448,47 +2448,32 @@ impl<T> Rc<[T]> {
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Rc<[T]> {
-        // Panic guard while cloning T elements.
-        // In the event of a panic, elements that have been written
-        // into the new RcInner will be dropped, then the memory freed.
-        struct Guard<T> {
-            mem: NonNull<u8>,
-            elems: *mut T,
-            layout: Layout,
-            n_elems: usize,
-        }
-
-        impl<T> Drop for Guard<T> {
-            fn drop(&mut self) {
-                // ignore-tidy-undocumented-unsafe
-                unsafe {
-                    let slice = from_raw_parts_mut(self.elems, self.n_elems);
-                    ptr::drop_in_place(slice);
-
-                    Global.deallocate(self.mem, self.layout);
-                }
-            }
-        }
+        use core::mem::DropGuard;
 
         // ignore-tidy-undocumented-unsafe
         unsafe {
             let ptr = Self::allocate_for_slice(len);
-
-            let mem = ptr as *mut _ as *mut u8;
             let layout = Layout::for_value_raw(ptr);
 
             // Pointer to first element
-            let elems = (&raw mut (*ptr).value) as *mut T;
+            let elems = (&raw mut (*ptr).value).as_mut_ptr();
 
-            let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
+            // Panic guard while cloning T elements.
+            // In the event of a panic, elements that have been written
+            // into the new RcInner will be dropped, then the memory freed.
+            let mut guard = DropGuard::new(0, |n_elems| {
+                let slice = from_raw_parts_mut(elems, n_elems);
+                ptr::drop_in_place(slice);
+                Global.deallocate(NonNull::new_unchecked(ptr.cast()), layout);
+            });
 
             for (i, item) in iter.enumerate() {
                 ptr::write(elems.add(i), item);
-                guard.n_elems += 1;
+                *guard += 1;
             }
 
-            // All clear. Forget the guard so it doesn't free the new RcInner.
-            mem::forget(guard);
+            // All clear. Dismiss the guard so it doesn't free the new RcInner.
+            DropGuard::dismiss(guard);
 
             Self::from_ptr(ptr)
         }

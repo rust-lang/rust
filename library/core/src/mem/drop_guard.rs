@@ -137,6 +137,7 @@ const impl<T, F> Drop for DropGuard<T, F>
 where
     F: [const] FnOnce(T),
 {
+    #[inline]
     fn drop(&mut self) {
         // SAFETY: `DropGuard` is in the process of being dropped.
         let inner = unsafe { ManuallyDrop::take(&mut self.inner) };

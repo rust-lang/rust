@@ -5,7 +5,7 @@ use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::{FusedIterator, TrustedLen};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, DropGuard, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
 use core::ptr;
 
@@ -1912,24 +1912,18 @@ impl<K, V, A: AllocatorClone> IntoIterator for BTreeMap<K, V, A> {
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V, A: AllocatorClone> Drop for IntoIter<K, V, A> {
     fn drop(&mut self) {
-        struct DropGuard<'a, K, V, A: AllocatorClone>(&'a mut IntoIter<K, V, A>);
-
-        impl<'a, K, V, A: AllocatorClone> Drop for DropGuard<'a, K, V, A> {
-            fn drop(&mut self) {
+        while let Some(kv) = self.dying_next() {
+            let guard = DropGuard::new(&mut *self, |this| {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
-                while let Some(kv) = self.0.dying_next() {
+                while let Some(kv) = this.dying_next() {
                     // SAFETY: we consume the dying handle immediately.
                     unsafe { kv.drop_key_val() };
                 }
-            }
-        }
-
-        while let Some(kv) = self.dying_next() {
-            let guard = DropGuard(self);
+            });
             // SAFETY: we don't touch the tree before consuming the dying handle.
             unsafe { kv.drop_key_val() };
-            mem::forget(guard);
+            DropGuard::dismiss(guard);
         }
     }
 }
