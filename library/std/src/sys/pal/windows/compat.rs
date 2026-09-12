@@ -23,51 +23,6 @@ use crate::ffi::{CStr, c_void};
 use crate::ptr::NonNull;
 use crate::sys::c;
 
-// This uses a static initializer to preload some imported functions.
-// The CRT (C runtime) executes static initializers before `main`
-// is called (for binaries) and before `DllMain` is called (for DLLs).
-//
-// It works by contributing a global symbol to the `.CRT$XCT` section.
-// The linker builds a table of all static initializer functions.
-// The CRT startup code then iterates that table, calling each
-// initializer function.
-//
-// NOTE: User code should instead use .CRT$XCU to reliably run after std's initializer.
-// If you're reading this and would like a guarantee here, please
-// file an issue for discussion; currently we don't guarantee any functionality
-// before main.
-// See https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-170
-#[cfg(target_vendor = "win7")]
-#[used]
-#[unsafe(link_section = ".CRT$XCT")]
-static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
-
-/// Preload some imported functions.
-///
-/// Note that any functions included here will be unconditionally loaded in
-/// the final binary, regardless of whether or not they're actually used.
-///
-/// Therefore, this should be limited to `compat_fn_optional` functions which
-/// must be preloaded or any functions where lazier loading demonstrates a
-/// negative performance impact in practical situations.
-///
-/// Currently we only preload `WaitOnAddress` and `WakeByAddressSingle`.
-#[cfg(target_vendor = "win7")]
-unsafe extern "C" fn init() {
-    // In an exe this code is executed before main() so is single threaded.
-    // In a DLL the system's loader lock will be held thereby synchronizing
-    // access. So the same best practices apply here as they do to running in DllMain:
-    // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
-    //
-    // DO NOT do anything interesting or complicated in this function! DO NOT call
-    // any Rust functions or CRT functions if those functions touch any global state,
-    // because this function runs during global initialization. For example, DO NOT
-    // do any dynamic allocation, don't call LoadLibrary, etc.
-
-    // Attempt to preload the synch functions.
-    load_synch_functions();
-}
-
 /// Helper macro for creating CStrs from literals and symbol names.
 macro_rules! ansi_str {
     (sym $ident:ident) => {{ crate::sys::compat::const_cstr_from_bytes(concat!(stringify!($ident), "\0").as_bytes()) }};
@@ -201,26 +156,47 @@ macro_rules! compat_fn_with_fallback {
 /// Relies on the functions being pre-loaded elsewhere.
 #[cfg(target_vendor = "win7")]
 macro_rules! compat_fn_optional {
-    ($(
+    (pub static $module:ident: &CStr = $name:expr; $(
         $(#[$meta:meta])*
         $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) $(-> $rettype:ty)?;
     )+) => (
+        pub static $module: &CStr = $name;
         $(
             pub mod $symbol {
                 #[allow(unused_imports)]
                 use super::*;
                 use crate::ffi::c_void;
                 use crate::mem;
-                use crate::ptr::{self, NonNull};
+                use crate::ptr;
                 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
+                use crate::sys::compat::Module;
 
-                pub(in crate::sys) static PTR: Atomic<*mut c_void> = AtomicPtr::new(ptr::null_mut());
+                const NOT_FOUND: *mut c_void = ptr::null_mut();
+                const NOT_LOADED: *mut c_void = ptr::without_provenance_mut(usize::MAX);
+
+                pub(in crate::sys) static PTR: Atomic<*mut c_void> = AtomicPtr::new(NOT_LOADED);
 
                 type F = unsafe extern "system" fn($($argtype),*) $(-> $rettype)?;
 
-                #[inline(always)]
+                fn load_from_module(module: Option<Module>) -> Option<F> {
+                    unsafe {
+                        static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
+                        if let Some(f) = module.and_then(|m| m.proc_address(SYMBOL_NAME)) {
+                            PTR.store(f.as_ptr(), Ordering::Relaxed);
+                            Some(mem::transmute(f))
+                        } else {
+                            PTR.store(NOT_FOUND, Ordering::Relaxed);
+                            None
+                        }
+                    }
+                }
+
                 pub fn option() -> Option<F> {
-                    NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| unsafe { mem::transmute(f) })
+                    match PTR.load(Ordering::Relaxed) {
+                        NOT_FOUND => None,
+                        NOT_LOADED => load_from_module(unsafe { Module::new($module) }),
+                        f => Some(unsafe { mem::transmute(f) })
+                    }
                 }
             }
             #[inline]
@@ -229,27 +205,4 @@ macro_rules! compat_fn_optional {
             }
         )+
     )
-}
-
-/// Load all needed functions from "api-ms-win-core-synch-l1-2-0".
-#[cfg(target_vendor = "win7")]
-pub(super) fn load_synch_functions() {
-    fn try_load() -> Option<()> {
-        use crate::sync::atomic::Ordering;
-        const MODULE_NAME: &CStr = c"api-ms-win-core-synch-l1-2-0";
-        const WAIT_ON_ADDRESS: &CStr = c"WaitOnAddress";
-        const WAKE_BY_ADDRESS_SINGLE: &CStr = c"WakeByAddressSingle";
-
-        // Try loading the library and all the required functions.
-        // If any step fails, then they all fail.
-        let library = unsafe { Module::new(MODULE_NAME) }?;
-        let wait_on_address = library.proc_address(WAIT_ON_ADDRESS)?;
-        let wake_by_address_single = library.proc_address(WAKE_BY_ADDRESS_SINGLE)?;
-
-        c::WaitOnAddress::PTR.store(wait_on_address.as_ptr(), Ordering::Relaxed);
-        c::WakeByAddressSingle::PTR.store(wake_by_address_single.as_ptr(), Ordering::Relaxed);
-        Some(())
-    }
-
-    try_load();
 }
