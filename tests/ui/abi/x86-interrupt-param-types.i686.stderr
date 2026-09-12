@@ -1,0 +1,308 @@
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:68:55
+   |
+LL | extern "x86-interrupt" fn test_frame_unsized_fails(_: str) {}
+   |                                                       ^^^
+   |
+   = note: invalid x86-interrupt parameter type: `str`
+   = note: functions with the "x86-interrupt" ABI must not use unsized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:70:51
+   |
+LL | extern "x86-interrupt" fn test_frame_zst_fails(_: ()) {}
+   |                                                   ^^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:72:52
+   |
+LL | extern "x86-interrupt" fn test_frame_bool_fails(_: bool) {}
+   |                                                    ^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `bool`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:74:52
+   |
+LL | extern "x86-interrupt" fn test_frame_char_fails(_: char) {}
+   |                                                    ^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `char`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:76:61
+   |
+LL | extern "x86-interrupt" fn test_frame_indirect_bool_fails(_: NewBool) {}
+   |                                                             ^^^^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `NewBool`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:78:55
+   |
+LL | extern "x86-interrupt" fn test_frame_pointer_fails(_: *const u8) {}
+   |                                                       ^^^^^^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `*const u8`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:80:59
+   |
+LL | extern "x86-interrupt" fn test_frame_mut_pointer_fails(_: *mut u8) {}
+   |                                                           ^^^^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `*mut u8`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:82:57
+   |
+LL | extern "x86-interrupt" fn test_frame_reference_fails(_: &Frame) {}
+   |                                                         ^^^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `&Frame`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:84:61
+   |
+LL | extern "x86-interrupt" fn test_frame_mut_reference_fails(_: &mut Frame) {}
+   |                                                             ^^^^^^^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `&mut Frame`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:86:66
+   |
+LL | extern "x86-interrupt" fn test_frame_optional_reference_fails(_: Opt<&Frame>) {}
+   |                                                                  ^^^^^^^^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `Opt<&Frame>`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:88:70
+   |
+LL | extern "x86-interrupt" fn test_frame_optional_mut_reference_fails(_: Opt<&mut Frame>) {}
+   |                                                                      ^^^^^^^^^^^^^^^
+   |
+   = note: invalid x86-interrupt frame parameter type: `Opt<&mut Frame>`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:94:64
+   |
+LL | extern "x86-interrupt" fn test_code_unsized_fails(_: Frame, _: str) {}
+   |                                                                ^^^
+   |
+   = note: invalid x86-interrupt parameter type: `str`
+   = note: functions with the "x86-interrupt" ABI must not use unsized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:96:60
+   |
+LL | extern "x86-interrupt" fn test_code_zst_fails(_: Frame, _: ()) {}
+   |                                                            ^^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:98:59
+   |
+LL | extern "x86-interrupt" fn test_code_u8_fails(_: Frame, _: u8) {}
+   |                                                           ^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `u8`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:100:60
+   |
+LL | extern "x86-interrupt" fn test_code_u16_fails(_: Frame, _: u16) {}
+   |                                                            ^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `u16`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:103:66
+   |
+LL | extern "x86-interrupt" fn test_code_32bit_u64_fails(_: Frame, _: u64) {}
+   |                                                                  ^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `u64`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:109:70
+   |
+LL | extern "x86-interrupt" fn test_code_non_scalar_32_fails(_: Frame, _: NonScalar32) {}
+   |                                                                      ^^^^^^^^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `NonScalar32`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:114:64
+   |
+LL | extern "x86-interrupt" fn test_code_pointer_fails(_: Frame, _: *const u8) {}
+   |                                                                ^^^^^^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `*const u8`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:116:68
+   |
+LL | extern "x86-interrupt" fn test_code_mut_pointer_fails(_: Frame, _: *mut u8) {}
+   |                                                                    ^^^^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `*mut u8`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:118:61
+   |
+LL | extern "x86-interrupt" fn test_code_u128_fails(_: Frame, _: u128) {}
+   |                                                             ^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `u128`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:120:61
+   |
+LL | extern "x86-interrupt" fn test_code_bool_fails(_: Frame, _: bool) {}
+   |                                                             ^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `bool`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:122:62
+   |
+LL | extern "x86-interrupt" fn test_code_array_fails(_: Frame, _: [u8; 3]) {}
+   |                                                              ^^^^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `[u8; 3]`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:124:61
+   |
+LL | extern "x86-interrupt" fn test_code_enum_fails(_: Frame, _: Enumtype) {}
+   |                                                             ^^^^^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `Enumtype`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:130:68
+   |
+LL | extern "x86-interrupt" fn test_code_32bit_float_fails(_: Frame, _: f32) {}
+   |                                                                    ^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `f32`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:132:61
+   |
+LL | extern "x86-interrupt" fn test_code_char_fails(_: Frame, _: char) {}
+   |                                                             ^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `char`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:155:60
+   |
+LL |     extern "x86-interrupt" fn test_impl_frame_zst_fails(_: ()) {}
+   |                                                            ^^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:157:64
+   |
+LL |     extern "x86-interrupt" fn test_impl_frame_unsized_fails(_: str) {}
+   |                                                                ^^^
+   |
+   = note: invalid x86-interrupt parameter type: `str`
+   = note: functions with the "x86-interrupt" ABI must not use unsized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:159:69
+   |
+LL |     extern "x86-interrupt" fn test_impl_code_zst_fails(_: Frame, _: ()) {}
+   |                                                                     ^^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:161:73
+   |
+LL |     extern "x86-interrupt" fn test_impl_code_unsized_fails(_: Frame, _: str) {}
+   |                                                                         ^^^
+   |
+   = note: invalid x86-interrupt parameter type: `str`
+   = note: functions with the "x86-interrupt" ABI must not use unsized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:176:39
+   |
+LL |     fn test_extern_frame_zst_fails(_: ());
+   |                                       ^^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:178:43
+   |
+LL |     fn test_extern_frame_unsized_fails(_: str);
+   |                                           ^^^
+   |
+   = note: invalid x86-interrupt parameter type: `str`
+   = note: functions with the "x86-interrupt" ABI must not use unsized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:180:48
+   |
+LL |     fn test_extern_code_zst_fails(_: Frame, _: ());
+   |                                                ^^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:182:52
+   |
+LL |     fn test_extern_code_unsized_fails(_: Frame, _: str);
+   |                                                    ^^^
+   |
+   = note: invalid x86-interrupt parameter type: `str`
+   = note: functions with the "x86-interrupt" ABI must not use unsized types in their signature
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-param-types.rs:184:49
+   |
+LL |     fn test_extern_code_enum_fails(_: Frame, _: Enumtype);
+   |                                                 ^^^^^^^^
+   |
+   = note: invalid x86-interrupt error code parameter type: `Enumtype`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+error: aborting due to 34 previous errors
+

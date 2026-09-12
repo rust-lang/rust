@@ -597,7 +597,6 @@ impl<'a> AstValidator<'a> {
 
                         if let InterruptKind::X86 = interrupt_kind {
                             // "x86-interrupt" is special because it does have arguments.
-                            // FIXME(workingjubilee): properly lint on acceptable input types.
                             let inputs = &sig.decl.inputs;
                             let param_count = inputs.len();
                             if !matches!(param_count, 1 | 2) {
