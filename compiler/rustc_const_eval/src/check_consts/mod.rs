@@ -107,8 +107,10 @@ pub fn is_fn_or_trait_safe_to_expose_on_stable(tcx: TyCtxt<'_>, def_id: DefId) -
         }
         Some(stab) => {
             // We consider things safe-to-expose if they are stable or if they are marked as
-            // `const_stable_indirect`.
-            stab.is_const_stable() || stab.const_stable_indirect
+            // `const_stable_indirect`. Intrinsics are special so we need to check for those too.
+            stab.is_const_stable()
+                || stab.const_stable_indirect
+                || tcx.intrinsic(def_id).is_some_and(|i| i.const_stable_indirect)
         }
     }
 }
