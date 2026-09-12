@@ -1,6 +1,5 @@
 use rustc_ast as ast;
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_errors::ErrorGuaranteed;
@@ -126,7 +125,7 @@ impl MultiItemModifier for DeriveProcMacro {
         let res = if ecx.sess.opts.incremental.is_some()
             && ecx.sess.opts.unstable_opts.cache_proc_macros
         {
-            (*EXPAND_DERIVE_MACRO_CACHED)(invoc_id, input.to_token_stream(), ecx, self.client)
+            (*EXPAND_DERIVE_MACRO_CACHED)(invoc_id, input, ecx, self.client)
         } else {
             expand_derive_macro(invoc_id, input, ecx, self.client)
         };
@@ -137,11 +136,7 @@ impl MultiItemModifier for DeriveProcMacro {
         };
 
         let error_count_before = ecx.dcx().err_count();
-        let mut parser = Parser::new(
-            &ecx.sess.psess,
-            ArenaTokenStream::from_stream(&output),
-            Some("proc-macro derive"),
-        );
+        let mut parser = Parser::new(&ecx.sess.psess, output, Some("proc-macro derive"));
         let mut items = vec![];
 
         loop {
@@ -180,7 +175,7 @@ pub fn expand_derive_macro(
     input: ArenaTokenStream,
     ecx: &mut ExtCtxt<'_>,
     client: DeriveClient,
-) -> Result<TokenStream, ()> {
+) -> Result<ArenaTokenStream, ()> {
     let _timer =
         ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
             let invoc_expn_data = invoc_id.expn_data();
@@ -194,7 +189,7 @@ pub fn expand_derive_macro(
     let server = proc_macro_server::Rustc::new(ecx);
 
     match client.run1(&strategy, server, input.to_token_stream(), proc_macro_backtrace) {
-        Ok(stream) => Ok(stream),
+        Ok(stream) => Ok(ArenaTokenStream::from_stream(&stream)),
         Err(e) => {
             let invoc_expn_data = invoc_id.expn_data();
             let span = invoc_expn_data.call_site;
@@ -212,7 +207,12 @@ pub fn expand_derive_macro(
 }
 
 pub static EXPAND_DERIVE_MACRO_CACHED: AtomicRef<
-    fn(LocalExpnId, TokenStream, &mut ExtCtxt<'_>, DeriveClient) -> Result<TokenStream, ()>,
+    fn(
+        LocalExpnId,
+        ArenaTokenStream,
+        &mut ExtCtxt<'_>,
+        DeriveClient,
+    ) -> Result<ArenaTokenStream, ()>,
 > = AtomicRef::new(
     &(|_, _, _: &mut ExtCtxt<'_>, _| -> Result<_, _> {
         panic!(
