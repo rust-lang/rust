@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::{assert_matches, io, str};
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
@@ -2268,11 +2268,11 @@ fn string_to_tts_macro() {
         match tts {
             [
                 TokenTree::Token(
-                    Token { kind: token::Ident(name_macro_rules, IdentIsRaw::No), .. },
+                    Token { kind: token::Ident(name_macro_rules, IdentKind::Normal), .. },
                     _,
                 ),
                 TokenTree::Token(Token { kind: token::Bang, .. }, _),
-                TokenTree::Token(Token { kind: token::Ident(name_zip, IdentIsRaw::No), .. }, _),
+                TokenTree::Token(Token { kind: token::Ident(name_zip, IdentKind::Normal), .. }, _),
                 TokenTree::Delimited(.., macro_delim, macro_tts),
             ] if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" => {
                 let tts = &macro_tts.iter().collect::<Vec<_>>();
@@ -2287,7 +2287,7 @@ fn string_to_tts_macro() {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
                                 TokenTree::Token(
-                                    Token { kind: token::Ident(name, IdentIsRaw::No), .. },
+                                    Token { kind: token::Ident(name, IdentKind::Normal), .. },
                                     _,
                                 ),
                             ] if first_delim == &Delimiter::Parenthesis && name.as_str() == "a" => {
@@ -2299,7 +2299,7 @@ fn string_to_tts_macro() {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
                                 TokenTree::Token(
-                                    Token { kind: token::Ident(name, IdentIsRaw::No), .. },
+                                    Token { kind: token::Ident(name, IdentKind::Normal), .. },
                                     _,
                                 ),
                             ] if second_delim == &Delimiter::Parenthesis
@@ -2321,9 +2321,9 @@ fn string_to_tts_1() {
         let tts = string_to_stream("fn a(b: i32) { b; }".to_string());
 
         let expected = TokenStream::new(vec![
-            TokenTree::token_alone(token::Ident(kw::Fn, IdentIsRaw::No), sp(0, 2)),
+            TokenTree::token_alone(token::Ident(kw::Fn, IdentKind::Normal), sp(0, 2)),
             TokenTree::token_joint_hidden(
-                token::Ident(sym::character('a'), IdentIsRaw::No),
+                token::Ident(sym::character('a'), IdentKind::Normal),
                 sp(3, 4),
             ),
             TokenTree::Delimited(
@@ -2334,13 +2334,13 @@ fn string_to_tts_1() {
                 Delimiter::Parenthesis,
                 TokenStream::new(vec![
                     TokenTree::token_joint(
-                        token::Ident(sym::character('b'), IdentIsRaw::No),
+                        token::Ident(sym::character('b'), IdentKind::Normal),
                         sp(5, 6),
                     ),
                     TokenTree::token_alone(token::Colon, sp(6, 7)),
                     // `JointHidden` because the `i32` is immediately followed by the `)`.
                     TokenTree::token_joint_hidden(
-                        token::Ident(sym::i32, IdentIsRaw::No),
+                        token::Ident(sym::i32, IdentKind::Normal),
                         sp(8, 11),
                     ),
                 ]),
@@ -2354,7 +2354,7 @@ fn string_to_tts_1() {
                 Delimiter::Brace,
                 TokenStream::new(vec![
                     TokenTree::token_joint(
-                        token::Ident(sym::character('b'), IdentIsRaw::No),
+                        token::Ident(sym::character('b'), IdentKind::Normal),
                         sp(15, 16),
                     ),
                     // `Alone` because the `;` is followed by whitespace.
@@ -2546,24 +2546,24 @@ fn look_ahead() {
         let sym_x = sym::character('x');
         #[allow(non_snake_case)]
         let sym_S = sym::character('S');
-        let raw_no = IdentIsRaw::No;
+        let normal = IdentKind::Normal;
 
         let psess = ParseSess::new();
         let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
 
         // Current position is the `fn`.
-        look(&p, 0, token::Ident(kw::Fn, raw_no));
-        look(&p, 1, token::Ident(sym_f, raw_no));
+        look(&p, 0, token::Ident(kw::Fn, normal));
+        look(&p, 1, token::Ident(sym_f, normal));
         look(&p, 2, token::OpenParen);
-        look(&p, 3, token::Ident(sym_x, raw_no));
+        look(&p, 3, token::Ident(sym_x, normal));
         look(&p, 4, token::Colon);
-        look(&p, 5, token::Ident(sym::u32, raw_no));
+        look(&p, 5, token::Ident(sym::u32, normal));
         look(&p, 6, token::CloseParen);
         look(&p, 7, token::OpenBrace);
-        look(&p, 8, token::Ident(sym_x, raw_no));
+        look(&p, 8, token::Ident(sym_x, normal));
         look(&p, 9, token::CloseBrace);
-        look(&p, 10, token::Ident(kw::Struct, raw_no));
-        look(&p, 11, token::Ident(sym_S, raw_no));
+        look(&p, 10, token::Ident(kw::Struct, normal));
+        look(&p, 11, token::Ident(sym_S, normal));
         look(&p, 12, token::Semi);
         // Any lookahead past the end of the token stream returns `Eof`.
         look(&p, 13, token::Eof);
@@ -2575,15 +2575,15 @@ fn look_ahead() {
         for _ in 0..3 {
             p.bump();
         }
-        look(&p, 0, token::Ident(sym_x, raw_no));
+        look(&p, 0, token::Ident(sym_x, normal));
         look(&p, 1, token::Colon);
-        look(&p, 2, token::Ident(sym::u32, raw_no));
+        look(&p, 2, token::Ident(sym::u32, normal));
         look(&p, 3, token::CloseParen);
         look(&p, 4, token::OpenBrace);
-        look(&p, 5, token::Ident(sym_x, raw_no));
+        look(&p, 5, token::Ident(sym_x, normal));
         look(&p, 6, token::CloseBrace);
-        look(&p, 7, token::Ident(kw::Struct, raw_no));
-        look(&p, 8, token::Ident(sym_S, raw_no));
+        look(&p, 7, token::Ident(kw::Struct, normal));
+        look(&p, 8, token::Ident(sym_S, normal));
         look(&p, 9, token::Semi);
         look(&p, 10, token::Eof);
         look(&p, 11, token::Eof);
@@ -2621,7 +2621,7 @@ fn look_ahead_non_outermost_stream() {
         let sym_x = sym::character('x');
         #[allow(non_snake_case)]
         let sym_S = sym::character('S');
-        let raw_no = IdentIsRaw::No;
+        let normal = IdentKind::Normal;
 
         let psess = ParseSess::new();
         let mut p = string_to_parser(&psess, "mod m { fn f(x: u32) { x } struct S; }".to_string());
@@ -2631,18 +2631,18 @@ fn look_ahead_non_outermost_stream() {
         for _ in 0..3 {
             p.bump();
         }
-        look(&p, 0, token::Ident(kw::Fn, raw_no));
-        look(&p, 1, token::Ident(sym_f, raw_no));
+        look(&p, 0, token::Ident(kw::Fn, normal));
+        look(&p, 1, token::Ident(sym_f, normal));
         look(&p, 2, token::OpenParen);
-        look(&p, 3, token::Ident(sym_x, raw_no));
+        look(&p, 3, token::Ident(sym_x, normal));
         look(&p, 4, token::Colon);
-        look(&p, 5, token::Ident(sym::u32, raw_no));
+        look(&p, 5, token::Ident(sym::u32, normal));
         look(&p, 6, token::CloseParen);
         look(&p, 7, token::OpenBrace);
-        look(&p, 8, token::Ident(sym_x, raw_no));
+        look(&p, 8, token::Ident(sym_x, normal));
         look(&p, 9, token::CloseBrace);
-        look(&p, 10, token::Ident(kw::Struct, raw_no));
-        look(&p, 11, token::Ident(sym_S, raw_no));
+        look(&p, 10, token::Ident(kw::Struct, normal));
+        look(&p, 11, token::Ident(sym_S, normal));
         look(&p, 12, token::Semi);
         look(&p, 13, token::CloseBrace);
         // Any lookahead past the end of the token stream returns `Eof`.
@@ -2697,21 +2697,21 @@ fn debug_lookahead() {
     tokens: [
         Ident(
             \"fn\",
-            No,
+            Normal,
         ),
         Ident(
             \"f\",
-            No,
+            Normal,
         ),
         OpenParen,
         Ident(
             \"x\",
-            No,
+            Normal,
         ),
         Colon,
         Ident(
             \"u32\",
-            No,
+            Normal,
         ),
         CloseParen,
     ],
@@ -2738,36 +2738,36 @@ fn debug_lookahead() {
     tokens: [
         Ident(
             \"fn\",
-            No,
+            Normal,
         ),
         Ident(
             \"f\",
-            No,
+            Normal,
         ),
         OpenParen,
         Ident(
             \"x\",
-            No,
+            Normal,
         ),
         Colon,
         Ident(
             \"u32\",
-            No,
+            Normal,
         ),
         CloseParen,
         OpenBrace,
         Ident(
             \"x\",
-            No,
+            Normal,
         ),
         CloseBrace,
         Ident(
             \"struct\",
-            No,
+            Normal,
         ),
         Ident(
             \"S\",
-            No,
+            Normal,
         ),
         Semi,
         Eof,
@@ -2799,7 +2799,7 @@ fn debug_lookahead() {
     tokens: [
         Ident(
             \"x\",
-            No,
+            Normal,
         ),
     ],
     approx_token_stream_pos: 8,
@@ -2824,16 +2824,16 @@ fn debug_lookahead() {
     tokens: [
         Ident(
             \"x\",
-            No,
+            Normal,
         ),
         CloseBrace,
         Ident(
             \"struct\",
-            No,
+            Normal,
         ),
         Ident(
             \"S\",
-            No,
+            Normal,
         ),
     ],
     approx_token_stream_pos: 8,

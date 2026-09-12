@@ -179,7 +179,7 @@ use std::{iter, vec};
 
 pub(crate) use SubstructureFields::*;
 pub(crate) use rustc_ast as ast;
-use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
+use rustc_ast::token::{IdentKind, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
     AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
@@ -783,11 +783,11 @@ impl<'a> TraitDef<'a> {
                             dspan: DelimSpan::from_single(self.span),
                             delim: rustc_ast::token::Delimiter::Parenthesis,
                             tokens: [
-                                TokenKind::Ident(sym::feature, IdentIsRaw::No),
+                                TokenKind::Ident(sym::feature, IdentKind::Normal),
                                 TokenKind::Eq,
                                 TokenKind::lit(LitKind::Str, sym::derive_const, None),
                                 TokenKind::Comma,
-                                TokenKind::Ident(sym::issue, IdentIsRaw::No),
+                                TokenKind::Ident(sym::issue, IdentKind::Normal),
                                 TokenKind::Eq,
                                 TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
                             ]
