@@ -400,29 +400,20 @@ fn validate_reborrow_field_access(
 ) -> Result<(), ErrorGuaranteed> {
     let module = tcx.parent_module_from_def_id(impl_did);
     let variant = def.non_enum_variant();
-    if variant.field_list_has_applicable_non_exhaustive() {
-        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
+
+    if variant.field_list_has_applicable_non_exhaustive()
+        || variant.fields.iter().any(|f| !f.vis.is_accessible_from(module, tcx))
+    {
+        Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
             span: diagnostic_context.impl_span,
             type_span: role.type_span(diagnostic_context),
             trait_name,
             role: role.as_str(),
             type_name: tcx.item_name(def.did()),
-        }));
+        }))
+    } else {
+        Ok(())
     }
-
-    for field in &variant.fields {
-        if !field.vis.is_accessible_from(module, tcx) {
-            return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
-                span: diagnostic_context.impl_span,
-                type_span: role.type_span(diagnostic_context),
-                trait_name,
-                role: role.as_str(),
-                type_name: tcx.item_name(def.did()),
-            }));
-        }
-    }
-
-    Ok(())
 }
 
 fn validate_coerce_shared_fields<'tcx>(
