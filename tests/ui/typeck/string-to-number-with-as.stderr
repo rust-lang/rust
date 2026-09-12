@@ -23,7 +23,28 @@ LL -     let number2 = slice as u16;
 LL +     let number2 = slice.parse::<u16>().unwrap_or_default();
    |
 
-error: aborting due to 2 previous errors
+error[E0606]: casting `&'static str` as `i16` is invalid
+  --> $DIR/string-to-number-with-as.rs:8:19
+   |
+LL |     let number3 = "8080" as i16;
+   |                   ^^^^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+help: consider parsing the string into a numeric type instead
+   |
+LL -     let number3 = "8080" as i16;
+LL +     let number3 = "8080".parse::<i16>().unwrap_or_default();
+   |
+
+error[E0606]: casting `&String` as `i32` is invalid
+  --> $DIR/string-to-number-with-as.rs:9:19
+   |
+LL |     let number4 = &text as i32;
+   |                   ^^^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0605, E0606.
 For more information about an error, try `rustc --explain E0605`.
