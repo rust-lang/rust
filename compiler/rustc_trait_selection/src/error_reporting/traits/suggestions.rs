@@ -3788,6 +3788,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if typeck_results.hir_owner.to_def_id() != typeck_root {
             return false;
         }
+
+        // Error reporting can run before closure capture analysis has inferred the
+        // tuple of upvar types. In that case we cannot emit the capture-specific
+        // note yet, so fall back to the closure-level note.
+        if upvar_args.tupled_upvars_ty().is_ty_var() {
+            return false;
+        }
+
         let captures: Vec<_> =
             typeck_results.closure_min_captures_flattened(closure_def_id).collect();
         let upvar_tys = upvar_args.upvar_tys();
