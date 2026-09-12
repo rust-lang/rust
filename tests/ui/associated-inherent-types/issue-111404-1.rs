@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
+
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
 
@@ -8,10 +12,12 @@ impl<'a> Foo<fn(&'a ())> {
 }
 
 fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
-//~^ ERROR mismatched types [E0308]
-//~| ERROR mismatched types [E0308]
-//~| ERROR higher-ranked subtype error
-//~| ERROR higher-ranked subtype error
-//~| ERROR higher-ranked subtype error
+//[current]~^ ERROR mismatched types [E0308]
+//[current]~| ERROR mismatched types [E0308]
+//[current]~| ERROR higher-ranked subtype error
+//[current]~| ERROR higher-ranked subtype error
+//[current]~| ERROR higher-ranked subtype error
+//[next]~^^^^^^ ERROR type mismatch resolving
+//[next]~| ERROR type mismatch resolving
 
 fn main() {}

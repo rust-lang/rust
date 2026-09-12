@@ -1,0 +1,24 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/deeply-normalize-fallback-issue-160875.rs:31:5
+   |
+LL |     x
+   |     ^ not found in this scope
+
+error[E0271]: type mismatch resolving `Foo<fn(&())>::Assoc == &()`
+  --> $DIR/deeply-normalize-fallback-issue-160875.rs:28:17
+   |
+LL | const fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `Foo<fn(&())>::Assoc == &()`
+  --> $DIR/deeply-normalize-fallback-issue-160875.rs:28:17
+   |
+LL | const fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0271, E0425.
+For more information about an error, try `rustc --explain E0271`.
