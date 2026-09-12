@@ -1002,7 +1002,7 @@ impl TokenCursor {
 
     fn get_delimited_data(&self, bounds: &DelimitedBounds) -> DelimitedData {
         let Some(ArenaTokenTree::DelimitedStart(_, data)) =
-            self.stream.get_innermost_elem_at(bounds.start as usize)
+            self.stream.get_innermost_elem_at(bounds.start())
         else {
             panic!("Delimited sequence not found at the provided bounds");
         };
