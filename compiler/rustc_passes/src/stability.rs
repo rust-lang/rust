@@ -681,7 +681,19 @@ impl<'tcx> Checker<'tcx> {
         self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
     }
 
+    fn containing_module_is_unstable(&self) -> bool {
+        self.tcx
+            .lookup_stability(self.mod_id.to_local_def_id())
+            .is_some_and(|stability| stability.level.is_unstable())
+    }
+
     fn emit_ineffective_unstable_reexports(&self) {
+        // an unstable module already makes its re-exports unstable
+        // keep the explicit annotation without linting it as ineffective
+        if self.containing_module_is_unstable() {
+            return;
+        }
+
         for reexport in self.unstable_reexports.values() {
             if reexport.has_target && reexport.all_targets_stable {
                 self.tcx.emit_node_span_lint(

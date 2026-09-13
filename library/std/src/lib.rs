@@ -712,13 +712,9 @@ pub mod arch {
     pub use std_detect::is_aarch64_feature_detected;
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
-    #[allow(clippy::useless_attribute)]
-    #[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
-    #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
+    #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
     pub use std_detect::is_loongarch_feature_detected;
-    #[allow(clippy::useless_attribute)]
-    #[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
-    #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
+    #[stable(feature = "riscv_ratified", since = "1.78.0")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
     pub use std_detect::is_s390x_feature_detected;
@@ -755,7 +751,10 @@ pub use core::cfg_select;
 )]
 pub use core::concat_bytes;
 #[allow(clippy::useless_attribute)]
-#[expect(ineffective_unstable_reexports, reason = "This re-export has its own stability")]
+#[expect(
+    ineffective_unstable_reexports,
+    reason = "accepted as stable after accidental stabilization in 1.96, see #154645"
+)]
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use core::derive;
 #[stable(feature = "matches_macro", since = "1.42.0")]

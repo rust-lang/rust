@@ -43,3 +43,11 @@ pub use non_staged_reexport_source::stable as supposedly_unstable_external;
 #[unstable(feature = "primitive_reexport", issue = "none")]
 pub use core::primitive::bool as supposedly_unstable_bool;
 //~^ ERROR `#[unstable]` does not make this re-exported path unstable
+
+// this re-export is already behind an unstable module
+// it still needs its own stability annotation but should not trigger the lint
+#[unstable(feature = "unstable_module", issue = "none")]
+pub mod unstable_module {
+    #[unstable(feature = "nested_unstable_reexport", issue = "none")]
+    pub use lint_stability::stable as stable_through_unstable_module;
+}

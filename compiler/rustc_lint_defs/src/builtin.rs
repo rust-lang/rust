@@ -2816,8 +2816,8 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// `#[unstable]` on a re-export does not currently make an otherwise
-    /// stable re-exported path unstable.
+    /// `#[unstable]` on a re-export does not make a stable path unstable
+    /// re-exports inside unstable modules are already on an unstable path
     pub INEFFECTIVE_UNSTABLE_REEXPORTS,
     Deny,
     "detects ineffective `#[unstable]` attributes on re-exports",
