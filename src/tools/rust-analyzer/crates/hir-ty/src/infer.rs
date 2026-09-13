@@ -1424,7 +1424,7 @@ impl<'db> InferenceContext<'db> {
     ) -> Self {
         let trait_env = db.trait_environment(generic_def);
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), owner);
-        let types = crate::next_solver::default_types(db);
+        let types = crate::next_solver::default_types();
         InferenceContext {
             result: InferenceResult::new(types.types.error),
             return_ty: types.types.error, // set in collect_* calls
