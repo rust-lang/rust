@@ -826,12 +826,98 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         self.suggest_move_on_borrowing_closure(&mut diag);
         self.suggest_deref_closure_return(&mut diag);
         self.detect_self_ty(&mut diag, *span, category, outlived_fr_name);
-
-        // FIXME(estebank): we should detect when a lifetime obligation comes from a return type
-        //                  that has a hidden implicit `'_` lifetime, like when using `Type` when
-        //                  it was declared `struct Type<'a>(&'a ());`.
+        self.point_at_implicit_lifetime_in_return_type(&mut diag, *fr, fr_name);
 
         diag
+    }
+
+    /// Point at `Path` in return type when declared `struct Path<'a>(&'a ());`.
+    ///
+    /// ```text
+    /// LL |         pub fn sub(&mut self) -> Path {
+    ///    |                    -             ---- this returned type has an implicit lifetime `'1`
+    ///    |                    |
+    ///    |                    let's call the lifetime of this reference `'1`
+    /// ...
+    /// help: consider making explicit the implicit `'1` lifetime in the return type
+    ///    |
+    /// LL |         pub fn sub(&mut self) -> Path<'_> {
+    ///    |                                      ++++
+    /// ```
+    fn point_at_implicit_lifetime_in_return_type(
+        &self,
+        diag: &mut Diag<'_>,
+        fr: RegionVid,
+        fr_name: RegionName,
+    ) {
+        let body = self.infcx.tcx.hir_body_owned_by(self.mir_def_id());
+        let expr = &body.value.peel_blocks();
+        if let Some(fn_hir_id) = self.infcx.tcx.hir_get_fn_id_for_return_block(expr.hir_id)
+            && let Some(fn_decl) = self.infcx.tcx.hir_node(fn_hir_id).fn_decl()
+            && let hir::FnRetTy::Return(ret) = fn_decl.output
+        {
+            struct V<'tcx> {
+                lifetimes: Vec<&'tcx hir::Lifetime>,
+                tcx: TyCtxt<'tcx>,
+            }
+            impl<'tcx> Visitor<'tcx> for V<'tcx> {
+                type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+
+                fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                    self.tcx
+                }
+
+                fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) -> Self::Result {
+                    self.lifetimes.push(lifetime);
+                    hir::intravisit::walk_lifetime(self, lifetime)
+                }
+            }
+            let tcx = self.infcx.tcx;
+            let mut v = V { lifetimes: vec![], tcx };
+            v.visit_ty_unambig(ret);
+            if let Some(region) = self.regioncx.to_error_region(fr) {
+                for lifetime in v.lifetimes {
+                    if let hir::LifetimeKind::Param(lt_def_id) = lifetime.kind
+                        && lifetime.is_implicit()
+                        && let hir::LifetimeSource::Path { angle_brackets } = lifetime.source
+                        && let Some(def_id) =
+                            region.opt_param_def_id(self.infcx.tcx, self.mir_def_id().to_def_id())
+                        && def_id == lt_def_id.to_def_id()
+                    {
+                        let (msg, sugg) = match angle_brackets {
+                            hir::AngleBrackets::Missing => (
+                                format!("this returned type has an implicit lifetime `{fr_name}`"),
+                                format!("<{region}>"),
+                            ),
+                            hir::AngleBrackets::Empty => (
+                                format!(
+                                    "there is an implicit lifetime `{fr_name}` in this empty \
+                                     parameter list",
+                                ),
+                                format!("{region}"),
+                            ),
+                            hir::AngleBrackets::Full => (
+                                format!(
+                                    "there is an implicit lifetime `{fr_name}` in this parameter \
+                                     list",
+                                ),
+                                format!("{region}, "),
+                            ),
+                        };
+                        diag.span_label(lifetime.ident.span, msg);
+                        diag.span_suggestion_verbose(
+                            lifetime.ident.span.shrink_to_hi(),
+                            format!(
+                                "consider making explicit the implicit `{fr_name}` lifetime in the \
+                                 return type",
+                            ),
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     /// Detect lifetime errors caused by lifetime requirements coming from the enclosing `impl`
