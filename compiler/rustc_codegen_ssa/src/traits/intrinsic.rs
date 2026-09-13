@@ -41,6 +41,8 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
+    /// Returns the number of bits set. The return type must be `u32`.
+    fn ctpop(&mut self, val: Self::Value) -> Self::Value;
     /// Trait method used to load a function while testing if it is associated with a type
     /// identifier.
     fn type_checked_load(
