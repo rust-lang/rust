@@ -31,7 +31,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
             atomic_cas: true,
 
-            features: "+m".into(),
+            features: "+m,+relax".into(),
             llvm_abiname: LlvmAbi::Ilp32,
             executables: true,
             panic_strategy: PanicStrategy::Abort,

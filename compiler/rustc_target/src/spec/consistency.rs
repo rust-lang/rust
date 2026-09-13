@@ -732,6 +732,13 @@ impl Target {
                 }
             }
         }
+        // Check that linker relaxation is enabled on RISC-V targets for binary size and runtime performance improvements
+        if kind == TargetKind::Builtin && matches!(self.arch, Arch::RiscV32 | Arch::RiscV64) {
+            check!(
+                self.features.contains("+relax"),
+                "The `+relax` feature should be enabled for RISC-V targets"
+            );
+        }
 
         Ok(())
     }
