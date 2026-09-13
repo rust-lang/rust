@@ -144,7 +144,7 @@ impl ArenaTokenStreamBuilder {
         }
     }
 
-    fn push_token_tree_arena(&mut self, tt: &ArenaTokenTree, stream: &ArenaTokenStream) {
+    pub fn push_token_tree_arena(&mut self, tt: &ArenaTokenTree, stream: &ArenaTokenStream) {
         match tt {
             token @ ArenaTokenTree::Token(..) => {
                 self.tokens.push(*token);
@@ -391,8 +391,7 @@ impl ArenaTokenStream {
         let mut builder = ArenaTokenStreamBuilder::with_capacity(trees.len());
         // FIXME: implement this in a more performant way
         for tree in trees {
-            let tree = tree.to_token_tree(stream);
-            builder.push_token_tree(&tree);
+            builder.push_token_tree_arena(tree, stream);
         }
         builder.finish()
     }
