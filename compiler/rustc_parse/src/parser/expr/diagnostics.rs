@@ -1,3 +1,5 @@
+use std::mem;
+
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{BinOpKind, Expr, ExprKind, token};
 use rustc_ast_pretty::pprust;
@@ -8,6 +10,19 @@ use crate::parser::Parser;
 use crate::{diagnostics, exp};
 
 impl<'a> Parser<'a> {
+    pub(super) fn recover_from_c_arrow_op(
+        &mut self,
+        lo: Span,
+        base: &mut Expr,
+    ) -> Option<PResult<'a, Box<Expr>>> {
+        if self.may_recover() && self.eat_noexpect(&token::RArrow) {
+            self.dcx().emit_err(diagnostics::ExprRArrowCall { span: self.prev_token.span });
+            let base = Box::new(mem::replace(base, Expr::dummy()));
+            return Some(self.parse_dot_suffix_expr(lo, base));
+        }
+        None
+    }
+
     /// Recover from a binary operator after complete statement expression as in `{ 4 } / 2`.
     pub(super) fn recover_from_bin_op_after_complete_stmt_expr(&self, lhs: &Expr) -> bool {
         use BinOpKind::*;
