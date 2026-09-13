@@ -172,7 +172,7 @@ def unwrap_unique_or_non_null(unique_or_nonnull: SBValue) -> SBValue:
 
 
 def unwrap_scalar_wrappers(wrapper: SBValue) -> SBValue:
-    while (wrapper.type.GetTypeFlags() & eTypeIsInteger) == 0:
+    while wrapper.IsValid() and (wrapper.type.GetTypeFlags() & eTypeIsInteger) == 0:
         wrapper = wrapper.GetChildAtIndex(0)
     return wrapper
 
