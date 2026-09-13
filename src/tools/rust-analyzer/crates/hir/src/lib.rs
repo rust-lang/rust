@@ -4846,14 +4846,13 @@ impl<'db> Type<'db> {
     }
 
     fn param_env(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
-        let interner = DbInterner::new_no_crate(db);
         let krate = self.krate(db);
         match self.owner {
             TypeOwnerId::GenericDefId(def) => {
                 ParamEnvAndCrate { param_env: db.trait_environment(def), krate }
             }
             TypeOwnerId::BuiltinDeriveImplId(def) => ParamEnvAndCrate {
-                param_env: hir_ty::builtin_derive::param_env(interner, def),
+                param_env: hir_ty::builtin_derive::param_env(DbInterner::new_with(db, krate), def),
                 krate,
             },
             TypeOwnerId::AnonConstId(def) => ParamEnvAndCrate {
@@ -4861,7 +4860,7 @@ impl<'db> Type<'db> {
                 krate,
             },
             TypeOwnerId::NoParams(_) => {
-                ParamEnvAndCrate { param_env: ParamEnv::empty(interner), krate }
+                ParamEnvAndCrate { param_env: ParamEnv::empty(DbInterner::new_no_crate(db)), krate }
             }
         }
     }
