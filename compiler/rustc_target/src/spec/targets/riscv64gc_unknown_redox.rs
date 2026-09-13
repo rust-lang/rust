@@ -4,7 +4,7 @@ pub(crate) fn target() -> Target {
     let mut base = base::redox::opts();
     base.code_model = Some(CodeModel::Medium);
     base.cpu = "generic-rv64".into();
-    base.features = "+m,+a,+f,+d,+c".into();
+    base.features = "+m,+a,+f,+d,+c+relax".into();
     base.llvm_abiname = LlvmAbi::Lp64d;
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);
