@@ -86,11 +86,17 @@ pub struct ArenaTokenStreamBuilder {
     tokens: Vec<ArenaTokenTree>,
     /// Index of the current delimited sequence
     current_delimited_sequence: Option<usize>,
+    /// This is only useful to optimize glueing
+    last_top_level_delimited_sequence: Option<usize>,
 }
 
 impl ArenaTokenStreamBuilder {
     pub fn with_capacity(capacity: usize) -> Self {
-        Self { tokens: Vec::with_capacity(capacity), current_delimited_sequence: None }
+        Self {
+            tokens: Vec::with_capacity(capacity),
+            current_delimited_sequence: None,
+            last_top_level_delimited_sequence: None,
+        }
     }
 
     pub fn tokens(&self) -> &[ArenaTokenTree] {
@@ -103,6 +109,15 @@ impl ArenaTokenStreamBuilder {
 
     pub fn push_token_alone(&mut self, token: Token) {
         self.tokens.push(ArenaTokenTree::Token(token, Spacing::Alone));
+    }
+
+    pub fn push_stream(&mut self, stream: ArenaTokenStream) {
+        self.tokens.reserve(stream.length());
+        self.fill_stream(stream.iter_top_level_trees());
+    }
+
+    pub fn push_iter(&mut self, iter: ArenaTokenTreeIter<'_>) {
+        self.fill_stream(iter);
     }
 
     pub fn pop(&mut self) -> Option<ArenaTokenTree> {
@@ -126,6 +141,44 @@ impl ArenaTokenStreamBuilder {
                     DelimitedData { span: *span, spacing: *spacing, delimiter: *delimiter },
                 );
             }
+        }
+    }
+
+    fn push_token_tree_arena(&mut self, tt: &ArenaTokenTree, stream: &ArenaTokenStream) {
+        match tt {
+            token @ ArenaTokenTree::Token(..) => {
+                self.tokens.push(*token);
+            }
+            ArenaTokenTree::DelimitedStart(bounds, data) => {
+                let start = self.start_delimited();
+                self.fill_stream(stream.iter_delimited(bounds));
+                self.close_delimited(start, *data);
+            }
+        }
+    }
+
+    // If `self` is not empty, try to glue `tt` onto its last top-level token. The return
+    // value indicates if gluing took place.
+    pub fn try_glue_to_last_top_level_token(&mut self, token: &Token, spacing: Spacing) -> bool {
+        assert!(self.current_delimited_sequence.is_none());
+        if let Some(ArenaTokenTree::Token(last_tok, Spacing::Joint | Spacing::JointHidden)) =
+            self.tokens.last()
+            // We can only do this if the last tree is a top-level token
+            // If there is no last top-level sequence, then the last token has to be top-level
+            && self.last_top_level_delimited_sequence.map(|index| {
+            let ArenaTokenTree::DelimitedStart(bounds, _) = self.tokens.get(index).expect("Invalid last top level delimited sequence index") else {
+                panic!("Invalid last top level delimited sequence type");
+            };
+            // The last top-level delimited sequence DOES NOT contain the last token
+            bounds.index_of_next_token_tree() <= self.tokens.len() - 1
+        }).unwrap_or(true)
+            && let Some(glued_tok) = last_tok.glue(&token)
+        {
+            // ...then overwrite the last token tree in `vec` with the glued token.
+            *self.tokens.last_mut().unwrap() = ArenaTokenTree::Token(glued_tok, spacing);
+            true
+        } else {
+            false
         }
     }
 
@@ -155,6 +208,9 @@ impl ArenaTokenStreamBuilder {
                 bounds.length = len as u32;
                 *data = delimited_data;
                 self.current_delimited_sequence = bounds.parent.map(|v| v as usize);
+                if bounds.parent.is_none() {
+                    self.last_top_level_delimited_sequence = Some(bounds.start());
+                }
             }
         }
     }
@@ -256,7 +312,14 @@ impl ArenaTokenStreamBuilder {
                 ArenaTokenTree::Token(_, _) => {}
                 ArenaTokenTree::DelimitedStart(b, _) => {
                     b.start += offset;
-                    b.parent = b.parent.map(|p| p + offset);
+                    b.parent = Some(match b.parent {
+                        Some(p) => p + offset,
+                        None => {
+                            // Reparent the inserted top-level delimited sequences to the current
+                            // delimited sequence
+                            bounds.start
+                        }
+                    });
                 }
             }
         }
@@ -277,6 +340,13 @@ impl ArenaTokenStreamBuilder {
     fn fill(&mut self, stream: &TokenStream) {
         for tt in stream.iter() {
             self.push_token_tree(tt);
+        }
+    }
+
+    fn fill_stream(&mut self, iter: ArenaTokenTreeIter<'_>) {
+        let stream = iter.stream().clone();
+        for tt in iter {
+            self.push_token_tree_arena(tt, &stream);
         }
     }
 }
@@ -328,10 +398,7 @@ impl ArenaTokenStream {
     }
 
     pub fn from_stream(stream: &TokenStream) -> Self {
-        let mut arena = ArenaTokenStreamBuilder {
-            tokens: Vec::with_capacity(stream.len()),
-            current_delimited_sequence: None,
-        };
+        let mut arena = ArenaTokenStreamBuilder::with_capacity(stream.len());
         arena.fill(stream);
         arena.finish()
     }
@@ -351,6 +418,43 @@ impl ArenaTokenStream {
         TokenStream::new(tokens)
     }
 
+    /// Try to reuse the tokens of this stream into a builder, if we are the only copy.
+    /// If it is not the only copy, clones the inner tokens.
+    pub fn into_builder(self) -> ArenaTokenStreamBuilder {
+        // FIXME: try to optimize this
+        let last_toplevel = self
+            .tokens
+            .iter()
+            .rev()
+            .find_map(|tree| match tree {
+                ArenaTokenTree::DelimitedStart(bounds, _) if bounds.parent.is_none() => {
+                    Some(bounds.start)
+                }
+                ArenaTokenTree::DelimitedStart(_, _) | ArenaTokenTree::Token(_, _) => None,
+            })
+            .map(|index| index as usize);
+        ArenaTokenStreamBuilder {
+            tokens: self.try_take_tokens(),
+            current_delimited_sequence: None,
+            last_top_level_delimited_sequence: last_toplevel,
+        }
+    }
+
+    /// Try to reuse the tokens of this stream, if we are the only copy.
+    /// If it is not the only copy, clones the inner tokens.
+    fn try_take_tokens(mut self) -> Vec<ArenaTokenTree> {
+        let tokens = Arc::make_mut(&mut self.tokens);
+        std::mem::take(tokens)
+    }
+
+    /// Create a token stream containing a single token with alone spacing. The
+    /// spacing used for the final token in a constructed stream doesn't matter
+    /// because it's never used. In practice we arbitrarily use
+    /// `Spacing::Alone`.
+    pub fn token_alone(kind: TokenKind, span: Span) -> Self {
+        Self { tokens: Arc::new(vec![ArenaTokenTree::token_alone(kind, span)]) }
+    }
+
     /// Extract **the contents** of a delimited sequence out of this token stream.
     /// The delimited sequence start/end is **NOT** returend in the output.
     /// `stream` is the original token stream that contains the delimited sequence identified by
@@ -359,7 +463,7 @@ impl ArenaTokenStream {
         bounds: DelimitedBounds,
         stream: &ArenaTokenStream,
     ) -> ArenaTokenStream {
-        // eprintln!("separate delimited");
+        // FIXME: optimize this
         // This could be implemented in a smarter way by reusing the original allocation
         // and storing an index with "view" into it.
         let start = bounds.start as usize + 1;

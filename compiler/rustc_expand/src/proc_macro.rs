@@ -46,18 +46,14 @@ impl base::BangProcMacro for BangProcMacro {
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
-        let stream = self
-            .client
-            .run1(&strategy, server, input.to_token_stream(), proc_macro_backtrace)
-            .map_err(|e| {
-                ecx.dcx().emit_err(diagnostics::ProcMacroPanicked {
-                    span,
-                    message: e
-                        .into_string()
-                        .map(|message| diagnostics::ProcMacroPanickedHelp { message }),
-                })
-            });
-        stream.map(|stream| ArenaTokenStream::from_stream(&stream))
+        self.client.run1(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
+            ecx.dcx().emit_err(diagnostics::ProcMacroPanicked {
+                span,
+                message: e
+                    .into_string()
+                    .map(|message| diagnostics::ProcMacroPanickedHelp { message }),
+            })
+        })
     }
 }
 
@@ -78,24 +74,16 @@ impl base::AttrProcMacro for AttrProcMacro {
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
-        let stream = self
-            .client
-            .run2(
-                &strategy,
-                server,
-                annotation.to_token_stream(),
-                annotated.to_token_stream(),
-                proc_macro_backtrace,
-            )
-            .map_err(|e| {
+        self.client.run2(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
+            |e| {
                 ecx.dcx().emit_err(diagnostics::CustomAttributePanicked {
                     span,
                     message: e
                         .into_string()
                         .map(|message| diagnostics::CustomAttributePanickedHelp { message }),
                 })
-            });
-        stream.map(|stream| ArenaTokenStream::from_stream(&stream))
+            },
+        )
     }
 }
 
@@ -188,8 +176,8 @@ pub fn expand_derive_macro(
     let strategy = exec_strategy(ecx.sess);
     let server = proc_macro_server::Rustc::new(ecx);
 
-    match client.run1(&strategy, server, input.to_token_stream(), proc_macro_backtrace) {
-        Ok(stream) => Ok(ArenaTokenStream::from_stream(&stream)),
+    match client.run1(&strategy, server, input, proc_macro_backtrace) {
+        Ok(stream) => Ok(stream),
         Err(e) => {
             let invoc_expn_data = invoc_id.expn_data();
             let span = invoc_expn_data.call_site;
