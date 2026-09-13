@@ -957,12 +957,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let body = item.to_tokens();
                     match expander.expand_derive(self.cx, span, &body) {
                         Ok(tok_result) => {
-                            let fragment = self.parse_ast_fragment(
-                                ArenaTokenStream::from_stream(&tok_result),
-                                fragment_kind,
-                                &path,
-                                span,
-                            );
+                            let fragment =
+                                self.parse_ast_fragment(tok_result, fragment_kind, &path, span);
                             if macro_stats {
                                 update_derive_macro_stats(
                                     self.cx,

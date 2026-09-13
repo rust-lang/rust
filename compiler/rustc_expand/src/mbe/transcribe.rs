@@ -3,6 +3,7 @@ use std::mem;
 use rustc_ast::token::{
     self, Delimiter, IdentKind, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
@@ -179,10 +180,10 @@ pub(super) fn transcribe<'a>(
     src_span: DelimSpan,
     transparency: Transparency,
     expand_id: LocalExpnId,
-) -> PResult<'a, TokenStream> {
+) -> PResult<'a, ArenaTokenStream> {
     // Nothing for us to transcribe...
     if src.tts.is_empty() {
-        return Ok(TokenStream::default());
+        return Ok(ArenaTokenStream::default());
     }
 
     let mut tscx = TranscrCtx {
@@ -240,7 +241,7 @@ pub(super) fn transcribe<'a>(
                     }
                     if tscx.result_stack.is_empty() {
                         // No results left to compute! We are back at the top-level.
-                        return Ok(TokenStream::new(tscx.result));
+                        return Ok(ArenaTokenStream::from_stream(&TokenStream::new(tscx.result)));
                     }
 
                     // Step back into the parent Delimited.

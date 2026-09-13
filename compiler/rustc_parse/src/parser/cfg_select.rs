@@ -1,6 +1,5 @@
 use rustc_ast::token;
-use rustc_ast::tokenarena::ArenaTokenTree;
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenTree};
 use rustc_ast::util::classify;
 use rustc_errors::PResult;
 use rustc_span::Span;
@@ -17,18 +16,18 @@ pub struct CfgSelectBranchAttrSpans {
 impl<'a> Parser<'a> {
     /// Parses the right-hand side of a `cfg_select!` branch,
     /// which can be either a braced block or an expression.
-    pub fn parse_cfg_select_branch_rhs(&mut self) -> PResult<'a, TokenStream> {
+    pub fn parse_cfg_select_branch_rhs(&mut self) -> PResult<'a, ArenaTokenStream> {
         if self.token == token::OpenBrace {
             // Strip the outer '{' and '}'.
             match self.parse_token_tree() {
                 ArenaTokenTree::Token(..) => unreachable!("because the current token is a '{{'"),
-                tree @ ArenaTokenTree::DelimitedStart(..) => {
+                ArenaTokenTree::DelimitedStart(bounds, _) => {
                     // Optionally end with a comma.
                     let _ = self.eat(exp!(Comma));
-                    return Ok(match tree.to_token_tree(&self.token_cursor.stream) {
-                        TokenTree::Token(_, _) => unreachable!(),
-                        TokenTree::Delimited(_, _, _, tts) => tts,
-                    });
+                    return Ok(ArenaTokenStream::separate_delimited_inner(
+                        bounds,
+                        &self.token_cursor.stream,
+                    ));
                 }
             }
         }
@@ -50,6 +49,6 @@ impl<'a> Parser<'a> {
         } else {
             let _ = self.eat(exp!(Comma));
         }
-        Ok(TokenStream::from_ast(&expr))
+        Ok(ArenaTokenStream::from_ast(&expr))
     }
 }

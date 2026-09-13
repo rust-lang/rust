@@ -463,7 +463,7 @@ impl ArenaTokenStream {
         bounds: DelimitedBounds,
         stream: &ArenaTokenStream,
     ) -> ArenaTokenStream {
-        // FIXME: optimize this
+        // FIXME: optimize this to avoid copying
         // This could be implemented in a smarter way by reusing the original allocation
         // and storing an index with "view" into it.
         let start = bounds.start as usize + 1;
