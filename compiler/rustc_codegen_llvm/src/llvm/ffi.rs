@@ -894,7 +894,11 @@ unsafe extern "C" {
         SLen: c_uint,
     ) -> MetadataKindId;
 
-    pub(crate) fn LLVMGetVersion(major: &mut c_uint, minor: &mut c_uint, patch: &mut c_uint);
+    /// Gets the actual version of LLVM that we are linked to at runtime.
+    ///
+    /// # Safety
+    /// Can be called without initializing LLVM.
+    pub(crate) safe fn LLVMGetVersion(major: &mut c_uint, minor: &mut c_uint, patch: &mut c_uint);
 
     pub(crate) fn LLVMDisposeTargetMachine(T: ptr::NonNull<TargetMachine>);
 
@@ -2176,9 +2180,9 @@ unsafe extern "C" {
     /// Returns the LLVM major version that the compiler was built with.
     ///
     /// Note that this is hard-coded as `LLVM_VERSION_MAJOR` when `RustWrapper.cpp` is built. This
-    /// could be different than what the runtime LLVM library reports in `LLVMGetVersion`, so we
+    /// could be different than what the runtime LLVM library reports in [`LLVMGetVersion`], so we
     /// assert their equality in `configure_llvm`.
-    pub(crate) fn LLVMRustVersionMajor() -> u32;
+    pub(crate) safe fn LLVMRustVersionMajor() -> u32;
 
     /// Add LLVM module flags.
     ///
