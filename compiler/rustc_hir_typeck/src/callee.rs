@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
@@ -666,11 +667,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_id: SplatLoweringInfo<'tcx>,
         callee_generic_args: Option<GenericArgsRef<'tcx>>,
     ) {
+        let mut formal_inputs = Cow::Borrowed(fn_sig.inputs());
+        if let (SplatLoweringInfo::FnDef(def_id), Some(args)) = (fn_id, callee_generic_args) {
+            for (param, pos) in self.tcx.generics_of(def_id).own_arg_pos_consts() {
+                let ty = self.tcx.type_of(param.def_id).instantiate(self.tcx, args).skip_norm_wip();
+                let ty = self.normalize(call_expr.span, Unnormalized::new_wip(ty));
+                formal_inputs.to_mut().insert(pos as usize, ty);
+            }
+        }
+
         let do_check = || {
             self.check_argument_types(
                 call_expr.span,
                 call_expr,
-                fn_sig.inputs(),
+                &formal_inputs,
                 fn_sig.output(),
                 expected,
                 arg_exprs,

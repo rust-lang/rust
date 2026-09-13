@@ -5,6 +5,8 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
+use std::borrow::Cow;
+
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
@@ -618,6 +620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                     expr.span,
                     expr.hir_id,
+                    call_expr_and_args.map(|(_, args)| args),
                 )
                 .0
             }
@@ -1488,14 +1491,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Handle splatted method arguments
                 // self is already handled as `rcvr`, so it's never splatted here
-                let method_inputs = &method.sig.inputs()[1..];
+                let mut method_inputs = Cow::Borrowed(&method.sig.inputs()[1..]);
+                for (param, pos) in self.tcx.generics_of(method.def_id).own_arg_pos_consts() {
+                    let ty = self
+                        .tcx
+                        .type_of(param.def_id)
+                        .instantiate(self.tcx, method.args)
+                        .skip_norm_wip();
+                    method_inputs.to_mut().insert(pos as usize - 1, ty);
+                }
+
                 let method_tuple_args_flag =
                     TupleArgumentsFlag::with_fn_sig_kind(method.sig.fn_sig_kind, true);
 
                 self.check_argument_types(
                     segment.ident.span,
                     expr,
-                    method_inputs,
+                    &method_inputs,
                     method.sig.output(),
                     expected,
                     args,
