@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "thumbv8.1m.main-none-eabi".into(),
         metadata: TargetMetadata {
             description: Some("Bare ARMv8.1-M Mainline with DSP and LOB".into()),
-            tier: Some(2),
+            tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
         },
