@@ -20,6 +20,7 @@ use crate::diagnostics::{
     PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
 };
 use crate::exp;
+use crate::parser::function::FuncParam;
 use crate::parser::{CommaRecoveryMode, Expr, FnContext, FnParseMode, RecoverColon, RecoverComma};
 
 /// Specifies how to parse a path.
@@ -404,7 +405,12 @@ impl<'a> Parser<'a> {
                             req_name: |_, _| false,
                             req_body: false,
                         };
-                        let param = p.parse_param_general(&mode, false, false)?;
+                        let param = match p.parse_param_general(&mode, false, false, None)? {
+                            FuncParam::GeneralParam(param) => param,
+                            FuncParam::ConstGenericParam(param) => {
+                                unreachable!("const param parsed without a position: {param:?}")
+                            }
+                        };
                         if !matches!(param.pat.kind, PatKind::Missing) {
                             self.psess
                                 .gated_spans

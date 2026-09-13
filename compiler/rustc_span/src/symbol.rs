@@ -1058,6 +1058,7 @@ symbols! {
         fsub_algebraic,
         fsub_fast,
         full,
+        function_arg_const_generics,
         fundamental,
         fused_iterator,
         future_output,
