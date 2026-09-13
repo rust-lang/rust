@@ -781,12 +781,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, ")")?;
             }
             ty::FnDef(def_id, args) => {
-                let args = args.no_bound_vars().unwrap();
+                let args = args.fn_def_args();
                 if with_reduced_queries() {
                     self.print_def_path(def_id, args)?;
                 } else {
-                    let mut sig =
-                        self.tcx().fn_sig(def_id).instantiate(self.tcx(), args).skip_norm_wip();
+                    let mut sig = ty.fn_sig(self.tcx());
                     if self.tcx().codegen_fn_attrs(def_id).safe_target_features {
                         write!(self, "#[target_feature(..)] ")?;
                         sig = sig.map_bound(|mut sig| {
@@ -861,7 +860,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Alias(
                 _,
                 ref data @ ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    kind:
+                        ty::Projection { .. }
+                        | ty::EvidenceProjection { .. }
+                        | ty::Inherent { .. }
+                        | ty::Free { .. },
                     ..
                 },
             ) => data.print(self)?,
@@ -1543,6 +1546,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     | ty::AliasConstKind::Free { def_id } => {
                         self.pretty_print_value_path(def_id, args)?;
                     }
+                    ty::AliasConstKind::EvidenceProjection { projection } => {
+                        let alias = ty::AliasConst::new(
+                            self.tcx(),
+                            ty::AliasConstKind::EvidenceProjection { projection },
+                            args,
+                        );
+                        self.pretty_print_value_path(
+                            projection.item_def_id,
+                            alias.full_args(self.tcx()),
+                        )?;
+                    }
                     ty::AliasConstKind::Anon { def_id } => {
                         if def_id.is_local()
                             && let span = self.tcx().def_span(def_id)
@@ -1989,7 +2003,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             (_, ty::FnDef(def_id, args)) => {
                 // Never allowed today, but we still encounter them in invalid const args.
                 // FIXME(addiesh): fix wrt late-bound stuff
-                self.pretty_print_value_path(def_id, args.no_bound_vars().unwrap())?;
+                self.pretty_print_value_path(def_id, args.fn_def_args())?;
                 return Ok(());
             }
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
@@ -3184,6 +3198,17 @@ define_print! {
                     p.print_def_path(def_id, self.args)?;
                 }
             }
+            ty::AliasTermKind::EvidenceProjectionTy { projection } => {
+                let args = self.full_args(p.tcx());
+                let def_id = projection.item_def_id;
+                if !(p.should_print_verbose() || with_reduced_queries())
+                    && p.tcx().is_impl_trait_in_trait(def_id)
+                {
+                    p.pretty_print_rpitit(def_id, args)?;
+                } else {
+                    p.print_def_path(def_id, args)?;
+                }
+            }
             ty::AliasTermKind::FreeTy { def_id }
             | ty::AliasTermKind::FreeConst { def_id }
             | ty::AliasTermKind::OpaqueTy { def_id }
@@ -3191,6 +3216,9 @@ define_print! {
             | ty::AliasTermKind::ProjectionConst { def_id }
             | ty::AliasTermKind::InherentConstImpl { def_id } => {
                 p.print_def_path(def_id, self.args)?;
+            }
+            ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+                p.print_def_path(projection.item_def_id, self.full_args(p.tcx()))?;
             }
         }
     }

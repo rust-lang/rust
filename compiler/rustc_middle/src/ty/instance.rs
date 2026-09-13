@@ -13,6 +13,7 @@ use tracing::{debug, instrument};
 
 use crate::diagnostics;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::traits::solve::{EvidenceValidationBoundary, validate_evidence_projections};
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{
@@ -962,11 +963,32 @@ impl<'tcx> Instance<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if let Some(args) = self.args_for_mir_body() {
+        let value = if let Some(args) = self.args_for_mir_body() {
             tcx.instantiate_and_normalize_erasing_regions(args, typing_env, v)
         } else {
             tcx.normalize_erasing_regions(typing_env, v.instantiate_identity())
+        };
+
+        let is_codegen = match typing_env.typing_mode() {
+            ty::TypingMode::Codegen => true,
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Typeck { .. }
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. }
+            | ty::TypingMode::Reflection
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::ErasedNotCoherence(_) => false,
+        };
+        if typing_env.param_env.is_empty() && is_codegen {
+            let validation =
+                validate_evidence_projections(&value, EvidenceValidationBoundary::Codegen);
+            assert!(
+                validation.is_ok(),
+                "fully monomorphized MIR value retained unresolved trait evidence: {validation:?}"
+            );
         }
+
+        value
     }
 
     #[inline(always)]

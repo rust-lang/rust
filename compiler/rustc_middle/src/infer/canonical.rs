@@ -30,10 +30,14 @@ pub use rustc_type_ir as ir;
 use smallvec::SmallVec;
 
 use crate::mir::ConstraintCategory;
+use crate::traits::solve::TraitEvidence;
 use crate::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
 pub type CanonicalQueryInput<'tcx, V> = ir::CanonicalQueryInput<TyCtxt<'tcx>, V>;
 pub type Canonical<'tcx, V> = ir::Canonical<TyCtxt<'tcx>, V>;
+pub type CanonicalEvidenceVarKind<'tcx> = ir::CanonicalEvidenceVarKind<TyCtxt<'tcx>>;
+pub type CanonicalEvidenceVarValues<'tcx> = ir::CanonicalEvidenceVarValues<TyCtxt<'tcx>>;
+pub type CanonicalEvidenceVarKinds<'tcx> = &'tcx List<CanonicalEvidenceVarKind<'tcx>>;
 pub type CanonicalVarKind<'tcx> = ir::CanonicalVarKind<TyCtxt<'tcx>>;
 pub type CanonicalVarValues<'tcx> = ir::CanonicalVarValues<TyCtxt<'tcx>>;
 pub type CanonicalVarKinds<'tcx> = &'tcx List<CanonicalVarKind<'tcx>>;
@@ -53,6 +57,12 @@ pub struct OriginalQueryValues<'tcx> {
     /// This is equivalent to `CanonicalVarValues`, but using a
     /// `SmallVec` yields a significant performance win.
     pub var_values: SmallVec<[GenericArg<'tcx>; 8]>,
+
+    /// Values replaced by canonical variables in the compiler-internal trait
+    /// evidence channel. Evidence deliberately has its own mapping instead of
+    /// being smuggled through `GenericArg`, since doing so would make a proof
+    /// look like a type/const argument and corrupt ordinary bound indices.
+    pub evidence_values: SmallVec<[TraitEvidence<'tcx>; 8]>,
 }
 
 impl<'tcx> Default for OriginalQueryValues<'tcx> {
@@ -60,7 +70,7 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
         let mut universe_map = SmallVec::default();
         universe_map.push(ty::UniverseIndex::ROOT);
 
-        Self { universe_map, var_values: SmallVec::default() }
+        Self { universe_map, var_values: SmallVec::default(), evidence_values: SmallVec::default() }
     }
 }
 
@@ -70,6 +80,9 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
 #[derive(Clone, Debug, StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
+    /// Canonical values corresponding to the evidence variables supplied to
+    /// the query. This is a parallel channel to `var_values`.
+    pub evidence_var_values: CanonicalEvidenceVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
@@ -170,7 +183,11 @@ pub struct CanonicalParamEnvCache<'tcx> {
     map: Lock<
         FxHashMap<
             ty::ParamEnv<'tcx>,
-            (Canonical<'tcx, ty::ParamEnv<'tcx>>, &'tcx [GenericArg<'tcx>]),
+            (
+                Canonical<'tcx, ty::ParamEnv<'tcx>>,
+                &'tcx [GenericArg<'tcx>],
+                &'tcx [TraitEvidence<'tcx>],
+            ),
         >,
     >,
 }
@@ -199,33 +216,45 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
             return Canonical {
                 max_universe: ty::UniverseIndex::ROOT,
                 var_kinds: List::empty(),
+                evidence_var_kinds: List::empty(),
                 value: key,
             };
         }
 
         assert_eq!(state.var_values.len(), 0);
+        assert_eq!(state.evidence_values.len(), 0);
         assert_eq!(state.universe_map.len(), 1);
         debug_assert_eq!(&*state.universe_map, &[ty::UniverseIndex::ROOT]);
 
         match self.map.borrow().entry(key) {
             Entry::Occupied(e) => {
-                let (canonical, var_values) = e.get();
+                let (canonical, var_values, evidence_values) = e.get();
                 if cfg!(debug_assertions) {
                     let mut state = state.clone();
                     let rerun_canonical = canonicalize_op(tcx, key, &mut state);
                     assert_eq!(rerun_canonical, *canonical);
-                    let OriginalQueryValues { var_values: rerun_var_values, universe_map } = state;
+                    let OriginalQueryValues {
+                        var_values: rerun_var_values,
+                        evidence_values: rerun_evidence_values,
+                        universe_map,
+                    } = state;
                     assert_eq!(universe_map.len(), 1);
                     assert_eq!(**var_values, *rerun_var_values);
+                    assert_eq!(**evidence_values, *rerun_evidence_values);
                 }
                 state.var_values.extend_from_slice(var_values);
+                state.evidence_values.extend_from_slice(evidence_values);
                 *canonical
             }
             Entry::Vacant(e) => {
                 let canonical = canonicalize_op(tcx, key, state);
-                let OriginalQueryValues { var_values, universe_map } = state;
+                let OriginalQueryValues { var_values, evidence_values, universe_map } = state;
                 assert_eq!(universe_map.len(), 1);
-                e.insert((canonical, tcx.arena.alloc_slice(var_values)));
+                e.insert((
+                    canonical,
+                    tcx.arena.alloc_slice(var_values),
+                    tcx.arena.alloc_slice(evidence_values),
+                ));
                 canonical
             }
         }

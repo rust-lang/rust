@@ -713,7 +713,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn const_fn_def(&self) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let const_ty = self.constant()?.const_.ty();
         if let ty::FnDef(def_id, args) = *const_ty.kind() {
-            Some((def_id, args.no_bound_vars().unwrap()))
+            Some((def_id, args.fn_def_args()))
         } else {
             None
         }

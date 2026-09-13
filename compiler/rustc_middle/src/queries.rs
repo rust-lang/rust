@@ -1186,6 +1186,18 @@ rustc_queries! {
         desc { "computing the implied bounds of `{}`", tcx.def_path_str(key) }
     }
 
+    /// Dependent-telescope assumptions which were instantiated alongside the
+    /// liberated function signature used by `assumed_wf_types`.
+    ///
+    /// Keeping these in a separate query lets legacy consumers continue to
+    /// iterate the type/span pairs while proof-sensitive normalization uses the
+    /// exact same binder substitution and stable assumption identities.
+    query assumed_wf_telescope_clauses(key: LocalDefId)
+        -> &'tcx [ty::InstantiatedTelescopeClause<TyCtxt<'tcx>>]
+    {
+        desc { "computing dependent binder assumptions of `{}`", tcx.def_path_str(key) }
+    }
+
     /// We need to store the assumed_wf_types for an RPITIT so that impls of foreign
     /// traits with return-position impl trait in traits can inherit the right wf types.
     query assumed_wf_types_for_rpitit(key: DefId) -> &'tcx [(Ty<'tcx>, Span)] {
@@ -1199,6 +1211,13 @@ rustc_queries! {
         cache_on_disk
         handle_cycle_error
         separate_provide_extern
+    }
+
+    /// Converts a source-shaped function signature into the next solver's
+    /// evidence-indexed semantic representation. `fn_sig` deliberately
+    /// remains the surface query used by lowering and diagnostics.
+    query elaborated_fn_sig(key: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
+        desc { "elaborating function signature of `{}` with trait evidence", tcx.def_path_str(key) }
     }
 
     /// Performs lint checking for the module.

@@ -11,9 +11,10 @@ use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use tracing::{debug, instrument};
 
 use crate::traits::query::NoSolution;
+use crate::traits::solve::{CandidateEvidenceSource, EvidenceProjection};
 use crate::ty::{
     self, EarlyBinder, FallibleTypeFolder, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeVisitableExt, Unnormalized,
+    TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
 
 #[derive(Debug, Copy, Clone, StableHash, TyEncodable, TyDecodable)]
@@ -32,6 +33,99 @@ impl<'tcx> NormalizationError<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// Retargets a parameter-environment recipe when a typed artifact crosses
+    /// an item boundary after type checking.
+    ///
+    /// Generic MIR records the stable origin of the assumption selected while
+    /// checking its defining item. After instantiating that MIR in a caller,
+    /// the defining origin is no longer present: the caller's proof of the
+    /// impl/method where-bound is represented by its own assumption origin.
+    /// Keeping the stale origin makes an otherwise exact associated binding
+    /// rigid and can prevent instance resolution and MIR inlining.
+    ///
+    /// This transfer is deliberately narrower than trait selection. It only
+    /// retargets a direct `ParamEnv` recipe whose old origin is absent, and
+    /// only when the current environment has exactly one compatible origin
+    /// group for the *complete* trait ref. Compatibility preserves the stable
+    /// source family; a textually equal trait ref from an unrelated contract
+    /// is a different dictionary. Competing compatible dictionaries,
+    /// coherence-quotiented (`Unique`) recipes, alias-bound recipes, and any
+    /// partial trait-ref match remain untouched.
+    fn transfer_param_env_evidence_for_post_typeck<T>(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        value: T,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if typing_env.param_env.is_empty() || !value.has_evidence_projections() {
+            return value;
+        }
+        match typing_env.typing_mode() {
+            ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {
+                value.fold_with(&mut ParamEnvEvidenceTransfer {
+                    tcx: self,
+                    param_env: typing_env.param_env,
+                })
+            }
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Typeck { .. }
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. }
+            | ty::TypingMode::Reflection
+            | ty::TypingMode::ErasedNotCoherence(_) => value,
+        }
+    }
+
+    /// Static evidence remains rigid throughout type checking. Post-analysis
+    /// normalization may replay ordinary selected evidence, while callable
+    /// evidence stays rigid until fully instantiated codegen. Expose the
+    /// appropriate evidence projections here so the next solver can interpret
+    /// their exact proof recipes before MIR and backend consumers inspect the
+    /// normalized value.
+    fn expose_evidence_projections_for_post_typeck<T>(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        value: T,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        match typing_env.typing_mode() {
+            ty::TypingMode::PostAnalysis => {
+                ty::set_evidence_projections_to_non_rigid(self, value).skip_normalization()
+            }
+            ty::TypingMode::Codegen => {
+                let is_ground = typing_env.param_env.is_empty()
+                    && !value.has_param()
+                    && !value.has_infer()
+                    && !value.has_placeholders()
+                    && !value
+                        .has_type_flags(ty::TypeFlags::HAS_TY_FRESH | ty::TypeFlags::HAS_CT_FRESH)
+                    && !value.has_escaping_bound_vars()
+                    && !value.references_error();
+
+                if is_ground {
+                    // Only a fully monomorphized codegen value may recursively
+                    // expose projections inside its selected proof recipe.
+                    // Generic `TypingEnv::codegen` callers still carry local
+                    // identity which must remain opaque until instantiation.
+                    ty::set_evidence_projections_to_non_rigid_for_codegen(self, value)
+                        .skip_normalization()
+                } else {
+                    ty::set_evidence_projections_to_non_rigid(self, value).skip_normalization()
+                }
+            }
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Typeck { .. }
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. }
+            | ty::TypingMode::Reflection
+            | ty::TypingMode::ErasedNotCoherence(_) => value,
+        }
+    }
+
     /// Erase the regions in `value` and then fully normalize all the
     /// types found within. The result will also have regions erased.
     ///
@@ -57,6 +151,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // Erase first before we do the real query -- this keeps the
         // cache from being too polluted.
         let value = self.erase_and_anonymize_regions(value);
+        let value = self.transfer_param_env_evidence_for_post_typeck(typing_env, value);
+        let value = self.expose_evidence_projections_for_post_typeck(typing_env, value);
         debug!(?value);
 
         if !value.has_aliases() {
@@ -114,6 +210,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // Erase first before we do the real query -- this keeps the
         // cache from being too polluted.
         let value = self.erase_and_anonymize_regions(value);
+        let value = self.transfer_param_env_evidence_for_post_typeck(typing_env, value);
+        let value = self.expose_evidence_projections_for_post_typeck(typing_env, value);
         debug!(?value);
 
         if !value.has_aliases() {
@@ -186,6 +284,212 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+struct ParamEnvEvidenceTransfer<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+}
+
+impl<'tcx> ParamEnvEvidenceTransfer<'tcx> {
+    /// Whether `replacement` is the post-typeck incarnation of `original`, as
+    /// opposed to an unrelated dictionary which happens to prove the same
+    /// trait ref.
+    ///
+    /// Item and binder identities deliberately do not cross origin variants.
+    /// Complete substitutions must either match exactly or differ only in the
+    /// regions this normalization path has already erased/anonymized. Type,
+    /// const, placeholder, inference, fresh, and escaping-binder differences
+    /// remain evidence-relevant and therefore block transfer.
+    fn compatible_origin(
+        &self,
+        original: ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>,
+        replacement: ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>,
+    ) -> bool {
+        use ty::solve::ParamEnvAssumption;
+
+        match (original, replacement) {
+            (
+                ParamEnvAssumption::CallerBound { index: original },
+                ParamEnvAssumption::CallerBound { index: replacement },
+            ) => original == replacement,
+            (
+                ParamEnvAssumption::ItemClause { owner: original_owner, index: original_index },
+                ParamEnvAssumption::ItemClause {
+                    owner: replacement_owner,
+                    index: replacement_index,
+                },
+            ) => original_owner == replacement_owner && original_index == replacement_index,
+            (
+                ParamEnvAssumption::ItemContract { contract: original },
+                ParamEnvAssumption::ItemContract { contract: replacement },
+            ) => {
+                original.key == replacement.key
+                    && self.compatible_instantiation(
+                        original.complete_early_args,
+                        replacement.complete_early_args,
+                    )
+            }
+            (
+                ParamEnvAssumption::Generated { owner: original_owner, index: original_index },
+                ParamEnvAssumption::Generated {
+                    owner: replacement_owner,
+                    index: replacement_index,
+                },
+            ) => original_owner == replacement_owner && original_index == replacement_index,
+            (
+                ParamEnvAssumption::Binder {
+                    telescope_index: original_index,
+                    identity: original_identity,
+                    instantiation: original_instantiation,
+                },
+                ParamEnvAssumption::Binder {
+                    telescope_index: replacement_index,
+                    identity: replacement_identity,
+                    instantiation: replacement_instantiation,
+                },
+            ) => {
+                original_index == replacement_index
+                    && original_identity == replacement_identity
+                    && self
+                        .compatible_instantiation(original_instantiation, replacement_instantiation)
+            }
+            _ => false,
+        }
+    }
+
+    fn compatible_instantiation(
+        &self,
+        original: GenericArgsRef<'tcx>,
+        replacement: GenericArgsRef<'tcx>,
+    ) -> bool {
+        if original == replacement {
+            return true;
+        }
+
+        let cannot_erase = |args: GenericArgsRef<'tcx>| {
+            args.has_infer()
+                || args.has_placeholders()
+                || args.has_escaping_bound_vars()
+                || args.references_error()
+                || args.has_type_flags(ty::TypeFlags::HAS_TY_FRESH | ty::TypeFlags::HAS_CT_FRESH)
+        };
+        if cannot_erase(original) || cannot_erase(replacement) {
+            return false;
+        }
+
+        self.tcx.erase_and_anonymize_regions(original)
+            == self.tcx.erase_and_anonymize_regions(replacement)
+    }
+
+    fn transfer_projection(
+        &self,
+        projection: EvidenceProjection<'tcx>,
+    ) -> EvidenceProjection<'tcx> {
+        let ty::solve::TraitEvidenceKind::Selected(recipe) = &projection.evidence.kind else {
+            return projection;
+        };
+        let CandidateEvidenceSource::ParamEnv { source, origin } = recipe.root_source() else {
+            // In particular, do not look through a `Unique` wrapper: its
+            // concrete recipe is already coherence-quotiented evidence.
+            return projection;
+        };
+
+        if self.param_env.assumption_origins().any(|current| current == origin) {
+            return projection;
+        }
+
+        let trait_ref = projection.trait_ref();
+        let mut replacement = None;
+        for (clause, current_origin) in self.param_env.caller_bounds_with_origins() {
+            let Some(trait_clause) = clause.as_trait_clause() else {
+                continue;
+            };
+            if trait_clause.skip_binder().trait_ref != trait_ref {
+                continue;
+            }
+            if !self.compatible_origin(origin, current_origin) {
+                continue;
+            }
+
+            match replacement {
+                None => replacement = Some(current_origin),
+                Some(previous) if previous == current_origin => {}
+                Some(_) => return projection,
+            }
+        }
+        let Some(replacement) = replacement else {
+            return projection;
+        };
+
+        let mut evidence = recipe.clone();
+        let root = usize::try_from(evidence.root).expect("proof node index overflow");
+        evidence.nodes[root].source =
+            CandidateEvidenceSource::ParamEnv { source, origin: replacement };
+        evidence.assert_well_formed();
+        self.tcx.mk_evidence_projection(ty::EvidenceProjectionData {
+            item_def_id: projection.item_def_id,
+            evidence: self.tcx.mk_trait_evidence(evidence),
+        })
+    }
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamEnvEvidenceTransfer<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, value: Ty<'tcx>) -> Ty<'tcx> {
+        if !value.has_evidence_projections() {
+            return value;
+        }
+        let value = value.super_fold_with(self);
+        let ty::Alias(is_rigid, alias) = *value.kind() else {
+            return value;
+        };
+        let ty::AliasTyKind::EvidenceProjection { projection } = alias.kind else {
+            return value;
+        };
+        let transferred = self.transfer_projection(projection);
+        if transferred == projection {
+            return value;
+        }
+        Ty::new_alias(
+            self.tcx,
+            is_rigid,
+            ty::AliasTy::new_from_args(
+                self.tcx,
+                ty::AliasTyKind::EvidenceProjection { projection: transferred },
+                alias.args,
+            ),
+        )
+    }
+
+    fn fold_const(&mut self, value: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if !value.has_evidence_projections() {
+            return value;
+        }
+        let value = value.super_fold_with(self);
+        let ty::ConstKind::Alias(is_rigid, alias) = value.kind() else {
+            return value;
+        };
+        let ty::AliasConstKind::EvidenceProjection { projection } = alias.kind else {
+            return value;
+        };
+        let transferred = self.transfer_projection(projection);
+        if transferred == projection {
+            return value;
+        }
+        ty::Const::new_alias(
+            self.tcx,
+            is_rigid,
+            ty::AliasConst::new(
+                self.tcx,
+                ty::AliasConstKind::EvidenceProjection { projection: transferred },
+                alias.args,
+            ),
+        )
+    }
+}
+
 struct NormalizeAfterErasingRegionsFolder<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
@@ -252,7 +556,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for TryNormalizeAfterErasingRegionsF
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match self.try_normalize_generic_arg_after_erasing_regions(ty.into()) {
             Ok(t) => Ok(t.expect_ty()),
-            Err(_) => Err(NormalizationError::Type(ty)),
+            Err(_) if matches!(ty.kind(), ty::Alias(..)) => Err(NormalizationError::Type(ty)),
+            Err(_) => ty.try_super_fold_with(self),
         }
     }
 

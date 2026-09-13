@@ -423,15 +423,34 @@ impl<'tcx> Clause<'tcx> {
         let pred_bound_vars = bound_pred.bound_vars();
         let trait_bound_vars = trait_ref.bound_vars();
         // 1) Self: Bar1<'a, '^0.0> -> Self: Bar1<'a, '^0.1>
-        let shifted_pred =
-            tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
+        // Shift the predicate's telescope metadata together with its value:
+        // typed const entries and evidence clauses may reference the same bound
+        // variables. Evidence entries themselves do not consume `BoundVar`
+        // indices, so only the ordinary prefix contributes to the shift.
+        let (shifted_pred, shifted_pred_bound_vars) = tcx.shift_bound_var_indices(
+            trait_bound_vars.len(),
+            (bound_pred.skip_binder(), pred_bound_vars.to_vec()),
+        );
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(tcx, shifted_pred)
-            .instantiate(tcx, trait_ref.skip_binder().args)
-            .skip_norm_wip();
+        let (new, pred_bound_vars) =
+            EarlyBinder::bind(tcx, (shifted_pred, shifted_pred_bound_vars))
+                .instantiate(tcx, trait_ref.skip_binder().args)
+                .skip_norm_wip();
         // 3) ['x] + ['b] -> ['x, 'b]
-        let bound_vars =
-            tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
+        let (pred_ordinary, pred_evidence): (Vec<_>, Vec<_>) = pred_bound_vars
+            .into_iter()
+            .partition(|entry| !matches!(entry, ty::BoundVariableKind::Evidence(_)));
+        let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+            trait_ref
+                .ordinary_bound_vars()
+                .chain(pred_ordinary)
+                .chain(
+                    trait_bound_vars
+                        .iter()
+                        .filter(|entry| matches!(entry, ty::BoundVariableKind::Evidence(_))),
+                )
+                .chain(pred_evidence),
+        );
 
         // FIXME: Is it really perf sensitive to use reuse_or_mk_predicate here?
         tcx.reuse_or_mk_predicate(

@@ -220,6 +220,15 @@ pub struct Body<'tcx> {
 
     pub source: MirSource<'tcx>,
 
+    /// Proof roots selected while elaborating the typeck-root signature.
+    ///
+    /// Generic MIR retains this proof-only data even when normalization makes
+    /// all runtime types look identical: changing only the selected proof is a
+    /// semantic change and must therefore change the stable MIR fingerprint.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub signature_trait_evidence: Vec<crate::traits::solve::TraitEvidence<'tcx>>,
+
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
@@ -355,6 +364,7 @@ impl<'tcx> Body<'tcx> {
             phase: MirPhase::Built,
             pass_count: 0,
             source,
+            signature_trait_evidence: Default::default(),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
             coroutine,
@@ -386,6 +396,7 @@ impl<'tcx> Body<'tcx> {
             phase: MirPhase::Built,
             pass_count: 0,
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
+            signature_trait_evidence: Default::default(),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
             coroutine: None,
@@ -1701,7 +1712,7 @@ pub fn find_self_call<'tcx>(
         && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =
             **args
     {
-        let fn_args = fn_args.no_bound_vars().unwrap();
+        let fn_args = fn_args.fn_def_args();
 
         if self_place.as_local() == Some(local) {
             return Some((def_id, fn_args));
@@ -1732,11 +1743,11 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(BasicBlockData<'_>, 160);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 40);
-    static_assert_size!(Terminator<'_>, 104);
+    static_assert_size!(Terminator<'_>, 120);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

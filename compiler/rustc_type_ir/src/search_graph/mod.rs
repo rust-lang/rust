@@ -31,6 +31,8 @@ use stack::{Stack, StackDepth, StackEntry};
 mod global_cache;
 use global_cache::CacheData;
 pub use global_cache::GlobalCache;
+#[cfg(test)]
+mod tests;
 
 /// The search graph does not simply use `Interner` directly
 /// to enable its fuzzing without having to stub the rest of
@@ -85,10 +87,22 @@ pub trait Delegate: Sized {
 
     fn initial_provisional_result(
         cx: Self::Cx,
-        kind: PathKind,
-        input: <Self::Cx as Cx>::Input,
+        cycle: &CycleKey<<Self::Cx as Cx>::Input>,
     ) -> <Self::Cx as Cx>::Result;
     fn is_initial_provisional_result(result: <Self::Cx as Cx>::Result) -> Option<PathKind>;
+
+    /// Whether two successive cycle-head results have reached a semantic
+    /// solver fixpoint. Implementations whose result also carries proof-only
+    /// identity may ignore that identity here while retaining it in the final
+    /// cached result.
+    fn is_equivalent_for_fixpoint(
+        _cx: Self::Cx,
+        previous: <Self::Cx as Cx>::Result,
+        current: <Self::Cx as Cx>::Result,
+    ) -> bool {
+        previous == current
+    }
+
     fn stack_overflow_result(
         cx: Self::Cx,
         input: <Self::Cx as Cx>::Input,
@@ -145,7 +159,7 @@ impl PathKind {
     ///
     /// This operation represents an ordering and would be equivalent
     /// to `max(self, rest)`.
-    fn extend(self, rest: PathKind) -> PathKind {
+    pub fn extend(self, rest: PathKind) -> PathKind {
         match (self, rest) {
             (PathKind::ForcedAmbiguity, _) | (_, PathKind::ForcedAmbiguity) => {
                 PathKind::ForcedAmbiguity
@@ -154,6 +168,56 @@ impl PathKind {
             (PathKind::Unknown, _) | (_, PathKind::Unknown) => PathKind::Unknown,
             (PathKind::Inductive, PathKind::Inductive) => PathKind::Inductive,
         }
+    }
+}
+
+/// Stable, root-directed description of one closed search-graph cycle.
+///
+/// `participants[0]` is the cycle head. `edge_kinds[i]` is the edge from
+/// `participants[i]` to `participants[i + 1]`, with the final edge closing the
+/// cycle back to `participants[0]`. Keeping every edge, rather than only the
+/// aggregate [`PathKind`], lets proof-producing delegates distinguish cycles
+/// which happen to have the same aggregate productivity.
+///
+/// The key is deliberately root-directed. Search-graph evaluation can behave
+/// differently for `A -> B -> A` and `B -> A -> B`, so callers must not rotate
+/// this sequence unless they can separately prove those roots bisimilar.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CycleKey<I> {
+    participants: Vec<I>,
+    edge_kinds: Vec<PathKind>,
+}
+
+impl<I> CycleKey<I> {
+    fn new(participants: Vec<I>, edge_kinds: Vec<PathKind>) -> Self {
+        assert!(!participants.is_empty(), "cycle key must contain its head");
+        assert_eq!(
+            participants.len(),
+            edge_kinds.len(),
+            "a closed cycle must have one outgoing edge per participant"
+        );
+        CycleKey { participants, edge_kinds }
+    }
+
+    pub fn head(&self) -> &I {
+        &self.participants[0]
+    }
+
+    pub fn participants(&self) -> &[I] {
+        &self.participants
+    }
+
+    pub fn edge_kinds(&self) -> &[PathKind] {
+        &self.edge_kinds
+    }
+
+    /// The existing solver classification of this complete closed path.
+    pub fn path_kind(&self) -> PathKind {
+        self.edge_kinds[1..].iter().copied().fold(self.edge_kinds[0], PathKind::extend)
+    }
+
+    pub fn is_productive(&self) -> bool {
+        self.path_kind() == PathKind::Coinductive
     }
 }
 
@@ -732,13 +796,41 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         stack.cycle_step_kinds(head).fold(step_kind_to_head, |curr, step| curr.extend(step))
     }
 
-    pub fn enter_single_candidate(&mut self) {
-        let prev = self.stack.last_mut().unwrap().candidate_usages.replace(Default::default());
-        debug_assert!(prev.is_none(), "existing candidate_usages: {prev:?}");
+    fn cycle_key(
+        stack: &Stack<X>,
+        step_kind_to_head: PathKind,
+        head: StackDepth,
+    ) -> CycleKey<X::Input> {
+        let participants = stack.cycle_inputs(head).collect();
+        let mut edge_kinds: Vec<_> = stack.cycle_step_kinds(head).collect();
+        edge_kinds.push(step_kind_to_head);
+        CycleKey::new(participants, edge_kinds)
     }
 
-    pub fn finish_single_candidate(&mut self) -> CandidateHeadUsages {
-        self.stack.last_mut().unwrap().candidate_usages.take().unwrap()
+    /// Starts collecting cycle-head usages for one candidate.
+    ///
+    /// Evidence-driven normalization can replay an already-selected candidate
+    /// while an outer candidate is still being evaluated on the same search
+    /// graph entry. In that case, keep collecting into the outer scope. The
+    /// inner replay is semantically part of the outer candidate; attributing
+    /// all of its usages to the outer scope is conservative if the replay is
+    /// later ignored, and avoids losing the outer collector.
+    pub fn enter_single_candidate(&mut self) -> bool {
+        let candidate_usages = &mut self.stack.last_mut().unwrap().candidate_usages;
+        if candidate_usages.is_some() {
+            false
+        } else {
+            *candidate_usages = Some(Default::default());
+            true
+        }
+    }
+
+    pub fn finish_single_candidate(&mut self, owns_usage_scope: bool) -> CandidateHeadUsages {
+        if owns_usage_scope {
+            self.stack.last_mut().unwrap().candidate_usages.take().unwrap()
+        } else {
+            CandidateHeadUsages::default()
+        }
     }
 
     pub fn ignore_candidate_head_usages(&mut self, usages: CandidateHeadUsages) {
@@ -1302,7 +1394,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         //
         // Finally we can return either the provisional response or the initial response
         // in case we're in the first fixpoint iteration for this goal.
-        let path_kind = Self::cycle_path_kind(&self.stack, step_kind_from_parent, head_index);
+        let cycle = Self::cycle_key(&self.stack, step_kind_from_parent, head_index);
+        let path_kind = cycle.path_kind();
         debug!(?path_kind, "encountered cycle with depth {head_index:?}");
         let mut usages = HeadUsages::default();
         usages.add_usage(path_kind);
@@ -1320,21 +1413,26 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         if let Some(result) = self.stack[head_index].provisional_result {
             Some(result)
         } else {
-            Some(D::initial_provisional_result(cx, path_kind, input))
+            Some(D::initial_provisional_result(cx, &cycle))
         }
     }
 
     /// Whether we've reached a fixpoint when evaluating a cycle head.
-    #[instrument(level = "trace", skip(self, stack_entry), ret)]
+    #[instrument(level = "trace", skip(self, cx, stack_entry), ret)]
     fn reached_fixpoint(
         &mut self,
+        cx: X,
         stack_entry: &StackEntry<X>,
         usages: HeadUsages,
         result: X::Result,
     ) -> Result<Option<PathKind>, ()> {
         let provisional_result = stack_entry.provisional_result;
         if let Some(provisional_result) = provisional_result {
-            if provisional_result == result { Ok(None) } else { Err(()) }
+            if D::is_equivalent_for_fixpoint(cx, provisional_result, result) {
+                Ok(None)
+            } else {
+                Err(())
+            }
         } else if let Some(path_kind) = D::is_initial_provisional_result(result)
             .filter(|&path_kind| usages.is_single(path_kind))
         {
@@ -1385,7 +1483,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             // is equal to the provisional result of the previous iteration, or because
             // this was only the head of either coinductive or inductive cycles, and the
             // final result is equal to the initial response for that case.
-            if let Ok(fixpoint) = self.reached_fixpoint(&stack_entry, usages, result) {
+            if let Ok(fixpoint) = self.reached_fixpoint(cx, &stack_entry, usages, result) {
                 self.rebase_provisional_cache_entries(
                     &stack_entry,
                     RebaseReason::ReachedFixpoint(fixpoint),

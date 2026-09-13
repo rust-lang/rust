@@ -691,13 +691,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
         let t = match *t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
 
-            FnDef(def_id, args) if self.placeholder.is_none() => Ty::new_fn_ptr(
-                self.tcx,
-                self.tcx
-                    .fn_sig(def_id)
-                    .instantiate(self.tcx, args.no_bound_vars().unwrap())
-                    .skip_norm_wip(),
-            ),
+            FnDef(..) if self.placeholder.is_none() => Ty::new_fn_ptr(self.tcx, t.fn_sig(self.tcx)),
 
             Closure(..)
             | CoroutineClosure(..)

@@ -221,6 +221,18 @@ macro_rules! make_mir_visitor {
                 self.super_ty(ty);
             }
 
+            /// Visits the HIR-selected output evidence carried by a call.
+            fn visit_call_output(
+                &mut self,
+                call_output: &$($mutability)? Option<ty::Binder<'tcx, Ty<'tcx>>>,
+                _location: Location,
+            ) {
+                // This binder is opened exactly once by borrowck's call
+                // validation. Visiting its body as an ordinary MIR `Ty` would
+                // make its bound regions look free to generic visitors.
+                let _ = call_output;
+            }
+
             fn visit_user_type_projection(
                 &mut self,
                 ty: & $($mutability)? UserTypeProjection,
@@ -568,12 +580,14 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Call {
                         func,
                         args,
+                        call_output,
                         destination,
                         target: _,
                         unwind: _,
                         call_source: _,
                         fn_span,
                     } => {
+                        self.visit_call_output(call_output, location);
                         self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
                         for arg in args {
@@ -586,7 +600,8 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    TerminatorKind::TailCall { func, args, fn_span } => {
+                    TerminatorKind::TailCall { func, args, call_output, fn_span } => {
+                        self.visit_call_output(call_output, location);
                         self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
                         for arg in args {

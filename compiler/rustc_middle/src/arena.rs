@@ -129,6 +129,7 @@ rustc_arena::declare_arena! {
         >,
     external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<TyCtxt<'tcx>>,
     doc_link_resolutions: rustc_middle::middle::resolve::DocLinkResMap,
+    trait_evidence: rustc_type_ir::solve::TraitEvidenceData<TyCtxt<'tcx>>,
     stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
     mod_child: rustc_middle::middle::resolve::ModChild,
     features: rustc_feature::Features,
@@ -209,5 +210,6 @@ impl_ref_decodable_into_arena! {
     rustc_span::Span,
     rustc_span::def_id::DefId,
     rustc_span::def_id::LocalDefId,
+    std::option::Option<rustc_type_ir::solve::ItemContract<TyCtxt<'tcx>>>,
     // tidy-alphabetical-end
 }

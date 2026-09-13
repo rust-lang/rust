@@ -23,7 +23,7 @@ use thin_vec::ThinVec;
 
 use crate::search_graph::RequiredDepth;
 use crate::solve::{CandidateSource, Certainty, Goal, GoalSource, QueryResult};
-use crate::{Canonical, CanonicalVarValues, Interner};
+use crate::{Canonical, CanonicalEvidenceVarValues, CanonicalVarValues, Interner};
 
 /// Some `data` together with information about how they relate to the input
 /// of the canonical query.
@@ -36,6 +36,7 @@ use crate::{Canonical, CanonicalVarValues, Interner};
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub struct State<I: Interner, T> {
     pub var_values: CanonicalVarValues<I>,
+    pub evidence_var_values: CanonicalEvidenceVarValues<I>,
     pub data: T,
 }
 
@@ -51,6 +52,7 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 pub struct GoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: ThinVec<I::GenericArg>,
+    pub orig_evidence_values: ThinVec<I::TraitEvidence>,
     pub final_revision: I::Probe,
     pub result: QueryResult<I>,
     pub required_depth: RequiredDepth,

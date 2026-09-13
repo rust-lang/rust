@@ -208,6 +208,7 @@ trivial_impls!(
     crate::BoundConstness,
     crate::DebruijnIndex,
     crate::solve::Certainty,
+    crate::solve::EvidenceVid,
     crate::UniverseIndex,
     crate::BoundVar,
     crate::InferTy,

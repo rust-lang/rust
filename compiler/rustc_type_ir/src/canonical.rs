@@ -11,8 +11,13 @@ use rustc_type_ir_macros::{
 use thin_vec::ThinVec;
 
 use crate::data_structures::{DelayedMap, HashMap};
+use crate::generic_visit::GenericTypeVisitable;
 use crate::inherent::*;
-use crate::{self as ty, Interner, Region, TypingModeEqWrapper, UniverseIndex};
+use crate::solve::TraitEvidenceKind;
+use crate::{
+    self as ty, BoundEvidence, Interner, PlaceholderEvidence, Region, TypingModeEqWrapper,
+    UniverseIndex,
+};
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
@@ -40,9 +45,35 @@ pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
     pub var_kinds: I::CanonicalVarKinds,
+    /// Canonical variables for the compiler-internal trait evidence channel.
+    ///
+    /// Evidence variables deliberately do not inhabit [`GenericArg`](ty::GenericArgKind), so
+    /// their kinds live in a parallel, independently interned slice. Both channels use the same
+    /// `max_universe` because their universes belong to the same inference context.
+    pub evidence_var_kinds: I::CanonicalEvidenceVarKinds,
 }
 
 impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
+
+// SAFETY: This visits the canonical value and every interner-dependent
+// canonical variable kind. `max_universe` contains no interner-owned data.
+unsafe impl<I, V, T> GenericTypeVisitable<V> for Canonical<I, T>
+where
+    I: Interner,
+    T: GenericTypeVisitable<V>,
+    CanonicalVarKind<I>: GenericTypeVisitable<V>,
+    CanonicalEvidenceVarKind<I>: GenericTypeVisitable<V>,
+{
+    fn generic_visit_with(&self, visitor: &mut V) {
+        self.value.generic_visit_with(visitor);
+        for kind in self.var_kinds.iter() {
+            kind.generic_visit_with(visitor);
+        }
+        for kind in self.evidence_var_kinds.iter() {
+            kind.generic_visit_with(visitor);
+        }
+    }
+}
 
 impl<I: Interner, V> Canonical<I, V> {
     /// Allows you to map the `value` of a canonical while keeping the
@@ -69,17 +100,18 @@ impl<I: Interner, V> Canonical<I, V> {
     /// let b: Canonical<I, (T, Ty<I>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<I, W> {
-        let Canonical { max_universe, var_kinds, value } = self;
-        Canonical { max_universe, var_kinds, value: map_op(value) }
+        let Canonical { max_universe, var_kinds, evidence_var_kinds, value } = self;
+        Canonical { max_universe, var_kinds, evidence_var_kinds, value: map_op(value) }
     }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { value, max_universe, var_kinds } = self;
+        let Self { value, max_universe, var_kinds, evidence_var_kinds } = self;
         write!(
             f,
-            "Canonical {{ value: {value}, max_universe: {max_universe:?}, var_kinds: {var_kinds:?} }}",
+            "Canonical {{ value: {value}, max_universe: {max_universe:?}, \
+             var_kinds: {var_kinds:?}, evidence_var_kinds: {evidence_var_kinds:?} }}",
         )
     }
 }
@@ -205,6 +237,73 @@ impl<I: Interner> CanonicalVarKind<I> {
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.var().as_usize(),
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.var().as_usize(),
             CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.var().as_usize(),
+        }
+    }
+}
+
+/// Information needed to recreate one canonical trait-evidence variable.
+///
+/// This intentionally parallels [`CanonicalVarKind`] without adding evidence to the public
+/// generic-argument sum type. Every evidence variable carries the trait predicate it proves;
+/// unlike type and const variables, its kind cannot be reconstructed from a universe alone.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
+)]
+pub enum CanonicalEvidenceVarKind<I: Interner> {
+    /// An existential evidence variable which is recreated in `ui`.
+    Existential { ui: UniverseIndex, trait_ref: ty::TraitRef<I> },
+
+    /// A canonicalized universe placeholder.
+    Placeholder { placeholder: PlaceholderEvidence<I>, trait_ref: ty::TraitRef<I> },
+}
+
+impl<I: Interner> Eq for CanonicalEvidenceVarKind<I> {}
+
+impl<I: Interner> CanonicalEvidenceVarKind<I> {
+    pub fn universe(self) -> UniverseIndex {
+        match self {
+            CanonicalEvidenceVarKind::Existential { ui, .. } => ui,
+            CanonicalEvidenceVarKind::Placeholder { placeholder, .. } => placeholder.universe(),
+        }
+    }
+
+    pub fn trait_ref(self) -> ty::TraitRef<I> {
+        match self {
+            CanonicalEvidenceVarKind::Existential { trait_ref, .. }
+            | CanonicalEvidenceVarKind::Placeholder { trait_ref, .. } => trait_ref,
+        }
+    }
+
+    /// Replaces the universe while preserving the predicate and variable identity.
+    pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        match self {
+            CanonicalEvidenceVarKind::Existential { trait_ref, .. } => {
+                CanonicalEvidenceVarKind::Existential { ui, trait_ref }
+            }
+            CanonicalEvidenceVarKind::Placeholder { placeholder, trait_ref } => {
+                CanonicalEvidenceVarKind::Placeholder {
+                    placeholder: placeholder.with_updated_universe(ui),
+                    trait_ref,
+                }
+            }
+        }
+    }
+
+    pub fn is_existential(self) -> bool {
+        matches!(self, CanonicalEvidenceVarKind::Existential { .. })
+    }
+
+    pub fn expect_placeholder_index(self) -> usize {
+        match self {
+            CanonicalEvidenceVarKind::Placeholder { placeholder, .. } => {
+                placeholder.var().as_usize()
+            }
+            CanonicalEvidenceVarKind::Existential { .. } => {
+                panic!("expected evidence placeholder: {self:?}")
+            }
         }
     }
 }
@@ -364,6 +463,116 @@ impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
     }
 }
 
+/// Values corresponding to the evidence variables of a [`Canonical`].
+///
+/// This is the evidence-channel counterpart of [`CanonicalVarValues`]. The two mappings are kept
+/// separate so evidence never enters `GenericArgs` and cannot accidentally affect ordinary
+/// generic argument indexing or ABI.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+pub struct CanonicalEvidenceVarValues<I: Interner> {
+    pub var_values: I::TraitEvidences,
+}
+
+impl<I: Interner> Eq for CanonicalEvidenceVarValues<I> {}
+
+impl<I: Interner> CanonicalEvidenceVarValues<I> {
+    pub fn is_identity(&self) -> bool {
+        self.var_values.iter().enumerate().all(|(bv, evidence)| {
+            matches!(
+                &evidence.kind,
+                TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Canonical, bound)
+                    if bound.var().as_usize() == bv
+            )
+        })
+    }
+
+    /// Constructs the identity values for a canonical evidence-variable list.
+    pub fn make_identity(
+        cx: I,
+        infos: I::CanonicalEvidenceVarKinds,
+    ) -> CanonicalEvidenceVarValues<I> {
+        CanonicalEvidenceVarValues {
+            var_values: cx.mk_trait_evidences_from_iter(infos.iter().enumerate().map(
+                |(i, kind)| {
+                    cx.mk_trait_evidence_kind(
+                        kind.trait_ref(),
+                        TraitEvidenceKind::Bound(
+                            ty::BoundVarIndexKind::Canonical,
+                            BoundEvidence::new(ty::BoundVar::from_usize(i)),
+                        ),
+                    )
+                },
+            )),
+        }
+    }
+
+    /// Creates dummy values which must not be used to instantiate a response.
+    pub fn dummy() -> CanonicalEvidenceVarValues<I> {
+        CanonicalEvidenceVarValues { var_values: Default::default() }
+    }
+
+    pub fn instantiate(
+        cx: I,
+        var_kinds: I::CanonicalEvidenceVarKinds,
+        mut f: impl FnMut(&[I::TraitEvidence], CanonicalEvidenceVarKind<I>) -> I::TraitEvidence,
+    ) -> CanonicalEvidenceVarValues<I> {
+        if var_kinds.len() <= 4 {
+            let mut var_values = ArrayVec::<_, 4>::new();
+            for info in var_kinds.iter() {
+                var_values.push(f(&var_values, info));
+            }
+            CanonicalEvidenceVarValues { var_values: cx.mk_trait_evidences(&var_values) }
+        } else {
+            CanonicalEvidenceVarValues::instantiate_cold(cx, var_kinds, f)
+        }
+    }
+
+    #[cold]
+    fn instantiate_cold(
+        cx: I,
+        var_kinds: I::CanonicalEvidenceVarKinds,
+        mut f: impl FnMut(&[I::TraitEvidence], CanonicalEvidenceVarKind<I>) -> I::TraitEvidence,
+    ) -> CanonicalEvidenceVarValues<I> {
+        let mut var_values = Vec::with_capacity(var_kinds.len());
+        for info in var_kinds.iter() {
+            var_values.push(f(&var_values, info));
+        }
+        CanonicalEvidenceVarValues { var_values: cx.mk_trait_evidences(&var_values) }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.var_values.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.var_values.is_empty()
+    }
+}
+
+impl<'a, I: Interner> IntoIterator for &'a CanonicalEvidenceVarValues<I> {
+    type Item = I::TraitEvidence;
+    type IntoIter = <I::TraitEvidences as SliceLike>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.var_values.iter()
+    }
+}
+
+impl<I: Interner> Index<ty::BoundVar> for CanonicalEvidenceVarValues<I> {
+    type Output = I::TraitEvidence;
+
+    fn index(&self, value: ty::BoundVar) -> &I::TraitEvidence {
+        &self.var_values.as_slice()[value.as_usize()]
+    }
+}
+
 #[derive_where(Default; I: Interner)]
 pub struct CanonicalParamEnvCache<I: Interner>(
     pub HashMap<I::ParamEnv, CanonicalParamEnvCacheEntry<I>>,
@@ -377,6 +586,15 @@ pub struct CanonicalParamEnvCacheEntry<I: Interner> {
     pub variables: ThinVec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
+    /// Evidence-channel state produced while canonicalizing `param_env`.
+    ///
+    /// This must be restored together with the ordinary variables on a cache
+    /// hit: an evidence projection in a cached environment may introduce both
+    /// kinds of canonical variables, and reusing only one channel would change
+    /// the identity of every following proof variable.
+    pub evidence_variables: ThinVec<I::TraitEvidence>,
+    pub evidence_variable_lookup_table: HashMap<I::TraitEvidence, usize>,
+    pub evidence_var_kinds: Vec<CanonicalEvidenceVarKind<I>>,
 }
 
 /// State used and modified by a canonicalizer during canonicalization. To avoid many allocations,
@@ -386,6 +604,12 @@ pub struct CanonicalizerState<I: Interner> {
     pub variables: ThinVec<I::GenericArg>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
+
+    /// Canonical trait-evidence variables use an index space parallel to, and
+    /// independent from, `GenericArgs`.
+    pub evidence_variables: ThinVec<I::TraitEvidence>,
+    pub evidence_var_kinds: Vec<CanonicalEvidenceVarKind<I>>,
+    pub evidence_variable_lookup_table: HashMap<I::TraitEvidence, usize>,
 
     /// Maps each `sub_unification_table_root_var` to the index of the first
     /// variable which used it.
@@ -403,11 +627,22 @@ pub struct CanonicalizerState<I: Interner> {
 impl<I: Interner> CanonicalizerState<I> {
     pub fn clear(&mut self) {
         // Deconstruct to ensure no fields are missed.
-        let Self { variables, var_kinds, variable_lookup_table, sub_root_lookup_table, cache } =
-            self;
+        let Self {
+            variables,
+            var_kinds,
+            variable_lookup_table,
+            evidence_variables,
+            evidence_var_kinds,
+            evidence_variable_lookup_table,
+            sub_root_lookup_table,
+            cache,
+        } = self;
         variables.clear();
         var_kinds.clear();
         variable_lookup_table.clear();
+        evidence_variables.clear();
+        evidence_var_kinds.clear();
+        evidence_variable_lookup_table.clear();
         sub_root_lookup_table.clear();
         cache.clear();
     }

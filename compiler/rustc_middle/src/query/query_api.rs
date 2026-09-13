@@ -90,11 +90,13 @@ macro_rules! define_query_api {
                     erase::erase_val(value)
                 }
 
-                // Ensure that keys grow no larger than 88 bytes by accident.
-                // Increase this limit if necessary, but do try to keep the size low if possible
+                // Ensure that keys grow no larger than 104 bytes by accident.
+                // The parallel canonical evidence-variable handle and the directly forwarded
+                // item-contract clause bundle each account for one pointer over the previous
+                // 88-byte ceiling. Keep further growth guarded.
                 #[cfg(target_pointer_width = "64")]
                 const _: () = {
-                    if size_of::<Key<'static>>() > 88 {
+                    if size_of::<Key<'static>>() > 104 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),
@@ -105,12 +107,13 @@ macro_rules! define_query_api {
                     }
                 };
 
-                // Ensure that values grow no larger than 64 bytes by accident.
-                // Increase this limit if necessary, but do try to keep the size low if possible
+                // Ensure that values grow no larger than 72 bytes by accident.
+                // Canonical solver responses now carry a separate, interned evidence-variable
+                // handle. Keep the resulting one-pointer increase explicit and bounded.
                 #[cfg(target_pointer_width = "64")]
                 #[cfg(not(feature = "rustc_randomized_layouts"))]
                 const _: () = {
-                    if size_of::<Value<'static>>() > 64 {
+                    if size_of::<Value<'static>>() > 72 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),

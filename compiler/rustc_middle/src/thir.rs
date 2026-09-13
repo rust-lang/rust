@@ -300,6 +300,10 @@ pub enum ExprKind<'tcx> {
         /// Note: in some cases (like calling a closure), the function call `f(...args)` gets
         /// rewritten as a call to a function trait method (e.g. `FnOnce::call_once(f, (...args))`).
         args: Box<[ExprId]>,
+        /// The pre-normalization output selected by HIR for this exact call.
+        /// When present this is an evidence-indexed projection whose proof DAG
+        /// owns the operation's ordinary binder substitution.
+        call_output: Option<ty::Binder<'tcx, Ty<'tcx>>>,
         /// Whether this is from an overloaded operator rather than a
         /// function call from HIR. `true` for overloaded function call.
         from_hir_call: bool,
@@ -1121,8 +1125,8 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
-    static_assert_size!(Expr<'_>, 64);
-    static_assert_size!(ExprKind<'_>, 40);
+    static_assert_size!(Expr<'_>, 80);
+    static_assert_size!(ExprKind<'_>, 56);
     static_assert_size!(Pat<'_>, 72);
     static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Stmt<'_>, 48);

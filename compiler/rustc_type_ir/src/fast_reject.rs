@@ -356,7 +356,48 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                 INSTANTIATE_LHS_WITH_INFER
                     || match rhs.kind() {
                         ty::Alias(ty::IsRigid::Yes, rhs_alias) => {
-                            lhs_alias.kind == rhs_alias.kind
+                            // A surface projection can be upgraded to evidence
+                            // already carried by the other side during the real
+                            // relation. This is especially important for a
+                            // higher-ranked ParamEnv assumption: its bound
+                            // regions have not been instantiated yet, so the
+                            // one-way elaboration prepass cannot find an exact
+                            // full-args key. Fast rejection is only an
+                            // optimization and must conservatively retain that
+                            // candidate. The relation later checks the proof,
+                            // trait arguments, and own associated-item args.
+                            if matches!(
+                                (lhs_alias.kind, rhs_alias.kind),
+                                (
+                                    ty::AliasTyKind::EvidenceProjection {
+                                        projection: lhs_projection,
+                                    },
+                                    ty::AliasTyKind::Projection { def_id: rhs_def_id },
+                                ) if lhs_projection.item_def_id == rhs_def_id.into()
+                            ) || matches!(
+                                (lhs_alias.kind, rhs_alias.kind),
+                                (
+                                    ty::AliasTyKind::Projection { def_id: lhs_def_id },
+                                    ty::AliasTyKind::EvidenceProjection {
+                                        projection: rhs_projection,
+                                    },
+                                ) if rhs_projection.item_def_id == lhs_def_id.into()
+                            ) {
+                                return true;
+                            }
+                            (lhs_alias.kind == rhs_alias.kind
+                                || matches!(
+                                    (lhs_alias.kind, rhs_alias.kind),
+                                    (
+                                        ty::AliasTyKind::EvidenceProjection {
+                                            projection: lhs_projection,
+                                        },
+                                        ty::AliasTyKind::EvidenceProjection {
+                                            projection: rhs_projection,
+                                        },
+                                    ) if lhs_projection.item_def_id
+                                        == rhs_projection.item_def_id
+                                ))
                                 && self.args_may_unify_inner(lhs_alias.args, rhs_alias.args, depth)
                         }
                         _ => false,
@@ -432,8 +473,8 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                 ty::FnDef(rhs_def_id, rhs_args) => {
                     lhs_def_id == rhs_def_id
                         && self.args_may_unify_inner(
-                            lhs_args.no_bound_vars().unwrap(),
-                            rhs_args.no_bound_vars().unwrap(),
+                            lhs_args.fn_def_args(),
+                            rhs_args.fn_def_args(),
                             depth,
                         )
                 }

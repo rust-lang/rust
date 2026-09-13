@@ -139,7 +139,7 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
                 stack.extend(args.iter().rev());
             }
             ty::FnDef(_, args) => {
-                stack.extend(args.no_bound_vars().unwrap().iter().rev());
+                stack.extend(args.fn_def_args().iter().rev());
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(|ty| ty.into())),
             ty::FnPtr(sig_tys, _hdr) => {

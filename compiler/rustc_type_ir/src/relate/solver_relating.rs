@@ -125,6 +125,46 @@ where
         }
     }
 
+    fn evidences(
+        &mut self,
+        a: I::TraitEvidence,
+        b: I::TraitEvidence,
+    ) -> RelateResult<I, I::TraitEvidence> {
+        if a == b {
+            return Ok(a);
+        }
+
+        let a = self.infcx.shallow_resolve_evidence(a);
+        let b = self.infcx.shallow_resolve_evidence(b);
+        if a == b {
+            return Ok(a);
+        }
+
+        // Raw evidence assignment is only valid after proving that both
+        // values index the same trait predicate. Route the trait refs through
+        // this relation first so their ordinary inference variables and
+        // universes are checked in the same way as the enclosing projection.
+        self.relate(a.trait_ref, b.trait_ref)?;
+        match (&a.kind, &b.kind) {
+            (
+                ty::solve::TraitEvidenceKind::Infer(a_vid),
+                ty::solve::TraitEvidenceKind::Infer(b_vid),
+            ) => {
+                self.infcx.equate_evidence_vids_raw(*a_vid, *b_vid);
+                Ok(a)
+            }
+            (ty::solve::TraitEvidenceKind::Infer(a_vid), _) => {
+                self.infcx.instantiate_evidence_var_raw(*a_vid, b);
+                Ok(b)
+            }
+            (_, ty::solve::TraitEvidenceKind::Infer(b_vid)) => {
+                self.infcx.instantiate_evidence_var_raw(*b_vid, a);
+                Ok(a)
+            }
+            _ => relate_trait_evidence_invariantly(self, a, b),
+        }
+    }
+
     fn relate_with_variance<T: Relate<I>>(
         &mut self,
         variance: ty::Variance,

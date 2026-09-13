@@ -388,9 +388,184 @@ impl<'tcx> Generics {
 pub struct GenericClauses<'tcx> {
     pub parent: Option<DefId>,
     pub clauses: &'tcx [(Clause<'tcx>, Span)],
+    /// Source trait-bound contract for each entry in `clauses`.
+    ///
+    /// Principal trait clauses and associated equalities produced by one HIR
+    /// trait ref share a key. Clauses without a source dictionary contract use
+    /// `None`. This parallel slice always has the same length as `clauses`.
+    pub clause_contracts: &'tcx [Option<ty::solve::ItemContract<TyCtxt<'tcx>>>],
 }
 
 impl<'tcx> GenericClauses<'tcx> {
+    fn instantiate_required_contract(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: Option<GenericArgsRef<'tcx>>,
+        contract: ty::solve::ItemContract<TyCtxt<'tcx>>,
+    ) -> ty::solve::RequiredContract<TyCtxt<'tcx>> {
+        let instantiate_args = |early_args| {
+            args.map_or(early_args, |args| {
+                ty::EarlyBinder::bind(tcx, early_args).instantiate(tcx, args).skip_norm_wip()
+            })
+        };
+        let complete_early_args = instantiate_args(contract.early_args);
+        assert_eq!(
+            complete_early_args.len(),
+            tcx.generics_of(contract.key.owner).count(),
+            "item-contract substitution has the wrong arity",
+        );
+        let identity =
+            ty::solve::InstantiatedItemContract { key: contract.key, complete_early_args };
+
+        let mut principal_index = None;
+        let mut member_index = 0usize;
+        let clauses =
+            tcx.mk_clauses_from_iter(self.clauses.iter().zip(self.clause_contracts).filter_map(
+                |(&(clause, _), member_contract)| {
+                    let member_contract = (*member_contract)?;
+                    if member_contract.key != identity.key
+                        || instantiate_args(member_contract.early_args)
+                            != identity.complete_early_args
+                    {
+                        return None;
+                    }
+
+                    let index = member_index;
+                    member_index += 1;
+                    if member_contract.is_principal {
+                        assert!(
+                            principal_index.replace(index).is_none(),
+                            "item contract has multiple principal clauses",
+                        );
+                    }
+
+                    Some(args.map_or(clause, |args| {
+                        ty::EarlyBinder::bind(tcx, clause).instantiate(tcx, args).skip_norm_wip()
+                    }))
+                },
+            ));
+        let principal_index =
+            u32::try_from(principal_index.expect("item contract has no principal trait clause"))
+                .expect("item contract has too many clauses");
+
+        ty::solve::RequiredContract::new(tcx, identity, clauses, principal_index, None)
+    }
+
+    pub fn instantiate_own_with_contracts(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> impl Iterator<
+        Item = (
+            Unnormalized<'tcx, Clause<'tcx>>,
+            Span,
+            Option<ty::solve::RequiredContract<TyCtxt<'tcx>>>,
+        ),
+    > + DoubleEndedIterator
+    + ExactSizeIterator
+    + Clone {
+        assert_eq!(self.clauses.len(), self.clause_contracts.len());
+        self.instantiate_own(tcx, args).enumerate().map(move |(index, (clause, span))| {
+            let contract = self.clause_contracts[index]
+                .map(|contract| self.instantiate_required_contract(tcx, Some(args), contract));
+            (clause, span, contract)
+        })
+    }
+
+    /// Instantiates every ordinary clause and only the principal clause of each
+    /// source contract. The returned index is the clause's position before
+    /// contract members were filtered, so obligation diagnostics remain stable.
+    pub fn instantiate_own_contract_roots(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> impl Iterator<
+        Item = (
+            usize,
+            Unnormalized<'tcx, Clause<'tcx>>,
+            Span,
+            Option<ty::solve::RequiredContract<TyCtxt<'tcx>>>,
+        ),
+    > + Clone {
+        self.instantiate_own_with_contracts(tcx, args).enumerate().filter_map(contract_root)
+    }
+
+    pub fn instantiate_own_with_assumption_origins(
+        self,
+        tcx: TyCtxt<'tcx>,
+        owner: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> impl Iterator<
+        Item = (
+            Unnormalized<'tcx, Clause<'tcx>>,
+            Span,
+            ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>,
+        ),
+    > + DoubleEndedIterator
+    + ExactSizeIterator
+    + Clone {
+        self.instantiate_own_with_contracts(tcx, args).enumerate().map(
+            move |(index, (clause, span, contract))| {
+                let origin = if let Some(contract) = contract {
+                    ty::solve::ParamEnvAssumption::ItemContract { contract: contract.identity }
+                } else {
+                    ty::solve::ParamEnvAssumption::ItemClause {
+                        owner,
+                        index: u32::try_from(index).expect("too many item clauses"),
+                    }
+                };
+                (clause, span, origin)
+            },
+        )
+    }
+
+    pub fn instantiate_with_assumption_origins(
+        self,
+        tcx: TyCtxt<'tcx>,
+        owner: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> Vec<(Unnormalized<'tcx, Clause<'tcx>>, Span, ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>)>
+    {
+        let mut instantiated = vec![];
+        self.instantiate_into_with_assumption_origins(tcx, owner, args, &mut instantiated);
+        instantiated
+    }
+
+    fn instantiate_into_with_assumption_origins(
+        self,
+        tcx: TyCtxt<'tcx>,
+        owner: DefId,
+        args: GenericArgsRef<'tcx>,
+        instantiated: &mut Vec<(
+            Unnormalized<'tcx, Clause<'tcx>>,
+            Span,
+            ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>,
+        )>,
+    ) {
+        if let Some(parent) = self.parent {
+            tcx.clauses_of(parent).instantiate_into_with_assumption_origins(
+                tcx,
+                parent,
+                args,
+                instantiated,
+            );
+        }
+        instantiated.extend(self.instantiate_own_with_assumption_origins(tcx, owner, args));
+    }
+
+    pub fn instantiate_identity_with_assumption_origins(
+        self,
+        tcx: TyCtxt<'tcx>,
+        owner: DefId,
+    ) -> Vec<(Unnormalized<'tcx, Clause<'tcx>>, Span, ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>)>
+    {
+        self.instantiate_with_assumption_origins(
+            tcx,
+            owner,
+            ty::GenericArgs::identity_for_item(tcx, owner),
+        )
+    }
+
     pub fn instantiate(
         self,
         tcx: TyCtxt<'tcx>,
@@ -437,10 +612,11 @@ impl<'tcx> GenericClauses<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.clauses_of(def_id).instantiate_into(tcx, instantiated, args);
         }
-        instantiated.clauses.extend(
-            self.clauses.iter().map(|(p, _)| EarlyBinder::bind(tcx, *p).instantiate(tcx, args)),
-        );
-        instantiated.spans.extend(self.clauses.iter().map(|(_, sp)| *sp));
+        for (clause, span, contract) in self.instantiate_own_with_contracts(tcx, args) {
+            instantiated.clauses.push(clause);
+            instantiated.spans.push(span);
+            instantiated.contracts.push(contract);
+        }
     }
 
     pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> InstantiatedClauses<'tcx> {
@@ -457,8 +633,16 @@ impl<'tcx> GenericClauses<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.clauses_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.clauses.extend(self.clauses.iter().map(|(p, _)| Unnormalized::new(*p)));
-        instantiated.spans.extend(self.clauses.iter().map(|(_, s)| s));
+        assert_eq!(self.clauses.len(), self.clause_contracts.len());
+        for ((clause, span), contract) in
+            self.clauses.iter().copied().zip(self.clause_contracts.iter().copied())
+        {
+            let contract =
+                contract.map(|contract| self.instantiate_required_contract(tcx, None, contract));
+            instantiated.clauses.push(Unnormalized::new(clause));
+            instantiated.spans.push(span);
+            instantiated.contracts.push(contract);
+        }
     }
 
     /// Allow simple where bounds like `T: Debug`, but prevent any kind of
@@ -529,6 +713,46 @@ impl<'tcx> GenericClauses<'tcx> {
             }
             clause.visit_with(&mut ParamChecker).is_continue()
         })
+    }
+}
+
+fn contract_root<'tcx>(
+    (index, (clause, span, contract)): (
+        usize,
+        (Unnormalized<'tcx, Clause<'tcx>>, Span, Option<ty::solve::RequiredContract<TyCtxt<'tcx>>>),
+    ),
+) -> Option<(
+    usize,
+    Unnormalized<'tcx, Clause<'tcx>>,
+    Span,
+    Option<ty::solve::RequiredContract<TyCtxt<'tcx>>>,
+)> {
+    if contract.is_some_and(|contract| !contract.is_principal_clause(clause.skip_norm_wip())) {
+        None
+    } else {
+        Some((index, clause, span, contract))
+    }
+}
+
+impl<'tcx> InstantiatedClauses<'tcx> {
+    /// Retains every ordinary clause and only the principal clause of each
+    /// source contract while preserving the original clause index and span.
+    pub fn into_iter_with_contract_roots(
+        self,
+    ) -> impl Iterator<
+        Item = (
+            usize,
+            Unnormalized<'tcx, Clause<'tcx>>,
+            Span,
+            Option<ty::solve::RequiredContract<TyCtxt<'tcx>>>,
+        ),
+    > + Clone {
+        assert_eq!(self.clauses.len(), self.spans.len());
+        assert_eq!(self.clauses.len(), self.contracts.len());
+        std::iter::zip(std::iter::zip(self.clauses, self.spans), self.contracts)
+            .map(|((clause, span), contract)| (clause, span, contract))
+            .enumerate()
+            .filter_map(contract_root)
     }
 }
 

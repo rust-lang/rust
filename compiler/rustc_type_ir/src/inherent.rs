@@ -620,6 +620,19 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 #[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn caller_bounds(self) -> impl Iterator<Item = I::Clause>;
+
+    fn caller_bounds_with_origins(
+        self,
+    ) -> impl Iterator<Item = (I::Clause, ty::solve::ParamEnvAssumption<I>)> {
+        self.caller_bounds().enumerate().map(|(index, clause)| {
+            (
+                clause,
+                ty::solve::ParamEnvAssumption::CallerBound {
+                    index: u32::try_from(index).expect("too many parameter-environment clauses"),
+                },
+            )
+        })
+    }
 }
 
 #[rust_analyzer::prefer_underscore_import]

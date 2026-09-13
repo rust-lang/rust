@@ -54,10 +54,11 @@ use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::inherent::*;
+use crate::lang_items::SolverTraitLangItem;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
 use crate::{
-    self as ty, Binder, BoundVarIndexKind, ClauseKind, Flags, Interner, ProjectionClause, Region,
-    TypeSuperVisitable,
+    self as ty, Binder, BoundVarIndexKind, ClauseKind, Flags, Interner, PredicateProxy,
+    ProjectionClause, Region, TypeSuperVisitable,
 };
 
 /// This trait is implemented for every type that can be folded,
@@ -148,6 +149,40 @@ pub trait TypeFolder<I: Interner>: Sized {
         c.super_fold_with(self)
     }
 
+    /// Folds one interned source contract carried by a dependent binder or
+    /// solver goal. A dedicated hook lets canonicalization retain environment
+    /// region semantics even when the contract is nested inside a predicate.
+    fn fold_bound_required_contract(
+        &mut self,
+        contract: I::BoundRequiredContract,
+    ) -> I::BoundRequiredContract {
+        self.cx().mk_bound_required_contract((*contract).clone().fold_with(self))
+    }
+
+    /// Folds one compiler-internal trait evidence value.
+    ///
+    /// Evidence has inference, bound, and placeholder states which are not
+    /// represented by an ordinary generic argument. Giving it a dedicated
+    /// hook lets binder substitution and canonicalization replace those
+    /// states without teaching every evidence consumer about the traversal.
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        self.cx().mk_trait_evidence_data((*evidence).clone().fold_with(self))
+    }
+
+    /// Folds the proof payload of an evidence-indexed projection.
+    ///
+    /// This hook is separate from [`TypeFolder::fold_ty`] and
+    /// [`TypeFolder::fold_const`] because an [`ty::AliasTerm`] may carry an
+    /// evidence projection without first being wrapped in either one. It also
+    /// lets folders distinguish the selected proof recipe from the associated
+    /// item's own arguments in `Alias::args`.
+    fn fold_evidence_projection(
+        &mut self,
+        projection: I::EvidenceProjection,
+    ) -> I::EvidenceProjection {
+        self.cx().mk_evidence_projection((*projection).fold_with(self))
+    }
+
     fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         p.super_fold_with(self)
     }
@@ -215,6 +250,30 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
 
     fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error> {
         c.try_super_fold_with(self)
+    }
+
+    /// Fallible counterpart of [`TypeFolder::fold_bound_required_contract`].
+    fn try_fold_bound_required_contract(
+        &mut self,
+        contract: I::BoundRequiredContract,
+    ) -> Result<I::BoundRequiredContract, Self::Error> {
+        Ok(self.cx().mk_bound_required_contract((*contract).clone().try_fold_with(self)?))
+    }
+
+    /// Fallible counterpart of [`TypeFolder::fold_trait_evidence`].
+    fn try_fold_trait_evidence(
+        &mut self,
+        evidence: I::TraitEvidence,
+    ) -> Result<I::TraitEvidence, Self::Error> {
+        Ok(self.cx().mk_trait_evidence_data((*evidence).clone().try_fold_with(self)?))
+    }
+
+    /// Fallible counterpart of [`TypeFolder::fold_evidence_projection`].
+    fn try_fold_evidence_projection(
+        &mut self,
+        projection: I::EvidenceProjection,
+    ) -> Result<I::EvidenceProjection, Self::Error> {
+        Ok(self.cx().mk_evidence_projection((*projection).try_fold_with(self)?))
     }
 
     fn try_fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Result<P, Self::Error> {
@@ -460,6 +519,27 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         }
     }
 
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        match &evidence.kind {
+            ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound)
+                if *debruijn >= self.current_index =>
+            {
+                let trait_ref = evidence.trait_ref.fold_with(self);
+                self.cx.mk_trait_evidence_kind(
+                    trait_ref,
+                    ty::solve::TraitEvidenceKind::Bound(
+                        ty::BoundVarIndexKind::Bound(debruijn.shifted_in(self.amount)),
+                        *bound,
+                    ),
+                )
+            }
+            _ if evidence.has_vars_bound_at_or_above(self.current_index) => {
+                self.cx.mk_trait_evidence_data((*evidence).clone().fold_with(self))
+            }
+            _ => evidence,
+        }
+    }
+
     fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
@@ -599,11 +679,70 @@ where
     ty::Unnormalized::new(folded)
 }
 
+/// Prepares the trait ref of a surface projection for proof selection.
+///
+/// Surface projections and other reducible aliases are made non-rigid so their
+/// arguments can be elaborated before selecting evidence. Opaque types remain
+/// rigid: their bounds are part of their public identity, and normalizing an
+/// opaque `Self` first can replace it with an unconstrained variable before an
+/// alias-bound candidate is assembled. Evidence projections also remain rigid
+/// because their dictionary has already been selected.
+pub fn prepare_projection_trait_ref_for_normalization<I: Interner, T>(
+    cx: I,
+    value: T,
+) -> ty::Unnormalized<I, T>
+where
+    T: TypeFoldable<I>,
+{
+    let folded = set_aliases_rigidness_with_mode(cx, value, RigidnessFoldMode::ProjectionTraitRef);
+    ty::Unnormalized::new(folded)
+}
+
 pub fn set_opaques_to_non_rigid<I: Interner, T>(cx: I, value: T) -> ty::Unnormalized<I, T>
 where
     T: TypeFoldable<I>,
 {
     let folded = set_aliases_rigidness_with_mode(cx, value, RigidnessFoldMode::OpaqueToNonRigid);
+    ty::Unnormalized::new(folded)
+}
+
+/// Marks only evidence-indexed projections as eligible for normalization.
+///
+/// Evidence projections are rigid while type checking so relating two aliases
+/// cannot silently discard proof identity. Once a typed artifact is replayed
+/// under a potentially different environment, its selected evidence stays
+/// fixed while the associated item must be normalized again.
+pub fn set_evidence_projections_to_non_rigid<I: Interner, T>(
+    cx: I,
+    value: T,
+) -> ty::Unnormalized<I, T>
+where
+    T: TypeFoldable<I>,
+{
+    let folded =
+        set_aliases_rigidness_with_mode(cx, value, RigidnessFoldMode::EvidenceProjectionToNonRigid);
+    ty::Unnormalized::new(folded)
+}
+
+/// Marks every evidence-indexed projection as eligible for checked codegen
+/// erasure, including binder-sensitive callable projections.
+///
+/// Unlike [`set_evidence_projections_to_non_rigid`], this must not be used for
+/// ordinary candidate matching or type relation. Callable ParamEnv evidence is
+/// only interpreted after full monomorphization, without treating the selected
+/// recipe as a coherence equality.
+pub fn set_evidence_projections_to_non_rigid_for_codegen<I: Interner, T>(
+    cx: I,
+    value: T,
+) -> ty::Unnormalized<I, T>
+where
+    T: TypeFoldable<I>,
+{
+    let folded = set_aliases_rigidness_with_mode(
+        cx,
+        value,
+        RigidnessFoldMode::AllEvidenceProjectionsToNonRigid,
+    );
     ty::Unnormalized::new(folded)
 }
 
@@ -636,8 +775,11 @@ where
 enum RigidnessFoldMode {
     AllToRigid,
     AllToNonRigid,
+    ProjectionTraitRef,
     TypeToRigid,
     OpaqueToNonRigid,
+    EvidenceProjectionToNonRigid,
+    AllEvidenceProjectionsToNonRigid,
 }
 
 impl RigidnessFoldMode {
@@ -645,11 +787,16 @@ impl RigidnessFoldMode {
         match self {
             RigidnessFoldMode::AllToRigid => v.has_non_rigid_aliases(),
             RigidnessFoldMode::AllToNonRigid => v.has_rigid_aliases(),
+            RigidnessFoldMode::ProjectionTraitRef => {
+                v.has_rigid_aliases() || v.has_opaque_types() || v.has_evidence_projections()
+            }
             RigidnessFoldMode::TypeToRigid => {
                 v.has_non_rigid_aliases()
                     && v.has_type_flags(ty::TypeFlags::HAS_ALIAS - ty::TypeFlags::HAS_CONST_ALIAS)
             }
             RigidnessFoldMode::OpaqueToNonRigid => v.has_rigid_aliases() && v.has_opaque_types(),
+            RigidnessFoldMode::EvidenceProjectionToNonRigid
+            | RigidnessFoldMode::AllEvidenceProjectionsToNonRigid => v.has_evidence_projections(),
         }
     }
 }
@@ -660,10 +807,54 @@ struct RigidnessFolder<I: Interner> {
     mode: RigidnessFoldMode,
 }
 
+fn evidence_projection_can_be_renormalized<I: Interner>(
+    cx: I,
+    projection: I::EvidenceProjection,
+) -> bool {
+    !matches!(
+        cx.as_trait_lang_item(projection.trait_ref().def_id),
+        Some(
+            SolverTraitLangItem::Fn
+                | SolverTraitLangItem::FnMut
+                | SolverTraitLangItem::FnOnce
+                | SolverTraitLangItem::AsyncFn
+                | SolverTraitLangItem::AsyncFnMut
+                | SolverTraitLangItem::AsyncFnOnce
+                | SolverTraitLangItem::AsyncFnKindHelper
+        )
+    )
+}
+
 impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
     #[inline]
     fn cx(&self) -> I {
         self.cx
+    }
+
+    fn fold_evidence_projection(
+        &mut self,
+        projection: I::EvidenceProjection,
+    ) -> I::EvidenceProjection {
+        if matches!(self.mode, RigidnessFoldMode::AllEvidenceProjectionsToNonRigid) {
+            // This mode is reserved for checked codegen erasure after full
+            // monomorphization. Unlike ordinary normalization, it must make
+            // nested evidence projections in the selected recipe reducible as
+            // well, so that the whole proof can be grounded before erasure.
+            // The narrower borrowck/typeck modes below deliberately keep the
+            // recipe opaque to preserve its identity.
+            let cx = self.cx();
+            return cx.mk_evidence_projection((*projection).fold_with(self));
+        }
+
+        // Rigidness is normalization state for the alias being replayed; it
+        // is not part of the selected dictionary's identity. Folding through
+        // an interned proof recipe here can make one use of the same evidence
+        // contain non-rigid aliases while another remains rigid. Besides
+        // needlessly expanding the proof DAG, that makes later structural
+        // evidence relation try to normalize types inside an identity-bearing
+        // recipe. Keep the recipe opaque. `Alias::args` (the associated
+        // item's own arguments) are still folded normally.
+        projection
     }
 
     fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
@@ -677,6 +868,11 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
 
         match t.kind() {
             ty::Alias(is_rigid, alias_ty) => {
+                if matches!(self.mode, RigidnessFoldMode::ProjectionTraitRef)
+                    && matches!(alias_ty.kind, ty::AliasTyKind::EvidenceProjection { .. })
+                {
+                    return I::Ty::new_alias(self.cx(), ty::IsRigid::Yes, alias_ty);
+                }
                 let alias_ty = alias_ty.fold_with(self);
                 match self.mode {
                     RigidnessFoldMode::AllToRigid | RigidnessFoldMode::TypeToRigid => {
@@ -685,8 +881,32 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
                     RigidnessFoldMode::AllToNonRigid => {
                         I::Ty::new_alias(self.cx(), ty::IsRigid::No, alias_ty)
                     }
+                    RigidnessFoldMode::ProjectionTraitRef => {
+                        let is_rigid = if matches!(alias_ty.kind, ty::AliasTyKind::Opaque { .. }) {
+                            ty::IsRigid::Yes
+                        } else {
+                            ty::IsRigid::No
+                        };
+                        I::Ty::new_alias(self.cx(), is_rigid, alias_ty)
+                    }
                     RigidnessFoldMode::OpaqueToNonRigid => {
                         if let ty::AliasTyKind::Opaque { .. } = alias_ty.kind {
+                            I::Ty::new_alias(self.cx(), ty::IsRigid::No, alias_ty)
+                        } else {
+                            I::Ty::new_alias(self.cx(), is_rigid, alias_ty)
+                        }
+                    }
+                    RigidnessFoldMode::EvidenceProjectionToNonRigid => {
+                        if let ty::AliasTyKind::EvidenceProjection { projection } = alias_ty.kind
+                            && evidence_projection_can_be_renormalized(self.cx(), projection)
+                        {
+                            I::Ty::new_alias(self.cx(), ty::IsRigid::No, alias_ty)
+                        } else {
+                            I::Ty::new_alias(self.cx(), is_rigid, alias_ty)
+                        }
+                    }
+                    RigidnessFoldMode::AllEvidenceProjectionsToNonRigid => {
+                        if matches!(alias_ty.kind, ty::AliasTyKind::EvidenceProjection { .. }) {
                             I::Ty::new_alias(self.cx(), ty::IsRigid::No, alias_ty)
                         } else {
                             I::Ty::new_alias(self.cx(), is_rigid, alias_ty)
@@ -705,6 +925,11 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
 
         match c.kind() {
             ty::ConstKind::Alias(is_rigid, alias_const) => {
+                if matches!(self.mode, RigidnessFoldMode::ProjectionTraitRef)
+                    && matches!(alias_const.kind, ty::AliasConstKind::EvidenceProjection { .. })
+                {
+                    return I::Const::new_alias(self.cx(), ty::IsRigid::Yes, alias_const);
+                }
                 let alias_const = alias_const.fold_with(self);
                 match self.mode {
                     RigidnessFoldMode::AllToRigid => {
@@ -713,8 +938,29 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
                     RigidnessFoldMode::AllToNonRigid => {
                         I::Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
                     }
+                    RigidnessFoldMode::ProjectionTraitRef => {
+                        I::Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
+                    }
                     RigidnessFoldMode::OpaqueToNonRigid | RigidnessFoldMode::TypeToRigid => {
                         I::Const::new_alias(self.cx(), is_rigid, alias_const)
+                    }
+                    RigidnessFoldMode::EvidenceProjectionToNonRigid => {
+                        if let ty::AliasConstKind::EvidenceProjection { projection } =
+                            alias_const.kind
+                            && evidence_projection_can_be_renormalized(self.cx(), projection)
+                        {
+                            I::Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
+                        } else {
+                            I::Const::new_alias(self.cx(), is_rigid, alias_const)
+                        }
+                    }
+                    RigidnessFoldMode::AllEvidenceProjectionsToNonRigid => {
+                        if matches!(alias_const.kind, ty::AliasConstKind::EvidenceProjection { .. })
+                        {
+                            I::Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
+                        } else {
+                            I::Const::new_alias(self.cx(), is_rigid, alias_const)
+                        }
                     }
                 }
             }

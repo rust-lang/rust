@@ -39,12 +39,19 @@ pub enum AliasTermKind<I: Interner> {
     /// Note that the `def_id` is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `interner.associated_item(def_id).container`,
     /// aka. `interner.parent(def_id)`.
-    ProjectionTy { def_id: I::TraitAssocTyId },
+    ProjectionTy {
+        def_id: I::TraitAssocTyId,
+    },
+    EvidenceProjectionTy {
+        projection: I::EvidenceProjection,
+    },
 
     /// An associated type in an inherent `impl`
     ///
     /// The `def_id` is the `DefId` of the `ImplItem` for the associated type.
-    InherentTy { def_id: I::InherentAssocTyId },
+    InherentTy {
+        def_id: I::InherentAssocTyId,
+    },
 
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     ///
@@ -54,33 +61,53 @@ pub enum AliasTermKind<I: Interner> {
     ///
     /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
     /// underlying type if the type is an opaque.
-    OpaqueTy { def_id: I::OpaqueTyId },
+    OpaqueTy {
+        def_id: I::OpaqueTyId,
+    },
 
     /// A type alias that actually checks its trait bounds.
     ///
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
-    FreeTy { def_id: I::FreeTyAliasId },
+    FreeTy {
+        def_id: I::FreeTyAliasId,
+    },
 
     /// An anonymous constant.
-    AnonConst { def_id: I::AnonConstId },
+    AnonConst {
+        def_id: I::AnonConstId,
+    },
     /// A const alias coming from an associated const.
-    ProjectionConst { def_id: I::TraitAssocConstId },
+    ProjectionConst {
+        def_id: I::TraitAssocConstId,
+    },
+    EvidenceProjectionConst {
+        projection: I::EvidenceProjection,
+    },
     /// A top level const item not part of a trait or impl.
-    FreeConst { def_id: I::FreeConstAliasId },
+    FreeConst {
+        def_id: I::FreeConstAliasId,
+    },
     /// An associated const in an inherent `impl`. See [`ty::AliasConstKind::InherentSelf`] for a
     /// description on the difference between `InherentConstSelf` and `InherentConstImpl`.
-    InherentConstSelf { def_id: I::InherentAssocConstId },
+    InherentConstSelf {
+        def_id: I::InherentAssocConstId,
+    },
     /// An associated const in an inherent `impl`. See [`ty::AliasConstKind::InherentSelf`] for a
     /// description on the difference between `InherentConstSelf` and `InherentConstImpl`.
-    InherentConstImpl { def_id: I::InherentAssocConstId },
+    InherentConstImpl {
+        def_id: I::InherentAssocConstId,
+    },
 }
 
 impl<I: Interner> AliasTermKind<I> {
     pub fn descr(self) -> &'static str {
         match self {
-            AliasTermKind::ProjectionTy { .. } => "associated type",
-            AliasTermKind::ProjectionConst { .. } => "associated const",
+            AliasTermKind::ProjectionTy { .. } | AliasTermKind::EvidenceProjectionTy { .. } => {
+                "associated type"
+            }
+            AliasTermKind::ProjectionConst { .. }
+            | AliasTermKind::EvidenceProjectionConst { .. } => "associated const",
             AliasTermKind::InherentTy { .. } => "inherent associated type",
             AliasTermKind::InherentConstSelf { .. } | AliasTermKind::InherentConstImpl { .. } => {
                 "inherent associated const"
@@ -95,6 +122,7 @@ impl<I: Interner> AliasTermKind<I> {
     pub fn is_type(self) -> bool {
         match self {
             AliasTermKind::ProjectionTy { .. }
+            | AliasTermKind::EvidenceProjectionTy { .. }
             | AliasTermKind::InherentTy { .. }
             | AliasTermKind::OpaqueTy { .. }
             | AliasTermKind::FreeTy { .. } => true,
@@ -103,13 +131,17 @@ impl<I: Interner> AliasTermKind<I> {
             | AliasTermKind::ProjectionConst { .. }
             | AliasTermKind::InherentConstSelf { .. }
             | AliasTermKind::InherentConstImpl { .. }
+            | AliasTermKind::EvidenceProjectionConst { .. }
             | AliasTermKind::FreeConst { .. } => false,
         }
     }
 
     pub fn is_trait_projection(self) -> bool {
         match self {
-            AliasTermKind::ProjectionTy { .. } | AliasTermKind::ProjectionConst { .. } => true,
+            AliasTermKind::ProjectionTy { .. }
+            | AliasTermKind::EvidenceProjectionTy { .. }
+            | AliasTermKind::ProjectionConst { .. }
+            | AliasTermKind::EvidenceProjectionConst { .. } => true,
             AliasTermKind::InherentTy { .. }
             | AliasTermKind::OpaqueTy { .. }
             | AliasTermKind::FreeTy { .. }
@@ -125,6 +157,9 @@ impl<I: Interner> From<ty::AliasTyKind<I>> for AliasTermKind<I> {
     fn from(value: ty::AliasTyKind<I>) -> Self {
         match value {
             ty::Projection { def_id } => AliasTermKind::ProjectionTy { def_id },
+            ty::EvidenceProjection { projection } => {
+                AliasTermKind::EvidenceProjectionTy { projection }
+            }
             ty::Opaque { def_id } => AliasTermKind::OpaqueTy { def_id },
             ty::Free { def_id } => AliasTermKind::FreeTy { def_id },
             ty::Inherent { def_id } => AliasTermKind::InherentTy { def_id },
@@ -141,6 +176,9 @@ impl<I: Interner> From<ty::AliasConstKind<I>> for AliasTermKind<I> {
             }
             ty::AliasConstKind::InherentImpl { def_id } => {
                 AliasTermKind::InherentConstImpl { def_id }
+            }
+            ty::AliasConstKind::EvidenceProjection { projection } => {
+                AliasTermKind::EvidenceProjectionConst { projection }
             }
             ty::AliasConstKind::Free { def_id } => AliasTermKind::FreeConst { def_id },
             ty::AliasConstKind::Anon { def_id } => AliasTermKind::AnonConst { def_id },
@@ -182,6 +220,9 @@ impl<I: Interner> AliasTerm<I> {
     pub fn expect_ty(self) -> ty::AliasTy<I> {
         let kind = match self.kind {
             AliasTermKind::ProjectionTy { def_id } => ty::AliasTyKind::Projection { def_id },
+            AliasTermKind::EvidenceProjectionTy { projection } => {
+                ty::AliasTyKind::EvidenceProjection { projection }
+            }
             AliasTermKind::InherentTy { def_id } => ty::AliasTyKind::Inherent { def_id },
             AliasTermKind::OpaqueTy { def_id } => ty::AliasTyKind::Opaque { def_id },
             AliasTermKind::FreeTy { def_id } => ty::AliasTyKind::Free { def_id },
@@ -189,7 +230,8 @@ impl<I: Interner> AliasTerm<I> {
             | AliasTermKind::InherentConstImpl { .. }
             | AliasTermKind::FreeConst { .. }
             | AliasTermKind::AnonConst { .. }
-            | AliasTermKind::ProjectionConst { .. }) => {
+            | AliasTermKind::ProjectionConst { .. }
+            | AliasTermKind::EvidenceProjectionConst { .. }) => {
                 panic!("Cannot turn `{}` into `AliasTy`", kind.descr())
             }
         };
@@ -207,7 +249,11 @@ impl<I: Interner> AliasTerm<I> {
             AliasTermKind::FreeConst { def_id } => ty::AliasConstKind::Free { def_id },
             AliasTermKind::AnonConst { def_id } => ty::AliasConstKind::Anon { def_id },
             AliasTermKind::ProjectionConst { def_id } => ty::AliasConstKind::Projection { def_id },
+            AliasTermKind::EvidenceProjectionConst { projection } => {
+                ty::AliasConstKind::EvidenceProjection { projection }
+            }
             kind @ (AliasTermKind::ProjectionTy { .. }
+            | AliasTermKind::EvidenceProjectionTy { .. }
             | AliasTermKind::InherentTy { .. }
             | AliasTermKind::OpaqueTy { .. }
             | AliasTermKind::FreeTy { .. }) => {
@@ -238,7 +284,13 @@ impl<I: Interner> AliasTerm<I> {
             AliasTermKind::ProjectionConst { def_id } => {
                 alias_const(ty::AliasConstKind::Projection { def_id })
             }
+            AliasTermKind::EvidenceProjectionConst { projection } => {
+                alias_const(ty::AliasConstKind::EvidenceProjection { projection })
+            }
             AliasTermKind::ProjectionTy { def_id } => alias_ty(ty::Projection { def_id }),
+            AliasTermKind::EvidenceProjectionTy { projection } => {
+                alias_ty(ty::EvidenceProjection { projection })
+            }
             AliasTermKind::InherentTy { def_id } => alias_ty(ty::Inherent { def_id }),
             AliasTermKind::OpaqueTy { def_id } => alias_ty(ty::Opaque { def_id }),
             AliasTermKind::FreeTy { def_id } => alias_ty(ty::Free { def_id }),
@@ -252,6 +304,10 @@ impl<I: Interner> AliasTerm<I> {
     pub fn expect_projection_ty_def_id(self) -> I::TraitAssocTyId {
         match self.kind {
             AliasTermKind::ProjectionTy { def_id } => def_id,
+            AliasTermKind::EvidenceProjectionTy { projection } => {
+                I::TraitAssocTyId::try_from(projection.item_def_id)
+                    .unwrap_or_else(|_| panic!("evidence projection is not an associated type"))
+            }
             kind => panic!("expected projection ty, found {kind:?}"),
         }
     }
@@ -280,11 +336,27 @@ impl<I: Interner> AliasTerm<I> {
     }
 
     pub fn self_ty(self) -> I::Ty {
-        self.debug_assert_has_self();
-        self.args.type_at(0)
+        match self.kind {
+            AliasTermKind::EvidenceProjectionTy { projection }
+            | AliasTermKind::EvidenceProjectionConst { projection } => {
+                projection.trait_ref().self_ty()
+            }
+            _ => {
+                self.debug_assert_has_self();
+                self.args.type_at(0)
+            }
+        }
     }
 
     pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        assert!(
+            !matches!(
+                self.kind,
+                AliasTermKind::EvidenceProjectionTy { .. }
+                    | AliasTermKind::EvidenceProjectionConst { .. }
+            ),
+            "cannot replace Self in an evidence-indexed projection without replacing its proof"
+        );
         self.debug_assert_has_self();
         AliasTerm::new(
             interner,
@@ -297,6 +369,8 @@ impl<I: Interner> AliasTerm<I> {
         match self.kind {
             AliasTermKind::ProjectionTy { def_id } => def_id.into(),
             AliasTermKind::ProjectionConst { def_id } => def_id.into(),
+            AliasTermKind::EvidenceProjectionTy { projection }
+            | AliasTermKind::EvidenceProjectionConst { projection } => projection.item_def_id,
             kind => panic!("expected projection alias, found {kind:?}"),
         }
     }
@@ -310,7 +384,27 @@ impl<I: Interner> AliasTerm<I> {
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
     pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
-        interner.trait_ref_and_own_args_for_alias(self.expect_projection_def_id(), self.args)
+        match self.kind {
+            AliasTermKind::ProjectionTy { .. } | AliasTermKind::ProjectionConst { .. } => interner
+                .trait_ref_and_own_args_for_alias(self.expect_projection_def_id(), self.args),
+            AliasTermKind::EvidenceProjectionTy { projection }
+            | AliasTermKind::EvidenceProjectionConst { projection } => {
+                (projection.trait_ref(), interner.generic_args_slice(self.args))
+            }
+            _ => panic!("expected projection alias"),
+        }
+    }
+
+    /// Returns the trait arguments followed by the associated item's own
+    /// arguments, regardless of whether this is a surface or elaborated
+    /// projection.
+    pub fn full_args(self, interner: I) -> I::GenericArgs {
+        match self.kind {
+            AliasTermKind::EvidenceProjectionTy { projection }
+            | AliasTermKind::EvidenceProjectionConst { projection } => interner
+                .mk_args_from_iter(projection.trait_ref().args.iter().chain(self.args.iter())),
+            _ => self.args,
+        }
     }
 
     /// Extracts the underlying trait reference from this projection.

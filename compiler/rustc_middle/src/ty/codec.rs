@@ -17,9 +17,10 @@ use rustc_middle::ty::Const;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{Span, SpanDecoder, SpanEncoder, Spanned};
 
-use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
+use crate::infer::canonical::{CanonicalEvidenceVarKinds, CanonicalVarKind, CanonicalVarKinds};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
 use crate::mono::MonoItem;
+use crate::traits::solve::{BoundRequiredContract, TraitEvidences};
 use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
 use crate::{mir, traits};
 
@@ -204,7 +205,30 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for CtfeProvenance {
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::ParamEnv<'tcx> {
     fn encode(&self, e: &mut E) {
-        self.caller_bounds.encode(e);
+        self.caller_bounds().collect::<Vec<_>>().encode(e);
+        self.assumption_origins().collect::<Vec<_>>().encode(e);
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for BoundRequiredContract<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e);
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for traits::solve::TraitEvidence<'tcx> {
+    fn encode(&self, e: &mut E) {
+        traits::solve::validate_trait_evidence_for_persistence(*self)
+            .unwrap_or_else(|error| panic!("cannot persist trait evidence: {error}"));
+        self.0.0.encode(e);
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for traits::solve::EvidenceProjection<'tcx> {
+    fn encode(&self, e: &mut E) {
+        traits::solve::validate_evidence_projection_for_persistence(*self)
+            .unwrap_or_else(|error| panic!("cannot persist evidence projection: {error}"));
+        self.0.0.encode(e);
     }
 }
 
@@ -284,6 +308,26 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for CanonicalVarKinds<'tcx> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for CanonicalEvidenceVarKinds<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_canonical_evidence_var_infos_from_iter(
+            (0..len).map::<ty::CanonicalEvidenceVarKind<TyCtxt<'tcx>>, _>(|_| {
+                Decodable::decode(decoder)
+            }),
+        )
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for TraitEvidences<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_trait_evidences_from_iter(
+            (0..len).map::<traits::solve::TraitEvidence<'tcx>, _>(|_| Decodable::decode(decoder)),
+        )
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for AllocId {
     fn decode(decoder: &mut D) -> Self {
         decoder.decode_alloc_id()
@@ -305,8 +349,42 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::SymbolName<'tcx> {
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
-        let caller_bounds = Decodable::decode(d);
-        ty::ParamEnv { caller_bounds }
+        let caller_bounds: Vec<ty::Clause<'tcx>> = Decodable::decode(d);
+        let assumption_origins: Vec<ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>> =
+            Decodable::decode(d);
+        assert_eq!(caller_bounds.len(), assumption_origins.len());
+        ty::ParamEnv::new_with_assumptions(
+            d.interner(),
+            caller_bounds.into_iter().zip(assumption_origins),
+        )
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for BoundRequiredContract<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let data: ty::BoundRequiredContractData<TyCtxt<'tcx>> = Decodable::decode(d);
+        d.interner().mk_bound_required_contract(data)
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for traits::solve::TraitEvidence<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let data: traits::solve::TraitEvidenceData<TyCtxt<'tcx>> = Decodable::decode(d);
+        data.assert_serialized_well_formed();
+        let evidence = d.interner().mk_trait_evidence_data(data);
+        traits::solve::validate_trait_evidence_for_persistence(evidence)
+            .unwrap_or_else(|error| panic!("decoded invalid trait evidence: {error}"));
+        evidence
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for traits::solve::EvidenceProjection<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let data: ty::EvidenceProjectionData<TyCtxt<'tcx>> = Decodable::decode(d);
+        let projection = d.interner().mk_evidence_projection(data);
+        traits::solve::validate_evidence_projection_for_persistence(projection)
+            .unwrap_or_else(|error| panic!("decoded invalid evidence projection: {error}"));
+        projection
     }
 }
 
@@ -337,6 +415,20 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
         decoder.interner().mk_poly_existential_predicates_from_iter(
             (0..len).map::<ty::Binder<'tcx, _>, _>(|_| Decodable::decode(decoder)),
         )
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
+    for ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>
+{
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_predefined_opaques_in_body_from_iter((0..len).map::<(
+            ty::OpaqueTypeKey<'tcx>,
+            Ty<'tcx>,
+        ), _>(|_| {
+            Decodable::decode(decoder)
+        }))
     }
 }
 
@@ -463,6 +555,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
+    &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,

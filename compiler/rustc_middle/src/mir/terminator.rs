@@ -769,13 +769,20 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
             }
 
-            Call { unwind, destination, target, func: _, args: _, fn_span: _, call_source: _ } => {
-                TerminatorEdges::AssignOnReturn {
-                    return_: target.into_iter().collect(),
-                    cleanup: unwind.cleanup_block(),
-                    place: CallReturnPlaces::Call(destination),
-                }
-            }
+            Call {
+                unwind,
+                destination,
+                target,
+                func: _,
+                args: _,
+                fn_span: _,
+                call_source: _,
+                call_output: _,
+            } => TerminatorEdges::AssignOnReturn {
+                return_: target.into_iter().collect(),
+                cleanup: unwind.cleanup_block(),
+                place: CallReturnPlaces::Call(destination),
+            },
 
             InlineAsm {
                 asm_macro: _,

@@ -9,7 +9,7 @@ use crate::data_structures::DelayedMap;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
+use crate::solve::{EvidenceVid, TraitEvidenceKind, TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
     self as ty, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
@@ -425,11 +425,13 @@ pub trait InferCtxtLike: Sized {
     fn universe_of_ty(&self, ty: ty::TyVid) -> Option<ty::UniverseIndex>;
     fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
     fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_evidence(&self, evidence: EvidenceVid) -> Option<ty::UniverseIndex>;
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn is_sub_unification_table_root_var(&self, var: ty::TyVid) -> bool;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
+    fn root_evidence_var(&self, var: EvidenceVid) -> EvidenceVid;
 
     fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
     fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
@@ -442,12 +444,27 @@ pub trait InferCtxtLike: Sized {
         vid: ty::ConstVid,
     ) -> <Self::Interner as Interner>::Const;
     fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
+    fn opportunistic_resolve_evidence_var(
+        &self,
+        evidence: <Self::Interner as Interner>::TraitEvidence,
+    ) -> <Self::Interner as Interner>::TraitEvidence;
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> Region<Self::Interner>;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
+    fn next_evidence_infer(
+        &self,
+        trait_ref: ty::TraitRef<Self::Interner>,
+    ) -> <Self::Interner as Interner>::TraitEvidence {
+        self.next_evidence_infer_in_universe(trait_ref, self.universe())
+    }
+    fn next_evidence_infer_in_universe(
+        &self,
+        trait_ref: ty::TraitRef<Self::Interner>,
+        universe: ty::UniverseIndex,
+    ) -> <Self::Interner as Interner>::TraitEvidence;
     fn fresh_args_for_item(
         &self,
         def_id: <Self::Interner as Interner>::DefId,
@@ -458,11 +475,69 @@ pub trait InferCtxtLike: Sized {
         value: ty::Binder<Self::Interner, T>,
     ) -> T;
 
+    /// Instantiates ordinary binder variables and returns every binder-owned
+    /// clause, together with its stable telescope index, instantiated with the
+    /// exact same substitution. This includes both typed-const declarations
+    /// and evidence assumptions. Callers must turn the returned clauses into
+    /// proof obligations.
+    fn instantiate_binder_with_infer_and_telescope_clauses<
+        T: TypeFoldable<Self::Interner> + Copy,
+    >(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+    ) -> (T, Vec<ty::InstantiatedTelescopeClause<Self::Interner>>) {
+        debug_assert!(!value.has_telescope_clauses());
+        (self.instantiate_binder_with_infer(value), vec![])
+    }
+
     fn enter_forall_without_assumptions<T: TypeFoldable<Self::Interner>, U>(
         &self,
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,
     ) -> U;
+
+    /// Universally instantiates a binder and exposes its binder-owned clauses
+    /// using the same placeholders as the instantiated value. The returned
+    /// indices are stable telescope indices.
+    fn enter_forall_without_assumptions_and_telescope_clauses<
+        T: TypeFoldable<Self::Interner>,
+        U,
+    >(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        f: impl FnOnce(T, Vec<ty::InstantiatedTelescopeClause<Self::Interner>>) -> U,
+    ) -> U {
+        self.enter_forall_without_assumptions_with_args_and_telescope_clauses(
+            value,
+            |value, _, clauses| f(value, clauses),
+        )
+    }
+
+    /// Universally instantiates a binder and exposes the exact ordinary
+    /// substitution shared by its value and binder-owned clauses.
+    ///
+    /// The ordinary arguments cannot be reconstructed from the instantiated
+    /// value because a binder variable may occur only in a dependent clause.
+    fn enter_forall_without_assumptions_with_args_and_telescope_clauses<
+        T: TypeFoldable<Self::Interner>,
+        U,
+    >(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        f: impl FnOnce(
+            T,
+            <Self::Interner as Interner>::GenericArgs,
+            Vec<ty::InstantiatedTelescopeClause<Self::Interner>>,
+        ) -> U,
+    ) -> U;
+
+    /// Extends a parameter environment with instantiated binder-owned proof
+    /// assumptions. This must preserve the existing caller-bound ordering.
+    fn extend_param_env_with_clauses(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        clauses: &[ty::InstantiatedTelescopeClause<Self::Interner>],
+    ) -> <Self::Interner as Interner>::ParamEnv;
 
     /// FIXME(-Zassumptions-on-binders): Any usage of this method is likely wrong
     /// and should be replaced in the long term by actually taking assumptions into
@@ -478,6 +553,7 @@ pub trait InferCtxtLike: Sized {
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
     fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
     fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
+    fn equate_evidence_vids_raw(&self, a: EvidenceVid, b: EvidenceVid);
 
     /// Use `instantiate_ty_var` instead unless you have reasons to skip
     /// generalization.
@@ -485,6 +561,13 @@ pub trait InferCtxtLike: Sized {
     /// Use `instantiate_const_var` instead unless you have reasons to skip
     /// generalization.
     fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: <Self::Interner as Interner>::Const);
+    /// Binds an unresolved evidence variable after lowering the value into the
+    /// variable's universe. The caller must first relate the two trait refs.
+    fn instantiate_evidence_var_raw(
+        &self,
+        vid: EvidenceVid,
+        evidence: <Self::Interner as Interner>::TraitEvidence,
+    );
     fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
@@ -513,6 +596,10 @@ pub trait InferCtxtLike: Sized {
         &self,
         ty: <Self::Interner as Interner>::Const,
     ) -> <Self::Interner as Interner>::Const;
+    fn shallow_resolve_evidence(
+        &self,
+        evidence: <Self::Interner as Interner>::TraitEvidence,
+    ) -> <Self::Interner as Interner>::TraitEvidence;
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
@@ -714,6 +801,19 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
                     c
                 }
             }
+        }
+    }
+
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        let resolved = self.delegate.opportunistic_resolve_evidence_var(evidence);
+        match &resolved.kind {
+            TraitEvidenceKind::Infer(_) => {
+                self.cx().mk_trait_evidence_data((*resolved).clone().fold_with(self))
+            }
+            _ if resolved.has_infer() => {
+                self.cx().mk_trait_evidence_data((*resolved).clone().fold_with(self))
+            }
+            _ => resolved,
         }
     }
 

@@ -57,6 +57,7 @@ TrivialTypeTraversalImpls! {
     crate::Variance,
     crate::solve::BuiltinImplSource,
     crate::solve::Certainty,
+    crate::solve::EvidenceVid,
     crate::solve::GoalSource,
     crate::solve::VisibleForLeakCheck,
     rustc_ast_ir::Mutability,

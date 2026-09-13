@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
 use derive_where::derive_where;
+use rustc_ast_ir::visit::VisitorResult;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableHash_NoContext};
 use rustc_type_ir_macros::{
@@ -17,6 +18,7 @@ use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{
     self as ty, DebruijnIndex, Interner, PredicateProxy, Region, UniverseIndex, Unnormalized,
+    Upcast, try_visit,
 };
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
@@ -32,6 +34,100 @@ pub struct Binder<I: Interner, T> {
     value: T,
     bound_vars: I::BoundVarKinds,
 }
+
+/// A source contract rebased into the scope of one owning telescope.
+///
+/// Every member in `clauses` retains its own `Clause` binder. References to
+/// the owning telescope therefore occur one de Bruijn level outside that
+/// member binder. This is intentionally distinct from [`RequiredContract`]: a
+/// bound contract is not a solver input until removal of the owning telescope
+/// has instantiated those outer references.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable, TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct BoundRequiredContractData<I: Interner> {
+    pub identity: ty::solve::InstantiatedItemContract<I>,
+    pub clauses: I::Clauses,
+    /// Index of the trait clause whose evidence owns this atomic bundle.
+    pub principal_index: u32,
+    /// Opening substitution, if this bound contract has already crossed an
+    /// enclosing telescope. Freshly rebased callable contracts use `None`;
+    /// removing their owning binder records one shared substitution here.
+    pub ordinary_args: Option<I::GenericArgs>,
+}
+
+impl<I: Interner> Eq for BoundRequiredContractData<I> {}
+
+impl<I: Interner> BoundRequiredContractData<I> {
+    fn instantiate(self, cx: I, ordinary_args: I::GenericArgs) -> ty::solve::RequiredContract<I> {
+        debug_assert!(self.ordinary_args.is_none());
+        ty::solve::RequiredContract::new(
+            cx,
+            self.identity,
+            self.clauses,
+            self.principal_index,
+            Some(ordinary_args),
+        )
+    }
+}
+
+/// One compiler-internal proof declaration in a dependent binder telescope.
+///
+/// `clause` is the principal predicate proved by the evidence slot. When the
+/// slot originates from a source trait bound, `required_contract` carries the
+/// complete bundle belonging to that exact source bound. Keeping the bundle
+/// on the declaration, rather than looking it up from the principal trait ref,
+/// lets two slots with identical principals retain different associated-item
+/// equalities.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable, TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct EvidenceVariable<I: Interner> {
+    pub clause: ty::ClauseKind<I>,
+    pub required_contract: Option<I::BoundRequiredContract>,
+}
+
+impl<I: Interner> Eq for EvidenceVariable<I> {}
+
+impl<I: Interner> EvidenceVariable<I> {
+    pub fn principal(clause: ty::ClauseKind<I>) -> Self {
+        EvidenceVariable { clause, required_contract: None }
+    }
+}
+
+/// A clause introduced by one entry of a dependent binder telescope.
+///
+/// `clause` is instantiated for the current inference context. `identity`
+/// keeps the original binder and clause together, so a universally-instantiated
+/// clause can retain its stable telescope identity after being appended to a
+/// parameter environment.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable, TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct InstantiatedTelescopeClause<I: Interner> {
+    pub index: u32,
+    pub clause: I::Clause,
+    pub identity: I::Clause,
+    /// The ordinary lifetime/type/const substitution used to instantiate the
+    /// owning binder. Evidence entries form a telescope suffix and therefore
+    /// never consume an argument in this list.
+    pub instantiation: I::GenericArgs,
+    /// Complete source contract instantiated by the same ordinary/evidence
+    /// substitution as `clause`. Typed-const declarations and synthetic
+    /// evidence declarations which have no source bundle use `None`.
+    pub required_contract: Option<ty::solve::RequiredContract<I>>,
+}
+
+impl<I: Interner> Eq for InstantiatedTelescopeClause<I> {}
 
 impl<I: Interner, T: Eq> Eq for Binder<I, T> {}
 
@@ -55,10 +151,250 @@ where
     pub fn bind_with_vars(value: T, bound_vars: I::BoundVarKinds) -> Binder<I, T> {
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
+            validator.validate_telescope();
             let _ = value.visit_with(&mut validator);
         }
         Binder { value, bound_vars }
     }
+
+    /// Adds the proof assumptions needed by surface projections in this
+    /// binder to its dependent telescope.
+    ///
+    /// HIR lowering intentionally produces source-shaped projections. For the
+    /// globally-enabled next solver, every projection under a higher-ranked
+    /// binder also owns a positive trait assumption. Instantiating the binder
+    /// turns these entries into proof obligations/parameter-environment
+    /// assumptions with stable telescope indices. Repeated projections of the
+    /// same trait ref share one entry.
+    ///
+    /// Nested binders are finalized independently, so this pass does not walk
+    /// through them.
+    pub fn with_projection_evidence(self, cx: I) -> Binder<I, T> {
+        self.with_projection_evidence_inner(cx)
+    }
+
+    /// Adds proof assumptions for late-bound surface projections in a callable
+    /// signature.
+    ///
+    /// A projection such as `<R as Try>::Output`, which only mentions early
+    /// generic parameters, is owned by the generic item's contract and remains
+    /// a surface proof hole until item instantiation. Treating it as a
+    /// late-bound telescope entry would shadow the instantiated contract and
+    /// make ordinary associated-type equalities lose their selected evidence.
+    /// Projections whose principal trait inputs mention this or an enclosing
+    /// binder still receive a telescope entry and are discharged at the call
+    /// boundary. Associated-item-owned GAT arguments are already projection
+    /// inputs and do not make the selected trait dictionary binder-dependent.
+    pub fn with_signature_projection_evidence(self, cx: I) -> Binder<I, T> {
+        self.with_projection_evidence_inner(cx)
+    }
+
+    fn with_projection_evidence_inner(self, _cx: I) -> Binder<I, T> {
+        // Ordinary late-bound projections are resolved from the caller's
+        // parameter environment. They must not acquire a callee-local
+        // dictionary while lowering otherwise generic Fn signatures. The
+        // explicit projection-clause path below handles output-only binders,
+        // where an evidence slot is actually required to preserve identity.
+        self
+    }
+}
+
+impl<I: Interner> Binder<I, ty::ClauseKind<I>> {
+    /// Finalizes a clause binder, including the output-only associated-term
+    /// case where the projection's trait ref itself is ground but its equality
+    /// term depends on the binder.
+    pub fn with_projection_clause_evidence(self, cx: I) -> Self {
+        let binder = self.with_projection_evidence(cx);
+        if !cx.next_trait_solver_globally() || binder.bound_vars.is_empty() {
+            return binder;
+        }
+        let ty::ClauseKind::Projection(projection) = binder.skip_binder() else {
+            return binder;
+        };
+        let output_vars = bound_vars_referenced_at_current_binder(projection.term);
+        if output_vars.is_empty() {
+            return binder;
+        }
+        // Projection arguments are not constraining inputs: an associated
+        // alias may erase the very lifetime we are checking (the E0582
+        // motivating case). Traverse the principal trait reference while
+        // treating nested associated projections as opaque.
+        let input_vars = bound_vars_referenced_in_projection_input(projection.projection_term);
+        if output_vars.iter().all(|var| input_vars.contains(var)) {
+            return binder;
+        }
+        let trait_ref = projection.projection_term.trait_ref_and_own_args(cx).0;
+        let clause = ty::ClauseKind::Trait(ty::TraitClause {
+            trait_ref,
+            polarity: ty::ClausePolarity::Positive,
+        });
+        if binder.bound_vars.iter().any(|entry| {
+            matches!(entry, BoundVariableKind::Evidence(existing) if existing.clause == clause)
+        }) {
+            return binder;
+        }
+        let bound_vars = I::BoundVarKinds::from_vars(
+            cx,
+            binder.bound_vars.iter().chain(std::iter::once(BoundVariableKind::Evidence(
+                EvidenceVariable::principal(clause),
+            ))),
+        );
+        Binder::bind_with_vars(binder.skip_binder(), bound_vars)
+    }
+}
+
+fn evidence_clause_trait_ref<I: Interner>(clause: ty::ClauseKind<I>) -> ty::TraitRef<I> {
+    match clause {
+        ty::ClauseKind::Trait(ty::TraitClause {
+            trait_ref,
+            polarity: ty::ClausePolarity::Positive,
+        }) => trait_ref,
+        _ => panic!("binder evidence entry must be a positive trait clause, found {clause:?}"),
+    }
+}
+
+fn bound_vars_referenced_at_current_binder<I: Interner, T: TypeVisitable<I>>(
+    value: T,
+) -> Vec<ty::BoundVar> {
+    struct Collector {
+        binder: ty::DebruijnIndex,
+        vars: Vec<ty::BoundVar>,
+    }
+
+    impl<I: Interner> TypeVisitor<I> for Collector {
+        type Result = ControlFlow<()>;
+
+        fn visit_binder<U: TypeVisitable<I>>(&mut self, binder: &Binder<I, U>) -> Self::Result {
+            self.binder.shift_in(1);
+            let result = binder.super_visit_with(self);
+            self.binder.shift_out(1);
+            result
+        }
+
+        fn visit_ty(&mut self, value: I::Ty) -> Self::Result {
+            if value.outer_exclusive_binder() <= self.binder {
+                return ControlFlow::Continue(());
+            }
+            if let ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound) = value.kind()
+                && debruijn == self.binder
+                && !self.vars.contains(&bound.var())
+            {
+                self.vars.push(bound.var());
+            }
+            value.super_visit_with(self)
+        }
+
+        fn visit_region(&mut self, value: Region<I>) -> Self::Result {
+            if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound) = value.kind()
+                && debruijn == self.binder
+                && !self.vars.contains(&bound.var())
+            {
+                self.vars.push(bound.var());
+            }
+            ControlFlow::Continue(())
+        }
+
+        fn visit_const(&mut self, value: I::Const) -> Self::Result {
+            if value.outer_exclusive_binder() <= self.binder {
+                return ControlFlow::Continue(());
+            }
+            if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound) =
+                value.kind()
+                && debruijn == self.binder
+                && !self.vars.contains(&bound.var())
+            {
+                self.vars.push(bound.var());
+            }
+            value.super_visit_with(self)
+        }
+
+        fn visit_trait_evidence(&mut self, evidence: I::TraitEvidence) -> Self::Result {
+            if let ty::solve::TraitEvidenceKind::Bound(
+                ty::BoundVarIndexKind::Bound(debruijn),
+                bound,
+            ) = &evidence.kind
+                && *debruijn == self.binder
+                && !self.vars.contains(&bound.var())
+            {
+                self.vars.push(bound.var());
+            }
+            (*evidence).visit_with(self)
+        }
+    }
+
+    let mut collector = Collector { binder: ty::INNERMOST, vars: vec![] };
+    let _ = value.visit_with(&mut collector);
+    collector.vars
+}
+
+fn bound_vars_referenced_in_projection_input<I: Interner, T: TypeVisitable<I>>(
+    value: T,
+) -> Vec<ty::BoundVar> {
+    struct InputCollector {
+        binder: ty::DebruijnIndex,
+        vars: Vec<ty::BoundVar>,
+    }
+
+    impl<I: Interner> TypeVisitor<I> for InputCollector {
+        type Result = ControlFlow<()>;
+
+        fn visit_binder<U: TypeVisitable<I>>(&mut self, binder: &Binder<I, U>) -> Self::Result {
+            self.binder.shift_in(1);
+            let result = binder.super_visit_with(self);
+            self.binder.shift_out(1);
+            result
+        }
+
+        fn visit_ty(&mut self, value: I::Ty) -> Self::Result {
+            // Closed, shared closure types may be very large but cannot
+            // constrain any variable owned by the binder being inspected.
+            if value.outer_exclusive_binder() <= self.binder {
+                return ControlFlow::Continue(());
+            }
+            if let ty::Alias(_, alias) = value.kind()
+                && matches!(alias.kind, ty::AliasTyKind::Projection { .. })
+            {
+                // The associated projection's arguments are not input
+                // evidence for the outer trait dictionary.
+                return ControlFlow::Continue(());
+            }
+            if let ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound) = value.kind()
+                && debruijn == self.binder
+                && !self.vars.contains(&bound.var())
+            {
+                self.vars.push(bound.var());
+            }
+            value.super_visit_with(self)
+        }
+
+        fn visit_region(&mut self, value: Region<I>) -> Self::Result {
+            if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound) = value.kind()
+                && debruijn == self.binder
+                && !self.vars.contains(&bound.var())
+            {
+                self.vars.push(bound.var());
+            }
+            ControlFlow::Continue(())
+        }
+
+        fn visit_const(&mut self, value: I::Const) -> Self::Result {
+            if value.outer_exclusive_binder() <= self.binder {
+                return ControlFlow::Continue(());
+            }
+            if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound) =
+                value.kind()
+                && debruijn == self.binder
+                && !self.vars.contains(&bound.var())
+            {
+                self.vars.push(bound.var());
+            }
+            value.super_visit_with(self)
+        }
+    }
+
+    let mut collector = InputCollector { binder: ty::INNERMOST, vars: vec![] };
+    let _ = value.visit_with(&mut collector);
+    collector.vars
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Binder<I, T> {
@@ -82,16 +418,583 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        self.try_map_bound(|t| t.try_fold_with(folder))
+        let Binder { value, bound_vars } = self;
+        let bound_vars = if bound_vars.iter().any(|entry| {
+            matches!(entry, BoundVariableKind::Const(Some(_)) | BoundVariableKind::Evidence(_))
+        }) {
+            let entries = bound_vars
+                .iter()
+                .map(|entry| entry.try_fold_with(folder))
+                .collect::<Result<Vec<_>, F::Error>>()?;
+            I::BoundVarKinds::from_vars(folder.cx(), entries)
+        } else {
+            bound_vars
+        };
+        let value = value.try_fold_with(folder)?;
+        Ok(Binder::bind_with_vars(value, bound_vars))
     }
 
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        self.map_bound(|t| t.fold_with(folder))
+        let Binder { value, bound_vars } = self;
+        let bound_vars = if bound_vars.iter().any(|entry| {
+            matches!(entry, BoundVariableKind::Const(Some(_)) | BoundVariableKind::Evidence(_))
+        }) {
+            I::BoundVarKinds::from_vars(
+                folder.cx(),
+                bound_vars.iter().map(|entry| entry.fold_with(folder)),
+            )
+        } else {
+            bound_vars
+        };
+        Binder::bind_with_vars(value.fold_with(folder), bound_vars)
+    }
+}
+
+impl<I: Interner, T: TypeFoldable<I>> Binder<I, T> {
+    /// Instantiates this binder with an explicit substitution for its ordinary
+    /// lifetime/type/const variables.
+    ///
+    /// Binder-owned typed-const and evidence clauses must not be silently
+    /// discarded. Call [`Binder::instantiate_with_args_and_telescope_clauses`]
+    /// for a dependent telescope which owns such clauses.
+    pub fn instantiate_with_args(self, cx: I, args: I::GenericArgs) -> T {
+        assert!(
+            !self.has_telescope_clauses(),
+            "instantiating a dependent binder without its telescope clauses: {self:?}"
+        );
+        self.validate_instantiation(args);
+        self.skip_binder().fold_with(&mut LateBoundArgFolder::new(cx, args))
+    }
+
+    /// Instantiates this binder with separate substitutions for its ordinary
+    /// variables and its evidence suffix.
+    ///
+    /// `evidence_args` is dense and ordered like [`Binder::evidence_bound_vars`].
+    /// A [`BoundEvidence`] nevertheless stores its index in the complete
+    /// telescope, so lookup subtracts the ordinary prefix length. Every proof
+    /// is checked against the fully-instantiated predicate of its declaration
+    /// before the bound value is folded.
+    ///
+    /// Supplying evidence discharges evidence entries. Binder-owned typed-const
+    /// declarations still require an explicit obligation-producing path and
+    /// are therefore rejected here rather than silently discarded.
+    pub fn instantiate_with_args_and_evidence(
+        self,
+        cx: I,
+        args: I::GenericArgs,
+        evidence_args: I::TraitEvidences,
+    ) -> T {
+        assert!(
+            !self
+                .ordinary_bound_vars()
+                .any(|entry| matches!(entry, BoundVariableKind::Const(Some(_)))),
+            "instantiating a typed-const telescope without its declaration obligations: {self:?}"
+        );
+        self.validate_evidence_instantiation(cx, args, evidence_args);
+
+        let ordinary_count = self.ordinary_bound_var_count();
+        self.skip_binder().fold_with(&mut LateBoundArgFolder::with_evidence(
+            cx,
+            args,
+            ordinary_count,
+            evidence_args,
+        ))
+    }
+
+    /// Instantiates the value and every binder-owned declaration using one
+    /// ordinary substitution and one proof substitution.
+    ///
+    /// Unlike [`Binder::instantiate_with_args_and_evidence`], this operation
+    /// is safe for a telescope containing typed const declarations: those
+    /// declarations are returned as [`InstantiatedTelescopeClause`]s instead
+    /// of being silently discharged. Evidence declarations are returned too,
+    /// preserving the exact binder identity, telescope index, and ordinary
+    /// substitution which produced each proof argument.
+    pub fn instantiate_with_args_and_evidence_and_telescope_clauses(
+        self,
+        cx: I,
+        args: I::GenericArgs,
+        evidence_args: I::TraitEvidences,
+    ) -> (T, Vec<InstantiatedTelescopeClause<I>>) {
+        self.validate_evidence_instantiation(cx, args, evidence_args);
+
+        let ordinary_count = self.ordinary_bound_var_count();
+        let telescope_clauses =
+            self.instantiate_telescope_clauses(cx, args, Some((ordinary_count, evidence_args)));
+        let value = self.value.fold_with(&mut LateBoundArgFolder::with_evidence(
+            cx,
+            args,
+            ordinary_count,
+            evidence_args,
+        ));
+        (value, telescope_clauses)
+    }
+
+    /// Universally instantiates this telescope and represents each evidence
+    /// declaration by the exact parameter-environment origin its clause will
+    /// receive. Source-contract slots use their instantiated item-contract
+    /// identity; synthetic slots retain their binder-owned identity.
+    ///
+    /// Evidence declarations form a dependent suffix. Recipes are therefore
+    /// built in telescope order: the predicate for one slot may use proof
+    /// values from earlier slots, but can never observe itself or a later
+    /// slot. The returned clauses must still be installed in the universal
+    /// parameter environment; carrying the same origin in the selected proof
+    /// prevents normalization from drifting to a different assumption.
+    pub fn instantiate_with_args_and_binder_assumption_evidence(
+        self,
+        cx: I,
+        args: I::GenericArgs,
+    ) -> (T, Vec<InstantiatedTelescopeClause<I>>) {
+        self.validate_instantiation(args);
+
+        let mut validator = ValidateBoundVars::<I>::new(self.bound_vars);
+        validator.validate_telescope();
+
+        let ordinary_count = self.ordinary_bound_var_count();
+        let mut evidence = Vec::with_capacity(self.evidence_bound_vars().count());
+
+        for (index, entry) in self.bound_vars.iter().enumerate() {
+            let BoundVariableKind::Evidence(evidence_variable) = entry else { continue };
+            let telescope_index = u32::try_from(index).expect("binder telescope index overflow");
+            let clause = evidence_variable.clause;
+            let evidence_prefix = cx.mk_trait_evidences(&evidence);
+            let mut folder =
+                LateBoundArgFolder::with_evidence(cx, args, ordinary_count, evidence_prefix);
+            let trait_ref = evidence_clause_trait_ref(clause).fold_with(&mut folder);
+            let required_contract = evidence_variable
+                .required_contract
+                .map(|contract| (*contract).clone().fold_with(&mut folder).instantiate(cx, args));
+            let identity = Binder::bind_with_vars(clause, self.bound_vars).upcast(cx);
+            let source = ty::solve::CandidateEvidenceSource::ParamEnv {
+                source: ty::solve::ParamEnvSource::NonGlobal,
+                origin: required_contract.map_or_else(
+                    || ty::solve::ParamEnvAssumption::Binder {
+                        telescope_index,
+                        identity,
+                        instantiation: args,
+                    },
+                    |required_contract| ty::solve::ParamEnvAssumption::ItemContract {
+                        contract: required_contract.identity,
+                    },
+                ),
+            };
+            evidence.push(cx.mk_trait_evidence(ty::solve::CandidateEvidence::new(
+                trait_ref,
+                source,
+                [],
+            )));
+        }
+
+        let evidence = cx.mk_trait_evidences(&evidence);
+        self.instantiate_with_args_and_evidence_and_telescope_clauses(cx, args, evidence)
+    }
+
+    /// Instantiates the trait predicate of the next evidence declaration using
+    /// the ordinary substitution and the already-created proof prefix.
+    ///
+    /// Existential binder consumers use this to allocate one evidence variable
+    /// at a time. The telescope index must name the entry immediately following
+    /// `evidence_prefix`; this prevents a caller from observing a declaration
+    /// before all proofs on which it depends have been created.
+    pub fn instantiate_evidence_trait_ref_with_prefix(
+        &self,
+        cx: I,
+        args: I::GenericArgs,
+        telescope_index: u32,
+        evidence_prefix: I::TraitEvidences,
+    ) -> ty::TraitRef<I> {
+        self.validate_instantiation(args);
+
+        let mut validator = ValidateBoundVars::<I>::new(self.bound_vars);
+        validator.validate_telescope();
+
+        let ordinary_count = self.ordinary_bound_var_count();
+        let evidence_entries = self.evidence_bound_vars().collect::<Vec<_>>();
+        assert!(
+            evidence_prefix.len() < evidence_entries.len(),
+            "requested an evidence declaration past the end of the binder telescope"
+        );
+        let (current_index, current_clause) = evidence_entries[evidence_prefix.len()];
+        assert_eq!(
+            current_index, telescope_index,
+            "evidence declarations must be instantiated in telescope order"
+        );
+        assert_eq!(
+            usize::try_from(telescope_index).expect("binder telescope index overflow"),
+            ordinary_count + evidence_prefix.len(),
+            "evidence entries must be a contiguous binder suffix"
+        );
+
+        let mut folder =
+            LateBoundArgFolder::with_evidence(cx, args, ordinary_count, evidence_prefix);
+        for ((_, clause), replacement) in
+            evidence_entries.iter().take(evidence_prefix.len()).zip(evidence_prefix.iter())
+        {
+            let expected = evidence_clause_trait_ref(*clause).fold_with(&mut folder);
+            replacement.assert_well_formed();
+            assert_eq!(
+                replacement.trait_ref, expected,
+                "evidence prefix proves the wrong instantiated telescope predicate"
+            );
+        }
+
+        evidence_clause_trait_ref(current_clause).fold_with(&mut folder)
+    }
+
+    fn validate_evidence_instantiation(
+        &self,
+        cx: I,
+        args: I::GenericArgs,
+        evidence_args: I::TraitEvidences,
+    ) {
+        self.validate_instantiation(args);
+
+        // Semantic proof values validate the dependent suffix even in release
+        // builds. In particular, no entry may refer to itself or a later one.
+        let mut validator = ValidateBoundVars::<I>::new(self.bound_vars);
+        validator.validate_telescope();
+
+        let ordinary_count = self.ordinary_bound_var_count();
+        let evidence_entries = self.evidence_bound_vars().collect::<Vec<_>>();
+        assert_eq!(
+            evidence_entries.len(),
+            evidence_args.len(),
+            "wrong number of evidence arguments for binder instantiation: binder={self:?}, evidence_args={evidence_args:?}"
+        );
+
+        let mut folder = LateBoundArgFolder::with_evidence(cx, args, ordinary_count, evidence_args);
+        for (suffix_index, ((telescope_index, clause), replacement)) in
+            evidence_entries.into_iter().zip(evidence_args.iter()).enumerate()
+        {
+            assert_eq!(
+                usize::try_from(telescope_index).expect("binder telescope index overflow"),
+                ordinary_count + suffix_index,
+                "evidence entries must be a contiguous binder suffix"
+            );
+            let expected = evidence_clause_trait_ref(clause).fold_with(&mut folder);
+            replacement.assert_well_formed();
+            assert_eq!(
+                replacement.trait_ref, expected,
+                "evidence argument proves the wrong instantiated predicate at telescope index {telescope_index}"
+            );
+        }
+    }
+
+    /// Instantiates this binder's value and every binder-owned clause with one
+    /// explicit ordinary substitution.
+    ///
+    /// The returned clauses retain both their stable binder/telescope identity
+    /// and the exact substitution used at this instantiation site. This is
+    /// required even when an ordinary parameter is erased from the instantiated
+    /// trait ref: proof identity must not be reconstructed from the result.
+    pub fn instantiate_with_args_and_telescope_clauses(
+        self,
+        cx: I,
+        args: I::GenericArgs,
+    ) -> (T, Vec<InstantiatedTelescopeClause<I>>) {
+        let telescope_clauses = self.instantiate_telescope_clauses_with_args(cx, args);
+        let value = self.value.fold_with(&mut LateBoundArgFolder::new(cx, args));
+        (value, telescope_clauses)
+    }
+
+    /// Instantiates only the clauses owned by this binder's telescope.
+    ///
+    /// This lets an inference context inspect each instantiated evidence
+    /// predicate and allocate the corresponding evidence variable before it
+    /// substitutes those proof values into the binder's main value. It is
+    /// deliberately separate from `skip_binder`: no bound value is exposed or
+    /// claimed to have been instantiated by this operation.
+    pub fn instantiate_telescope_clauses_with_args(
+        &self,
+        cx: I,
+        args: I::GenericArgs,
+    ) -> Vec<InstantiatedTelescopeClause<I>> {
+        self.validate_instantiation(args);
+        self.instantiate_telescope_clauses(cx, args, None)
+    }
+
+    fn instantiate_telescope_clauses(
+        &self,
+        cx: I,
+        args: I::GenericArgs,
+        evidence: Option<(usize, I::TraitEvidences)>,
+    ) -> Vec<InstantiatedTelescopeClause<I>> {
+        let bound_vars = self.bound_vars;
+        let telescope_clauses = bound_vars
+            .iter()
+            .enumerate()
+            .filter_map(|(index, entry)| {
+                let index = u32::try_from(index).expect("binder telescope index overflow");
+                let (clause, required_contract) = match entry {
+                    BoundVariableKind::Const(Some(expected_ty)) => {
+                        let ct = I::Const::new_bound(
+                            cx,
+                            ty::INNERMOST,
+                            ty::BoundConst::new(ty::BoundVar::from_u32(index)),
+                        );
+                        (ty::ClauseKind::ConstArgHasType(ct, expected_ty), None)
+                    }
+                    BoundVariableKind::Evidence(evidence) => {
+                        (evidence.clause, evidence.required_contract)
+                    }
+                    BoundVariableKind::Ty(_)
+                    | BoundVariableKind::Region(_)
+                    | BoundVariableKind::Const(None) => return None,
+                };
+                let identity = Binder::bind_with_vars(clause, bound_vars).upcast(cx);
+                Some((index, clause, identity, required_contract))
+            })
+            .collect::<Vec<_>>();
+
+        let mut folder = LateBoundArgFolder::new(cx, args);
+        folder.evidence =
+            evidence.map(|(ordinary_count, args)| LateBoundEvidenceArgs { ordinary_count, args });
+        let telescope_clauses = telescope_clauses
+            .into_iter()
+            .map(|(index, clause, identity, required_contract)| {
+                // `identity` names the declaration in its original binder and
+                // must never be instantiated. In particular, folding it would
+                // enter that binder and make variables from an enclosing binder
+                // look like variables owned by the binder being removed here.
+                let clause = clause.fold_with(&mut folder);
+                // `I::Clause` is itself binder-shaped. If the instantiated
+                // clause still references an enclosing binder, moving it under
+                // this empty clause binder must shift that reference in once.
+                let clause = ty::shift_vars(cx, clause, 1);
+                let clause = Binder::bind_with_vars(clause, Default::default()).upcast(cx);
+                let required_contract = required_contract.map(|contract| {
+                    (*contract).clone().fold_with(&mut folder).instantiate(cx, args)
+                });
+                InstantiatedTelescopeClause {
+                    index,
+                    clause,
+                    identity,
+                    instantiation: args,
+                    required_contract,
+                }
+            })
+            .collect();
+        telescope_clauses
+    }
+
+    fn validate_instantiation(&self, args: I::GenericArgs) {
+        assert_eq!(
+            self.ordinary_bound_var_count(),
+            args.len(),
+            "wrong number of arguments for binder instantiation: binder={self:?}, args={args:?}"
+        );
+        for (index, (bound_var, arg)) in self.ordinary_bound_vars().zip(args.iter()).enumerate() {
+            let valid = matches!(
+                (bound_var, arg.kind()),
+                (BoundVariableKind::Region(_), ty::GenericArgKind::Lifetime(_))
+                    | (BoundVariableKind::Ty(_), ty::GenericArgKind::Type(_))
+                    | (BoundVariableKind::Const(_), ty::GenericArgKind::Const(_))
+            );
+            assert!(
+                valid,
+                "argument kind mismatch at binder index {index}: binder={self:?}, args={args:?}"
+            );
+        }
+    }
+}
+
+/// Removes one late binder while substituting its ordinary variables.
+///
+/// Variables supplied by `args` are shifted into any nested binders traversed
+/// while folding. Variables which were bound outside the removed binder are
+/// shifted out once. Keeping both adjustments in one folder is what makes an
+/// explicit instantiation reusable for a value and all dependent clauses.
+struct LateBoundArgFolder<I: Interner> {
+    cx: I,
+    args: I::GenericArgs,
+    current_index: DebruijnIndex,
+    evidence: Option<LateBoundEvidenceArgs<I>>,
+}
+
+#[derive(Clone, Copy)]
+struct LateBoundEvidenceArgs<I: Interner> {
+    ordinary_count: usize,
+    args: I::TraitEvidences,
+}
+
+impl<I: Interner> LateBoundArgFolder<I> {
+    fn new(cx: I, args: I::GenericArgs) -> Self {
+        LateBoundArgFolder { cx, args, current_index: ty::INNERMOST, evidence: None }
+    }
+
+    fn with_evidence(
+        cx: I,
+        args: I::GenericArgs,
+        ordinary_count: usize,
+        evidence: I::TraitEvidences,
+    ) -> Self {
+        LateBoundArgFolder {
+            cx,
+            args,
+            current_index: ty::INNERMOST,
+            evidence: Some(LateBoundEvidenceArgs { ordinary_count, args: evidence }),
+        }
+    }
+
+    fn shifted_arg<T: TypeFoldable<I>>(&self, value: T) -> T {
+        ty::shift_vars(self.cx, value, self.current_index.as_u32())
+    }
+}
+
+impl<I: Interner> TypeFolder<I> for LateBoundArgFolder<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_binder<U: TypeFoldable<I>>(&mut self, binder: Binder<I, U>) -> Binder<I, U> {
+        self.current_index.shift_in(1);
+        let binder = binder.super_fold_with(self);
+        self.current_index.shift_out(1);
+        binder
+    }
+
+    fn fold_ty(&mut self, value: I::Ty) -> I::Ty {
+        match value.kind() {
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn == self.current_index =>
+            {
+                let arg = self.args.get(bound_ty.var().as_usize()).unwrap_or_else(|| {
+                    panic!("bound type {bound_ty:?} is outside instantiation {:#?}", self.args)
+                });
+                let ty::GenericArgKind::Type(ty) = arg.kind() else {
+                    panic!("expected type argument for {bound_ty:?}, found {arg:?}")
+                };
+                self.shifted_arg(ty)
+            }
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn > self.current_index =>
+            {
+                I::Ty::new_bound(self.cx, debruijn.shifted_out(1), bound_ty)
+            }
+            _ if value.has_vars_bound_at_or_above(self.current_index) => {
+                value.super_fold_with(self)
+            }
+            _ => value,
+        }
+    }
+
+    fn fold_region(&mut self, value: Region<I>) -> Region<I> {
+        match value.kind() {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region)
+                if debruijn == self.current_index =>
+            {
+                let arg = self.args.get(bound_region.var().as_usize()).unwrap_or_else(|| {
+                    panic!(
+                        "bound region {bound_region:?} is outside instantiation {:#?}",
+                        self.args
+                    )
+                });
+                let ty::GenericArgKind::Lifetime(region) = arg.kind() else {
+                    panic!("expected lifetime argument for {bound_region:?}, found {arg:?}")
+                };
+                ty::shift_region(self.cx, region, self.current_index.as_u32())
+            }
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region)
+                if debruijn > self.current_index =>
+            {
+                Region::new_bound(self.cx, debruijn.shifted_out(1), bound_region)
+            }
+            _ => value,
+        }
+    }
+
+    fn fold_const(&mut self, value: I::Const) -> I::Const {
+        match value.kind() {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
+                if debruijn == self.current_index =>
+            {
+                let arg = self.args.get(bound_const.var().as_usize()).unwrap_or_else(|| {
+                    panic!("bound const {bound_const:?} is outside instantiation {:#?}", self.args)
+                });
+                let ty::GenericArgKind::Const(ct) = arg.kind() else {
+                    panic!("expected const argument for {bound_const:?}, found {arg:?}")
+                };
+                self.shifted_arg(ct)
+            }
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
+                if debruijn > self.current_index =>
+            {
+                I::Const::new_bound(self.cx, debruijn.shifted_out(1), bound_const)
+            }
+            _ => value.super_fold_with(self),
+        }
+    }
+
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        match &evidence.kind {
+            ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound)
+                if *debruijn == self.current_index =>
+            {
+                let expected_trait_ref = evidence.trait_ref.fold_with(self);
+                let Some(substitution) = self.evidence else {
+                    panic!(
+                        "instantiating bound evidence without an explicit evidence substitution: {evidence:?}"
+                    );
+                };
+                let telescope_index = bound.var().as_usize();
+                let suffix_index =
+                    telescope_index.checked_sub(substitution.ordinary_count).unwrap_or_else(|| {
+                        panic!(
+                            "bound evidence points into the ordinary binder prefix: {evidence:?}"
+                        )
+                    });
+                let replacement = substitution.args.get(suffix_index).unwrap_or_else(|| {
+                    panic!(
+                        "bound evidence index {telescope_index} is outside the binder evidence suffix"
+                    )
+                });
+                let replacement = ty::shift_vars(self.cx, replacement, self.current_index.as_u32());
+                replacement.assert_well_formed();
+                assert_eq!(
+                    replacement.trait_ref, expected_trait_ref,
+                    "bound evidence replacement proves a different instantiated predicate"
+                );
+                replacement
+            }
+            ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound)
+                if *debruijn > self.current_index =>
+            {
+                let trait_ref = evidence.trait_ref.fold_with(self);
+                self.cx.mk_trait_evidence_kind(
+                    trait_ref,
+                    ty::solve::TraitEvidenceKind::Bound(
+                        ty::BoundVarIndexKind::Bound(debruijn.shifted_out(1)),
+                        *bound,
+                    ),
+                )
+            }
+            _ => self.cx.mk_trait_evidence_data((*evidence).clone().fold_with(self)),
+        }
+    }
+
+    fn fold_predicate(&mut self, value: I::Predicate) -> I::Predicate {
+        if value.has_vars_bound_at_or_above(self.current_index) {
+            value.super_fold_with(self)
+        } else {
+            value
+        }
+    }
+
+    fn fold_clauses(&mut self, value: I::Clauses) -> I::Clauses {
+        if value.has_vars_bound_at_or_above(self.current_index) {
+            value.super_fold_with(self)
+        } else {
+            value
+        }
     }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
     fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        for entry in self.bound_vars.iter() {
+            try_visit!(entry.visit_with(visitor));
+        }
         self.as_ref().skip_binder().visit_with(visitor)
     }
 }
@@ -116,6 +1019,54 @@ impl<I: Interner, T> Binder<I, T> {
 
     pub fn bound_vars(&self) -> I::BoundVarKinds {
         self.bound_vars
+    }
+
+    /// Returns the source-level lifetime/type/const entries in this telescope.
+    ///
+    /// Evidence entries are an internal suffix. Consumers which classify user
+    /// generic parameters or allocate new `BoundVar` indices must use this view
+    /// instead of treating every telescope entry as an ordinary bound variable.
+    pub fn ordinary_bound_vars(&self) -> impl Iterator<Item = BoundVariableKind<I>> + '_ {
+        self.bound_vars.iter().take_while(|entry| !matches!(entry, BoundVariableKind::Evidence(_)))
+    }
+
+    pub fn ordinary_bound_var_count(&self) -> usize {
+        self.ordinary_bound_vars().count()
+    }
+
+    pub fn has_ordinary_bound_vars(&self) -> bool {
+        self.ordinary_bound_vars().next().is_some()
+    }
+
+    /// Returns the compiler-internal proof assumptions owned by this binder,
+    /// together with their stable telescope indices.
+    ///
+    /// Evidence entries are required to form a suffix, so exposing them does
+    /// not change the indices of ordinary lifetime/type/const bound variables.
+    pub fn evidence_bound_vars(&self) -> impl Iterator<Item = (u32, ty::ClauseKind<I>)> + '_ {
+        self.bound_vars.iter().enumerate().filter_map(|(index, entry)| match entry {
+            BoundVariableKind::Evidence(evidence) => Some((
+                u32::try_from(index).expect("binder telescope index overflow"),
+                evidence.clause,
+            )),
+            BoundVariableKind::Ty(_)
+            | BoundVariableKind::Region(_)
+            | BoundVariableKind::Const(_) => None,
+        })
+    }
+
+    pub fn has_evidence_bound_vars(&self) -> bool {
+        self.evidence_bound_vars().next().is_some()
+    }
+
+    /// Whether instantiating this binder must also instantiate clauses owned
+    /// by telescope entries. Typed const declarations contribute a
+    /// `ConstArgHasType` clause and evidence entries contribute their stored
+    /// predicate.
+    pub fn has_telescope_clauses(&self) -> bool {
+        self.bound_vars.iter().any(|entry| {
+            matches!(entry, BoundVariableKind::Const(Some(_)) | BoundVariableKind::Evidence(_))
+        })
     }
 
     pub fn as_ref(&self) -> Binder<I, &T> {
@@ -144,6 +1095,7 @@ impl<I: Interner, T> Binder<I, T> {
         let value = f(value);
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
+            validator.validate_telescope();
             let _ = value.visit_with(&mut validator);
         }
         Binder { value, bound_vars }
@@ -157,6 +1109,7 @@ impl<I: Interner, T> Binder<I, T> {
         let value = f(value)?;
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
+            validator.validate_telescope();
             let _ = value.visit_with(&mut validator);
         }
         Ok(Binder { value, bound_vars })
@@ -193,7 +1146,34 @@ impl<I: Interner, T> Binder<I, T> {
         T: TypeVisitable<I>,
     {
         // `self.value` is equivalent to `self.skip_binder()`
+        // Binder-owned telescope metadata is orthogonal to whether the value
+        // itself still contains late-bound variables. A number of callers
+        // use `no_bound_vars` merely to discharge an empty/value-only binder
+        // (for example callable signatures and function-item arguments);
+        // requiring them to understand every internal evidence declaration
+        // would turn an otherwise ground value into an inference failure.
+        // Telescope clauses are validated/discharged by the explicit
+        // evidence-aware instantiation APIs below.
         if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
+    }
+}
+
+impl<I: Interner> Binder<I, I::GenericArgs> {
+    /// Extracts the ordinary generic-argument payload stored by `TyKind::FnDef`.
+    ///
+    /// A function item keeps its callable evidence declarations in this
+    /// binder's telescope even though the `GenericArgs` payload itself does not
+    /// refer to those proof slots. Consumers which only inspect the item args
+    /// (diagnostics, lints, instance lookup after evidence validation) may use
+    /// this accessor. Code which obtains or instantiates the function signature
+    /// must retain the binder and discharge its telescope instead.
+    #[track_caller]
+    pub fn fn_def_args(self) -> I::GenericArgs {
+        assert!(
+            !self.value.has_escaping_bound_vars(),
+            "function-item generic arguments still contain ordinary bound variables: {self:?}"
+        );
+        self.value
     }
 }
 
@@ -218,6 +1198,9 @@ pub struct ValidateBoundVars<I: Interner> {
     // a type at some point anyways. We may encounter the same variable at
     // different levels of binding, so this can't just be `Ty`.
     visited: SsoHashSet<(ty::DebruijnIndex, I::Ty)>,
+    /// While validating a telescope entry, references at the current
+    /// binder may only target earlier entries.
+    entry_limit: Option<usize>,
 }
 
 impl<I: Interner> ValidateBoundVars<I> {
@@ -226,6 +1209,37 @@ impl<I: Interner> ValidateBoundVars<I> {
             bound_vars,
             binder_index: ty::INNERMOST,
             visited: SsoHashSet::default(),
+            entry_limit: None,
+        }
+    }
+
+    fn validate_telescope(&mut self) {
+        let mut saw_evidence = false;
+        for (index, entry) in self.bound_vars.iter().enumerate() {
+            match entry {
+                BoundVariableKind::Evidence(evidence) => {
+                    let _ = evidence_clause_trait_ref(evidence.clause);
+                    saw_evidence = true;
+                }
+                _ if saw_evidence => {
+                    panic!("ordinary binder variable after evidence entry: {:?}", self.bound_vars)
+                }
+                _ => {}
+            }
+            self.entry_limit = Some(index);
+            let _ = entry.visit_with(self);
+        }
+        self.entry_limit = None;
+    }
+
+    fn assert_in_entry_scope(&self, index: usize) {
+        if let Some(limit) = self.entry_limit
+            && index >= limit
+        {
+            panic!(
+                "binder telescope entry references non-previous variable {index} in {:?}",
+                self.bound_vars
+            );
         }
     }
 }
@@ -244,7 +1258,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         if t.outer_exclusive_binder() < self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
-            return ControlFlow::Break(());
+            return ControlFlow::Continue(());
         }
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
@@ -254,6 +1268,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
                 if self.bound_vars.len() <= idx {
                     panic!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
                 }
+                self.assert_in_entry_scope(idx);
                 bound_ty.assert_eq(self.bound_vars.get(idx).unwrap());
             }
             _ => {}
@@ -264,7 +1279,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 
     fn visit_const(&mut self, c: I::Const) -> Self::Result {
         if c.outer_exclusive_binder() < self.binder_index {
-            return ControlFlow::Break(());
+            return ControlFlow::Continue(());
         }
         match c.kind() {
             ty::ConstKind::Bound(debruijn, bound_const)
@@ -274,6 +1289,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
                 if self.bound_vars.len() <= idx {
                     panic!("Not enough bound vars: {:?} not found in {:?}", c, self.bound_vars);
                 }
+                self.assert_in_entry_scope(idx);
                 bound_const.assert_eq(self.bound_vars.get(idx).unwrap());
             }
             _ => {}
@@ -289,6 +1305,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
                 if self.bound_vars.len() <= idx {
                     panic!("Not enough bound vars: {:?} not found in {:?}", r, self.bound_vars);
                 }
+                self.assert_in_entry_scope(idx);
                 br.assert_eq(self.bound_vars.get(idx).unwrap());
             }
 
@@ -296,6 +1313,30 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         };
 
         ControlFlow::Continue(())
+    }
+
+    fn visit_trait_evidence(&mut self, evidence: I::TraitEvidence) -> Self::Result {
+        if let ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound) =
+            &evidence.kind
+            && *debruijn == self.binder_index
+        {
+            let idx = bound.var().as_usize();
+            if self.bound_vars.len() <= idx {
+                panic!(
+                    "Not enough bound vars: evidence {evidence:?} not found in {:?}",
+                    self.bound_vars
+                );
+            }
+            self.assert_in_entry_scope(idx);
+            let clause = bound.assert_eq(self.bound_vars.get(idx).unwrap());
+            let expected_trait_ref = evidence_clause_trait_ref(clause);
+            assert_eq!(
+                evidence.trait_ref, expected_trait_ref,
+                "bound evidence predicate does not match binder telescope entry {idx}"
+            );
+        }
+
+        (*evidence).visit_with(self)
     }
 }
 
@@ -1057,7 +2098,7 @@ pub enum BoundTyKind<I: Interner> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Debug, Hash; I: Interner)]
-#[derive(Lift_Generic, GenericTypeVisitable)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
@@ -1065,7 +2106,52 @@ pub enum BoundTyKind<I: Interner> {
 pub enum BoundVariableKind<I: Interner> {
     Ty(BoundTyKind<I>),
     Region(BoundRegionKind<I>),
-    Const,
+    /// A const binder entry. New generalized binders record the binder-scoped
+    /// const type; `None` is retained as a migration representation for legacy
+    /// syntax-only binder construction sites.
+    Const(Option<I::Ty>),
+    /// Compiler-internal proof assumption owned by this binder. Evidence
+    /// entries form a dependent suffix and may reference only earlier entries
+    /// of the same telescope.
+    Evidence(EvidenceVariable<I>),
+}
+
+impl<I: Interner> TypeVisitable<I> for BoundVariableKind<I> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        match self {
+            BoundVariableKind::Const(Some(ty)) => ty.visit_with(visitor),
+            BoundVariableKind::Evidence(evidence) => evidence.visit_with(visitor),
+            BoundVariableKind::Ty(_)
+            | BoundVariableKind::Region(_)
+            | BoundVariableKind::Const(None) => V::Result::output(),
+        }
+    }
+}
+
+impl<I: Interner> TypeFoldable<I> for BoundVariableKind<I> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(match self {
+            BoundVariableKind::Const(Some(ty)) => {
+                BoundVariableKind::Const(Some(ty.try_fold_with(folder)?))
+            }
+            BoundVariableKind::Evidence(evidence) => {
+                BoundVariableKind::Evidence(evidence.try_fold_with(folder)?)
+            }
+            _ => self,
+        })
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        match self {
+            BoundVariableKind::Const(Some(ty)) => {
+                BoundVariableKind::Const(Some(ty.fold_with(folder)))
+            }
+            BoundVariableKind::Evidence(evidence) => {
+                BoundVariableKind::Evidence(evidence.fold_with(folder))
+            }
+            _ => self,
+        }
+    }
 }
 
 impl<I: Interner> BoundVariableKind<I> {
@@ -1085,20 +2171,40 @@ impl<I: Interner> BoundVariableKind<I> {
 
     pub fn expect_const(self) {
         match self {
-            BoundVariableKind::Const => (),
+            BoundVariableKind::Const(_) => (),
             _ => panic!("expected a const, but found another kind"),
+        }
+    }
+
+    pub fn const_ty(self) -> Option<I::Ty> {
+        match self {
+            BoundVariableKind::Const(ty) => ty,
+            _ => panic!("expected a const, but found another kind"),
+        }
+    }
+
+    pub fn expect_evidence(self) -> ty::ClauseKind<I> {
+        match self {
+            BoundVariableKind::Evidence(evidence) => evidence.clause,
+            _ => panic!("expected evidence, but found another kind"),
+        }
+    }
+
+    pub fn expect_evidence_variable(self) -> EvidenceVariable<I> {
+        match self {
+            BoundVariableKind::Evidence(evidence) => evidence,
+            _ => panic!("expected evidence, but found another kind"),
         }
     }
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
-#[derive(GenericTypeVisitable, Lift_Generic)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, StableHash_NoContext, Decodable_NoContext)
 )]
 pub struct BoundRegion<I: Interner> {
-    #[lift(identity)]
     pub var: ty::BoundVar,
     pub kind: BoundRegionKind<I>,
 }
@@ -1210,12 +2316,13 @@ impl<I: Interner> PlaceholderType<I> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Debug, Eq, Hash; I: Interner)]
-#[derive(GenericTypeVisitable)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct BoundConst<I: Interner> {
+    #[lift(identity)]
     pub var: ty::BoundVar,
     #[derive_where(skip(Debug))]
     pub _tcx: PhantomData<fn() -> I>,
@@ -1291,5 +2398,62 @@ impl<I: Interner> PlaceholderConst<I> {
             "did not expect duplicate `ConstParamHasTy` for `{self:?}` in param-env: {env:#?}"
         );
         ty
+    }
+}
+
+/// The binder-local identity of a trait evidence value.
+///
+/// Evidence variables share the telescope index space with ordinary bound
+/// variables, but occupy a compiler-internal suffix and are not passed through
+/// [`GenericArgs`](crate::GenericArgs). Keeping the index in its own type makes
+/// it impossible to accidentally treat a proof as a type or const argument.
+#[derive_where(Clone, Copy, PartialEq, Debug, Eq, Hash; I: Interner)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub struct BoundEvidence<I: Interner> {
+    #[lift(identity)]
+    pub var: ty::BoundVar,
+    #[derive_where(skip(Debug))]
+    pub _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner> BoundEvidence<I> {
+    pub fn var(self) -> ty::BoundVar {
+        self.var
+    }
+
+    pub fn assert_eq(self, var: BoundVariableKind<I>) -> ty::ClauseKind<I> {
+        var.expect_evidence()
+    }
+
+    pub fn new(var: ty::BoundVar) -> Self {
+        Self { var, _tcx: PhantomData }
+    }
+}
+
+pub type PlaceholderEvidence<I> = ty::Placeholder<I, BoundEvidence<I>>;
+
+impl<I: Interner> PlaceholderEvidence<I> {
+    pub fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    pub fn var(self) -> ty::BoundVar {
+        self.bound.var
+    }
+
+    pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Self { universe: ui, bound: self.bound, _tcx: PhantomData }
+    }
+
+    pub fn new(ui: UniverseIndex, bound: BoundEvidence<I>) -> Self {
+        Self { universe: ui, bound, _tcx: PhantomData }
+    }
+
+    pub fn new_anon(ui: UniverseIndex, var: ty::BoundVar) -> Self {
+        Self::new(ui, BoundEvidence::new(var))
     }
 }

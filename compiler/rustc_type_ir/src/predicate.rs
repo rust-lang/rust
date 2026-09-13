@@ -351,7 +351,7 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
         match self.skip_binder() {
             ExistentialPredicate::Trait(tr) => self.rebind(tr).with_self_ty(cx, self_ty).upcast(cx),
             ExistentialPredicate::Projection(p) => {
-                self.rebind(p.with_self_ty(cx, self_ty)).upcast(cx)
+                self.rebind(p).with_self_ty(cx, self_ty).upcast(cx)
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let generics = cx.generics_of(did.into());
@@ -527,7 +527,12 @@ impl<I: Interner> ExistentialProjection<I> {
 
 impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
     pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> ty::Binder<I, ProjectionClause<I>> {
-        self.map_bound(|p| p.with_self_ty(cx, self_ty))
+        self.map_bound(|p| ty::ClauseKind::Projection(p.with_self_ty(cx, self_ty)))
+            .with_projection_clause_evidence(cx)
+            .map_bound(|clause| {
+                let ty::ClauseKind::Projection(projection) = clause else { unreachable!() };
+                projection
+            })
     }
 
     pub fn item_def_id(&self) -> I::TraitAssocTermId {

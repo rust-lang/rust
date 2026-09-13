@@ -85,7 +85,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
         // projection).
         match ty.kind() {
             ty::FnDef(_, args) => {
-                let args = args.no_bound_vars().unwrap();
+                let args = args.fn_def_args();
                 // HACK(eddyb) ignore lifetimes found shallowly in `args`.
                 // This is inconsistent with `ty::Adt` (including all args)
                 // and with `ty::Closure` (ignoring all args other than
@@ -153,7 +153,11 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
             ty::Alias(is_rigid, alias_ty) => {
-                if !alias_ty.has_escaping_bound_vars() {
+                // Binder variables internal to an evidence recipe are not
+                // components of the projected type. Only the reconstructed
+                // surface arguments determine whether this outlives
+                // obligation is itself higher-ranked.
+                if !alias_ty.full_args(self.cx).has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
                     // constraints for Pi). This defers the choice between
@@ -234,7 +238,12 @@ pub fn compute_alias_components_recursive<I: Interner>(
 
     let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
 
-    for (index, child) in alias_ty.args.iter().enumerate() {
+    // Evidence projections store trait and `Self` arguments exclusively in
+    // their proof recipe. Outlives decomposition must nevertheless consider
+    // the same full argument list as a surface projection; using `args` alone
+    // would make a non-GAT associated type have no components and therefore
+    // vacuously outlive every region.
+    for (index, child) in alias_ty.full_args(cx).iter().enumerate() {
         if opt_variances.and_then(|variances| variances.get(index)) == Some(ty::Bivariant) {
             continue;
         }
@@ -268,16 +277,19 @@ pub fn declared_bounds_from_definition<I: Interner>(
     cx: I,
     alias_ty: AliasTy<I>,
 ) -> impl Iterator<Item = Region<I>> {
-    let def_id = match alias_ty.kind {
-        ty::AliasTyKind::Projection { def_id } => def_id.into(),
-        ty::AliasTyKind::Inherent { def_id } => def_id.into(),
-        ty::AliasTyKind::Opaque { def_id } => def_id.into(),
-        ty::AliasTyKind::Free { def_id } => def_id.into(),
+    let (def_id, args) = match alias_ty.kind {
+        ty::AliasTyKind::Projection { def_id } => (def_id.into(), alias_ty.args),
+        ty::AliasTyKind::EvidenceProjection { projection } => {
+            (projection.item_def_id.into(), alias_ty.full_args(cx))
+        }
+        ty::AliasTyKind::Inherent { def_id } => (def_id.into(), alias_ty.args),
+        ty::AliasTyKind::Opaque { def_id } => (def_id.into(), alias_ty.args),
+        ty::AliasTyKind::Free { def_id } => (def_id.into(), alias_ty.args),
     };
 
     let bounds = cx.item_self_bounds(def_id);
     bounds
-        .iter_instantiated(cx, alias_ty.args)
+        .iter_instantiated(cx, args)
         .map(Unnormalized::skip_norm_wip)
         .filter_map(|c| c.as_type_outlives_clause())
         .filter_map(|c| c.no_bound_vars())

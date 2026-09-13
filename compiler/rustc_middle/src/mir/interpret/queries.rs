@@ -99,7 +99,8 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // When trying to evaluate constants containing inference variables,
         // use `Infcx::const_eval_resolve` instead.
-        if ct.args.has_non_region_infer() {
+        let args = ct.full_args(self);
+        if args.has_non_region_infer() {
             bug!("did not expect inference variables here");
         }
 
@@ -111,9 +112,10 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id }
             | ty::AliasConstKind::Anon { def_id } => def_id,
+            ty::AliasConstKind::EvidenceProjection { projection } => projection.item_def_id,
         };
 
-        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, ct.args) {
+        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, args) {
             Ok(Some(instance)) => GlobalId { instance, promoted: None },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.

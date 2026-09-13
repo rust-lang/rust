@@ -114,8 +114,11 @@ impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Ty<'tcx> {
                 Some(FnPtrTypeDiscriminatorInput::from_sig_tys(sig, header))
             }
 
-            ty::FnDef(def_id, args) => {
-                let sig = tcx.fn_sig(*def_id).instantiate(tcx, args.skip_binder()).skip_binder();
+            ty::FnDef(..) => {
+                // Pointer authentication is a backend boundary. Obtain the
+                // callable signature from the complete function item so its
+                // evidence telescope is consumed exactly once before erasure.
+                let sig = tcx.instantiate_bound_regions_with_erased_for_codegen(ty.fn_sig(tcx));
 
                 Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
             }

@@ -116,6 +116,10 @@ impl<X: Cx> Stack<X> {
         self.entries.raw[head.index() + 1..].iter().map(|entry| entry.step_kind_from_parent)
     }
 
+    pub(super) fn cycle_inputs(&self, head: StackDepth) -> impl Iterator<Item = X::Input> + '_ {
+        self.entries.raw[head.index()..].iter().map(|entry| entry.input)
+    }
+
     pub(super) fn iter(&self) -> impl Iterator<Item = &StackEntry<X>> {
         self.entries.iter()
     }

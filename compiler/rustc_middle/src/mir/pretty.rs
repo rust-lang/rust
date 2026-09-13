@@ -1504,6 +1504,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                             | ty::AliasConstKind::InherentImpl { def_id }
                             | ty::AliasConstKind::Free { def_id }
                             | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
+                            ty::AliasConstKind::EvidenceProjection { projection } => {
+                                self.tcx.def_path_str(projection.item_def_id)
+                            }
                         };
                         format!("ty::AliasConst({}, {:?})", kind, alias_const.args)
                     }
@@ -2042,7 +2045,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.pretty_print_value_path(*d, s.no_bound_vars().unwrap())?;
+            p.pretty_print_value_path(*d, s.fn_def_args())?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }

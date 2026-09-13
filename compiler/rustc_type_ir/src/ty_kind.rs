@@ -43,6 +43,11 @@ pub enum AliasTyKind<I: Interner> {
     /// aka. `interner.parent(def_id)`.
     Projection { def_id: I::TraitAssocTyId },
 
+    /// An elaborated associated type projection indexed by the exact trait
+    /// proof selected for it. `AliasTy::args` contains only the associated
+    /// item's own generic arguments.
+    EvidenceProjection { projection: I::EvidenceProjection },
+
     /// An associated type in an inherent `impl`
     ///
     /// The `def_id` is the `DefId` of the `ImplItem` for the associated type.
@@ -69,7 +74,9 @@ pub enum AliasTyKind<I: Interner> {
 impl<I: Interner> AliasTyKind<I> {
     pub fn descr(self) -> &'static str {
         match self {
-            AliasTyKind::Projection { .. } => "associated type",
+            AliasTyKind::Projection { .. } | AliasTyKind::EvidenceProjection { .. } => {
+                "associated type"
+            }
             AliasTyKind::Inherent { .. } => "inherent associated type",
             AliasTyKind::Opaque { .. } => "opaque type",
             AliasTyKind::Free { .. } => "type alias",
@@ -79,6 +86,7 @@ impl<I: Interner> AliasTyKind<I> {
     pub fn try_to_projection(self) -> Option<I::TraitAssocTyId> {
         match self {
             AliasTyKind::Projection { def_id } => Some(def_id),
+            AliasTyKind::EvidenceProjection { .. } => None,
             _ => None,
         }
     }
@@ -367,6 +375,12 @@ impl<I: Interner> TyKind<I> {
         match self {
             ty::FnPtr(sig_tys, hdr) => Unnormalized::new_wip(sig_tys.with(hdr)),
             ty::FnDef(def_id, args) => {
+                // The semantic signature owns its ordinary late-bound
+                // variables. The FnDef binder additionally makes its
+                // dependent telescope visible to type relation, but synthetic
+                // FnDefs may legitimately omit unused declarations. Preserve
+                // the signature binder instead of replacing it with the
+                // function-item binder.
                 interner.fn_sig(def_id).instantiate(interner, args.no_bound_vars().unwrap())
             }
             ty::Error(_) => {
@@ -582,10 +596,18 @@ impl<I: Interner> ProjectionAliasTy<I> {
 impl<I: Interner> AliasTy<I> {
     #[track_caller]
     pub fn self_ty(self) -> I::Ty {
-        self.args.type_at(0)
+        match self.kind {
+            AliasTyKind::Projection { .. } => self.args.type_at(0),
+            AliasTyKind::EvidenceProjection { projection } => projection.trait_ref().self_ty(),
+            _ => panic!("expected a projection"),
+        }
     }
 
     pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        assert!(
+            !matches!(self.kind, AliasTyKind::EvidenceProjection { .. }),
+            "cannot replace Self in an evidence-indexed projection without replacing its proof"
+        );
         AliasTy::new(
             interner,
             self.kind,
@@ -594,9 +616,11 @@ impl<I: Interner> AliasTy<I> {
     }
 
     pub fn trait_def_id(self, interner: I) -> I::TraitId {
-        let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
-
-        interner.projection_parent(def_id.into())
+        interner.projection_parent(match self.kind {
+            AliasTyKind::Projection { def_id } => def_id.into(),
+            AliasTyKind::EvidenceProjection { projection } => projection.item_def_id,
+            _ => panic!("expected a projection"),
+        })
     }
 
     /// Extracts the underlying trait reference and own args from this projection.
@@ -605,9 +629,26 @@ impl<I: Interner> AliasTy<I> {
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
     pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
-        let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
+        match self.kind {
+            AliasTyKind::Projection { def_id } => {
+                interner.trait_ref_and_own_args_for_alias(def_id.into(), self.args)
+            }
+            AliasTyKind::EvidenceProjection { projection } => {
+                (projection.trait_ref(), interner.generic_args_slice(self.args))
+            }
+            _ => panic!("expected a projection"),
+        }
+    }
 
-        interner.trait_ref_and_own_args_for_alias(def_id.into(), self.args)
+    /// Returns all arguments needed to instantiate bounds on the associated
+    /// item. Evidence projections store only item-owned arguments in the alias
+    /// and recover the trait prefix from their proof recipe.
+    pub fn full_args(self, interner: I) -> I::GenericArgs {
+        match self.kind {
+            AliasTyKind::EvidenceProjection { projection } => interner
+                .mk_args_from_iter(projection.trait_ref().args.iter().chain(self.args.iter())),
+            _ => self.args,
+        }
     }
 
     /// Extracts the underlying trait reference from this projection.

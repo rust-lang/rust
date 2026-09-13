@@ -3,6 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::data_structures::DelayedMap;
 
+use crate::traits::solve::TraitEvidence;
 use crate::ty::{
     self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -62,6 +63,21 @@ pub trait BoundVarReplacerDelegate<'tcx> {
     fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx>;
     fn replace_ty(&mut self, bt: ty::BoundTy<'tcx>) -> Ty<'tcx>;
     fn replace_const(&mut self, bc: ty::BoundConst<'tcx>) -> ty::Const<'tcx>;
+
+    /// Replaces evidence bound by the binder currently being instantiated.
+    ///
+    /// `trait_ref` has already had its ordinary bound variables replaced and
+    /// is expressed at the replacer's current binder depth. The returned
+    /// evidence must be expressed at that same depth and prove exactly this
+    /// trait ref. Returning `Bound(INNERMOST, ..)` is also accepted: the
+    /// replacer adjusts that bound-evidence index to its current depth.
+    fn replace_evidence(
+        &mut self,
+        trait_ref: ty::TraitRef<'tcx>,
+        bound: ty::BoundEvidence<'tcx>,
+    ) -> TraitEvidence<'tcx> {
+        panic!("bound evidence requires an explicit replacement: {bound:?} proving {trait_ref:?}")
+    }
 }
 
 /// A simple delegate taking 3 mutable functions. The used functions must
@@ -181,6 +197,42 @@ where
         }
     }
 
+    fn fold_trait_evidence(&mut self, evidence: TraitEvidence<'tcx>) -> TraitEvidence<'tcx> {
+        match &evidence.kind {
+            ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound)
+                if *debruijn == self.current_index =>
+            {
+                let trait_ref = evidence.trait_ref.fold_with(self);
+                let replacement = self.delegate.replace_evidence(trait_ref, *bound);
+                let replacement = match &replacement.kind {
+                    ty::solve::TraitEvidenceKind::Bound(
+                        ty::BoundVarIndexKind::Bound(debruijn),
+                        replacement_bound,
+                    ) if *debruijn == ty::INNERMOST && self.current_index != ty::INNERMOST => {
+                        self.tcx.mk_trait_evidence_kind(
+                            replacement.trait_ref,
+                            ty::solve::TraitEvidenceKind::Bound(
+                                ty::BoundVarIndexKind::Bound(self.current_index),
+                                *replacement_bound,
+                            ),
+                        )
+                    }
+                    _ => replacement,
+                };
+                replacement.assert_well_formed();
+                assert_eq!(
+                    replacement.trait_ref, trait_ref,
+                    "bound evidence replacement proves a different predicate"
+                );
+                replacement
+            }
+            _ if evidence.has_vars_bound_at_or_above(self.current_index) => {
+                self.tcx.mk_trait_evidence_data((*evidence).clone().fold_with(self))
+            }
+            _ => evidence,
+        }
+    }
+
     fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
@@ -191,6 +243,85 @@ where
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// Converts evidence-indexed projections back to their source-level
+    /// projection shape for diagnostics.
+    ///
+    /// This is a representation-only conversion: it does not normalize the
+    /// projection or invoke trait selection. In particular, the ordinary
+    /// projection reconstructed here must never be fed back into the solver.
+    /// Evidence projections only store the associated item's own arguments,
+    /// so use `full_args` to recover the trait and `Self` arguments from the
+    /// proof root.
+    pub fn surface_evidence_projections_for_diagnostics<T>(self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if value.has_evidence_projections() {
+            value.fold_with(&mut SurfaceEvidenceProjectionsForDiagnostics { tcx: self })
+        } else {
+            value
+        }
+    }
+
+    /// Surface a standalone alias term. `AliasTerm` is not a folder entry
+    /// point, so the generic helper cannot intercept its outer evidence kind.
+    pub fn surface_alias_term_for_diagnostics(
+        self,
+        alias: ty::AliasTerm<'tcx>,
+    ) -> ty::AliasTerm<'tcx> {
+        let outer_is_evidence = matches!(
+            alias.kind,
+            ty::AliasTermKind::EvidenceProjectionTy { .. }
+                | ty::AliasTermKind::EvidenceProjectionConst { .. }
+        );
+        if outer_is_evidence || alias.args.has_evidence_projections() {
+            SurfaceEvidenceProjectionsForDiagnostics { tcx: self }.surface_alias_term(alias)
+        } else {
+            alias
+        }
+    }
+
+    /// The type-error payload is intentionally not `TypeFoldable`, so surface
+    /// the variants which can contain evidence-indexed terms explicitly.
+    pub fn surface_type_error_for_diagnostics(
+        self,
+        error: ty::error::TypeError<'tcx>,
+    ) -> ty::error::TypeError<'tcx> {
+        use ty::error::TypeError;
+
+        match error {
+            TypeError::ArraySize(values) => {
+                TypeError::ArraySize(self.surface_evidence_projections_for_diagnostics(values))
+            }
+            TypeError::Sorts(values) => {
+                TypeError::Sorts(self.surface_evidence_projections_for_diagnostics(values))
+            }
+            TypeError::ArgumentSorts(values, index) => TypeError::ArgumentSorts(
+                self.surface_evidence_projections_for_diagnostics(values),
+                index,
+            ),
+            TypeError::CyclicTy(ty) => {
+                TypeError::CyclicTy(self.surface_evidence_projections_for_diagnostics(ty))
+            }
+            TypeError::CyclicConst(ct) => {
+                TypeError::CyclicConst(self.surface_evidence_projections_for_diagnostics(ct))
+            }
+            TypeError::ProjectionMismatched(values) => {
+                TypeError::ProjectionMismatched(ty::error::ExpectedFound::new(
+                    surface_alias_term_kind_for_diagnostics(values.expected),
+                    surface_alias_term_kind_for_diagnostics(values.found),
+                ))
+            }
+            TypeError::ExistentialMismatch(values) => TypeError::ExistentialMismatch(
+                self.surface_evidence_projections_for_diagnostics(values),
+            ),
+            TypeError::ConstMismatch(values) => {
+                TypeError::ConstMismatch(self.surface_evidence_projections_for_diagnostics(values))
+            }
+            error => error,
+        }
+    }
+
     /// Replaces all regions bound by the given `Binder` with the
     /// results returned by the closure; the closure is expected to
     /// return a free region (relative to this binder), and hence the
@@ -220,6 +351,72 @@ impl<'tcx> TyCtxt<'tcx> {
         (value, region_map)
     }
 
+    /// Replaces every ordinary region entry in `value` while retaining the
+    /// clauses owned by its dependent telescope.
+    ///
+    /// Unlike [`TyCtxt::instantiate_bound_regions`], this operation may be
+    /// used on a binder with typed-const or evidence entries. Those entries
+    /// are not silently discharged: the returned clauses record the complete
+    /// ordinary substitution and their stable telescope identity. The caller
+    /// must either prove them (for existential/call-site instantiation) or add
+    /// them to the parameter environment as assumptions (for universal
+    /// instantiation).
+    ///
+    /// This remains a region-only operation for the ordinary prefix. With
+    /// telescope clauses, every ordinary declaration must be a region. Without
+    /// telescope clauses, this delegates to `instantiate_bound_regions`, which
+    /// only visits variables used in the value. This preserves error recovery
+    /// for rejected closure binders with unused type or const declarations;
+    /// actual references to bound types or consts still cause an ICE.
+    pub fn instantiate_bound_regions_with_telescope_clauses<T, F>(
+        self,
+        value: Binder<'tcx, T>,
+        mut fld_r: F,
+    ) -> (
+        T,
+        FxIndexMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>,
+        Vec<ty::InstantiatedTelescopeClause<TyCtxt<'tcx>>>,
+    )
+    where
+        F: FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if !value.has_telescope_clauses() {
+            let (value, region_map) = self.instantiate_bound_regions(value, fld_r);
+            return (value, region_map, Vec::new());
+        }
+
+        let mut region_map = FxIndexMap::default();
+        let mut args = Vec::with_capacity(value.ordinary_bound_var_count());
+
+        for (index, bound_var) in value.ordinary_bound_vars().enumerate() {
+            let var = ty::BoundVar::from_usize(index);
+            let arg = match bound_var {
+                ty::BoundVariableKind::Region(kind) => {
+                    let bound_region = ty::BoundRegion { var, kind };
+                    let region =
+                        *region_map.entry(bound_region).or_insert_with(|| fld_r(bound_region));
+                    region.into()
+                }
+                ty::BoundVariableKind::Ty(kind) => {
+                    bug!("unexpected bound ty in region-only binder: {kind:?}")
+                }
+                ty::BoundVariableKind::Const(kind) => {
+                    bug!("unexpected bound const in region-only binder: {kind:?}")
+                }
+                ty::BoundVariableKind::Evidence(_) => {
+                    unreachable!("evidence entries are not ordinary binder variables")
+                }
+            };
+            args.push(arg);
+        }
+
+        let args = self.mk_args(&args);
+        let (value, clauses) =
+            value.instantiate_with_args_and_binder_assumption_evidence(self, args);
+        (value, region_map, clauses)
+    }
+
     pub fn instantiate_bound_regions_uncached<T, F>(
         self,
         value: Binder<'tcx, T>,
@@ -229,6 +426,10 @@ impl<'tcx> TyCtxt<'tcx> {
         F: FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx>,
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        assert!(
+            !value.has_evidence_bound_vars(),
+            "region-only binder instantiation cannot discharge evidence entries: {value:?}"
+        );
         let value = value.skip_binder();
         if !value.has_escaping_bound_vars() {
             value
@@ -286,32 +487,80 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    /// Liberates the ordinary late-bound regions while retaining every
+    /// clause in the binder's dependent telescope.
+    ///
+    /// Consumers which can encounter evidence entries must use this instead
+    /// of `liberate_late_bound_regions`, then explicitly decide whether the
+    /// returned clauses are assumptions or obligations at that boundary.
+    pub fn liberate_late_bound_regions_with_telescope_clauses<T>(
+        self,
+        all_outlive_scope: DefId,
+        value: ty::Binder<'tcx, T>,
+    ) -> (T, Vec<ty::InstantiatedTelescopeClause<TyCtxt<'tcx>>>)
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let (value, _, clauses) =
+            self.instantiate_bound_regions_with_telescope_clauses(value, |br| {
+                let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
+                ty::Region::new_late_param(self, all_outlive_scope, kind)
+            });
+        (value, clauses)
+    }
+
     pub fn shift_bound_var_indices<T>(self, bound_vars: usize, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let shift_bv = |bv: ty::BoundVar| bv + bound_vars;
+        struct ShiftBoundVarIndices<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            amount: usize,
+        }
+
+        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ShiftBoundVarIndices<'tcx> {
+            fn replace_region(&mut self, r: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
+                ty::Region::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: r.var + self.amount, kind: r.kind },
+                )
+            }
+
+            fn replace_ty(&mut self, t: ty::BoundTy<'tcx>) -> Ty<'tcx> {
+                Ty::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundTy { var: t.var + self.amount, kind: t.kind },
+                )
+            }
+
+            fn replace_const(&mut self, c: ty::BoundConst<'tcx>) -> ty::Const<'tcx> {
+                ty::Const::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundConst::new(c.var + self.amount),
+                )
+            }
+
+            fn replace_evidence(
+                &mut self,
+                trait_ref: ty::TraitRef<'tcx>,
+                evidence: ty::BoundEvidence<'tcx>,
+            ) -> TraitEvidence<'tcx> {
+                self.tcx.mk_trait_evidence_kind(
+                    trait_ref,
+                    ty::solve::TraitEvidenceKind::Bound(
+                        ty::BoundVarIndexKind::Bound(ty::INNERMOST),
+                        ty::BoundEvidence::new(evidence.var + self.amount),
+                    ),
+                )
+            }
+        }
+
         self.replace_escaping_bound_vars_uncached(
             value,
-            FnMutDelegate {
-                regions: &mut |r: ty::BoundRegion<'tcx>| {
-                    ty::Region::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
-                    )
-                },
-                types: &mut |t: ty::BoundTy<'tcx>| {
-                    Ty::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
-                    )
-                },
-                consts: &mut |c| {
-                    ty::Const::new_bound(self, ty::INNERMOST, ty::BoundConst::new(shift_bv(c.var)))
-                },
-            },
+            ShiftBoundVarIndices { tcx: self, amount: bound_vars },
         )
     }
 
@@ -322,6 +571,24 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.instantiate_bound_regions(value, |_| self.lifetimes.re_erased).0
+    }
+
+    /// Erases the ordinary region prefix at the backend boundary and
+    /// explicitly consumes any remaining telescope metadata.
+    ///
+    /// This is intentionally codegen-only. `instantiate_with_args_and_
+    /// telescope_clauses` still folds the value before the clauses are erased,
+    /// so a projection which actually refers to bound evidence cannot cross
+    /// this boundary unnoticed: it requires an evidence substitution and
+    /// panics here. Only a telescope whose proof-sensitive projections have
+    /// already been normalized away can be erased from the ABI representation.
+    pub fn instantiate_bound_regions_with_erased_for_codegen<T>(self, value: Binder<'tcx, T>) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let (value, _, _verified_telescope_clauses) = self
+            .instantiate_bound_regions_with_telescope_clauses(value, |_| self.lifetimes.re_erased);
+        value
     }
 
     /// Anonymize all bound variables in `value`, this is mostly used to improve caching.
@@ -357,15 +624,191 @@ impl<'tcx> TyCtxt<'tcx> {
                 let entry = self.map.entry(bc.var);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
-                let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
+                let () = entry.or_insert_with(|| ty::BoundVariableKind::Const(None)).expect_const();
                 ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst::new(var))
+            }
+
+            fn replace_evidence(
+                &mut self,
+                trait_ref: ty::TraitRef<'tcx>,
+                bound: ty::BoundEvidence<'tcx>,
+            ) -> TraitEvidence<'tcx> {
+                let entry = self.map.entry(bound.var);
+                let index = entry.index();
+                let var = ty::BoundVar::from_usize(index);
+                let clause = ty::ClauseKind::Trait(ty::TraitClause {
+                    trait_ref,
+                    polarity: ty::ClausePolarity::Positive,
+                });
+                let _ = entry
+                    .or_insert_with(|| {
+                        ty::BoundVariableKind::Evidence(ty::EvidenceVariable::principal(clause))
+                    })
+                    .expect_evidence();
+                self.tcx.mk_trait_evidence_kind(
+                    trait_ref,
+                    ty::solve::TraitEvidenceKind::Bound(
+                        ty::BoundVarIndexKind::Bound(ty::INNERMOST),
+                        ty::BoundEvidence::new(var),
+                    ),
+                )
             }
         }
 
-        let mut map = Default::default();
-        let delegate = Anonymize { tcx: self, map: &mut map };
-        let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = self.mk_bound_variable_kinds_from_iter(map.into_values());
-        Binder::bind_with_vars(inner, bound_vars)
+        if value.has_telescope_clauses() {
+            // A dependent telescope's metadata is semantic: typed const
+            // declarations and evidence assumptions must survive
+            // anonymization. Keep its ordinary prefix in stable source order,
+            // pre-seed the replacement map, and fold the value and every entry
+            // with one substitution. This also preserves the invariant that an
+            // evidence suffix can only refer to preceding ordinary entries.
+            let original_bound_vars = value.bound_vars();
+            let mut map: FxIndexMap<_, _> = value
+                .bound_vars()
+                .iter()
+                .enumerate()
+                .map(|(index, entry)| {
+                    let anonymized = match entry {
+                        ty::BoundVariableKind::Ty(_) => {
+                            ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)
+                        }
+                        ty::BoundVariableKind::Region(_) => {
+                            ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)
+                        }
+                        ty::BoundVariableKind::Const(_) => ty::BoundVariableKind::Const(None),
+                        // Pre-seeding the complete suffix preserves its stable
+                        // telescope indices even when an evidence variable is
+                        // unused by the bound value.
+                        ty::BoundVariableKind::Evidence(evidence) => {
+                            ty::BoundVariableKind::Evidence(evidence)
+                        }
+                    };
+                    (ty::BoundVar::from_usize(index), anonymized)
+                })
+                .collect();
+            let delegate = Anonymize { tcx: self, map: &mut map };
+            let (inner, bound_vars) = self.replace_escaping_bound_vars_uncached(
+                (value.skip_binder(), original_bound_vars.to_vec()),
+                delegate,
+            );
+            let bound_vars =
+                self.mk_bound_variable_kinds_from_iter(bound_vars.into_iter().map(|entry| {
+                    match entry {
+                        ty::BoundVariableKind::Ty(_) => {
+                            ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)
+                        }
+                        ty::BoundVariableKind::Region(_) => {
+                            ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)
+                        }
+                        entry @ (ty::BoundVariableKind::Const(_)
+                        | ty::BoundVariableKind::Evidence(_)) => entry,
+                    }
+                }));
+            Binder::bind_with_vars(inner, bound_vars)
+        } else {
+            let mut map = Default::default();
+            let delegate = Anonymize { tcx: self, map: &mut map };
+            let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
+            let bound_vars = self.mk_bound_variable_kinds_from_iter(map.into_values());
+            Binder::bind_with_vars(inner, bound_vars)
+        }
+    }
+}
+
+/// See [`TyCtxt::surface_evidence_projections_for_diagnostics`].
+///
+/// We intercept evidence projections at the type/const node instead of
+/// super-folding them. Super-folding would walk the proof recipe and can turn
+/// an interned proof DAG back into an exponentially traversed proof tree.
+struct SurfaceEvidenceProjectionsForDiagnostics<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for SurfaceEvidenceProjectionsForDiagnostics<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Alias(
+            is_rigid,
+            alias @ ty::AliasTy { kind: ty::EvidenceProjection { projection }, .. },
+        ) = *t.kind()
+        {
+            let args = alias.full_args(self.tcx).fold_with(self);
+            Ty::new_projection_from_args(self.tcx, is_rigid, projection.item_def_id, args)
+        } else {
+            t.super_fold_with(self)
+        }
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if let ty::ConstKind::Alias(
+            is_rigid,
+            alias @ ty::AliasConst {
+                kind: ty::AliasConstKind::EvidenceProjection { projection },
+                ..
+            },
+        ) = ct.kind()
+        {
+            let args = alias.full_args(self.tcx).fold_with(self);
+            ty::Const::new_alias(
+                self.tcx,
+                is_rigid,
+                ty::AliasConst::new(
+                    self.tcx,
+                    ty::AliasConstKind::Projection { def_id: projection.item_def_id },
+                    args,
+                ),
+            )
+        } else {
+            ct.super_fold_with(self)
+        }
+    }
+
+    fn fold_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        let kind = predicate.kind().map_bound(|kind| match kind {
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionClause {
+                    projection_term: self.surface_alias_term(projection.projection_term),
+                    term: projection.term.fold_with(self),
+                }))
+            }
+            ty::PredicateKind::NormalizesTo(normalizes_to) => {
+                ty::PredicateKind::NormalizesTo(ty::NormalizesTo {
+                    alias: self.surface_alias_term(normalizes_to.alias),
+                    term: normalizes_to.term.fold_with(self),
+                })
+            }
+            kind => kind.fold_with(self),
+        });
+        self.tcx.reuse_or_mk_predicate(predicate, kind)
+    }
+}
+
+impl<'tcx> SurfaceEvidenceProjectionsForDiagnostics<'tcx> {
+    fn surface_alias_term(&mut self, alias: ty::AliasTerm<'tcx>) -> ty::AliasTerm<'tcx> {
+        let kind = surface_alias_term_kind_for_diagnostics(alias.kind);
+        let args = match alias.kind {
+            ty::AliasTermKind::EvidenceProjectionTy { .. }
+            | ty::AliasTermKind::EvidenceProjectionConst { .. } => alias.full_args(self.tcx),
+            _ => alias.args,
+        }
+        .fold_with(self);
+        ty::AliasTerm::new_from_args(self.tcx, kind, args)
+    }
+}
+
+fn surface_alias_term_kind_for_diagnostics<'tcx>(
+    kind: ty::AliasTermKind<'tcx>,
+) -> ty::AliasTermKind<'tcx> {
+    match kind {
+        ty::AliasTermKind::EvidenceProjectionTy { projection } => {
+            ty::AliasTermKind::ProjectionTy { def_id: projection.item_def_id }
+        }
+        ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+            ty::AliasTermKind::ProjectionConst { def_id: projection.item_def_id }
+        }
+        kind => kind,
     }
 }

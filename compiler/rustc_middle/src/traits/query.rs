@@ -17,7 +17,7 @@ use crate::ty::{self, GenericArg, Ty, TyCtxt};
 pub mod type_op {
     use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 
-    use crate::ty::{Predicate, Ty, Unnormalized, UserType};
+    use crate::ty::{Predicate, Ty, TyCtxt, Unnormalized, UserType};
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
@@ -40,6 +40,7 @@ pub mod type_op {
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
     pub struct ProvePredicate<'tcx> {
         pub predicate: Predicate<'tcx>,
+        pub required_contract: Option<crate::traits::solve::RequiredContract<TyCtxt<'tcx>>>,
     }
 
     /// Normalizes a value that may contain unnormalized aliases.

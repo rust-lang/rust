@@ -795,6 +795,9 @@ pub enum TerminatorKind<'tcx> {
         /// The span for each arg is also included
         /// (e.g. `a` and `b` in `x.foo(a, b)`).
         args: Box<[Spanned<Operand<'tcx>>]>,
+        /// The exact HIR-selected output proof for this call, if it has one.
+        /// This is consumed and cleared after borrow checking, before codegen.
+        call_output: Option<ty::Binder<'tcx, Ty<'tcx>>>,
         /// Where the returned value will be written
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.
@@ -832,6 +835,8 @@ pub enum TerminatorKind<'tcx> {
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
         args: Box<[Spanned<Operand<'tcx>>]>,
+        /// See [`TerminatorKind::Call::call_output`].
+        call_output: Option<ty::Binder<'tcx, Ty<'tcx>>>,
         // FIXME(explicit_tail_calls): should we have the span for `become`? is this span accurate? do we need it?
         /// This `Span` is the span of the function, without the dot and receiver
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`
@@ -1767,6 +1772,6 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(TerminatorKind<'_>, 80);
+    static_assert_size!(TerminatorKind<'_>, 96);
     // tidy-alphabetical-end
 }

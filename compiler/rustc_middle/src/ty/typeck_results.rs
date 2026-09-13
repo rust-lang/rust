@@ -22,6 +22,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir::FakeReadCause;
 use crate::thir::DerefPatBorrowMode;
 use crate::traits::ObligationCause;
+use crate::traits::solve::TraitEvidence;
 use crate::ty::{
     self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
     GenericArgsRef, Ty, UserArgs, tls,
@@ -31,6 +32,15 @@ use crate::ty::{
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
     pub hir_owner: OwnerId,
+
+    /// The selected trait evidence referenced by the signature used to
+    /// type-check this function.
+    ///
+    /// Entries follow projection traversal order and are deduplicated. Keeping
+    /// the proof roots, rather than the evidence projections themselves, makes
+    /// proof identity a stable incremental input while allowing binder-scoped
+    /// evidence to use the independent trait-evidence persistence boundary.
+    pub signature_trait_evidence: Vec<TraitEvidence<'tcx>>,
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
@@ -148,6 +158,14 @@ pub struct TypeckResults<'tcx> {
     /// that the `Foo` opaque type is replaced by its hidden type.
     liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
+    /// Complete evidence-indexed callable output selected for one HIR call.
+    /// This is captured before ordinary signature normalization so MIR can
+    /// retain the exact outer proof and nested Dyn operation identity.
+    call_output_evidence: ItemLocalMap<ty::Binder<'tcx, Ty<'tcx>>>,
+
+    /// Inference-phase form, closed into `call_output_evidence` by writeback.
+    raw_call_output_evidence: ItemLocalMap<Ty<'tcx>>,
+
     /// For each FRU expression, record the normalized types of the fields
     /// of the struct - this is needed because it is non-trivial to
     /// normalize while preserving regions. This table is used only in
@@ -234,6 +252,7 @@ impl<'tcx> TypeckResults<'tcx> {
     pub fn new(hir_owner: OwnerId) -> TypeckResults<'tcx> {
         TypeckResults {
             hir_owner,
+            signature_trait_evidence: Default::default(),
             type_dependent_defs: Default::default(),
             splatted_defs: Default::default(),
             field_indices: Default::default(),
@@ -248,6 +267,8 @@ impl<'tcx> TypeckResults<'tcx> {
             skipped_ref_pats: Default::default(),
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
+            call_output_evidence: Default::default(),
+            raw_call_output_evidence: Default::default(),
             fru_field_types: Default::default(),
             coercion_casts: Default::default(),
             used_trait_imports: Default::default(),
@@ -564,6 +585,27 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn liberated_fn_sigs_mut(&mut self) -> LocalTableInContextMut<'_, ty::FnSig<'tcx>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.liberated_fn_sigs }
+    }
+
+    pub fn call_output_evidence(&self) -> LocalTableInContext<'_, ty::Binder<'tcx, Ty<'tcx>>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.call_output_evidence }
+    }
+
+    pub fn call_output_evidence_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, ty::Binder<'tcx, Ty<'tcx>>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.call_output_evidence }
+    }
+
+    pub fn raw_call_output_evidence(&self) -> LocalTableInContext<'_, Ty<'tcx>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.raw_call_output_evidence }
+    }
+
+    pub fn raw_call_output_evidence_mut(&mut self) -> LocalTableInContextMut<'_, Ty<'tcx>> {
+        LocalTableInContextMut {
+            hir_owner: self.hir_owner,
+            data: &mut self.raw_call_output_evidence,
+        }
     }
 
     pub fn fru_field_types(&self) -> LocalTableInContext<'_, Vec<Ty<'tcx>>> {

@@ -95,12 +95,12 @@ pub use self::region::{
     EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionKind, RegionVid,
 };
 pub use self::sty::{
-    Alias, AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind,
-    BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder,
-    FnSig, FnSigKind, FreeAliasTy, InherentAliasTy, InlineConstArgs, InlineConstArgsParts,
-    OpaqueAliasTy, ParamConst, ParamTy, PlaceholderConst, PlaceholderRegion, PlaceholderType,
-    PolyFnSig, ProjectionAliasTy, TyKind, TypeAndMut, TypingMode, TypingModeEqWrapper,
-    Unnormalized, UpvarArgs,
+    Alias, AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundEvidence, BoundRegion,
+    BoundRegionKind, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt,
+    EarlyBinder, FnSig, FnSigKind, FreeAliasTy, InherentAliasTy, InlineConstArgs,
+    InlineConstArgsParts, OpaqueAliasTy, ParamConst, ParamTy, PlaceholderConst,
+    PlaceholderEvidence, PlaceholderRegion, PlaceholderType, PolyFnSig, ProjectionAliasTy, TyKind,
+    TypeAndMut, TypingMode, TypingModeEqWrapper, Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -789,11 +789,18 @@ impl<'tcx> TermKind<'tcx> {
 pub struct InstantiatedClauses<'tcx> {
     pub clauses: Vec<Unnormalized<'tcx, Clause<'tcx>>>,
     pub spans: Vec<Span>,
+    /// Exact source contract required by each instantiated clause.
+    ///
+    /// This remains parallel to `clauses` and `spans`. It is consumed by
+    /// obligation construction so the trait solver can select a proof for the
+    /// principal clause which also satisfies the associated equalities written
+    /// in that same source bound.
+    pub contracts: Vec<Option<ty::solve::RequiredContract<TyCtxt<'tcx>>>>,
 }
 
 impl<'tcx> InstantiatedClauses<'tcx> {
     pub fn empty() -> InstantiatedClauses<'tcx> {
-        InstantiatedClauses { clauses: vec![], spans: vec![] }
+        InstantiatedClauses { clauses: vec![], spans: vec![], contracts: vec![] }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -802,6 +809,21 @@ impl<'tcx> InstantiatedClauses<'tcx> {
 
     pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
         self.into_iter()
+    }
+
+    pub fn into_iter_with_contracts(
+        self,
+    ) -> impl Iterator<
+        Item = (
+            Unnormalized<'tcx, Clause<'tcx>>,
+            Span,
+            Option<ty::solve::RequiredContract<TyCtxt<'tcx>>>,
+        ),
+    > {
+        assert_eq!(self.clauses.len(), self.spans.len());
+        assert_eq!(self.clauses.len(), self.contracts.len());
+        std::iter::zip(std::iter::zip(self.clauses, self.spans), self.contracts)
+            .map(|((clause, span), contract)| (clause, span, contract))
     }
 }
 
@@ -814,7 +836,8 @@ impl<'tcx> IntoIterator for InstantiatedClauses<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.clauses.len(), self.spans.len());
+        assert_eq!(self.clauses.len(), self.spans.len());
+        assert_eq!(self.clauses.len(), self.contracts.len());
         std::iter::zip(self.clauses, self.spans)
     }
 }
@@ -828,7 +851,8 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedClauses<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.clauses.len(), self.spans.len());
+        assert_eq!(self.clauses.len(), self.spans.len());
+        assert_eq!(self.clauses.len(), self.contracts.len());
         std::iter::zip(self.clauses.iter().copied(), self.spans.iter().copied())
     }
 }
@@ -1012,15 +1036,31 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
 /// [dev guide chapter][param_env_guide] for more information.
 ///
 /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-#[derive(StableHash, TypeVisitable, TypeFoldable)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, StableHash)]
+pub struct ParamEnvData<'tcx> {
+    caller_bounds: Clauses<'tcx>,
+    assumption_origins: &'tcx List<ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>>,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, StableHash)]
+pub struct ParamEnvDataRef<'tcx>(Interned<'tcx, ParamEnvData<'tcx>>);
+
+impl<'tcx> std::ops::Deref for ParamEnvDataRef<'tcx> {
+    type Target = ParamEnvData<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Copy, Clone, Hash, PartialEq, Eq, StableHash)]
 pub struct ParamEnv<'tcx> {
     /// Caller bounds are `Obligation`s that the caller must satisfy. This is
     /// basically the set of bounds on the in-scope type parameters, translated
     /// into `Obligation`s, and elaborated and normalized.
     ///
     /// Use the `caller_bounds()` method to access.
-    caller_bounds: Clauses<'tcx>,
+    data: Option<ParamEnvDataRef<'tcx>>,
 }
 
 // Empty ParamEnv's are super common (like, 100x more common than nonempty pnes),
@@ -1032,9 +1072,64 @@ impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
+
+    fn caller_bounds_with_origins(
+        self,
+    ) -> impl Iterator<Item = (ty::Clause<'tcx>, ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>)> {
+        self.caller_bounds_with_origins()
+    }
+}
+
+impl fmt::Debug for ParamEnv<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ParamEnv")
+            .field("caller_bounds", &self.caller_bounds().collect::<Vec<_>>())
+            .finish()
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        try_visit!(self.caller_bounds_list().visit_with(visitor));
+        for origin in self.assumption_origins() {
+            try_visit!(origin.visit_with(visitor));
+        }
+        V::Result::output()
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let caller_bounds = self.caller_bounds_list().try_fold_with(folder)?;
+        let assumption_origins = self
+            .assumption_origins()
+            .map(|origin| origin.try_fold_with(folder))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ParamEnv::from_parts(folder.cx(), caller_bounds.as_slice(), &assumption_origins))
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let caller_bounds = self.caller_bounds_list().fold_with(folder);
+        let assumption_origins: Vec<_> =
+            self.assumption_origins().map(|origin| origin.fold_with(folder)).collect();
+        ParamEnv::from_parts(folder.cx(), caller_bounds.as_slice(), &assumption_origins)
+    }
 }
 
 impl<'tcx> ParamEnv<'tcx> {
+    #[inline]
+    fn caller_bounds_list(self) -> Clauses<'tcx> {
+        self.data.map(|data| data.caller_bounds).unwrap_or_else(ListWithCachedTypeInfo::empty)
+    }
+
+    #[inline]
+    fn assumption_origins_list(self) -> &'tcx List<ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>> {
+        self.data.map(|data| data.assumption_origins).unwrap_or_else(List::empty)
+    }
+
     /// Construct a trait environment suitable for contexts where there are
     /// no where-clauses in scope. In the majority of cases it is incorrect
     /// to use an empty environment. See the [dev guide section][param_env_guide]
@@ -1043,17 +1138,32 @@ impl<'tcx> ParamEnv<'tcx> {
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty() -> Self {
-        Self { caller_bounds: ListWithCachedTypeInfo::empty() }
+        Self { data: None }
     }
 
     #[inline]
     pub fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> + Clone {
-        self.caller_bounds.iter()
+        self.caller_bounds_list().iter()
+    }
+
+    #[inline]
+    pub fn assumption_origins(
+        self,
+    ) -> impl Iterator<Item = ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>> + Clone {
+        self.assumption_origins_list().iter()
+    }
+
+    #[inline]
+    pub fn caller_bounds_with_origins(
+        self,
+    ) -> impl Iterator<Item = (ty::Clause<'tcx>, ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>)> + Clone
+    {
+        self.caller_bounds().zip(self.assumption_origins())
     }
 
     #[inline]
     pub fn is_empty(self) -> bool {
-        self.caller_bounds.as_slice().is_empty()
+        self.data.is_none()
     }
 
     /// Construct a trait environment with the given set of predicates.
@@ -1062,7 +1172,90 @@ impl<'tcx> ParamEnv<'tcx> {
         tcx: TyCtxt<'tcx>,
         caller_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
     ) -> Self {
-        ParamEnv { caller_bounds: tcx.mk_clauses_from_iter(caller_bounds.into_iter()) }
+        let caller_bounds = tcx.mk_clauses_from_iter(caller_bounds.into_iter());
+        if caller_bounds.is_empty() {
+            return ParamEnv::empty();
+        }
+        let assumption_origins: Vec<_> = (0..caller_bounds.len())
+            .map(|index| ty::solve::ParamEnvAssumption::CallerBound {
+                index: u32::try_from(index).expect("too many parameter-environment clauses"),
+            })
+            .collect();
+        ParamEnv::from_parts(tcx, caller_bounds.as_slice(), &assumption_origins)
+    }
+
+    pub fn new_with_assumptions(
+        tcx: TyCtxt<'tcx>,
+        clauses: impl IntoIterator<
+            Item = (ty::Clause<'tcx>, ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>),
+        >,
+    ) -> Self {
+        let (caller_bounds, assumption_origins): (Vec<_>, Vec<_>) = clauses.into_iter().unzip();
+        ParamEnv::from_parts(tcx, &caller_bounds, &assumption_origins)
+    }
+
+    /// Extends this environment with the clauses produced by instantiating a
+    /// dependent binder telescope.
+    ///
+    /// The origin is deliberately reconstructed from the binder-owned
+    /// identity, stable telescope index, and exact ordinary substitution. A
+    /// plain caller-bound index would make the same binder acquire a different
+    /// proof identity whenever an unrelated prefix is added to the environment.
+    pub fn with_telescope_clauses(
+        self,
+        tcx: TyCtxt<'tcx>,
+        clauses: &[ty::InstantiatedTelescopeClause<TyCtxt<'tcx>>],
+    ) -> Self {
+        if clauses.is_empty() {
+            return self;
+        }
+
+        let mut assumptions = self.caller_bounds_with_origins().collect::<Vec<_>>();
+        for clause in clauses {
+            let origin = clause.required_contract.map_or_else(
+                || ty::solve::ParamEnvAssumption::Binder {
+                    telescope_index: clause.index,
+                    identity: clause.identity,
+                    instantiation: clause.instantiation,
+                },
+                |required_contract| ty::solve::ParamEnvAssumption::ItemContract {
+                    contract: required_contract.identity,
+                },
+            );
+            assumptions.push((clause.clause, origin));
+
+            // A universally instantiated evidence slot makes its complete
+            // source contract available inside the binder. Every member keeps
+            // the source contract origin so evidence-driven projection
+            // normalization can only consume the equality belonging to that
+            // exact dictionary. The principal itself was inserted above.
+            if let Some(required_contract) = clause.required_contract {
+                assumptions.extend(
+                    required_contract
+                        .clauses
+                        .iter()
+                        .filter(|member| *member != clause.clause)
+                        .map(|member| (member, origin)),
+                );
+            }
+        }
+        ParamEnv::new_with_assumptions(tcx, assumptions)
+    }
+
+    fn from_parts(
+        tcx: TyCtxt<'tcx>,
+        caller_bounds: &[ty::Clause<'tcx>],
+        assumption_origins: &[ty::solve::ParamEnvAssumption<TyCtxt<'tcx>>],
+    ) -> Self {
+        assert_eq!(caller_bounds.len(), assumption_origins.len());
+        if caller_bounds.is_empty() {
+            return ParamEnv::empty();
+        }
+        let data = ParamEnvData {
+            caller_bounds: tcx.mk_clauses(caller_bounds),
+            assumption_origins: tcx.mk_param_env_assumption_origins(assumption_origins),
+        };
+        ParamEnv { data: Some(tcx.mk_param_env_data(data)) }
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1072,12 +1265,21 @@ impl<'tcx> ParamEnv<'tcx> {
 
     /// Eagerly reveal all opaque types in the `param_env`.
     pub fn with_normalized(self, tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx> {
+        if self.is_empty() {
+            return self;
+        }
         // No need to reveal opaques with the new solver enabled,
         // since we have lazy norm.
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(tcx, tcx.reveal_opaque_types_in_bounds(self.caller_bounds).iter())
+            ParamEnv::new(
+                tcx,
+                tcx.reveal_opaque_types_in_bounds(
+                    self.data.expect("nonempty parameter environment").caller_bounds,
+                )
+                .iter(),
+            )
         }
     }
 }
