@@ -1,0 +1,39 @@
+error[E0432]: unresolved import `std::collection`
+  --> $DIR/nested-module-typo-issue-131366.rs:7:10
+   |
+LL | use std::collection::HashMap;
+   |          ^^^^^^^^^^ could not find `collection` in `std`
+
+error[E0432]: unresolved import `local::collection`
+  --> $DIR/nested-module-typo-issue-131366.rs:18:12
+   |
+LL | use local::collection::Item;
+   |            ^^^^^^^^^^ could not find `collection` in `local`
+
+error[E0432]: unresolved import `local::container`
+  --> $DIR/nested-module-typo-issue-131366.rs:20:12
+   |
+LL | use local::container::Item as Alias;
+   |            ^^^^^^^^^ could not find `container` in `local`
+
+error[E0432]: unresolved import `local::Choice`
+  --> $DIR/nested-module-typo-issue-131366.rs:22:12
+   |
+LL | use local::Choice::First;
+   |            ^^^^^^ could not find `Choice` in `local`
+
+error[E0432]: unresolved import `crate::root_modul`
+  --> $DIR/nested-module-typo-issue-131366.rs:26:12
+   |
+LL | use crate::root_modul::*;
+   |            ^^^^^^^^^^ could not find `root_modul` in the crate root
+
+error[E0432]: unresolved import `local::collection`
+  --> $DIR/nested-module-typo-issue-131366.rs:32:9
+   |
+LL | import!(collection);
+   |         ^^^^^^^^^^ could not find `collection` in `local`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
