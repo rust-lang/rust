@@ -1,0 +1,9 @@
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/runtime-range-endpoints-issue-131327.rs:10:11
+   |
+LL |         ..y => smaller,
+   |           ^ this is of type `T` but it should be `char` or numeric
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0029`.
