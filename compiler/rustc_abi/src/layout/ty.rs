@@ -301,6 +301,29 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         found
     }
 
+    /// Finds the one field that is not a ZST.
+    /// Returns `None` if there are multiple non-ZST fields or only ZST-fields.
+    ///
+    /// Note that this function checks for ZSTs, not just 1-ZSTs.
+    pub fn non_zst_field_ignore_alignment<C>(&self, cx: &C) -> Option<(FieldIdx, Self)>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut found = None;
+        for field_idx in 0..self.fields.count() {
+            let field = self.field(cx, field_idx);
+            if field.is_zst() {
+                continue;
+            }
+            if found.is_some() {
+                // More than one non-ZST field.
+                return None;
+            }
+            found = Some((FieldIdx::from_usize(field_idx), field));
+        }
+        found
+    }
+
     /// If this type should match the ABI of the C `_Complex` type, returns the primitive that is
     /// used for its components.
     ///
