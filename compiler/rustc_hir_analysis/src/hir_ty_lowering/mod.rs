@@ -2415,6 +2415,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
                 .unwrap_or_else(|guard| Const::new_error(tcx, guard))
             }
+            hir::ExprKind::ConstBlock(block) => {
+                let root = tcx.typeck_root_def_id_local(block.def_id);
+                let parent_args = ty::GenericArgs::identity_for_item(tcx, root);
+                let args =
+                    ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty })
+                        .args;
+                Const::new_alias(
+                    tcx,
+                    ty::IsRigid::No,
+                    ty::AliasConst::new(
+                        tcx,
+                        ty::AliasConstKind::Anon { def_id: block.def_id.to_def_id() },
+                        args,
+                    ),
+                )
+            }
             _ => Const::new_error(
                 tcx,
                 self.dcx().span_err(expr.span, "Some other variant we dont support"),
