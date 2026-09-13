@@ -157,8 +157,8 @@ macro_rules! visit_visitable_with {
 
 macro_rules! impl_visitable {
     // The no-extra case.
-    (|&mut $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident| $block:block) => {
-        impl<$vis_ty: MutVisitor> MutVisitable<$vis_ty> for $self_ty {
+    (|&mut $self:ident: $SelfTy:ty, $vis:ident: &mut $vis_ty:ident| $block:block) => {
+        impl<$vis_ty: MutVisitor> MutVisitable<$vis_ty> for $SelfTy {
             type Extra = ();
 
             #[inline]
@@ -168,10 +168,10 @@ macro_rules! impl_visitable {
         }
     };
     // The with-extra case.
-    (|&mut $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident,
-      $extra:ident: $extra_ty:ty| $block:block) => {
-        impl<$vis_ty: MutVisitor> MutVisitable<$vis_ty> for $self_ty {
-            type Extra = $extra_ty;
+    (|&mut $self:ident: $SelfTy:ty, $vis:ident: &mut $vis_ty:ident,
+      $extra:ident: $ExtraTy:ty| $block:block) => {
+        impl<$vis_ty: MutVisitor> MutVisitable<$vis_ty> for $SelfTy {
+            type Extra = $ExtraTy;
 
             #[inline]
             fn visit_mut(&mut $self, $vis: &mut $vis_ty, $extra: Self::Extra) -> V::Result {
@@ -182,9 +182,9 @@ macro_rules! impl_visitable {
 }
 
 macro_rules! impl_walkable {
-    (|&mut $self:ident: $self_ty:ty,
+    (|&mut $self:ident: $SelfTy:ty,
       $vis:ident: &mut $vis_ty:ident| $block:block) => {
-        impl<$vis_ty: MutVisitor> MutWalkable<$vis_ty> for $self_ty {
+        impl<$vis_ty: MutVisitor> MutWalkable<$vis_ty> for $SelfTy {
             fn walk_mut(&mut $self, $vis: &mut $vis_ty) -> V::Result {
                 $block
             }
@@ -193,18 +193,18 @@ macro_rules! impl_walkable {
 }
 
 macro_rules! impl_visitable_noop {
-    ($($ty:ty,)*) => {
+    ($($Ty:ty,)*) => {
         $(
-            impl_visitable!(|&mut self: $ty, _vis: &mut V| {});
+            impl_visitable!(|&mut self: $Ty, _vis: &mut V| {});
         )*
     };
 }
 
 macro_rules! impl_visitable_list {
-    ($($ty:ty,)*) => {
-        $(impl<V: MutVisitor, T> MutVisitable<V> for $ty
+    ($($Ty:ty,)*) => {
+        $(impl<V: MutVisitor, T> MutVisitable<V> for $Ty
         where
-            for<'a> &'a mut $ty: IntoIterator<Item = &'a mut T>,
+            for<'a> &'a mut $Ty: IntoIterator<Item = &'a mut T>,
             T: MutVisitable<V>,
         {
             type Extra = <T as MutVisitable<V>>::Extra;
@@ -220,9 +220,9 @@ macro_rules! impl_visitable_list {
 }
 
 macro_rules! impl_visitable_direct {
-    ($($ty:ty,)*) => {
+    ($($Ty:ty,)*) => {
         $(impl_visitable!(
-            |&mut self: $ty, visitor: &mut V| {
+            |&mut self: $Ty, visitor: &mut V| {
                 MutWalkable::walk_mut(self, visitor)
             }
         );)*
@@ -230,24 +230,24 @@ macro_rules! impl_visitable_direct {
 }
 
 macro_rules! fn_visit {
-    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
-        $(fn $visit(&mut self, node: &mut $ty $(, $extra: $extra_ty)?) {
+    ($($visit:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $walk:ident;)*) => {
+        $(fn $visit(&mut self, node: &mut $Ty $(, $extra: $ExtraTy)?) {
             MutWalkable::walk_mut(node, self)
         })*
     }
 }
 
 macro_rules! impl_visitable_visit {
-    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
-        $(impl_visitable!(|&mut self: $ty, visitor: &mut V $(, $extra: $extra_ty)?| {
+    ($($visit:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $walk:ident;)*) => {
+        $(impl_visitable!(|&mut self: $Ty, visitor: &mut V $(, $extra: $ExtraTy)?| {
             visitor.$visit(self $(, $extra)?);
         });)*
     }
 }
 
 macro_rules! fn_walk {
-    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
-        $(pub fn $walk<V: MutVisitor>(visitor: &mut V, node: &mut $ty) {
+    ($($visit:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $walk:ident;)*) => {
+        $(pub fn $walk<V: MutVisitor>(visitor: &mut V, node: &mut $Ty) {
             MutWalkable::walk_mut(node, visitor)
         })*
     };
@@ -256,8 +256,8 @@ macro_rules! fn_walk {
 crate::visit::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {
-    ($($flat_map_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
-        $(impl_visitable!(|&mut self: ThinVec<$ty>, visitor: &mut V $(, $extra: $extra_ty)?| {
+    ($($flat_map_fn:ident, $Ty:ty $(, $extra:ident: $ExtraTy:ty)?;)+) => {
+        $(impl_visitable!(|&mut self: ThinVec<$Ty>, visitor: &mut V $(, $extra: $ExtraTy)?| {
             self.flat_map_in_place(|value| visitor.$flat_map_fn(value $(, $extra)?));
         });)+
     }
@@ -290,12 +290,12 @@ pub fn walk_flat_map_pat_field<T: MutVisitor>(
 }
 
 macro_rules! generate_walk_flat_map_fns {
-    ($($fn_name:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $visit_fn_name:ident;)+) => {$(
+    ($($fn_name:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $visit_fn_name:ident;)+) => {$(
         pub fn $fn_name<V: MutVisitor>(
             vis: &mut V,
-            mut value: $ty
-            $(, $extra: $extra_ty)?
-        ) -> SmallVec<[$ty; 1]> {
+            mut value: $Ty
+            $(, $extra: $ExtraTy)?
+        ) -> SmallVec<[$Ty; 1]> {
             vis.$visit_fn_name(&mut value$(, $extra)*);
             smallvec![value]
         }

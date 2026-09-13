@@ -205,8 +205,8 @@ macro_rules! visit_visitable_with {
 
 macro_rules! impl_visitable {
     // The no-extra case.
-    (|&$lt:lifetime $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident| $block:block) => {
-        impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $self_ty {
+    (|&$lt:lifetime $self:ident: $SelfTy:ty, $vis:ident: &mut $vis_ty:ident| $block:block) => {
+        impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $SelfTy {
             type Extra = ();
 
             #[inline]
@@ -216,10 +216,10 @@ macro_rules! impl_visitable {
         }
     };
     // The with-extra case.
-    (|&$lt:lifetime $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident,
-     $extra:ident: $extra_ty:ty| $block:block) => {
-        impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $self_ty {
-            type Extra = $extra_ty;
+    (|&$lt:lifetime $self:ident: $SelfTy:ty, $vis:ident: &mut $vis_ty:ident,
+     $extra:ident: $ExtraTy:ty| $block:block) => {
+        impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $SelfTy {
+            type Extra = $ExtraTy;
 
             #[inline]
             fn visit(&$lt $self, $vis: &mut $vis_ty, $extra: Self::Extra) -> V::Result {
@@ -230,9 +230,9 @@ macro_rules! impl_visitable {
 }
 
 macro_rules! impl_walkable {
-    (|&$lt:lifetime $self:ident: $self_ty:ty,
+    (|&$lt:lifetime $self:ident: $SelfTy:ty,
       $vis:ident: &mut $vis_ty:ident| $block:block) => {
-        impl<$lt, $vis_ty: Visitor<$lt>> Walkable<$lt, $vis_ty> for $self_ty {
+        impl<$lt, $vis_ty: Visitor<$lt>> Walkable<$lt, $vis_ty> for $SelfTy {
             fn walk_ref(&$lt $self, $vis: &mut $vis_ty) -> V::Result {
                 $block
             }
@@ -241,9 +241,9 @@ macro_rules! impl_walkable {
 }
 
 macro_rules! impl_visitable_noop {
-    ($($ty:ty,)*) => {
+    ($($Ty:ty,)*) => {
         $(
-            impl_visitable!(|&'a self: $ty, _vis: &mut V| {
+            impl_visitable!(|&'a self: $Ty, _vis: &mut V| {
                 V::Result::output()
             });
         )*
@@ -251,10 +251,10 @@ macro_rules! impl_visitable_noop {
 }
 
 macro_rules! impl_visitable_list {
-    ($($ty:ty,)*) => {
-        $(impl<'a, V: Visitor<'a>, T> Visitable<'a, V> for $ty
+    ($($Ty:ty,)*) => {
+        $(impl<'a, V: Visitor<'a>, T> Visitable<'a, V> for $Ty
         where
-            &'a $ty: IntoIterator<Item = &'a T>,
+            &'a $Ty: IntoIterator<Item = &'a T>,
             T: 'a + Visitable<'a, V>,
         {
             type Extra = <T as Visitable<'a, V>>::Extra;
@@ -270,9 +270,9 @@ macro_rules! impl_visitable_list {
 }
 
 macro_rules! impl_visitable_direct {
-    ($($ty:ty,)*) => {
+    ($($Ty:ty,)*) => {
         $(impl_visitable!(
-            |&'a self: $ty, visitor: &mut V| {
+            |&'a self: $Ty, visitor: &mut V| {
                 Walkable::walk_ref(self, visitor)
             }
         );)*
@@ -280,24 +280,24 @@ macro_rules! impl_visitable_direct {
 }
 
 macro_rules! fn_visit {
-    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
-        $(fn $visit(&mut self, node: &'a $ty $(, $extra: $extra_ty)?) -> Self::Result {
+    ($($visit:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $walk:ident;)*) => {
+        $(fn $visit(&mut self, node: &'a $Ty $(, $extra: $ExtraTy)?) -> Self::Result {
             Walkable::walk_ref(node, self)
         })*
     };
 }
 
 macro_rules! impl_visitable_visit {
-    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
-        $(impl_visitable!(|&'a self: $ty, visitor: &mut V $(, $extra: $extra_ty)?| {
+    ($($visit:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $walk:ident;)*) => {
+        $(impl_visitable!(|&'a self: $Ty, visitor: &mut V $(, $extra: $ExtraTy)?| {
             visitor.$visit(self $(, $extra)?)
         });)*
     };
 }
 
 macro_rules! fn_walk {
-    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
-        $(pub fn $walk<'a, V: Visitor<'a>>(visitor: &mut V, node: &'a $ty) -> V::Result {
+    ($($visit:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $walk:ident;)*) => {
+        $(pub fn $walk<'a, V: Visitor<'a>>(visitor: &mut V, node: &'a $Ty) -> V::Result {
             Walkable::walk_ref(node, visitor)
         })*
     }
@@ -306,7 +306,7 @@ macro_rules! fn_walk {
 /// Higher-order macro that puts all the visit/walk hook information in a single place. The
 /// passed-in macro should have a left hand side like this:
 /// ```ignore (partial)
-/// ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => { ... }
+/// ($($visit:ident($Ty:ty $(, $extra:ident: $ExtraTy:ty)?) => $walk:ident;)*) => { ... }
 /// ```
 macro_rules! for_each_ast_visit_hook {
     ($macro:ident!) => {
@@ -1144,8 +1144,8 @@ pub(crate) use common_visitor_and_walkers;
 common_visitor_and_walkers!(Visitor<'a>);
 
 macro_rules! generate_list_visit_fns {
-    ($($visit_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
-        $(impl_visitable!(|&'a self: ThinVec<$ty>, visitor: &mut V $(, $extra: $extra_ty)?| {
+    ($($visit_fn:ident, $Ty:ty $(, $extra:ident: $ExtraTy:ty)?;)+) => {
+        $(impl_visitable!(|&'a self: ThinVec<$Ty>, visitor: &mut V $(, $extra: $ExtraTy)?| {
             walk_list!(visitor, $visit_fn, self $(, $extra)?);
             V::Result::output()
         });)+
