@@ -481,11 +481,13 @@ impl<'a> TraitDef<'a> {
                 self.expand_struct_def(cx, struct_def, *ident, generics, from_scratch, is_packed)
             }
             ast::ItemKind::Enum(ident, generics, enum_def) => {
-                // We ignore `is_packed` here, because `repr(packed)`
-                // enums cause an error later on.
-                //
+                // We can skip generating the impl here, because `repr(packed)`
+                // enums cause an error later on and to prevent ICEs like #133025.
                 // This can only cause further compilation errors
                 // downstream in blatantly illegal code, so it is fine.
+                if is_packed {
+                    return;
+                }
                 self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
             }
             ast::ItemKind::Union(ident, generics, struct_def) => {
