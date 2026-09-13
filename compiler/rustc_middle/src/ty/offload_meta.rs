@@ -79,7 +79,20 @@ impl OffloadMetadata {
         if let Some(elem_ty) = region_element_ty(tcx, ty) {
             let ptr = OffloadMetadata::from_ty(tcx, Ty::new_slice(tcx, elem_ty));
             let len = OffloadMetadata::from_ty(tcx, tcx.types.usize);
-            return vec![(ptr, Ty::new_mut_ptr(tcx, elem_ty)), (len, tcx.types.usize)];
+            // `Region` is a `{ ptr, len }` pair, but field order is not guaranteed.
+            return arg_abi
+                .layout
+                .fields
+                .index_by_increasing_offset()
+                .filter(|&i| arg_abi.layout.field(cx, i).size.bytes() != 0)
+                .map(|i| {
+                    if arg_abi.layout.field(cx, i).ty == tcx.types.usize {
+                        (len, tcx.types.usize)
+                    } else {
+                        (ptr, Ty::new_mut_ptr(tcx, elem_ty))
+                    }
+                })
+                .collect();
         }
 
         match arg_abi.layout.backend_repr {

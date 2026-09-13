@@ -1,4 +1,6 @@
 // offload module
+use core::ptr::NonNull;
+
 #[unstable(feature = "gpu_offload", issue = "131513")]
 pub use crate::macros::builtin::offload_kernel;
 #[unstable(feature = "gpu_offload", issue = "131513")]
@@ -37,58 +39,52 @@ pub use crate::offload;
 /// ```
 #[macro_export]
 #[unstable(feature = "gpu_offload", issue = "131513")]
-#[allow_internal_unstable(core_intrinsics)]
+#[allow_internal_unstable(core_intrinsics, offload)]
 macro_rules! offload {
-    ( $($field:ident = $val:expr),* $(,)? ) => {
-        $crate::offload!(@munch
-            [ $($field = $val),* ];
-            kernel = NONE;
-            workgroup_dim = ([1, 1, 1]);
-            thread_dim = ([1, 1, 1]);
-            dyn_cache = (0);
-            device = NONE;
-            args = NONE
-        )
+    (@munch [kernel = $val:expr $(, $($rest:tt)*)?]; kernel = NONE; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [ $($($rest)*)? ]; kernel = (SOME $val); workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = $device; args = $a)
     };
-
-    (@munch [kernel = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = NONE; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = (SOME $val); workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = $device; args = $a)
-    };
-    (@munch [kernel = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = (SOME $old:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+    (@munch [kernel = $val:expr $(, $($rest:tt)*)?]; kernel = (SOME $old:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `kernel`")
     };
-    (@munch [workgroup_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = ([1, 1, 1]); thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = (SOME $val); thread_dim = $t; dyn_cache = $d; device = $device; args = $a)
+    (@munch [workgroup_dim = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = ([1, 1, 1]); thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [ $($($rest)*)? ]; kernel = $k; workgroup_dim = (SOME $val); thread_dim = $t; dyn_cache = $d; device = $device; args = $a)
     };
-    (@munch [workgroup_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = (SOME $old:expr); thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+    (@munch [workgroup_dim = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = (SOME $old:expr); thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `workgroup_dim`")
     };
-    (@munch [thread_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = ([1, 1, 1]); dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = (SOME $val); dyn_cache = $d; device = $device; args = $a)
+    (@munch [thread_dim = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = ([1, 1, 1]); dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [ $($($rest)*)? ]; kernel = $k; workgroup_dim = $w; thread_dim = (SOME $val); dyn_cache = $d; device = $device; args = $a)
     };
-    (@munch [thread_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = (SOME $old:expr); dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+    (@munch [thread_dim = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = (SOME $old:expr); dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `thread_dim`")
     };
-    (@munch [dyn_cache = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (0); device = $device:tt; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = (SOME $val); device = $device; args = $a)
+    (@munch [dyn_cache = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (0); device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [ $($($rest)*)? ]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = (SOME $val); device = $device; args = $a)
     };
-    (@munch [dyn_cache = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (SOME $old:expr); device = $device:tt; args = $a:tt) => {
+    (@munch [dyn_cache = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (SOME $old:expr); device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `dyn_cache`")
     };
-    (@munch [device = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = NONE; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = (SOME $val); args = $a)
+    (@munch [device = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = NONE; args = $a:tt) => {
+        $crate::offload!(@munch [ $($($rest)*)? ]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = (SOME $val); args = $a)
     };
-    (@munch [device = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = (SOME $old:expr); args = $a:tt) => {
+    (@munch [device = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = (SOME $old:expr); args = $a:tt) => {
         compile_error!("duplicate field `device`")
     };
-    (@munch [args = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = NONE) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = $device; args = (SOME $val))
+    (@munch [args = ($($arg:expr),* $(,)?) $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = NONE) => {
+        $crate::offload!(@munch [ $($($rest)*)? ]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = $device; args = (SOME_TUPLE ($($arg),*)))
     };
-    (@munch [args = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = (SOME $old:expr)) => {
+    (@munch [args = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = NONE) => {
+        $crate::offload!(@munch [ $($($rest)*)? ]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = $device; args = (SOME $val))
+    };
+    (@munch [args = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = (SOME $old:expr)) => {
+        compile_error!("duplicate field `args`")
+    };
+    (@munch [args = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = (SOME_TUPLE $old:tt)) => {
         compile_error!("duplicate field `args`")
     };
 
-    (@munch [$invalid:ident = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+    (@munch [$invalid:ident = $val:expr $(, $($rest:tt)*)?]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!(concat!("unknown field `", stringify!($invalid), "`"))
     };
 
@@ -98,6 +94,26 @@ macro_rules! offload {
     (@munch []; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = NONE) => {
         compile_error!("missing `args`")
     };
+    (@munch []; kernel = (SOME $kernel:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = (SOME_TUPLE ($($arg:expr),* $(,)?))) => {{
+        #[allow(unused_imports)]
+        use $crate::offload::{DefaultLaunchCheck as _, RegionLaunchCheck as _};
+
+        let __offload_grid = $crate::offload!(@value $w);
+        let __offload_block = $crate::offload!(@value $t);
+
+        $crate::intrinsics::offload::<_, _, ()>(
+            $kernel,
+            __offload_grid,
+            __offload_block,
+            $crate::offload!(@value $d),
+            $crate::offload!(@device $device),
+            ($({
+                let __offload_arg = $arg;
+                (&__offload_arg).__offload_check_launch(__offload_grid, __offload_block);
+                __offload_arg
+            },)*),
+        )
+    }};
     (@munch []; kernel = (SOME $kernel:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = (SOME $args:expr)) => {
         $crate::intrinsics::offload::<_, _, ()>(
             $kernel,
@@ -124,9 +140,44 @@ macro_rules! offload {
         );
         device
     } };
+
+    ( $($tt:tt)* ) => {
+        $crate::offload!(@munch
+            [ $($tt)* ];
+            kernel = NONE;
+            workgroup_dim = ([1, 1, 1]);
+            thread_dim = ([1, 1, 1]);
+            dyn_cache = (0);
+            device = NONE;
+            args = NONE
+        )
+    };
 }
 
 // Region & Partitioning Strategy
+
+/// Error returned by [`PartitioningStrategy::check_launch`] when a launch
+/// configuration is not compatible with a partitioning strategy.
+#[derive(Debug)]
+#[unstable(feature = "offload", issue = "131513")]
+pub struct LaunchError {
+    message: &'static str,
+}
+
+impl LaunchError {
+    /// Creates a new [`LaunchError`] with the given message.
+    #[unstable(feature = "offload", issue = "131513")]
+    pub const fn new(message: &'static str) -> Self {
+        Self { message }
+    }
+}
+
+#[unstable(feature = "offload", issue = "131513")]
+impl core::fmt::Display for LaunchError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.message)
+    }
+}
 
 /// Defines how execution units access memory regions.
 ///
@@ -150,7 +201,7 @@ pub unsafe trait PartitioningStrategy {
     ///
     /// `ptr` must point to `len` valid, initialized elements of type `T`.
     /// The memory must stay valid for lifetime `'a`.
-    unsafe fn get<'a, T>(ptr: *const T, len: usize) -> Option<Self::View<'a, T>>;
+    unsafe fn get<'a, T>(ptr: NonNull<T>, len: usize) -> Option<Self::View<'a, T>>;
 
     /// Returns a mutable view of the region for the current execution context.
     ///
@@ -159,7 +210,13 @@ pub unsafe trait PartitioningStrategy {
     /// `ptr` must point to `len` valid, initialized elements of type `T`.
     /// The memory must stay valid for lifetime `'a`.
     /// The returned view must be disjoint from all other active views.
-    unsafe fn get_mut<'a, T>(ptr: *mut T, len: usize) -> Option<Self::ViewMut<'a, T>>;
+    unsafe fn get_mut<'a, T>(ptr: NonNull<T>, len: usize) -> Option<Self::ViewMut<'a, T>>;
+
+    /// Checks that a kernel using this strategy can be launched with `len`
+    /// elements on a `grid` by `block` launch configuration.
+    ///
+    /// This is called automatically before the kernel is launched.
+    fn check_launch(len: usize, grid: [u32; 3], block: [u32; 3]) -> Result<(), LaunchError>;
 }
 
 /// A memory region bound to a partitioning strategy.
@@ -167,7 +224,7 @@ pub unsafe trait PartitioningStrategy {
 #[unstable(feature = "offload", issue = "131513")]
 #[rustc_diagnostic_item = "offload_region"]
 pub struct Region<'a, T, S: PartitioningStrategy> {
-    ptr: *mut T,
+    ptr: NonNull<T>,
     len: usize,
     _marker: core::marker::PhantomData<(&'a mut [T], S)>,
 }
@@ -176,20 +233,24 @@ pub struct Region<'a, T, S: PartitioningStrategy> {
 #[derive(Debug)]
 #[unstable(feature = "offload", issue = "131513")]
 pub struct RawRegion<'a, T> {
-    ptr: *mut T,
+    ptr: NonNull<T>,
     len: usize,
     _marker: core::marker::PhantomData<&'a mut [T]>,
 }
 
 impl<'a, T> From<&'a mut [T]> for RawRegion<'a, T> {
     fn from(data: &'a mut [T]) -> Self {
-        Self { ptr: data.as_mut_ptr(), len: data.len(), _marker: core::marker::PhantomData }
+        // SAFETY: `data.as_mut_ptr()` is non-null, because it is derived from a reference.
+        let ptr = unsafe { NonNull::new_unchecked(data.as_mut_ptr()) };
+        Self { ptr, len: data.len(), _marker: core::marker::PhantomData }
     }
 }
 
 impl<'a, T, const N: usize> From<&'a mut [T; N]> for RawRegion<'a, T> {
     fn from(data: &'a mut [T; N]) -> Self {
-        Self { ptr: data.as_mut_ptr(), len: N, _marker: core::marker::PhantomData }
+        // SAFETY: `data.as_mut_ptr()` is non-null, because it is derived from a reference.
+        let ptr = unsafe { NonNull::new_unchecked(data.as_mut_ptr()) };
+        Self { ptr, len: N, _marker: core::marker::PhantomData }
     }
 }
 
@@ -207,7 +268,7 @@ impl<'a, T, S: PartitioningStrategy> Region<'a, T, S> {
     /// Returns a read-only view for the current execution context.
     pub fn get(&self) -> Option<S::View<'_, T>> {
         // SAFETY: `self.ptr` points to `self.len` valid elements for lifetime `'a`.
-        unsafe { S::get(self.ptr as *const T, self.len) }
+        unsafe { S::get(self.ptr, self.len) }
     }
 
     /// Returns a mutable view for the current execution context.
@@ -217,9 +278,52 @@ impl<'a, T, S: PartitioningStrategy> Region<'a, T, S> {
         unsafe { S::get_mut(self.ptr, self.len) }
     }
 
+    /// Checks that this region can be launched with the given configuration.
+    ///
+    /// Called automatically by the [`offload!`] macro before launching a kernel.
+    pub fn check_launch(&self, grid: [u32; 3], block: [u32; 3]) -> Result<(), LaunchError> {
+        S::check_launch(self.len, grid, block)
+    }
+
     /// Reborrows the region, producing a new region that aliases the same memory with
     /// the lifetime of the borrow.
     pub fn reborrow(&mut self) -> Region<'_, T, S> {
         Region { ptr: self.ptr, len: self.len, _marker: core::marker::PhantomData }
     }
+}
+
+// Launch validation helpers.
+
+/// Implementation detail of [`offload!`]: validates a [`Region`] argument against
+/// the launch configuration of an offload call.
+#[doc(hidden)]
+#[unstable(feature = "offload", issue = "131513")]
+pub trait RegionLaunchCheck {
+    /// Panics if the region's partitioning strategy rejects the launch.
+    fn __offload_check_launch(&self, grid: [u32; 3], block: [u32; 3]);
+}
+
+#[unstable(feature = "offload", issue = "131513")]
+impl<'a, T, S: PartitioningStrategy> RegionLaunchCheck for Region<'a, T, S> {
+    fn __offload_check_launch(&self, grid: [u32; 3], block: [u32; 3]) {
+        if let Err(err) = self.check_launch(grid, block) {
+            panic!(
+                "offload launch is not supported by the region's partitioning strategy: {}",
+                err,
+            );
+        }
+    }
+}
+
+/// no-op launch check for kernel arguments that are not [`Region`]s.
+#[doc(hidden)]
+#[unstable(feature = "offload", issue = "131513")]
+pub trait DefaultLaunchCheck {
+    /// Does nothing.
+    fn __offload_check_launch(&self, grid: [u32; 3], block: [u32; 3]);
+}
+
+#[unstable(feature = "offload", issue = "131513")]
+impl<T: ?Sized> DefaultLaunchCheck for &T {
+    fn __offload_check_launch(&self, _grid: [u32; 3], _block: [u32; 3]) {}
 }

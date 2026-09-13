@@ -136,8 +136,8 @@ fn check_transmute<'tcx>(
     }
 }
 
-fn is_offload_region_ref<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    matches!(ty.kind(), ty::Ref(_, inner, _) if is_region_ty(tcx, *inner))
+fn contains_nested_offload_region<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.walk().skip(1).any(|arg| arg.as_type().is_some_and(|ty| is_region_ty(tcx, ty)))
 }
 
 fn check_offload<'tcx>(
@@ -212,15 +212,17 @@ fn check_offload<'tcx>(
         let norm_input_ty = normalize(input_ty);
         let norm_arg_ty = normalize(arg_ty);
 
-        if is_offload_region_ref(tcx, norm_input_ty) || is_offload_region_ref(tcx, norm_arg_ty) {
+        if contains_nested_offload_region(tcx, norm_input_ty)
+            || contains_nested_offload_region(tcx, norm_arg_ty)
+        {
             let err = tcx
                 .sess
                 .dcx()
                 .struct_span_err(
                     span,
                     format!(
-                        "offload kernel argument {i} is a reference to a `Region`. Pass the \
-                        `Region` by value so it can be mapped like a slice"
+                        "offload kernel argument {i} contains a `Region` nested inside another \
+                        type. Pass the `Region` by value so it can be mapped like a slice"
                     ),
                 )
                 .emit();
