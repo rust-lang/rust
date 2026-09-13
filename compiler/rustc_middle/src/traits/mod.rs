@@ -807,7 +807,7 @@ impl DynCompatibilityViolation {
             Self::Method(name, MethodViolation::StaticMethod(_), _) => {
                 format!("associated function `{name}` has no `self` parameter").into()
             }
-            Self::Method(name, MethodViolation::ReferencesSelfInput(_), DUMMY_SP) => {
+            Self::Method(name, MethodViolation::ReferencesSelfInput(_), s) if *s == DUMMY_SP => {
                 format!("method `{name}` references the `Self` type in its parameters").into()
             }
             Self::Method(name, MethodViolation::ReferencesSelfInput(_), _) => {

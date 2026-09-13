@@ -87,6 +87,7 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
     /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     #[inline]
     fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
+        return;
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;

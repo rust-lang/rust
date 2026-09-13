@@ -1,3 +1,4 @@
+use std::hash::{Hash, Hasher};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hash::RawSpan;
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
@@ -77,12 +78,24 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 /// In order to reliably use parented spans in incremental compilation,
 /// accesses to `lo` and `hi` must introduce a dependency to the parent definition's span.
 /// This is performed using the callback `SPAN_TRACK` to access the query engine.
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy)]
 #[rustc_pass_by_value]
 pub struct Span {
     lo_or_index: u32,
     len_with_tag_or_marker: u16,
     ctxt_or_parent_or_marker: u16,
+}
+
+impl Hash for Span {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+    }
+}
+
+impl Eq for Span {}
+impl PartialEq for Span {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
 }
 
 // Convenience structures for all span formats.

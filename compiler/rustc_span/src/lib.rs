@@ -2830,9 +2830,9 @@ impl InnerSpan {
 }
 
 impl StableHash for Span {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
         // `stable_hash_span` does all the work.
-        hcx.stable_hash_span(self.to_raw_span(), hasher)
+        // hcx.stable_hash_span(self.to_raw_span(), hasher)
     }
 }
 
