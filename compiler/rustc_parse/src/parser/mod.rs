@@ -30,9 +30,7 @@ use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
 use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree};
-use rustc_ast::tokenstream::{
-    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenTree, WithTokens,
-};
+use rustc_ast::tokenstream::{ParserRange, ParserReplacement, Spacing, TokenCursor, WithTokens};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::{
@@ -1452,7 +1450,7 @@ impl<'a> Parser<'a> {
             if self.token.kind.is_close_delim_or_eof() {
                 break;
             } else {
-                builder.push_token_tree_arena(&self.parse_token_tree(), &self.token_cursor.stream);
+                builder.push_token_tree(&self.parse_token_tree(), &self.token_cursor.stream);
             }
         }
         builder.finish()
@@ -1823,7 +1821,7 @@ impl<'a> Parser<'a> {
 // smaller.
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
-    Tt(TokenTree),
+    Tt(ArenaTokenTree, ArenaTokenStream),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
     Item(Box<ast::Item>),

@@ -3,8 +3,10 @@ use std::mem;
 use rustc_ast::token::{
     self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
-use rustc_ast::tokenarena::{ArenaTokenStream, ArenaTokenStreamBuilder, DelimitedData};
-use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedData,
+};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, listify, pluralize};
@@ -459,68 +461,103 @@ fn transcribe_pnr<'tx>(
     // in invisible delimiters with the same `MetaVarKind`. Because some proc
     // macros can't handle multiple layers of invisible delimiters of the same
     // `MetaVarKind`. This loses some span info, though it hopefully won't matter.
-    let mut mk_delimited = |mk_span, mv_kind, mut stream: TokenStream| {
-        if stream.len() == 1 {
-            let tree = stream.iter().next().unwrap();
-            if let TokenTree::Delimited(_, _, delim, inner) = tree
-                && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mvk)) = delim
-                && mv_kind == *mvk
-            {
-                stream = inner.clone();
+    let mut mk_delimited =
+        |mk_span, mv_kind, stream: ArenaTokenStream, builder: &mut ArenaTokenStreamBuilder| {
+            let mut iter = stream.iter_top_level_trees();
+
+            let start = builder.start_delimited();
+
+            // Emit as a token stream within `Delimiter::Invisible` to maintain
+            // parsing priorities.
+            tscx.marker.mark_span(&mut sp);
+            with_metavar_spans(|mspans| mspans.insert(mk_span, sp));
+            // Both the open delim and close delim get the same span, which covers the
+            // `$foo` in the decl macro RHS.
+
+            if iter.has_single_tree() {
+                let tree = iter.next().unwrap();
+                if let ArenaTokenTree::DelimitedStart(bounds, data) = tree
+                    && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mvk)) = data.delimiter
+                    && mv_kind == mvk
+                {
+                    builder.push_iter(stream.iter_delimited(bounds));
+                } else {
+                    builder.push_stream(stream);
+                }
+            } else {
+                builder.push_stream(stream);
             }
-        }
 
-        // Emit as a token stream within `Delimiter::Invisible` to maintain
-        // parsing priorities.
-        tscx.marker.mark_span(&mut sp);
-        with_metavar_spans(|mspans| mspans.insert(mk_span, sp));
-        // Both the open delim and close delim get the same span, which covers the
-        // `$foo` in the decl macro RHS.
-        TokenTree::Delimited(
-            DelimSpan::from_single(sp),
-            DelimSpacing::new(Spacing::Alone, Spacing::Alone),
-            Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)),
-            stream,
-        )
-    };
+            builder.close_delimited(
+                start,
+                DelimitedData {
+                    span: DelimSpan::from_single(sp),
+                    spacing: DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+                    delimiter: Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)),
+                },
+            );
+        };
 
-    let tt = match pnr {
-        ParseNtResult::Tt(tt) => {
+    match pnr {
+        ParseNtResult::Tt(tt, stream) => {
             // `tt`s are emitted into the output stream directly as "raw tokens",
             // without wrapping them into groups. Other variables are emitted into
             // the output stream as groups with `Delimiter::Invisible` to maintain
             // parsing priorities.
-            maybe_use_metavar_location(tscx.psess, &tscx.stack, sp, tt, &mut tscx.marker)
+            maybe_use_metavar_location(
+                tscx.psess,
+                &tscx.stack,
+                sp,
+                tt,
+                stream,
+                &mut tscx.marker,
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Ident(ident, is_raw) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
             let kind = token::NtIdent(*ident, *is_raw);
-            TokenTree::token_alone(kind, sp)
+            tscx.result.push_token_alone(Token::new(kind, sp));
         }
         ParseNtResult::Lifetime(ident, is_raw) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
             let kind = token::NtLifetime(*ident, *is_raw);
-            TokenTree::token_alone(kind, sp)
+            tscx.result.push_token_alone(Token::new(kind, sp));
         }
         ParseNtResult::Item(item) => {
-            mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
+            mk_delimited(
+                item.span,
+                MetaVarKind::Item,
+                ArenaTokenStream::from_ast(item),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Block(block) => {
-            mk_delimited(block.node.span, MetaVarKind::Block, TokenStream::from_ast(block))
+            mk_delimited(
+                block.node.span,
+                MetaVarKind::Block,
+                ArenaTokenStream::from_ast(block),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Stmt(stmt) => {
             let stream = if let StmtKind::Empty = stmt.kind {
                 // FIXME: Properly collect tokens for empty statements.
-                TokenStream::token_alone(token::Semi, stmt.span)
+                ArenaTokenStream::token_alone(token::Semi, stmt.span)
             } else {
-                TokenStream::from_ast(stmt)
+                ArenaTokenStream::from_ast(stmt)
             };
-            mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
+            mk_delimited(stmt.span, MetaVarKind::Stmt, stream, &mut tscx.result);
         }
         ParseNtResult::Pat(pat, pat_kind) => {
-            mk_delimited(pat.node.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
+            mk_delimited(
+                pat.node.span,
+                MetaVarKind::Pat(*pat_kind),
+                ArenaTokenStream::from_ast(pat),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Expr(expr, kind) => {
             let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
@@ -537,29 +574,51 @@ fn transcribe_pnr<'tx>(
                     can_begin_literal_maybe_minus,
                     can_begin_string_literal,
                 },
-                TokenStream::from_ast(expr),
-            )
+                ArenaTokenStream::from_ast(expr),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Literal(lit) => {
-            mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
+            mk_delimited(
+                lit.span,
+                MetaVarKind::Literal,
+                ArenaTokenStream::from_ast(lit),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Ty(ty) => {
             let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
-            mk_delimited(ty.node.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
+            mk_delimited(
+                ty.node.span,
+                MetaVarKind::Ty { is_path },
+                ArenaTokenStream::from_ast(ty),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Meta(attr_item) => {
             let has_meta_form = attr_item.node.meta_kind().is_some();
             mk_delimited(
                 attr_item.node.span,
                 MetaVarKind::Meta { has_meta_form },
-                TokenStream::from_ast(attr_item),
-            )
+                ArenaTokenStream::from_ast(attr_item),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Path(path) => {
-            mk_delimited(path.node.span, MetaVarKind::Path, TokenStream::from_ast(path))
+            mk_delimited(
+                path.node.span,
+                MetaVarKind::Path,
+                ArenaTokenStream::from_ast(path),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Vis(vis) => {
-            mk_delimited(vis.node.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+            mk_delimited(
+                vis.node.span,
+                MetaVarKind::Vis,
+                ArenaTokenStream::from_ast(vis),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Guard(guard) => {
             // FIXME(macro_guard_matcher):
@@ -568,18 +627,22 @@ fn transcribe_pnr<'tx>(
 
             let leading_if_span =
                 guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
-            let ts = std::iter::once(TokenTree::token_alone(
+            // FIXME: optimize this
+            let mut builder = ArenaTokenStreamBuilder::default();
+            builder.push_token_alone(Token::new(
                 token::Ident(kw::If, IdentIsRaw::No),
                 leading_if_span,
-            ))
-            .chain(TokenStream::from_ast(&guard.cond).iter().cloned())
-            .collect();
-
-            mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
+            ));
+            builder.push_stream(ArenaTokenStream::from_ast(&guard.cond));
+            mk_delimited(
+                guard.span_with_leading_if,
+                MetaVarKind::Guard,
+                builder.finish(),
+                &mut tscx.result,
+            );
         }
     };
 
-    tscx.result.push_token_tree(&tt);
     Ok(())
 }
 
@@ -717,9 +780,11 @@ fn maybe_use_metavar_location(
     psess: &ParseSess,
     stack: &[Frame<'_>],
     mut metavar_span: Span,
-    orig_tt: &TokenTree,
+    orig_tt: &ArenaTokenTree,
+    orig_stream: &ArenaTokenStream,
     marker: &mut Marker,
-) -> TokenTree {
+    builder: &mut ArenaTokenStreamBuilder,
+) {
     let undelimited_seq = matches!(
         stack.last(),
         Some(Frame {
@@ -734,40 +799,49 @@ fn maybe_use_metavar_location(
     );
     if undelimited_seq {
         // Do not record metavar spans for tokens from undelimited sequences, for perf reasons.
-        return orig_tt.clone();
+        builder.push_token_tree(orig_tt, orig_stream);
+        return;
     }
 
     marker.mark_span(&mut metavar_span);
     let no_collision = match orig_tt {
-        TokenTree::Token(token, ..) => {
+        ArenaTokenTree::Token(token, ..) => {
             with_metavar_spans(|mspans| mspans.insert(token.span, metavar_span))
         }
-        TokenTree::Delimited(dspan, ..) => with_metavar_spans(|mspans| {
+        ArenaTokenTree::DelimitedStart(_, data) => with_metavar_spans(|mspans| {
+            let dspan = data.span;
             mspans.insert(dspan.open, metavar_span)
                 && mspans.insert(dspan.close, metavar_span)
                 && mspans.insert(dspan.entire(), metavar_span)
         }),
     };
     if no_collision || psess.source_map().is_imported(metavar_span) {
-        return orig_tt.clone();
+        builder.push_token_tree(orig_tt, orig_stream);
+        return;
     }
 
     // Setting metavar spans for the heuristic spans gives better opportunities for combining them
     // with neighboring spans even despite their different syntactic contexts.
     match orig_tt {
-        TokenTree::Token(Token { kind, span }, spacing) => {
+        ArenaTokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
             with_metavar_spans(|mspans| mspans.insert(span, metavar_span));
-            TokenTree::Token(Token { kind: *kind, span }, *spacing)
+            builder.push_token(Token { kind: *kind, span }, *spacing);
         }
-        TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
+        ArenaTokenTree::DelimitedStart(bounds, data) => {
+            let dspan = data.span;
             let open = metavar_span.with_ctxt(dspan.open.ctxt());
             let close = metavar_span.with_ctxt(dspan.close.ctxt());
             with_metavar_spans(|mspans| {
                 mspans.insert(open, metavar_span) && mspans.insert(close, metavar_span)
             });
             let dspan = DelimSpan::from_pair(open, close);
-            TokenTree::Delimited(dspan, *dspacing, *delimiter, tts.clone())
+            let start = builder.start_delimited();
+            builder.push_iter(orig_stream.iter_delimited(bounds));
+            builder.close_delimited(
+                start,
+                DelimitedData { span: dspan, spacing: data.spacing, delimiter: data.delimiter },
+            );
         }
     }
 }
@@ -1009,23 +1083,26 @@ fn extract_symbol_from_pnr<'a>(
                 Ok(nt_ident.name)
             }
         }
-        ParseNtResult::Tt(TokenTree::Token(
-            Token { kind: TokenKind::Ident(symbol, is_raw), .. },
+        ParseNtResult::Tt(
+            ArenaTokenTree::Token(Token { kind: TokenKind::Ident(symbol, is_raw), .. }, _),
             _,
-        )) => {
+        ) => {
             if let IdentIsRaw::Yes = is_raw {
                 Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
             } else {
                 Ok(*symbol)
             }
         }
-        ParseNtResult::Tt(TokenTree::Token(
-            Token {
-                kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
-                ..
-            },
+        ParseNtResult::Tt(
+            ArenaTokenTree::Token(
+                Token {
+                    kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
+                    ..
+                },
+                _,
+            ),
             _,
-        )) => Ok(*symbol),
+        ) => Ok(*symbol),
         ParseNtResult::Literal(expr)
             if let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind =>
         {
