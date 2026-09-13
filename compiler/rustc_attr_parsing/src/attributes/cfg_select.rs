@@ -1,5 +1,5 @@
 use rustc_ast::token::Token;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{AttrPath, CfgEntry};
@@ -37,18 +37,18 @@ impl CfgSelectPredicate {
 #[derive(Default)]
 pub struct CfgSelectBranches {
     /// All the conditional branches.
-    pub reachable: Vec<(CfgEntry, TokenStream, Span)>,
+    pub reachable: Vec<(CfgEntry, ArenaTokenStream, Span)>,
     /// The first wildcard `_ => { ... }` branch.
-    pub wildcard: Option<(Token, TokenStream, Span)>,
+    pub wildcard: Option<(Token, ArenaTokenStream, Span)>,
     /// All branches after the first wildcard, including further wildcards.
     /// These branches are kept for formatting.
-    pub unreachable: Vec<(CfgSelectPredicate, TokenStream, Span)>,
+    pub unreachable: Vec<(CfgSelectPredicate, ArenaTokenStream, Span)>,
 }
 
 impl CfgSelectBranches {
     /// Removes the top-most branch for which `predicate` returns `true`,
     /// or the wildcard if none of the reachable branches satisfied the predicate.
-    pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(CfgEntry, TokenStream, Span)>
+    pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(CfgEntry, ArenaTokenStream, Span)>
     where
         F: Fn(&CfgEntry) -> EvalConfigResult,
     {
@@ -66,8 +66,8 @@ impl CfgSelectBranches {
         self.wildcard.take().map(|(_, tts, span)| (CfgEntry::Bool(true, span), tts, span))
     }
 
-    /// Consume this value and iterate over all the `TokenStream`s that it stores.
-    pub fn into_iter_tts(self) -> impl Iterator<Item = (CfgEntry, TokenStream, Span)> {
+    /// Consume this value and iterate over all the `ArenaTokenStream`s that it stores.
+    pub fn into_iter_tts(self) -> impl Iterator<Item = (CfgEntry, ArenaTokenStream, Span)> {
         let it1 = self.reachable.into_iter();
         let it2 =
             self.wildcard.into_iter().map(|(_, tts, span)| (CfgEntry::Bool(true, span), tts, span));

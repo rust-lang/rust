@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
 use rustc_attr_ir::{self as attrs, CfgEntry, Deprecation, Stability, find_attr};
@@ -270,7 +269,7 @@ impl<'cx> MacroExpanderResult<'cx> {
     /// The `TokenStream` is forwarded without any expansion.
     pub fn from_tts(
         cx: &'cx mut ExtCtxt<'_>,
-        tts: TokenStream,
+        tts: ArenaTokenStream,
         site_span: Span,
         arm_span: Span,
         macro_ident: Ident,

@@ -11,7 +11,7 @@ use rustc_ast::tokenarena::{
     ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedBounds, DelimitedData,
     PerTreeOp,
 };
-use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::{self as ast, AttrStyle, DUMMY_NODE_ID, NodeId, Safety};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::diagnostic::Directive;
@@ -126,7 +126,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
     #[instrument(skip(cx, tts, bindings, matched_rule_bindings))]
     pub(crate) fn from_tts<'cx>(
         cx: &'cx mut ExtCtxt<'a>,
-        tts: TokenStream,
+        tts: ArenaTokenStream,
         site_span: Span,
         arm_span: Span,
         is_local: bool,
@@ -136,7 +136,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         matched_rule_bindings: &'b [MatcherLoc],
     ) -> Self {
         Self {
-            parser: Parser::new(&cx.sess.psess, ArenaTokenStream::from_stream(&tts), None),
+            parser: Parser::new(&cx.sess.psess, tts, None),
 
             // Pass along the original expansion site and the name of the macro
             // so we can print a useful error message if the parse of the expanded
@@ -236,7 +236,7 @@ impl MacroRulesMacroExpander {
         cx: &mut ExtCtxt<'_>,
         sp: Span,
         body: &ArenaTokenStream,
-    ) -> Result<TokenStream, ErrorGuaranteed> {
+    ) -> Result<ArenaTokenStream, ErrorGuaranteed> {
         // This is similar to `expand_macro`, but they have very different signatures, and will
         // diverge further once derives support arguments.
         let name = self.name;
@@ -262,10 +262,7 @@ impl MacroRulesMacroExpander {
                     .map_err(|e| e.emit())?;
 
                 if cx.trace_macros() {
-                    let msg = format!(
-                        "to `{}`",
-                        pprust::tts_to_string(&ArenaTokenStream::from_stream(&tts))
-                    );
+                    let msg = format!("to `{}`", pprust::tts_to_string(&tts));
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
@@ -477,8 +474,7 @@ fn expand_macro<'cx, 'a: 'cx>(
             };
 
             if cx.trace_macros() {
-                let msg =
-                    format!("to `{}`", pprust::tts_to_string(&ArenaTokenStream::from_stream(&tts)));
+                let msg = format!("to `{}`", pprust::tts_to_string(&tts));
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
@@ -571,7 +567,6 @@ fn expand_macro_attr(
             let id = cx.current_expansion.id;
             let tts = transcribe(psess, &named_matches, rhs, *rhs_span, transparency, id)
                 .map_err(|e| e.emit())?;
-            let tts = ArenaTokenStream::from_stream(&tts);
 
             if cx.trace_macros() {
                 let msg = format!("to `{}`", pprust::tts_to_string(&tts));

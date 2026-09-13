@@ -1,6 +1,5 @@
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::tokenarena::ArenaTokenStream;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrKind, Expr, SyntheticAttr, ast};
 use rustc_attr_ir::CfgEntry;
 use rustc_attr_parsing as attr;
@@ -18,7 +17,7 @@ use crate::diagnostics::CfgSelectNoMatches;
 struct CfgSelectResult<'cx, 'sess> {
     ecx: &'cx mut ExtCtxt<'sess>,
     site_span: Span,
-    selected_tts: TokenStream,
+    selected_tts: ArenaTokenStream,
     selected_span: Span,
     other_branches: CfgSelectBranches,
     cfg_entry: CfgEntry,
@@ -27,7 +26,7 @@ struct CfgSelectResult<'cx, 'sess> {
 fn tts_to_mac_result<'cx, 'sess>(
     ecx: &'cx mut ExtCtxt<'sess>,
     site_span: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
     span: Span,
 ) -> Box<dyn MacResult + 'cx> {
     match ExpandResult::from_tts(ecx, tts, site_span, span, Ident::with_dummy_span(sym::cfg_select))
