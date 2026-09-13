@@ -261,7 +261,7 @@ where
         // shard_count of unrelated instantiations still get swept in) for a
         // hard cap on how many extra CGUs a volatile bucket can ever produce.
         let cgu_name = if is_volatile
-        /* && cx.tcx.sess.opts.unstable_opts.fine_grained_generic_cgus */
+        && cx.tcx.sess.opts.unstable_opts.fine_grained_generic_cgus
         {
             fine_grained_cgu_name(cx.tcx, cgu_name, &mono_item)
         } else {
@@ -817,16 +817,19 @@ fn fine_grained_cgu_name<'tcx>(
     // shard count in the same order of magnitude as a normal build's CGU
     // count regardless of what the crate's own `-C codegen-units` says.
     //
-    // Floored at the host's available parallelism (not just
-    // `-C codegen-units`) so the shard count itself doesn't leave cores
-    // idle during codegen: codegen backend work is already parallelized
-    // per-CGU, so on a machine with more cores than the crate's configured
-    // codegen-units, sharding a volatile bucket that low would hand the
-    // backend fewer independent units than it has threads to run them on.
-    let available_parallelism = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-    let shard_count =
-        tcx.sess.opts.cg.codegen_units.unwrap_or(16).max(available_parallelism).clamp(4, 128)
-            as u64;
+    // Deliberately NOT floored at the host's available parallelism: an
+    // earlier version of this did `.max(available_parallelism)`, which on
+    // build hosts with many cores (well above a typical crate's configured
+    // `-C codegen-units`) silently inflated shard_count toward the clamp's
+    // upper bound for every volatile bucket, regardless of how many
+    // instantiations actually landed in it. For buckets with few
+    // instantiations relative to that inflated shard count, this
+    // degenerates toward one CGU per instantiation -- the unbounded
+    // fragmentation regression described above, just reached through the
+    // host's core count instead of an explicit `-C codegen-units` value.
+    // Shard count should depend only on the crate's own codegen-units
+    // setting, not on which machine happens to be compiling it.
+    let shard_count = tcx.sess.opts.cg.codegen_units.unwrap_or(16).clamp(4, 128) as u64;
     let shard = hasher.finish() % shard_count;
     Symbol::intern(&format!("{base}.shard{shard:03}"))
 }
