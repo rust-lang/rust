@@ -111,7 +111,7 @@ impl Expr2024 {
                     _ => {}
                 },
                 ArenaTokenTree::DelimitedStart(bounds, _) => {
-                    self.check_tokens(cx, stream.iter_delimited(bounds))
+                    self.check_tokens(cx, stream.iter_delimited_contents(bounds))
                 }
             }
             prev_colon = false;

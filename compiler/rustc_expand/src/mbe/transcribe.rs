@@ -483,7 +483,7 @@ fn transcribe_pnr<'tx>(
                     && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mvk)) = data.delimiter
                     && mv_kind == mvk
                 {
-                    builder.push_iter(stream.iter_delimited(bounds));
+                    builder.push_iter(stream.iter_delimited_contents(bounds));
                 } else {
                     builder.push_stream(stream);
                 }
@@ -841,7 +841,7 @@ fn maybe_use_metavar_location(
             let dspan = DelimSpan::from_pair(open, close);
             builder.push_delimited(
                 |builder| {
-                    builder.push_iter(orig_stream.iter_delimited(bounds));
+                    builder.push_iter(orig_stream.iter_delimited_contents(bounds));
                 },
                 DelimitedData { span: dspan, spacing: data.spacing, delimiter: data.delimiter },
             );

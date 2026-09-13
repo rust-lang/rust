@@ -1,6 +1,8 @@
+use rustc_ast::NodeId;
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
-use rustc_ast::tokenstream::TokenStreamIter;
-use rustc_ast::{NodeId, tokenstream};
+use rustc_ast::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, ArenaTokenTreeIter,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_feature::Features;
@@ -59,7 +61,7 @@ impl RulePart {
 ///
 /// A collection of `self::TokenTree`. There may also be some errors emitted to `sess`.
 fn parse(
-    input: &tokenstream::TokenStream,
+    mut iter: ArenaTokenTreeIter<'_>,
     part: RulePart,
     sess: &Session,
     node_id: NodeId,
@@ -71,7 +73,6 @@ fn parse(
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
-    let mut iter = input.iter();
     while let Some(tree) = iter.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
@@ -104,7 +105,7 @@ fn parse(
 
         // Not consuming the next token immediately, as it may not be a colon
         if let Some(peek) = iter.peek()
-            && let tokenstream::TokenTree::Token(token, _spacing) = peek
+            && let ArenaTokenTree::Token(token, _spacing) = peek
             && let Token { kind: token::Colon, span: colon_span } = token
         {
             // Next token is a colon; consume it
@@ -112,7 +113,7 @@ fn parse(
 
             // It's ok to consume the next tree no matter how,
             // since if it's not a token then it will be an invalid declaration.
-            let Some(tokenstream::TokenTree::Token(token, _)) = iter.next() else {
+            let Some(ArenaTokenTree::Token(token, _)) = iter.next() else {
                 // Invalid, return a nice source location as `var:`
                 result.push(missing_fragment_specifier(
                     colon_span.with_lo(start_sp.lo()),
@@ -127,7 +128,7 @@ fn parse(
                     && iter.peek().is_some_and(|next| {
                         matches!(
                             next,
-                            tokenstream::TokenTree::Token(next_token, _)
+                            ArenaTokenTree::Token(next_token, _)
                                 if next_token.ident().is_some()
                         )
                     })
@@ -184,16 +185,28 @@ fn parse(
 /// single token tree. Emits errors to `sess` if needed.
 #[inline]
 pub(super) fn parse_one_tt(
-    input: tokenstream::TokenTree,
+    tt: ArenaTokenTree,
+    stream: &ArenaTokenStream,
     part: RulePart,
     sess: &Session,
     node_id: NodeId,
     features: &Features,
     edition: Edition,
 ) -> TokenTree {
-    parse(&tokenstream::TokenStream::new(vec![input]), part, sess, node_id, features, edition)
-        .pop()
-        .unwrap()
+    let mut tokens = match tt {
+        ArenaTokenTree::Token(_, _) => {
+            let mut builder = ArenaTokenStreamBuilder::with_capacity(1);
+            builder.push_token_tree(&tt, stream);
+            let stream = builder.finish();
+            let iter = stream.iter_top_level_trees();
+            parse(iter, part, sess, node_id, features, edition)
+        }
+        ArenaTokenTree::DelimitedStart(bounds, _) => {
+            let iter = stream.iter_delimited(&bounds);
+            parse(iter, part, sess, node_id, features, edition)
+        }
+    };
+    tokens.pop().unwrap()
 }
 
 /// Asks for the `macro_metavar_expr` feature if it is not enabled
@@ -226,25 +239,26 @@ fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Sess
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `features`: language features so we can do feature gating.
 fn parse_tree<'a>(
-    tree: &'a tokenstream::TokenTree,
-    outer_iter: &mut TokenStreamIter<'a>,
+    tree: &'a ArenaTokenTree,
+    outer_iter: &mut ArenaTokenTreeIter<'_>,
     part: RulePart,
     sess: &Session,
     node_id: NodeId,
     features: &Features,
     edition: Edition,
 ) -> TokenTree {
+    let stream = outer_iter.stream().clone();
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span: dollar_span }, _) => {
+        &ArenaTokenTree::Token(Token { kind: token::Dollar, span: dollar_span }, _) => {
             // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_iter.next();
             let mut iter_storage;
-            let iter: &mut TokenStreamIter<'_> = match next {
-                Some(tokenstream::TokenTree::Delimited(.., delim, tts)) if delim.skip() => {
-                    iter_storage = tts.iter();
+            let iter: &mut ArenaTokenTreeIter<'_> = match next {
+                Some(ArenaTokenTree::DelimitedStart(bounds, data)) if data.delimiter.skip() => {
+                    iter_storage = outer_iter.stream().iter_delimited_contents(bounds);
                     next = iter_storage.next();
                     &mut iter_storage
                 }
@@ -253,7 +267,9 @@ fn parse_tree<'a>(
 
             match next {
                 // `tree` is followed by a delimited set of token trees.
-                Some(&tokenstream::TokenTree::Delimited(delim_span, _, delim, ref tts)) => {
+                Some(&ArenaTokenTree::DelimitedStart(bounds, data)) => {
+                    let delim = data.delimiter;
+                    let delim_span = data.span;
                     if part.is_pattern() {
                         if delim != Delimiter::Parenthesis {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
@@ -270,7 +286,11 @@ fn parse_tree<'a>(
                                 // The delimiter is `{`. This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
-                                match MetaVarExpr::parse(tts, delim_span.entire(), &sess.psess) {
+                                match MetaVarExpr::parse(
+                                    outer_iter.stream().iter_delimited_contents(&bounds),
+                                    delim_span.entire(),
+                                    &sess.psess,
+                                ) {
                                     Err(err) => {
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
@@ -309,7 +329,14 @@ fn parse_tree<'a>(
                     // If we didn't find a metavar expression above, then we must have a
                     // repetition sequence in the macro (e.g. `$(pat)*`). Parse the
                     // contents of the sequence itself
-                    let sequence = parse(tts, part, sess, node_id, features, edition);
+                    let sequence = parse(
+                        stream.iter_delimited_contents(&bounds),
+                        part,
+                        sess,
+                        node_id,
+                        features,
+                        edition,
+                    );
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
                         parse_sep_and_kleene_op(iter, delim_span.entire(), sess);
@@ -324,7 +351,7 @@ fn parse_tree<'a>(
 
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
                 // special metavariable that names the crate of the invocation.
-                Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
+                Some(ArenaTokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(dollar_span.lo());
                     if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
@@ -335,7 +362,7 @@ fn parse_tree<'a>(
                 }
 
                 // `tree` is followed by another `$`. This is an escaped `$`.
-                Some(&tokenstream::TokenTree::Token(
+                Some(&ArenaTokenTree::Token(
                     Token { kind: token::Dollar, span: dollar_span2 },
                     _,
                 )) => {
@@ -351,7 +378,7 @@ fn parse_tree<'a>(
                 }
 
                 // `tree` is followed by some other token. This is an error.
-                Some(tokenstream::TokenTree::Token(token, _)) => {
+                Some(ArenaTokenTree::Token(token, _)) => {
                     let msg =
                         format!("expected identifier, found `{}`", pprust::token_to_string(token),);
                     sess.dcx().span_err(token.span, msg);
@@ -364,14 +391,24 @@ fn parse_tree<'a>(
         }
 
         // `tree` is an arbitrary token. Keep it.
-        tokenstream::TokenTree::Token(token, _) => TokenTree::Token(*token),
+        ArenaTokenTree::Token(token, _) => TokenTree::Token(*token),
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
-        &tokenstream::TokenTree::Delimited(span, spacing, delim, ref tts) => TokenTree::Delimited(
-            span,
-            spacing,
-            Delimited { delim, tts: parse(tts, part, sess, node_id, features, edition) },
+        ArenaTokenTree::DelimitedStart(bounds, data) => TokenTree::Delimited(
+            data.span,
+            data.spacing,
+            Delimited {
+                delim: data.delimiter,
+                tts: parse(
+                    outer_iter.stream().iter_delimited_contents(bounds),
+                    part,
+                    sess,
+                    node_id,
+                    features,
+                    edition,
+                ),
+            },
         ),
     }
 }
@@ -393,15 +430,15 @@ fn kleene_op(token: &Token) -> Option<KleeneOp> {
 /// - Ok(Err(tok, span)) if the next token tree is a token but not a KleeneOp
 /// - Err(span) if the next token tree is not a token
 fn parse_kleene_op(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     span: Span,
 ) -> Result<Result<(KleeneOp, Span), Token>, Span> {
     match iter.next() {
-        Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(token) {
+        Some(ArenaTokenTree::Token(token, _)) => match kleene_op(token) {
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(*token)),
         },
-        tree => Err(tree.map_or(span, tokenstream::TokenTree::span)),
+        tree => Err(tree.map_or(span, ArenaTokenTree::span)),
     }
 }
 
@@ -418,7 +455,7 @@ fn parse_kleene_op(
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
 fn parse_sep_and_kleene_op(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     span: Span,
     sess: &Session,
 ) -> (Option<Token>, KleeneToken) {

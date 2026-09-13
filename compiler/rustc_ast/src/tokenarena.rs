@@ -50,7 +50,10 @@ impl ArenaTokenTree {
         match self {
             ArenaTokenTree::Token(token, spacing) => TokenTree::Token(*token, *spacing),
             ArenaTokenTree::DelimitedStart(bounds, data) => {
-                let tts = arena.iter_delimited(bounds).map(|tt| tt.to_token_tree(arena)).collect();
+                let tts = arena
+                    .iter_delimited_contents(bounds)
+                    .map(|tt| tt.to_token_tree(arena))
+                    .collect();
                 TokenTree::Delimited(data.span, data.spacing, data.delimiter, TokenStream::new(tts))
             }
         }
@@ -119,7 +122,7 @@ impl ArenaTokenStreamBuilder {
             ArenaTokenTree::DelimitedStart(bounds, data) => {
                 self.push_delimited(
                     |builder| {
-                        builder.fill_stream(stream.iter_delimited(bounds));
+                        builder.fill_stream(stream.iter_delimited_contents(bounds));
                     },
                     *data,
                 );
@@ -242,7 +245,7 @@ impl ArenaTokenStreamBuilder {
                 ArenaTokenTree::DelimitedStart(bounds, data) => {
                     builder.push_delimited(
                         |builder| {
-                            fill_iter(builder, func, stream.iter_delimited(bounds));
+                            fill_iter(builder, func, stream.iter_delimited_contents(bounds));
                         },
                         *data,
                     );
@@ -503,6 +506,12 @@ impl ArenaTokenStream {
 
     /// Iterate top-level token trees of a delimited token sequence.
     /// Does not return the delimited sequence start itself.
+    pub fn iter_delimited_contents(&self, bounds: &DelimitedBounds) -> ArenaTokenTreeIter<'_> {
+        ArenaTokenTreeIter::new_delimited_contents(self, bounds)
+    }
+
+    /// Iterate over the delimited token sequence.
+    /// Return the delimited sequence start itself.
     pub fn iter_delimited(&self, bounds: &DelimitedBounds) -> ArenaTokenTreeIter<'_> {
         ArenaTokenTreeIter::new_delimited(self, bounds)
     }
@@ -636,7 +645,13 @@ impl<'a> ArenaTokenTreeIter<'a> {
     }
 
     fn new_delimited(stream: &'a ArenaTokenStream, bounds: &DelimitedBounds) -> Self {
-        let index = (bounds.start + 1) as usize;
+        let index = bounds.start();
+        let end = bounds.index_of_next_token_tree();
+        Self { index, end, stream }
+    }
+
+    fn new_delimited_contents(stream: &'a ArenaTokenStream, bounds: &DelimitedBounds) -> Self {
+        let index = bounds.start() + 1;
         let end = bounds.index_of_next_token_tree();
         Self { index, end, stream }
     }
@@ -649,7 +664,10 @@ impl<'a> ArenaTokenTreeIter<'a> {
     // and this is simple and avoids the need to use `peekable` and `Peekable`
     // at all the use sites.
     pub fn peek(&self) -> Option<&'a ArenaTokenTree> {
-        self.stream.tokens.get(self.index)
+        if self.index >= self.end {
+            return None;
+        }
+        self.stream.get_innermost_elem_at(self.index)
     }
 
     /// Returns true if the iterator has exactly single tree in it.

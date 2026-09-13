@@ -827,7 +827,8 @@ pub fn compile_declarative_macro(
             let args = tt.to_delimited_data();
             check_args_parens(sess, sym::attr, args);
             let args = parse_one_tt(
-                tt.to_token_tree(p.token_stream()),
+                tt,
+                p.token_stream(),
                 RulePart::Pattern,
                 sess,
                 node_id,
@@ -882,8 +883,16 @@ pub fn compile_declarative_macro(
             }
             (None, false)
         };
-        let lhs_tt = p.parse_token_tree().to_token_tree(p.token_stream());
-        let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
+        let lhs_tt = p.parse_token_tree();
+        let lhs_tt = parse_one_tt(
+            lhs_tt,
+            p.token_stream(),
+            RulePart::Pattern,
+            sess,
+            node_id,
+            features,
+            edition,
+        );
         check_emission(check_lhs(sess, features, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit());
@@ -891,8 +900,9 @@ pub fn compile_declarative_macro(
         if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
-        let rhs = p.parse_token_tree().to_token_tree(p.token_stream());
-        let rhs = parse_one_tt(rhs, RulePart::Body, sess, node_id, features, edition);
+        let rhs = p.parse_token_tree();
+        let rhs =
+            parse_one_tt(rhs, p.token_stream(), RulePart::Body, sess, node_id, features, edition);
         check_emission(check_rhs(sess, &rhs));
         check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs));
         let lhs_span = lhs_tt.span();

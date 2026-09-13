@@ -125,7 +125,7 @@ impl FromInternal<ArenaTokenStream> for Vec<TokenTree<ArenaTokenStream, Span, Sy
                     // ignore the `MetaVarKind` because it is discarded when we
                     // convert it to a `Group`.
                     while let tk::Delimiter::Invisible(tk::InvisibleOrigin::MetaVar(_)) = delim {
-                        let mut iter = stream.iter_delimited(&bounds);
+                        let mut iter = stream.iter_delimited_contents(&bounds);
                         let tree = iter.next();
                         let Some(ArenaTokenTree::DelimitedStart(bounds2, data2)) = tree else {
                             break;

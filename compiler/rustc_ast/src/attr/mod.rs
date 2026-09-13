@@ -591,7 +591,9 @@ impl MetaItemKind {
             Some(ArenaTokenTree::DelimitedStart(
                 bounds,
                 DelimitedData { delimiter: Delimiter::Invisible(_), .. },
-            )) => MetaItemKind::name_value_from_tokens(&mut iter.stream().iter_delimited(bounds)),
+            )) => MetaItemKind::name_value_from_tokens(
+                &mut iter.stream().iter_delimited_contents(bounds),
+            ),
             Some(ArenaTokenTree::Token(token, _)) => {
                 MetaItemLit::from_token(token).map(MetaItemKind::NameValue)
             }
@@ -750,7 +752,9 @@ impl MetaItemInner {
             }
             Some(ArenaTokenTree::DelimitedStart(bounds, _)) => {
                 iter.next();
-                return MetaItemInner::from_tokens(&mut iter.stream().iter_delimited(bounds));
+                return MetaItemInner::from_tokens(
+                    &mut iter.stream().iter_delimited_contents(bounds),
+                );
             }
             _ => {}
         }
