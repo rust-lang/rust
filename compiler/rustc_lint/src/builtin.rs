@@ -1770,7 +1770,7 @@ impl KeywordIdents {
                     }
                 }
                 ArenaTokenTree::DelimitedStart(bounds, ..) => {
-                    self.check_tokens(cx, stream.iter_delimited(bounds))
+                    self.check_tokens(cx, stream.iter_delimited_contents(bounds))
                 }
             }
             prev_dollar = false;
