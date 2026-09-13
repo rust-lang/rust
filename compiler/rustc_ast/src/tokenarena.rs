@@ -121,6 +121,7 @@ impl ArenaTokenStreamBuilder {
     }
 
     pub fn pop(&mut self) -> Option<ArenaTokenTree> {
+        // Note: calling this function is fine even if we are within a delimited sequence.
         let tree = self.tokens.pop();
         if let Some(tree) = &tree {
             assert!(matches!(tree, ArenaTokenTree::Token(..)));
@@ -394,12 +395,6 @@ impl ArenaTokenStream {
             builder.push_token_tree_arena(tree, stream);
         }
         builder.finish()
-    }
-
-    pub fn from_stream(stream: &TokenStream) -> Self {
-        let mut arena = ArenaTokenStreamBuilder::with_capacity(stream.len());
-        arena.fill(stream);
-        arena.finish()
     }
 
     pub fn from_ast(node: &(impl HasTokens + fmt::Debug)) -> Self {
