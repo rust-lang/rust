@@ -840,10 +840,10 @@ pub fn mk_attr_nested_word(
     inner: Symbol,
     span: Span,
 ) -> Attribute {
-    let inner_tokens = ArenaTokenStream::from_token(
+    let inner_tokens = ArenaTokenStream::from_token_iter(std::iter::once((
         Token::from_ast_ident(Ident::new(inner, span)),
         Spacing::Alone,
-    );
+    )));
     let outer_ident = Ident::new(outer, span);
     let path = Path::from_ident(outer_ident);
     let attr_args = AttrArgs::Delimited(DelimArgs {
