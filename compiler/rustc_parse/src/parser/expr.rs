@@ -681,59 +681,35 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_dot_or_call_with(
         &mut self,
         mut attrs: ast::AttrVec,
-        mut e: Box<Expr>,
+        mut expr: Box<Expr>,
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
-        let mut res = loop {
-            let has_question = if self.prev_token.is_keyword(kw::Return) {
-                // We are using noexpect here because we don't expect a `?` directly after
-                // a `return` which could be suggested otherwise.
-                self.eat_noexpect(&token::Question)
+        loop {
+            expr = if self.eat(exp!(Question)) {
+                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(expr))
+            } else if self.eat(exp!(Dot)) {
+                self.parse_dot_suffix_expr(lo, expr)?
+            } else if let Some(expr) = self.recover_from_c_arrow_op(lo, &mut expr) {
+                expr?
+            } else if self.expr_is_complete(&expr) {
+                break;
+            } else if self.token == token::OpenParen {
+                self.parse_expr_fn_call(lo, expr)
+            } else if self.token == token::OpenBracket {
+                self.parse_expr_index(lo, expr)?
             } else {
-                self.eat(exp!(Question))
+                break;
             };
-            if has_question {
-                // `expr?`
-                e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
-                continue;
-            }
-            let has_dot = if self.prev_token.is_keyword(kw::Return) {
-                // We are using noexpect here because we don't expect a `.` directly after
-                // a `return` which could be suggested otherwise.
-                self.eat_noexpect(&token::Dot)
-            } else if self.token == TokenKind::RArrow && self.may_recover() {
-                // Recovery for `expr->suffix`.
-                self.bump();
-                let span = self.prev_token.span;
-                self.dcx().emit_err(crate::diagnostics::ExprRArrowCall { span });
-                true
-            } else {
-                self.eat(exp!(Dot))
-            };
-            if has_dot {
-                // expr.f
-                e = self.parse_dot_suffix_expr(lo, e)?;
-                continue;
-            }
-            if self.expr_is_complete(&e) {
-                break Ok(e);
-            }
-            e = match self.token.kind {
-                token::OpenParen => self.parse_expr_fn_call(lo, e),
-                token::OpenBracket => self.parse_expr_index(lo, e)?,
-                _ => break Ok(e),
-            }
-        };
+        }
 
         // Stitch the list of outer attributes onto the return value. A little
         // bit ugly, but the best way given the current code structure.
-        if !attrs.is_empty()
-            && let Ok(expr) = &mut res
-        {
+        if !attrs.is_empty() {
             mem::swap(&mut expr.attrs, &mut attrs);
             expr.attrs.extend(attrs)
         }
-        res
+
+        Ok(expr)
     }
 
     pub(super) fn parse_dot_suffix_expr(
