@@ -4,8 +4,10 @@ error: lifetime may not live long enough
 LL |     impl<'a> Path<'a> {
    |          -- lifetime `'a` defined here
 ...
-LL |         pub fn sub(&mut self) -> Path/*<'_>*/ {
-   |                    - let's call the lifetime of this reference `'1`
+LL |         pub fn sub(&mut self) -> Path {
+   |                    -             ---- this returned type has an implicit lifetime `'1`
+   |                    |
+   |                    let's call the lifetime of this reference `'1`
 ...
 LL |             Self {
    |             ---- requires lifetime `'a` from the `impl`
@@ -18,16 +20,22 @@ help: consider using the type's name directly instead, to avoid conflicting life
 LL -             Self {
 LL +             Path {
    |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn sub(&mut self) -> Path<'_> {
+   |                                      ++++
 
 error: lifetime may not live long enough
-  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:31:25
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:33:25
    |
 LL |     impl<'a> Path<'a> {
    |          -- lifetime `'a` defined here
 ...
-LL |         pub fn sup(&mut self) -> Path/*<'_>*/ {
-   |                    - let's call the lifetime of this reference `'1`
-LL |
+LL |         pub fn sup(&mut self) -> Path {
+   |                    -             ---- this returned type has an implicit lifetime `'1`
+   |                    |
+   |                    let's call the lifetime of this reference `'1`
+...
 LL |             let x = Self {
    |                     ---- requires lifetime `'a` from the `impl`
 ...
@@ -39,14 +47,96 @@ help: consider using the type's name directly instead, to avoid conflicting life
 LL -             let x = Self {
 LL +             let x = Path {
    |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn sup(&mut self) -> Path<'_> {
+   |                                      ++++
 
 error: lifetime may not live long enough
-  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:39:20
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:43:20
    |
 LL |     impl<'a> Path<'a> {
    |          -- lifetime `'a` defined here
 ...
-LL |         pub fn soup(&mut self) -> Path/*<'_>*/ {
+LL |         pub fn soup(&mut self) -> Path {
+   |                     -             ---- this returned type has an implicit lifetime `'1`
+   |                     |
+   |                     let's call the lifetime of this reference `'1`
+...
+LL |             let x: Self = Path {
+   |                    ^^^^ type annotation requires that `'1` must outlive `'a`
+   |
+help: consider using the type directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -             let x: Self = Path {
+LL +             let x: Path<'_> = Path {
+   |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn soup(&mut self) -> Path<'_> {
+   |                                       ++++
+
+error: lifetime may not live long enough
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:71:25
+   |
+LL |     impl<'a> Path<'a, String> {
+   |          -- lifetime `'a` defined here
+...
+LL |         pub fn sub(&mut self) -> Path<String> {
+   |                    -                  - there is an implicit lifetime `'1` in this parameter list
+   |                    |
+   |                    let's call the lifetime of this reference `'1`
+...
+LL |             Self {
+   |             ---- requires lifetime `'a` from the `impl`
+...
+LL |                 string: self.string,
+   |                         ^^^^^^^^^^^ this usage requires that `'1` must outlive `'a`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -             Self {
+LL +             Path {
+   |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn sub(&mut self) -> Path<'_, String> {
+   |                                       +++
+
+error: lifetime may not live long enough
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:83:25
+   |
+LL |     impl<'a> Path<'a, String> {
+   |          -- lifetime `'a` defined here
+...
+LL |         pub fn sup(&mut self) -> Path<> {
+   |                    -                  - there is an implicit lifetime `'1` in this empty parameter list
+   |                    |
+   |                    let's call the lifetime of this reference `'1`
+...
+LL |             let x = Self {
+   |                     ---- requires lifetime `'a` from the `impl`
+...
+LL |                 string: self.string,
+   |                         ^^^^^^^^^^^ this usage requires that `'1` must outlive `'a`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -             let x = Self {
+LL +             let x = Path {
+   |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn sup(&mut self) -> Path<'_> {
+   |                                       ++
+
+error: lifetime may not live long enough
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:91:20
+   |
+LL |     impl<'a> Path<'a, String> {
+   |          -- lifetime `'a` defined here
+...
+LL |         pub fn soup(&mut self) -> Path<'_> {
    |                     - let's call the lifetime of this reference `'1`
 LL |
 LL |             let x: Self = Path {
@@ -59,14 +149,38 @@ LL +             let x: Path<'_> = Path {
    |
 
 error: lifetime may not live long enough
-  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:62:17
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:104:25
+   |
+LL |     impl<'a> Path<'a, String> {
+   |          -- lifetime `'a` defined here
+...
+LL |         pub fn sap<'b>(&'b mut self) -> Path<'b> {
+   |                    -- lifetime `'b` defined here
+LL |
+LL |             Self {
+   |             ---- requires lifetime `'a` from the `impl`
+...
+LL |                 string: self.string,
+   |                         ^^^^^^^^^^^ this usage requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -             Self {
+LL +             Path {
+   |
+
+error: lifetime may not live long enough
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:127:17
    |
 LL |     impl<'a> Path<'a> {
    |          -- lifetime `'a` defined here
 ...
-LL |         pub fn sub(&mut self) -> Path/*<'_>*/ {
-   |                    - let's call the lifetime of this reference `'1`
-LL |
+LL |         pub fn sub(&mut self) -> Path {
+   |                    -             ---- this returned type has an implicit lifetime `'1`
+   |                    |
+   |                    let's call the lifetime of this reference `'1`
+...
 LL |             Self(
    |             ---- requires lifetime `'a` from the `impl`
 ...
@@ -78,16 +192,22 @@ help: consider using the type's name directly instead, to avoid conflicting life
 LL -             Self(
 LL +             Path(
    |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn sub(&mut self) -> Path<'_> {
+   |                                      ++++
 
 error: lifetime may not live long enough
-  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:72:17
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:139:17
    |
 LL |     impl<'a> Path<'a> {
    |          -- lifetime `'a` defined here
 ...
-LL |         pub fn sup(&mut self) -> Path/*<'_>*/ {
-   |                    - let's call the lifetime of this reference `'1`
-LL |
+LL |         pub fn sup(&mut self) -> Path {
+   |                    -             ---- this returned type has an implicit lifetime `'1`
+   |                    |
+   |                    let's call the lifetime of this reference `'1`
+...
 LL |             let x = Self(
    |                     ---- requires lifetime `'a` from the `impl`
 ...
@@ -99,16 +219,22 @@ help: consider using the type's name directly instead, to avoid conflicting life
 LL -             let x = Self(
 LL +             let x = Path(
    |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn sup(&mut self) -> Path<'_> {
+   |                                      ++++
 
 error: lifetime may not live long enough
-  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:80:20
+  --> $DIR/conflicting-lifetime-bounds-from-impl-in-self-literal.rs:149:20
    |
 LL |     impl<'a> Path<'a> {
    |          -- lifetime `'a` defined here
 ...
-LL |         pub fn soup(&mut self) -> Path/*<'_>*/ {
-   |                     - let's call the lifetime of this reference `'1`
-LL |
+LL |         pub fn soup(&mut self) -> Path {
+   |                     -             ---- this returned type has an implicit lifetime `'1`
+   |                     |
+   |                     let's call the lifetime of this reference `'1`
+...
 LL |             let x: Self = Path(
    |                    ^^^^ type annotation requires that `'1` must outlive `'a`
    |
@@ -117,6 +243,10 @@ help: consider using the type directly instead, to avoid conflicting lifetime bo
 LL -             let x: Self = Path(
 LL +             let x: Path<'_> = Path(
    |
+help: consider making explicit the implicit `'1` lifetime in the return type
+   |
+LL |         pub fn soup(&mut self) -> Path<'_> {
+   |                                       ++++
 
-error: aborting due to 6 previous errors
+error: aborting due to 10 previous errors
 
