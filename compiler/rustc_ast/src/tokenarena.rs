@@ -331,6 +331,7 @@ impl ArenaTokenStreamBuilder {
     }
 
     pub fn finish(self) -> ArenaTokenStream {
+        assert!(self.current_delimited_sequence.is_none());
         ArenaTokenStream { tokens: Arc::new(self.tokens) }
     }
 
@@ -679,6 +680,7 @@ impl<'a> Iterator for ArenaTokenTreeIter<'a> {
     }
 }
 
+#[must_use]
 pub struct OpenDelimited {
     start: usize,
 }
