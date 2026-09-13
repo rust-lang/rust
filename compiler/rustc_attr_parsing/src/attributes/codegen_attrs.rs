@@ -1,4 +1,3 @@
-use rustc_ast::{AssocItemKind, ItemKind};
 use rustc_attr_ir::{
     CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, UsedBy, find_attr,
 };
@@ -337,42 +336,24 @@ impl AttributeParser for NakedParser {
                 | Target::Method(
                     MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
                 ) => {
-                    let fn_sig = match cx.ast_target_item {
-                        Some(rustc_ast::ast::AstItemKind::Item(ast_item)) => {
-                            let ItemKind::Fn(fn_item) = &ast_item.kind else {
-                                panic!("expected struct AST target item for {:?}", ast_item);
-                            };
-                            &fn_item.sig
-                        }
-                        Some(rustc_ast::ast::AstItemKind::AssocItem(assoc_item)) => {
-                            let AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
-                                panic!(
-                                    "expected struct AST target associated item for {:?}",
-                                    assoc_item
-                                );
-                            };
-                            &fn_item.sig
-                        }
-                        _ => panic!("expected enum AST target kind for {:?}", cx.ast_target_item),
+                    let Some(ast_target) = cx.ast_target else {
+                        panic!("missing AST target for {:?}", cx.target);
                     };
 
-                    let abi = fn_sig.header.ext;
+                    let fn_sig =
+                        ast_target.get_fn_sig().expect("missing fn signature for AST target");
+                    let Some(abi) = ast_target.get_abi() else {
+                        return;
+                    };
 
                     if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
-                        let abi_type = match abi {
-                            rustc_ast::ast::Extern::None => "Rust".into(),
-                            rustc_ast::ast::Extern::Explicit(name, _) => {
-                                name.symbol_unescaped.to_string()
-                            }
-                            rustc_ast::ast::Extern::Implicit(_) => unreachable!(),
-                        };
                         feature_err(
                             cx.sess(),
                             sym::naked_functions_rustic_abi,
                             fn_sig.span,
                             format!(
                                 "`#[naked]` is currently unstable on `extern \"{}\"` functions",
-                                abi_type
+                                abi.as_str()
                             ),
                         )
                         .emit();

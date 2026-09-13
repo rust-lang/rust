@@ -836,7 +836,7 @@ pub(crate) struct FinalizeCheckContext<'p, 'sess> {
     pub(crate) parsed_attrs: &'p [Attribute],
 
     /// The AST item these attributes were applied to.
-    pub(crate) ast_target_item: Option<rustc_ast::ast::AstItemKind<'p>>,
+    pub(crate) ast_target: Option<rustc_attr_ir::target::AstTarget<'p>>,
 }
 
 impl<'p, 'sess: 'p> Deref for FinalizeCheckContext<'p, 'sess> {
