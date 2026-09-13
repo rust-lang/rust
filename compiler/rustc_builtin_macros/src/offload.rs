@@ -152,10 +152,10 @@ pub(crate) fn expand_kernel(
     let never_arg = ast::DelimArgs {
         dspan: DelimSpan::from_single(span),
         delim: Delimiter::Parenthesis,
-        tokens: ArenaTokenStream::from_token(
+        tokens: ArenaTokenStream::from_token_iter(std::iter::once((
             Token::new(TokenKind::Ident(sym::never, false.into()), span),
             Spacing::Joint,
-        ),
+        ))),
     };
 
     let inline_item = ast::AttrItem {

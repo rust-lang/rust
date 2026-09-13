@@ -783,7 +783,7 @@ impl<'a> TraitDef<'a> {
                         args: AttrArgs::Delimited(DelimArgs {
                             dspan: DelimSpan::from_single(self.span),
                             delim: rustc_ast::token::Delimiter::Parenthesis,
-                            tokens: ArenaTokenStream::from_token_vec(
+                            tokens: ArenaTokenStream::from_token_iter(
                                 [
                                     TokenKind::Ident(sym::feature, IdentIsRaw::No),
                                     TokenKind::Eq,
@@ -794,8 +794,7 @@ impl<'a> TraitDef<'a> {
                                     TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
                                 ]
                                 .into_iter()
-                                .map(|kind| (Token { kind, span: self.span }, Spacing::Alone))
-                                .collect(),
+                                .map(|kind| (Token { kind, span: self.span }, Spacing::Alone)),
                             ),
                         }),
                         span: self.span,

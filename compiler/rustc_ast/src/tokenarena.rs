@@ -298,7 +298,10 @@ impl ArenaTokenStream {
     /// if `tokens` contains any delimited sequences, their indices are lined up and do not refer
     /// to anything existing outside of the passed set of tokens.
     /// That is why the function is private.
-    pub fn from_token_vec(tokens: Vec<(Token, Spacing)>) -> Self {
+    pub fn from_token_iter<I>(tokens: I) -> Self
+    where
+        I: IntoIterator<Item = (Token, Spacing)>,
+    {
         // FIXME: solve this in a better way
         Self {
             tokens: Arc::new(
@@ -322,10 +325,6 @@ impl ArenaTokenStream {
             builder.push_token_tree(&tree);
         }
         builder.finish()
-    }
-
-    pub fn from_token(token: Token, spacing: Spacing) -> Self {
-        Self { tokens: Arc::new(vec![ArenaTokenTree::Token(token, spacing)]) }
     }
 
     pub fn from_stream(stream: &TokenStream) -> Self {

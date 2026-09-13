@@ -182,9 +182,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 args: Box::new(DelimArgs {
                     dspan: DelimSpan::from_single(self.span),
                     delim: Delimiter::Parenthesis,
-                    tokens: ArenaTokenStream::from_token_vec(
-                        initial.into_iter().chain(captures).collect(),
-                    ),
+                    tokens: ArenaTokenStream::from_token_iter(initial.into_iter().chain(captures)),
                 }),
             })),
         )

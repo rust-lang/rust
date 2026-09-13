@@ -345,10 +345,10 @@ mod llvm_enzyme {
         let never_arg = ast::DelimArgs {
             dspan: DelimSpan::from_single(span),
             delim: ast::token::Delimiter::Parenthesis,
-            tokens: ArenaTokenStream::from_token(
+            tokens: ArenaTokenStream::from_token_iter(std::iter::once((
                 Token::new(TokenKind::Ident(sym::never, false.into()), span),
                 Spacing::Joint,
-            ),
+            ))),
         };
         let inline_item = ast::AttrItem {
             unsafety: ast::Safety::Default,
@@ -419,7 +419,7 @@ mod llvm_enzyme {
         rustc_ad_attr.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
             dspan: DelimSpan::dummy(),
             delim: rustc_ast::token::Delimiter::Parenthesis,
-            tokens: ArenaTokenStream::from_token_vec(ts),
+            tokens: ArenaTokenStream::from_token_iter(ts),
         });
 
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
