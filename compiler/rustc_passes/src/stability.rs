@@ -690,7 +690,7 @@ impl<'tcx> Checker<'tcx> {
     fn emit_ineffective_unstable_reexports(&self) {
         // an unstable module already makes its re-exports unstable
         // keep the explicit annotation without linting it as ineffective
-        if self.containing_module_is_unstable() {
+        if self.unstable_reexports.is_empty() || self.containing_module_is_unstable() {
             return;
         }
 
