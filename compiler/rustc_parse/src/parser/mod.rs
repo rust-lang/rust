@@ -125,6 +125,8 @@ bitflags::bitflags! {
         /// expression, but halts parsing the expression when reaching certain
         /// tokens like `=`.
         const IS_PAT            = 1 << 5;
+        /// Used to detect missing turbofish `path < 'a >` inside the RHS of `<`.
+        const IS_RHS_OF_LT_AFTER_PATH = 1 << 6;
     }
 }
 

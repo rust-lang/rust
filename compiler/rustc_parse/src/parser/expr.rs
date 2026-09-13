@@ -274,9 +274,13 @@ impl<'a> Parser<'a> {
                 Fixity::Right => Bound::Included(prec),
                 Fixity::Left | Fixity::None => Bound::Excluded(prec),
             };
-            let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc(min_prec)
-            })?;
+            let mut rhs_restrictions = restrictions - Restrictions::STMT_EXPR;
+            if matches!(op, AssocOp::Binary(BinOpKind::Lt))
+                && matches!(lhs.kind, ExprKind::Path(..))
+            {
+                rhs_restrictions |= Restrictions::IS_RHS_OF_LT_AFTER_PATH;
+            }
+            let rhs = self.with_res(rhs_restrictions, |this| this.parse_expr_assoc(min_prec))?;
 
             let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
             lhs = match op {
@@ -1518,7 +1522,10 @@ impl<'a> Parser<'a> {
                 }
             } else if this.eat_keyword(exp!(While)) {
                 this.parse_expr_while(None, lo)
-            } else if let Some(label) = this.eat_label() {
+            } else if let (Some(label), err) = this.eat_label() {
+                if let Some(e) = err {
+                    e.emit();
+                }
                 this.parse_expr_labeled(label, true)
             } else if this.eat_keyword(exp!(Loop)) {
                 this.parse_expr_loop(None, lo).map_err(|mut err| {
@@ -1909,7 +1916,10 @@ impl<'a> Parser<'a> {
     /// with a labeled loop does not even get a warning because there is no ambiguity.
     fn parse_expr_break(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.prev_token.span;
-        let mut label = self.eat_label();
+        let (mut label, err) = self.eat_label();
+        if let Some(e) = err {
+            e.emit();
+        }
         let kind = if self.token == token::Colon
             && let Some(label) = label.take()
         {
@@ -1976,7 +1986,10 @@ impl<'a> Parser<'a> {
 
     /// Parse `"continue" label?`.
     fn parse_expr_continue(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
-        let mut label = self.eat_label();
+        let (mut label, err) = self.eat_label();
+        if let Some(e) = err {
+            e.emit();
+        }
 
         // Recover `continue label` -> `continue 'label`
         if self.may_recover()
@@ -3162,17 +3175,18 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    pub(crate) fn eat_label(&mut self) -> Option<Label> {
+    pub(crate) fn eat_label(&mut self) -> (Option<Label>, Option<Diag<'a>>) {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
-                self.dcx().emit_err(diagnostics::KeywordLabel { span: ident.span });
-            }
-
+            let err = if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
+                Some(self.dcx().create_err(diagnostics::KeywordLabel { span: ident.span }))
+            } else {
+                None
+            };
             self.bump();
-            Some(Label { ident })
+            (Some(Label { ident }), err)
         } else {
-            None
+            (None, None)
         }
     }
 
