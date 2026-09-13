@@ -1452,9 +1452,7 @@ impl<'a> Parser<'a> {
             if self.token.kind.is_close_delim_or_eof() {
                 break;
             } else {
-                builder.push_token_tree(
-                    &self.parse_token_tree().to_token_tree(&self.token_cursor.stream),
-                );
+                builder.push_token_tree_arena(&self.parse_token_tree(), &self.token_cursor.stream);
             }
         }
         builder.finish()

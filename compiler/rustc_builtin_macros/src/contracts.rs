@@ -64,7 +64,7 @@ fn expand_contract_clause(
     // Find the `fn` keyword to check if this is a function.
     if cursor
         .find(|tt| {
-            builder.push_token_tree(&tt.to_token_tree(&annotated));
+            builder.push_token_tree_arena(tt, &annotated);
             is_kw(tt, kw::Fn)
         })
         .is_none()
@@ -110,7 +110,7 @@ fn expand_contract_clause(
         if is_kw(tt, kw::Where) {
             break tt;
         }
-        builder.push_token_tree(&tt.to_token_tree(&annotated));
+        builder.push_token_tree_arena(tt, &annotated);
     };
 
     // At this point, we've transcribed everything from the `fn` through the formal parameter list
@@ -122,9 +122,9 @@ fn expand_contract_clause(
 
     // Above we injected the internal AST requires/ensures construct. Now copy over all the other
     // token trees.
-    builder.push_token_tree(&next_tt.to_token_tree(&annotated));
+    builder.push_token_tree_arena(next_tt, &annotated);
     while let Some(tt) = cursor.next() {
-        builder.push_token_tree(&tt.to_token_tree(&annotated));
+        builder.push_token_tree_arena(tt, &annotated);
         if cursor.peek().is_none()
             && !matches!(
                 tt,
