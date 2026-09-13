@@ -487,10 +487,10 @@ impl AttrTokenStream {
                     builder.push_token(inner.clone(), *spacing);
                 }
                 AttrTokenTree::Delimited(span, spacing, delim, stream) => {
-                    let start = builder.start_delimited();
-                    stream.push_token_trees(builder);
-                    builder.close_delimited(
-                        start,
+                    builder.push_delimited(
+                        |builder| {
+                            stream.push_token_trees(builder);
+                        },
                         DelimitedData { span: *span, spacing: *spacing, delimiter: *delim },
                     );
                 }

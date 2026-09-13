@@ -117,9 +117,12 @@ impl ArenaTokenStreamBuilder {
                 self.tokens.push(*token);
             }
             ArenaTokenTree::DelimitedStart(bounds, data) => {
-                let start = self.start_delimited();
-                self.fill_stream(stream.iter_delimited(bounds));
-                self.close_delimited(start, *data);
+                self.push_delimited(
+                    |builder| {
+                        builder.fill_stream(stream.iter_delimited(bounds));
+                    },
+                    *data,
+                );
             }
         }
     }
@@ -167,6 +170,16 @@ impl ArenaTokenStreamBuilder {
         }
     }
 
+    pub fn push_delimited<F, R>(&mut self, func: F, data: DelimitedData) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        let start = self.start_delimited();
+        let ret = func(self);
+        self.close_delimited(start, data);
+        ret
+    }
+
     pub fn start_delimited(&mut self) -> OpenDelimited {
         let index = self.length();
         let parent = self.current_delimited_sequence.replace(index);
@@ -186,7 +199,7 @@ impl ArenaTokenStreamBuilder {
         let length = self.length();
         match &mut self.tokens[open.start] {
             ArenaTokenTree::Token(..) => {
-                unreachable!("Called finish_delimited on a token");
+                unreachable!("Called close_delimited on a token");
             }
             ArenaTokenTree::DelimitedStart(bounds, data) => {
                 let len = length.saturating_sub(open.start);
@@ -200,9 +213,8 @@ impl ArenaTokenStreamBuilder {
         }
     }
 
-    pub fn empty_delimited(&mut self, delimited_data: DelimitedData) {
-        let start = self.start_delimited();
-        self.close_delimited(start, delimited_data);
+    pub fn empty_delimited(&mut self, data: DelimitedData) {
+        self.push_delimited(|_builder| {}, data);
     }
 
     /// Copy `stream` into this builder, while possibly adding additional tokens or skipping
@@ -228,9 +240,12 @@ impl ArenaTokenStreamBuilder {
                     builder.push_token(*token, *spacing);
                 }
                 ArenaTokenTree::DelimitedStart(bounds, data) => {
-                    let start = builder.start_delimited();
-                    fill_iter(builder, func, stream.iter_delimited(bounds));
-                    builder.close_delimited(start, *data);
+                    builder.push_delimited(
+                        |builder| {
+                            fill_iter(builder, func, stream.iter_delimited(bounds));
+                        },
+                        *data,
+                    );
                 }
             }
         }
