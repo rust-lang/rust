@@ -845,7 +845,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                         // an LLVM aggregate type for this leads to bad optimizations,
                         // so we pick an appropriately sized integer type instead.
                         arg.cast_to_maybe_noundef(Reg { kind: RegKind::Integer, size }, cx);
-                    } else if self.conv == CanonAbi::RustTail {
+                    } else if self.conv == CanonAbi::RustTail && arg_idx.is_some() {
                         assert!(arg.layout.is_sized(), "extern \"tail\" arguments must be sized");
                         arg.pass_by_stack_offset(None);
                     }
