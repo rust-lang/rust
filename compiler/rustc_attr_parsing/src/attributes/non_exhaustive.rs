@@ -1,4 +1,4 @@
-use rustc_ast::{AstItemKind, ItemKind, VariantData};
+use rustc_ast::{ItemKind, VariantData};
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
@@ -26,9 +26,9 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
             return;
         }
 
-        let item = cx.ast_target_item.expect("missing AST target item for Target::Struct");
+        let item = cx.ast_target.expect("missing AST target item for Target::Struct");
         match item {
-            AstItemKind::Item(ast_item) => {
+            rustc_attr_ir::target::AstTarget::Item(ast_item) => {
                 let ItemKind::Struct(_, _, data) = &ast_item.kind else {
                     panic!("expected struct AST target item for Target::Struct");
                 };

@@ -2,9 +2,18 @@
 
 use std::fmt::{self, Display};
 
+use rustc_abi::ExternAbi;
 pub use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{AssocItemKind, ForeignItemKind, ast};
+use rustc_ast::{AssocItemKind, ForeignItemKind, Item, ast};
 use rustc_macros::StableHash;
+
+// This enum lists all possible types of AST items.
+// FIXME: Currently, this enum only lists `Item` and `AssocItem`, but in the future, be exhaustive.
+#[derive(Clone, Copy, Debug)]
+pub enum AstTarget<'a> {
+    Item(&'a Item),
+    AssocItem(&'a Item<AssocItemKind>),
+}
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum MethodKind {
@@ -63,6 +72,48 @@ pub enum Target {
     While,
     Loop,
     Break,
+}
+
+impl AstTarget<'_> {
+    pub fn get_abi(&self) -> Option<ExternAbi> {
+        let ext = match self {
+            AstTarget::Item(item) => {
+                let ast::ItemKind::Fn(fn_item) = &item.kind else {
+                    return None;
+                };
+                fn_item.sig.header.ext
+            }
+            AstTarget::AssocItem(assoc_item) => {
+                let ast::AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
+                    return None;
+                };
+                fn_item.sig.header.ext
+            }
+        };
+
+        match ext {
+            ast::Extern::None => Some(ExternAbi::Rust),
+            ast::Extern::Implicit(_) => Some(ExternAbi::FALLBACK),
+            ast::Extern::Explicit(abi, _) => Some(abi.symbol_unescaped.as_str().parse().ok()?),
+        }
+    }
+
+    pub fn get_fn_sig(&self) -> Option<&rustc_ast::ast::FnSig> {
+        match self {
+            AstTarget::Item(item) => {
+                let ast::ItemKind::Fn(fn_item) = &item.kind else {
+                    return None;
+                };
+                Some(&fn_item.sig)
+            }
+            AstTarget::AssocItem(assoc_item) => {
+                let ast::AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
+                    return None;
+                };
+                Some(&fn_item.sig)
+            }
+        }
+    }
 }
 
 impl Display for Target {
