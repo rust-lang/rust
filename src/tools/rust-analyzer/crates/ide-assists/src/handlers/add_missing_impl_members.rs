@@ -140,6 +140,7 @@ fn add_missing_impl_members_inner(
 
     let missing_items = filter_assoc_items(
         &ctx.sema,
+        trait_,
         &ide_db::traits::get_missing_assoc_items(&ctx.sema, &impl_def),
         mode,
         ign_item,
@@ -3021,6 +3022,100 @@ impl Read for () {
     $0fn read() {
         Self::read_buf()
     }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn unstable_item() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar();
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+            r#"
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar();
+}
+
+impl Foo for () {
+    fn foobar() {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+        );
+        check_assist(
+            add_missing_default_members,
+            r#"
+#![feature(foobar)]
+
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+            r#"
+#![feature(foobar)]
+
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0fn foobar() {}
+}
+        "#,
+        );
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[unstable(feature = "foobar")]
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+            r#"
+#[unstable(feature = "foobar")]
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0fn foobar() {}
 }
         "#,
         );
