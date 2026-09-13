@@ -1,5 +1,5 @@
 error[E0506]: cannot assign to `x[_]` because it is borrowed
-  --> $DIR/region_borrow.rs:18:5
+  --> $DIR/region_borrow.rs:17:5
    |
 LL |     let region = Region::<f32, Dummy>::new(&mut x[..]);
    |                                                 - `x[_]` is borrowed here

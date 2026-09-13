@@ -8,7 +8,6 @@
 #![feature(abi_gpu_kernel)]
 #![feature(core_intrinsics)]
 #![feature(gpu_offload)]
-#![feature(offload)]
 #![feature(rustc_attrs)]
 #![no_main]
 

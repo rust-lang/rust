@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `a`
-  --> $DIR/region_not_copy.rs:16:34
+  --> $DIR/region_not_copy.rs:15:34
    |
 LL |     let mut a = Region::<f32, Dummy>::new(&mut x[..]);
    |         ----- move occurs because `a` has type `Region<'_, f32, Dummy>`, which does not implement the `Copy` trait

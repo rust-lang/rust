@@ -4,7 +4,6 @@
 // This tests checks `Region` doesn't implement Copy.
 
 #![feature(gpu_offload)]
-#![feature(offload)]
 
 use core::offload::Region;
 use offload_strategies::Dummy;

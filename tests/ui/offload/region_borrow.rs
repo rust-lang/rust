@@ -5,7 +5,6 @@
 // `Region` was created from while the `Region` is still alive.
 
 #![feature(gpu_offload)]
-#![feature(offload)]
 #![allow(unused_assignments)]
 
 use core::offload::Region;
