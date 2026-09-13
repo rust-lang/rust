@@ -1,5 +1,5 @@
 error[E0029]: only `char` and numeric types are allowed in range patterns
-  --> $DIR/runtime-range-endpoints-issue-131327.rs:54:9
+  --> $DIR/runtime-range-endpoints-issue-131327.rs:55:9
    |
 LL |         false..=true => (),
    |         -----^^^----

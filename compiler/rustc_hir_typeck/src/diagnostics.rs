@@ -585,6 +585,14 @@ impl Subdiagnostic for RemoveSemiForCoerce {
 }
 
 #[derive(Diagnostic)]
+#[diag("runtime values cannot be referenced in patterns", code = E0080)]
+pub(crate) struct NonConstPathInPattern {
+    #[primary_span]
+    #[label("references a runtime value")]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag("union patterns should have exactly one field")]
 pub(crate) struct UnionPatMultipleFields {
     #[primary_span]

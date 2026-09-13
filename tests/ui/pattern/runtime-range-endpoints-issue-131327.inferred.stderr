@@ -1,5 +1,5 @@
 error[E0080]: runtime values cannot be referenced in patterns
-  --> $DIR/runtime-range-endpoints-issue-131327.rs:39:11
+  --> $DIR/runtime-range-endpoints-issue-131327.rs:40:11
    |
 LL |         ..end => (),
    |           ^^^ references a runtime value
