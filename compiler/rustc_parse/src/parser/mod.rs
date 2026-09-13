@@ -128,6 +128,8 @@ bitflags::bitflags! {
         /// Used to detect a missing `else` in a let statement.
         /// e.g. let Some(foo) = bar{return;};
         const IN_LET            = 1 << 6;
+        /// Used to detect missing turbofish `path < 'a >` inside the RHS of `<`.
+        const IS_RHS_OF_LT_AFTER_PATH = 1 << 7;
     }
 }
 
