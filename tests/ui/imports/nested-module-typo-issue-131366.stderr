@@ -1,38 +1,68 @@
 error[E0432]: unresolved import `std::collection`
-  --> $DIR/nested-module-typo-issue-131366.rs:7:10
+  --> $DIR/nested-module-typo-issue-131366.rs:8:10
    |
 LL | use std::collection::HashMap;
    |          ^^^^^^^^^^ could not find `collection` in `std`
+   |
+help: a module with a similar name exists
+   |
+LL | use std::collections::HashMap;
+   |                    +
 
 error[E0432]: unresolved import `local::collection`
-  --> $DIR/nested-module-typo-issue-131366.rs:18:12
+  --> $DIR/nested-module-typo-issue-131366.rs:19:12
    |
 LL | use local::collection::Item;
    |            ^^^^^^^^^^ could not find `collection` in `local`
+   |
+help: a module with a similar name exists
+   |
+LL | use local::collections::Item;
+   |                      +
 
 error[E0432]: unresolved import `local::container`
-  --> $DIR/nested-module-typo-issue-131366.rs:20:12
+  --> $DIR/nested-module-typo-issue-131366.rs:21:12
    |
 LL | use local::container::Item as Alias;
    |            ^^^^^^^^^ could not find `container` in `local`
+   |
+help: a module with a similar name exists
+   |
+LL | use local::containers::Item as Alias;
+   |                     +
 
 error[E0432]: unresolved import `local::Choice`
-  --> $DIR/nested-module-typo-issue-131366.rs:22:12
+  --> $DIR/nested-module-typo-issue-131366.rs:23:12
    |
 LL | use local::Choice::First;
    |            ^^^^^^ could not find `Choice` in `local`
+   |
+help: an enum with a similar name exists
+   |
+LL | use local::Choices::First;
+   |                  +
 
 error[E0432]: unresolved import `crate::root_modul`
-  --> $DIR/nested-module-typo-issue-131366.rs:26:12
+  --> $DIR/nested-module-typo-issue-131366.rs:27:12
    |
 LL | use crate::root_modul::*;
    |            ^^^^^^^^^^ could not find `root_modul` in the crate root
+   |
+help: a module with a similar name exists
+   |
+LL | use crate::root_module::*;
+   |                      +
 
 error[E0432]: unresolved import `local::collection`
-  --> $DIR/nested-module-typo-issue-131366.rs:32:9
+  --> $DIR/nested-module-typo-issue-131366.rs:33:9
    |
 LL | import!(collection);
    |         ^^^^^^^^^^ could not find `collection` in `local`
+   |
+help: a module with a similar name exists
+   |
+LL | import!(collections);
+   |                   +
 
 error: aborting due to 6 previous errors
 

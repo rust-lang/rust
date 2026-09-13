@@ -5,7 +5,7 @@
 //@ run-rustfix
 #![allow(unused_imports, dead_code)]
 
-use std::collection::HashMap;
+use std::collections::HashMap;
 //~^ ERROR unresolved import `std::collection`
 
 mod local {
@@ -16,21 +16,21 @@ mod local {
     pub enum Choices { First }
 }
 
-use local::collection::Item;
+use local::collections::Item;
 //~^ ERROR unresolved import `local::collection`
-use local::container::Item as Alias;
+use local::containers::Item as Alias;
 //~^ ERROR unresolved import `local::container`
-use local::Choice::First;
+use local::Choices::First;
 //~^ ERROR unresolved import `local::Choice`
 
 mod root_module {}
-use crate::root_modul::*;
+use crate::root_module::*;
 //~^ ERROR unresolved import `crate::root_modul`
 
 macro_rules! import {
     ($module:ident) => { use local::$module::Item as MacroItem; };
 }
-import!(collection);
+import!(collections);
 //~^ ERROR unresolved import `local::collection`
 
 fn main() {}
