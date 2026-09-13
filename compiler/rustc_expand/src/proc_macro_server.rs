@@ -372,15 +372,15 @@ fn push_tree_to_internal<F>(
             push_token(builder, Token::new(kind, span), spacing);
         }
         TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
-            let start = builder.start_delimited();
-            if let Some(stream) = stream {
-                // Note that we don't call push_token here for the tokens created inside
-                // `push_stream`. Glueing only happens if the top-level tree is a token, but here
-                // all tokens will be nested.
-                builder.push_stream(stream);
-            }
-            builder.close_delimited(
-                start,
+            builder.push_delimited(
+                |builder| {
+                    if let Some(stream) = stream {
+                        // Note that we don't call push_token here for the tokens created inside
+                        // `push_stream`. Glueing only happens if the top-level tree is a token, but here
+                        // all tokens will be nested.
+                        builder.push_stream(stream);
+                    }
+                },
                 DelimitedData {
                     span: tokenstream::DelimSpan { open, close },
                     spacing: DelimSpacing::new(Spacing::Alone, Spacing::Alone),

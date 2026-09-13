@@ -238,11 +238,14 @@ pub(super) fn transcribe<'a>(
                     }
 
                     // Step back into the parent Delimited.
+                    // FIXME: optimize wrap top-level
                     let mut builder = ArenaTokenStreamBuilder::default();
-                    let start = builder.start_delimited();
-                    builder.push_stream(tscx.result.finish());
-                    builder
-                        .close_delimited(start, DelimitedData { span, spacing, delimiter: delim });
+                    builder.push_delimited(
+                        |builder| {
+                            builder.push_stream(tscx.result.finish());
+                        },
+                        DelimitedData { span, spacing, delimiter: delim },
+                    );
                     tscx.result = tscx.result_stack.pop().unwrap();
                     tscx.result.push_stream(builder.finish());
                 }
@@ -836,10 +839,10 @@ fn maybe_use_metavar_location(
                 mspans.insert(open, metavar_span) && mspans.insert(close, metavar_span)
             });
             let dspan = DelimSpan::from_pair(open, close);
-            let start = builder.start_delimited();
-            builder.push_iter(orig_stream.iter_delimited(bounds));
-            builder.close_delimited(
-                start,
+            builder.push_delimited(
+                |builder| {
+                    builder.push_iter(orig_stream.iter_delimited(bounds));
+                },
                 DelimitedData { span: dspan, spacing: data.spacing, delimiter: data.delimiter },
             );
         }

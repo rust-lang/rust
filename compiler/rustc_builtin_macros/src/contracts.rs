@@ -172,10 +172,10 @@ fn expand_contract_clause_tts(
             token::Token::from_ast_ident(Ident::new(clause_keyword, feature_span)),
             Spacing::Joint,
         );
-        let start = builder.start_delimited();
-        builder.build_from_stream(&annotation, |_, _| PerTreeOp::Continue);
-        builder.close_delimited(
-            start,
+        builder.push_delimited(
+            |builder| {
+                builder.build_from_stream(&annotation, |_, _| PerTreeOp::Continue);
+            },
             DelimitedData {
                 span: DelimSpan::from_single(attr_span),
                 spacing: DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),

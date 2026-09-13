@@ -328,35 +328,37 @@ fn fake_token_stream_for_file_mod(
     let attr = attr_to_exclude.expect("file modules must have an attribute to exclude");
     assert_eq!(attr.style, ast::AttrStyle::Inner);
 
-    let mut arena = ArenaTokenStreamBuilder::default();
+    let mut builder = ArenaTokenStreamBuilder::default();
 
     for attr in item.attrs.iter().filter(|attr| attr.style == ast::AttrStyle::Outer) {
-        attr.push_token_trees(&mut arena);
+        attr.push_token_trees(&mut builder);
     }
-    lex_token_trees_for_span(psess, item.span, &mut arena)?;
-    let Some(ArenaTokenTree::Token(semi, _)) = arena.pop() else {
+    lex_token_trees_for_span(psess, item.span, &mut builder)?;
+    let Some(ArenaTokenTree::Token(semi, _)) = builder.pop() else {
         return None;
     };
     if semi.kind != token::Semi {
         return None;
     }
 
-    let start = arena.start_delimited();
-    lex_token_trees_for_span(psess, spans.inner_span.until(attr.span), &mut arena)?;
-    lex_token_trees_for_span(
-        psess,
-        attr.span.between(spans.inner_span.shrink_to_hi()),
-        &mut arena,
-    )?;
-    arena.close_delimited(
-        start,
+    builder.push_delimited(
+        |builder| {
+            lex_token_trees_for_span(psess, spans.inner_span.until(attr.span), builder)?;
+            lex_token_trees_for_span(
+                psess,
+                attr.span.between(spans.inner_span.shrink_to_hi()),
+                builder,
+            )?;
+            Some(())
+        },
         DelimitedData {
             span: DelimSpan::from_single(semi.span),
             spacing: DelimSpacing::new(Spacing::Alone, Spacing::Alone),
             delimiter: token::Delimiter::Brace,
         },
-    );
-    Some(arena.finish())
+    )?;
+
+    Some(builder.finish())
 }
 
 fn lex_token_trees_for_span(
