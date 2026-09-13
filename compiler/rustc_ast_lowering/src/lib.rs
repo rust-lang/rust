@@ -45,6 +45,7 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, *};
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -1181,9 +1182,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        ast_target_item: Option<ast::AstItemKind<'_>>,
+        ast_target: Option<AstTarget<'_>>,
     ) -> &'hir [hir::Attribute] {
-        self.lower_attrs_with_extra(id, attrs, target_span, target, ast_target_item, &[])
+        self.lower_attrs_with_extra(id, attrs, target_span, target, ast_target, &[])
     }
 
     fn lower_attrs_with_extra(
@@ -1192,19 +1193,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        ast_target_item: Option<ast::AstItemKind<'_>>,
+        ast_target: Option<AstTarget<'_>>,
         extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
-            let mut lowered_attrs = self.lower_attrs_vec(
-                attrs,
-                self.lower_span(target_span),
-                id,
-                target,
-                ast_target_item,
-            );
+            let mut lowered_attrs =
+                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target, ast_target);
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             assert_eq!(id.owner, self.curr_owner.owner_id);
@@ -1231,14 +1227,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
-        ast_target_item: Option<ast::AstItemKind<'_>>,
+        ast_target: Option<AstTarget<'_>>,
     ) -> Vec<hir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
-            ast_target_item,
+            ast_target,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {
