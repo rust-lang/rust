@@ -111,41 +111,7 @@ impl ArenaTokenStreamBuilder {
         self.tokens.push(ArenaTokenTree::Token(token, Spacing::Alone));
     }
 
-    pub fn push_stream(&mut self, stream: ArenaTokenStream) {
-        self.tokens.reserve(stream.length());
-        self.fill_stream(stream.iter_top_level_trees());
-    }
-
-    pub fn push_iter(&mut self, iter: ArenaTokenTreeIter<'_>) {
-        self.fill_stream(iter);
-    }
-
-    pub fn pop(&mut self) -> Option<ArenaTokenTree> {
-        // Note: calling this function is fine even if we are within a delimited sequence.
-        let tree = self.tokens.pop();
-        if let Some(tree) = &tree {
-            assert!(matches!(tree, ArenaTokenTree::Token(..)));
-        }
-        tree
-    }
-
-    pub fn push_token_tree(&mut self, tt: &TokenTree) {
-        match tt {
-            TokenTree::Token(token, spacing) => {
-                self.tokens.push(ArenaTokenTree::Token(*token, *spacing));
-            }
-            TokenTree::Delimited(span, spacing, delimiter, stream) => {
-                let start = self.start_delimited();
-                self.fill(stream);
-                self.close_delimited(
-                    start,
-                    DelimitedData { span: *span, spacing: *spacing, delimiter: *delimiter },
-                );
-            }
-        }
-    }
-
-    pub fn push_token_tree_arena(&mut self, tt: &ArenaTokenTree, stream: &ArenaTokenStream) {
+    pub fn push_token_tree(&mut self, tt: &ArenaTokenTree, stream: &ArenaTokenStream) {
         match tt {
             token @ ArenaTokenTree::Token(..) => {
                 self.tokens.push(*token);
@@ -156,6 +122,24 @@ impl ArenaTokenStreamBuilder {
                 self.close_delimited(start, *data);
             }
         }
+    }
+
+    pub fn push_iter(&mut self, iter: ArenaTokenTreeIter<'_>) {
+        self.fill_stream(iter);
+    }
+
+    pub fn push_stream(&mut self, stream: ArenaTokenStream) {
+        self.tokens.reserve(stream.length());
+        self.fill_stream(stream.iter_top_level_trees());
+    }
+
+    pub fn pop(&mut self) -> Option<ArenaTokenTree> {
+        // Note: calling this function is fine even if we are within a delimited sequence.
+        let tree = self.tokens.pop();
+        if let Some(tree) = &tree {
+            assert!(matches!(tree, ArenaTokenTree::Token(..)));
+        }
+        tree
     }
 
     // If `self` is not empty, try to glue `tt` onto its last top-level token. The return
@@ -339,16 +323,10 @@ impl ArenaTokenStreamBuilder {
         self.tokens.len()
     }
 
-    fn fill(&mut self, stream: &TokenStream) {
-        for tt in stream.iter() {
-            self.push_token_tree(tt);
-        }
-    }
-
     fn fill_stream(&mut self, iter: ArenaTokenTreeIter<'_>) {
         let stream = iter.stream().clone();
         for tt in iter {
-            self.push_token_tree_arena(tt, &stream);
+            self.push_token_tree(tt, &stream);
         }
     }
 }
@@ -393,7 +371,7 @@ impl ArenaTokenStream {
         let mut builder = ArenaTokenStreamBuilder::with_capacity(trees.len());
         // FIXME: implement this in a more performant way
         for tree in trees {
-            builder.push_token_tree_arena(tree, stream);
+            builder.push_token_tree(tree, stream);
         }
         builder.finish()
     }
@@ -630,6 +608,7 @@ impl StableHash for ArenaTokenStream {
     }
 }
 
+#[derive(Clone)]
 pub struct ArenaTokenTreeIter<'a> {
     index: usize,
     end: usize,
@@ -656,6 +635,15 @@ impl<'a> ArenaTokenTreeIter<'a> {
     // at all the use sites.
     pub fn peek(&self) -> Option<&'a ArenaTokenTree> {
         self.stream.tokens.get(self.index)
+    }
+
+    /// Returns true if the iterator has exactly single tree in it.
+    pub fn has_single_tree(&self) -> bool {
+        let mut iter = self.clone();
+        if iter.next().is_none() {
+            return false;
+        }
+        iter.next().is_none()
     }
 }
 
