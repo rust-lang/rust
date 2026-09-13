@@ -1,6 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
+use rustc_attr_ir::target::AstTarget;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
@@ -164,7 +165,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_ast_item(i),
-            Some(ast::AstItemKind::Item(i)),
+            Some(AstTarget::Item(i)),
             &extra_hir_attributes,
         );
 
@@ -874,7 +875,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Trait),
-            Some(ast::AstItemKind::AssocItem(i)),
+            Some(AstTarget::AssocItem(i)),
         );
 
         let (ident, generics, kind, has_value) = match &i.kind {
@@ -1132,7 +1133,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Impl { of_trait: is_in_trait_impl }),
-            Some(ast::AstItemKind::AssocItem(i)),
+            Some(AstTarget::AssocItem(i)),
         );
 
         let (ident, (generics, kind)) = match &i.kind {
