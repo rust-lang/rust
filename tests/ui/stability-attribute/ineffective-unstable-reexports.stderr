@@ -1,0 +1,25 @@
+error: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexports.rs:16:9
+   |
+LL | pub use lint_stability::stable as supposedly_unstable;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/ineffective-unstable-reexports.rs:7:9
+   |
+LL | #![deny(ineffective_unstable_reexports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexports.rs:39:9
+   |
+LL | pub use non_staged_reexport_source::stable as supposedly_unstable_external;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexports.rs:44:9
+   |
+LL | pub use core::primitive::bool as supposedly_unstable_bool;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
