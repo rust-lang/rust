@@ -200,6 +200,10 @@ impl LivenessValues {
         self.location_map.to_location(point)
     }
 
+    pub(crate) fn location_map(&self) -> &Rc<DenseLocationMap> {
+        &self.location_map
+    }
+
     /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
     /// loans dataflow computations.
     pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {

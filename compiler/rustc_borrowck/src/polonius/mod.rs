@@ -139,18 +139,16 @@ impl PoloniusContext {
             // From the outlives constraints, liveness, and variances, we can compute reachability
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).
-            let graph = LocalizedConstraintGraph::new(liveness, outlives_constraints);
+            let graph =
+                LocalizedConstraintGraph::new(liveness.location_map(), outlives_constraints);
 
             let mut live_loans = LiveLoans::new(num_points, borrow_set.len());
-            let mut visitor = LoanLivenessVisitor { liveness, live_loans: &mut live_loans };
-            graph.traverse(
-                body,
+            let mut liveness_source = CachedLivenessSource {
+                live_region_variances: &self.live_region_variances,
                 liveness,
-                &self.live_region_variances,
-                universal_regions,
-                borrow_set,
-                &mut visitor,
-            );
+            };
+            let mut visitor = LoanLivenessVisitor { live_loans: &mut live_loans };
+            graph.traverse(body, universal_regions, borrow_set, &mut liveness_source, &mut visitor);
             liveness.record_live_loans(live_loans);
 
             // The graph can be traversed again during MIR dumping, so we store it here.
@@ -161,12 +159,11 @@ impl PoloniusContext {
 
 /// Visitor to record loan liveness when traversing the localized constraint graph.
 struct LoanLivenessVisitor<'a> {
-    liveness: &'a LivenessValues,
     live_loans: &'a mut LiveLoans,
 }
 
 impl LocalizedConstraintGraphVisitor for LoanLivenessVisitor<'_> {
-    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode) {
+    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode, is_live: bool) {
         // Record the loan as being live on entry to this point if it reaches a live region
         // there.
         //
@@ -208,7 +205,7 @@ impl LocalizedConstraintGraphVisitor for LoanLivenessVisitor<'_> {
         //
         // FIXME: analyze potential unsoundness, possibly in concert with a borrowck
         // implementation in a-mir-formality, fuzzing, or manually crafting counter-examples.
-        if self.liveness.is_live_at_point(node.region, node.point) {
+        if is_live {
             self.live_loans.insert(node.point, loan);
         }
     }

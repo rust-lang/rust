@@ -11,7 +11,9 @@ use rustc_session::config::MirIncludeSpans;
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
-use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
+use crate::polonius::{
+    CachedLivenessSource, LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext,
+};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
@@ -41,14 +43,17 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
     // constraints here.
+    let mut liveness_source = CachedLivenessSource {
+        live_region_variances: &polonius_context.live_region_variances,
+        liveness: regioncx.liveness_constraints(),
+    };
     let mut collector = MirDumpCollector::default();
     if let Some(graph) = &polonius_context.graph {
         graph.traverse(
             body,
-            regioncx.liveness_constraints(),
-            &polonius_context.live_region_variances,
             regioncx.universal_regions(),
             borrow_set,
+            &mut liveness_source,
             &mut collector,
         );
     }
@@ -98,7 +103,7 @@ struct MirDumpCollector {
 }
 
 impl LocalizedConstraintGraphVisitor for MirDumpCollector {
-    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode) {
+    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode, _is_live: bool) {
         self.reachability.entry(loan).or_default().push(node);
     }
 
