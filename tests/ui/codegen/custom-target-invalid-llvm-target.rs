@@ -7,4 +7,4 @@
 
 fn main() {}
 
-//~? ERROR failed to parse target machine config to target machine
+//~? ERROR could not create LLVM MCSubtargetInfo for triple: not-a-real-target
