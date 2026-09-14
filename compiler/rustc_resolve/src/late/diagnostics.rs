@@ -994,37 +994,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .lookup_import_candidates_impl(ident, ns, &self.parent_scope, ident_filter, is_expected)
             .into_iter()
             .filter(|ImportSuggestion { did, .. }| {
-                if !case_sensitive {
-                    // If there's a following segment, only keep modules that contain it
-                    if let Some(following) = following_seg {
-                        let Some(did) = did else { return false };
-                        let Some(module) = self.r.get_module(*did) else { return false };
-                        let mut found = false;
-                        module.for_each_child(self.r, |_, ident, _, _, _| {
-                            if ident.name == following.ident.name {
-                                found = true;
-                            }
-                        });
-                        if !found {
-                            return false;
-                        }
-                    }
-
-                    // Filter out items that are in the prelude
-                    if let Some(prelude) = self.r.prelude {
-                        if let Some(suggestion_did) = did {
-                            let mut is_in_prelude = false;
-                            prelude.for_each_child(self.r, |_, _, _, _, decl| {
-                                if decl.res().opt_def_id() == Some(*suggestion_did) {
-                                    is_in_prelude = true;
-                                }
-                            });
-                            if is_in_prelude {
-                                return false;
-                            }
-                        }
-                    }
-                }
                 match (did, res.and_then(|res| res.opt_def_id())) {
                     (Some(suggestion_did), Some(actual_did)) => *suggestion_did != actual_did,
                     _ => true,
