@@ -693,7 +693,7 @@ impl<'a> Parser<'a> {
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
-            let param = p.parse_param_general(fn_parse_mode, first_param, true).or_else(|e| {
+            let param = p.parse_param_general(fn_parse_mode, first_param).or_else(|e| {
                 let guar = e.emit();
                 // When parsing a param failed, we should check to make the span of the param
                 // not contain '(' before it.
@@ -726,7 +726,6 @@ impl<'a> Parser<'a> {
         &mut self,
         fn_parse_mode: &FnParseMode,
         first_param: bool,
-        recover_arg_parse: bool,
     ) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
@@ -814,7 +813,7 @@ impl<'a> Parser<'a> {
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),
                     Err(err) if this.unmatched_angle_bracket_count > 0 => return Err(err),
-                    Err(err) if recover_arg_parse => {
+                    Err(err) => {
                         // Recover from attempting to parse the argument as a type without pattern.
                         this.restore_snapshot(parser_snapshot_before_ty);
                         match this.recover_arg_parse(fn_parse_mode.context) {
@@ -830,7 +829,6 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    Err(err) => return Err(err),
                 }
             };
 
