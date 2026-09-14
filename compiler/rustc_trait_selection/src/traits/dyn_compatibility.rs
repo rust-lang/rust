@@ -4,6 +4,7 @@
 //!
 //! [^1]: Formerly known as "object safety".
 
+use std::iter;
 use std::ops::ControlFlow;
 
 use itertools::Itertools;
@@ -16,7 +17,7 @@ use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::util::ClauseWithSupertraitSpan;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, GenericArgs, PolyProjectionClause, ProjectionClause, Ty, TyCtxt,
+    self, EarlyBinder, GenericArgs, PolyProjectionClause, ProjectionClause, TraitRef, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
 };
@@ -991,14 +992,12 @@ fn incoherent_supertrait_assocs(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> impl Iterator<Item = DynCompatibilityViolation> {
-    let clauses = tcx
-        .clauses_of(trait_def_id)
-        .instantiate_identity(tcx)
-        .into_iter()
-        .map(|(clause, span)| ClauseWithSupertraitSpan::new(clause.skip_norm_wip(), span));
+    let trait_clause =
+        ClauseWithSupertraitSpan::new(TraitRef::identity(tcx, trait_def_id).upcast(tcx), DUMMY_SP);
     // Map from associated items to projection clauses that apply to them.
     let mut projs_for_assoc = FxHashMap::<DefId, Vec<(PolyProjectionClause<'_>, Span)>>::default();
-    elaborate(tcx, clauses)
+    elaborate(tcx, iter::once(trait_clause))
+        .filter_only_self()
         .filter_map(|x| Some((x.clause.as_projection_clause()?, x.supertrait_span)))
         .flat_map(move |(proj, span)| {
             let prev_projs = projs_for_assoc.entry(proj.item_def_id()).or_default();
