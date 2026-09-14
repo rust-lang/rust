@@ -29,9 +29,10 @@ where
     classify_arg_ty(cx, arg, &mut arg_gprs_left, true);
     // Ret args cannot be passed via stack, we lower to indirect and let the backend handle the invisible reference
     match arg.mode {
-        super::PassMode::Indirect { attrs: _, meta_attrs: _, ref mut on_stack } => {
+        super::PassMode::Indirect { attrs: _, ref mut on_stack } => {
             *on_stack = false;
         }
+        super::PassMode::IndirectUnsized { .. } => panic!("unsized returns are not supported"),
         _ => {}
     }
 }
