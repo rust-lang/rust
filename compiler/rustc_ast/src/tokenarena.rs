@@ -435,21 +435,21 @@ impl ArenaTokenStream {
     /// Try to reuse the tokens of this stream into a builder, if we are the only copy.
     /// If it is not the only copy, clones the inner tokens.
     pub fn into_builder(self) -> ArenaTokenStreamBuilder {
-        // FIXME: try to optimize this
-        let last_toplevel = self
-            .tokens
-            .iter()
-            .rev()
-            .find_map(|tree| match tree {
-                ArenaTokenTree::DelimitedStart(bounds, _) if bounds.parent.is_none() => {
-                    Some(bounds.start)
-                }
-                ArenaTokenTree::DelimitedStart(_, _) | ArenaTokenTree::Token(_, _) => None,
-            })
-            .map(|index| index);
-
         // Reuse the whole thing
         if self.range.start.0 == 0 && self.range.end.0 == self.tokens.len() as u32 {
+            // FIXME: try to optimize this
+            let last_toplevel = self
+                .iter_all_trees()
+                .rev()
+                .find_map(|tree| match tree {
+                    ArenaTokenTree::DelimitedStart(bounds, _)
+                        if self.get_parent_of(*bounds).is_none() =>
+                    {
+                        Some(bounds.start)
+                    }
+                    ArenaTokenTree::DelimitedStart(_, _) | ArenaTokenTree::Token(_, _) => None,
+                })
+                .map(|index| index);
             ArenaTokenStreamBuilder {
                 tokens: self.try_take_tokens(),
                 current_delimited_sequence: None,
@@ -546,7 +546,7 @@ impl ArenaTokenStream {
         ArenaTokenTreeIter::new_top_level(self)
     }
 
-    pub fn iter_all_trees(&self) -> impl Iterator<Item = &ArenaTokenTree> {
+    pub fn iter_all_trees(&self) -> impl Iterator<Item = &ArenaTokenTree> + DoubleEndedIterator {
         self.tokens.as_slice()[self.range.start.as_usize()..self.range.end.as_usize()].into_iter()
     }
 
