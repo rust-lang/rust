@@ -28,11 +28,13 @@ pub enum ArenaTokenTree {
 
 impl ArenaTokenTree {
     /// Create a `TokenTree::Token` with alone spacing.
+    #[inline]
     pub fn token_alone(kind: TokenKind, span: Span) -> ArenaTokenTree {
         ArenaTokenTree::Token(Token::new(kind, span), Spacing::Alone)
     }
 
     /// Create a `TokenTree::Token` with joint spacing.
+    #[inline]
     pub fn token_joint(kind: TokenKind, span: Span) -> ArenaTokenTree {
         ArenaTokenTree::Token(Token::new(kind, span), Spacing::Joint)
     }
@@ -69,6 +71,7 @@ impl ArenaTokenTree {
         }
     }
 
+    #[inline]
     pub fn to_delimited_data(&self) -> Option<&DelimitedData> {
         match self {
             ArenaTokenTree::Token(_, _) => None,
@@ -76,6 +79,7 @@ impl ArenaTokenTree {
         }
     }
 
+    #[inline]
     pub fn to_delimited_bounds(&self) -> Option<&DelimitedBounds> {
         match self {
             ArenaTokenTree::Token(_, _) => None,
@@ -108,11 +112,13 @@ impl ArenaTokenStreamBuilder {
         &self.tokens
     }
 
+    #[inline]
     pub fn push_token(&mut self, token: Token, spacing: Spacing) {
         self.tokens.push(ArenaTokenTree::Token(token, spacing));
         self.last_push_was_token = true;
     }
 
+    #[inline]
     pub fn push_token_alone(&mut self, token: Token) {
         self.push_token(token, Spacing::Alone);
     }
@@ -332,18 +338,22 @@ impl ArenaTokenStreamBuilder {
         }
     }
 
+    #[inline]
     pub fn get_innermost_elem_at(&self, index: AbsoluteTokenTreeIndex) -> Option<&ArenaTokenTree> {
         self.tokens.get(index.as_usize())
     }
 
+    #[inline]
     pub fn current_index(&self) -> AbsoluteTokenTreeIndex {
         AbsoluteTokenTreeIndex(self.length() as u32)
     }
 
+    #[inline]
     pub fn tree_count_since(&self, index: AbsoluteTokenTreeIndex) -> u32 {
         self.current_index().0.saturating_sub(index.0)
     }
 
+    #[inline]
     pub fn finish(self) -> ArenaTokenStream {
         assert!(self.current_delimited_sequence.is_none());
         if self.tokens.is_empty() {
@@ -358,12 +368,14 @@ impl ArenaTokenStreamBuilder {
         }
     }
 
+    #[inline]
     pub fn length(&self) -> usize {
         self.tokens.len()
     }
 
     fn fill_stream(&mut self, iter: ArenaTokenTreeIter<'_>) {
         let stream = iter.stream().clone();
+        self.tokens.reserve(iter.length());
         for tt in iter {
             self.push_token_tree(tt, &stream);
         }
@@ -496,33 +508,36 @@ impl ArenaTokenStream {
         }
     }
 
+    #[inline]
     pub fn range(&self) -> TokenTreeRange {
         self.range
     }
 
+    #[inline]
     pub fn length(&self) -> usize {
         self.range.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.range.is_empty()
     }
 
+    #[inline]
     pub fn get_parent_of(&self, bounds: DelimitedBounds) -> Option<DelimitedBounds> {
         let parent = bounds.parent?;
-        if !self.range.contains(parent) {
-            return None;
-        }
-        match self.get_innermost_elem_at(parent).expect("Parent index was not found") {
-            ArenaTokenTree::Token(..) => {
+        match self.get_innermost_elem_at(parent) {
+            Some(ArenaTokenTree::Token(..)) => {
                 panic!("DelimitedBounds parent index points to a token. This is a bug.");
             }
-            ArenaTokenTree::DelimitedStart(bounds, _) => Some(*bounds),
+            Some(ArenaTokenTree::DelimitedStart(bounds, _)) => Some(*bounds),
+            None => None,
         }
     }
 
+    #[inline]
     pub fn get_innermost_elem_at(&self, index: AbsoluteTokenTreeIndex) -> Option<&ArenaTokenTree> {
-        if index < self.range.start || index >= self.range.end {
+        if !self.range.contains(index) {
             return None;
         }
         self.tokens.get(index.as_usize())
@@ -669,14 +684,17 @@ impl<D: SpanDecoder> Decodable<D> for ArenaTokenStream {
 pub struct AbsoluteTokenTreeIndex(u32);
 
 impl AbsoluteTokenTreeIndex {
+    #[inline]
     pub fn bump_single(&mut self) {
         self.0 += 1;
     }
 
+    #[inline]
     pub fn bump_delimited(&mut self, bounds: &DelimitedBounds) {
         *self = bounds.index_of_next_token_tree();
     }
 
+    #[inline]
     pub fn next_index(&self) -> Self {
         Self(self.0 + 1)
     }
@@ -713,26 +731,32 @@ impl TokenTreeRange {
         Self { start: bounds.start.next_index(), end: bounds.index_of_next_token_tree() }
     }
 
+    #[inline]
     pub fn start(&self) -> AbsoluteTokenTreeIndex {
         self.start
     }
 
+    #[inline]
     pub fn end(&self) -> AbsoluteTokenTreeIndex {
         self.end
     }
 
+    #[inline]
     pub fn one_past_end(&self) -> AbsoluteTokenTreeIndex {
         self.end.next_index()
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         (self.end.0 - self.start.0) as usize
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
 
+    #[inline]
     fn contains(&self, index: AbsoluteTokenTreeIndex) -> bool {
         index >= self.start && index < self.end
     }
@@ -889,6 +913,10 @@ impl<'a> ArenaTokenTreeIter<'a> {
         }
         iter.next().is_none()
     }
+
+    fn length(&self) -> usize {
+        self.end.as_usize().saturating_sub(self.index.as_usize())
+    }
 }
 
 impl<'a> Iterator for ArenaTokenTreeIter<'a> {
@@ -930,15 +958,18 @@ pub struct DelimitedBounds {
 }
 
 impl DelimitedBounds {
+    #[inline]
     pub fn start(&self) -> AbsoluteTokenTreeIndex {
         self.start
     }
 
     /// Return the index of the next token tree that follows this delimited token sequence.
+    #[inline]
     pub fn index_of_next_token_tree(&self) -> AbsoluteTokenTreeIndex {
         AbsoluteTokenTreeIndex(self.start.0 + self.length.get())
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.length.get() == 1
     }
