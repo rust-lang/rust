@@ -1,5 +1,6 @@
 //! Shared check/bless harness for stdarch generators.
 
+use similar::TextDiff;
 use std::error::Error as StdError;
 use std::fmt;
 use std::fs;
@@ -251,7 +252,23 @@ fn compare(generated_dir: &Path, committed_dir: &Path, filename: &str) -> Result
         }),
         (false, false) => Ok(()),
         (true, true) => {
-            if fs::read(&gen_path)? != fs::read(&comm_path)? {
+            let generated = fs::read(&gen_path)?;
+            let committed = fs::read(&comm_path)?;
+            if generated != committed {
+                if let (Ok(committed), Ok(generated)) =
+                    (str::from_utf8(&committed), str::from_utf8(&generated))
+                {
+                    eprintln!(
+                        "{}",
+                        TextDiff::from_lines(committed, generated)
+                            .unified_diff()
+                            .context_radius(3)
+                            .header(
+                                &format!("committed/{filename}"),
+                                &format!("generated/{filename}"),
+                            )
+                    );
+                }
                 Err(Error::Mismatch {
                     path: rel_path,
                     kind: MismatchKind::ContentsDiffer,
