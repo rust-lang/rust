@@ -1938,6 +1938,13 @@ help: consider importing this struct
 LL + use std::time::SystemTime;
    |
 
-error: aborting due to 168 previous errors
+error[E0433]: cannot find type `Hashmap` in this scope
+  --> $DIR/libstd.rs:440:13
+   |
+LL |     let _ = Hashmap::new();
+   |             ^^^^^^^ use of undeclared type `Hashmap`
 
-For more information about this error, try `rustc --explain E0425`.
+error: aborting due to 169 previous errors
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

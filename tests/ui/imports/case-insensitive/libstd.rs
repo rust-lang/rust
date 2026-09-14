@@ -436,4 +436,7 @@ mod st{
     struct SystemTame{}
 }
 
-fn main(){}
+fn main(){
+    let _ = Hashmap::new();
+    //~^ ERROR: cannot find type `Hashmap` in this scope
+}
