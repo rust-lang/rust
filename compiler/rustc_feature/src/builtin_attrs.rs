@@ -41,6 +41,11 @@ const GATED_CFGS: &[GatedCfg] = &[
         Features::cfg_target_has_reliable_f16_f128,
     ),
     (
+        sym::target_has_reliable_f16b,
+        sym::cfg_target_has_reliable_f16b,
+        Features::cfg_target_has_reliable_f16b,
+    ),
+    (
         sym::target_has_reliable_f128,
         sym::cfg_target_has_reliable_f16_f128,
         Features::cfg_target_has_reliable_f16_f128,
