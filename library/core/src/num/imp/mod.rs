@@ -11,6 +11,7 @@ pub mod diy_float;
 pub mod flt2dec;
 pub mod fmt;
 
+pub(crate) mod builtins;
 pub(crate) mod int_bits;
 pub(crate) mod int_log10;
 pub(crate) mod int_sqrt;

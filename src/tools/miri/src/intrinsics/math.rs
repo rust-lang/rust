@@ -100,10 +100,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match intrinsic_name {
             // Operations we can do with soft-floats.
-            "sqrtf16" => sqrt::<rustc_apfloat::ieee::Half>(this, args, dest)?,
-            "sqrtf32" => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
-            "sqrtf64" => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
-            "sqrtf128" => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
+            "sqrt" => {
+                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                    bug!("`sqrt` intrinsic called on non-float type");
+                };
+                match float_ty {
+                    FloatTy::F16 => sqrt::<rustc_apfloat::ieee::Half>(this, args, dest)?,
+                    FloatTy::F32 => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
+                    FloatTy::F64 => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
+                    FloatTy::F128 => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
+                }
+            }
 
             #[rustfmt::skip]
             | "fadd_fast"
@@ -187,15 +194,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
             }
 
-            "powf16" => pow_intrinsic::<HalfS>(this, args, dest)?,
-            "powf32" => pow_intrinsic::<SingleS>(this, args, dest)?,
-            "powf64" => pow_intrinsic::<DoubleS>(this, args, dest)?,
-            "powf128" => todo!("f128"), // FIXME(f128)
+            "powf" => {
+                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                    bug!("`powf` intrinsic called on non-float type");
+                };
+                match float_ty {
+                    FloatTy::F16 => pow_intrinsic::<HalfS>(this, args, dest)?,
+                    FloatTy::F32 => pow_intrinsic::<SingleS>(this, args, dest)?,
+                    FloatTy::F64 => pow_intrinsic::<DoubleS>(this, args, dest)?,
+                    FloatTy::F128 => todo!("f128"), // FIXME(f128)
+                }
+            }
 
-            "powif16" => powi_intrinsic::<HalfS>(this, args, dest)?,
-            "powif32" => powi_intrinsic::<SingleS>(this, args, dest)?,
-            "powif64" => powi_intrinsic::<DoubleS>(this, args, dest)?,
-            "powif128" => todo!("f128"), // FIXME(f128)
+            "powi" => {
+                let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+                    bug!("`powf` intrinsic called on non-float type");
+                };
+                match float_ty {
+                    FloatTy::F16 => powi_intrinsic::<HalfS>(this, args, dest)?,
+                    FloatTy::F32 => powi_intrinsic::<SingleS>(this, args, dest)?,
+                    FloatTy::F64 => powi_intrinsic::<DoubleS>(this, args, dest)?,
+                    FloatTy::F128 => todo!("f128"), // FIXME(f128)
+                }
+            }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

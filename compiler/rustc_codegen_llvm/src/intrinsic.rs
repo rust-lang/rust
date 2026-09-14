@@ -60,31 +60,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     let fixed_minmax = llvm_version >= (23, 0, 0);
 
     let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
-        sym::sqrtf16 => ("llvm.sqrt", &[bx.type_f16()]),
-        sym::sqrtf32 => ("llvm.sqrt", &[bx.type_f32()]),
-        sym::sqrtf64 => ("llvm.sqrt", &[bx.type_f64()]),
-        sym::sqrtf128 => ("llvm.sqrt", &[bx.type_f128()]),
-
-        sym::powif16 => ("llvm.powi", &[bx.type_f16(), bx.type_i32()]),
-        sym::powif32 => ("llvm.powi", &[bx.type_f32(), bx.type_i32()]),
-        sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
-        sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
-
-        sym::powf16 => ("llvm.pow", &[bx.type_f16()]),
-        sym::powf32 => ("llvm.pow", &[bx.type_f32()]),
-        sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
-        sym::powf128 => ("llvm.pow", &[bx.type_f128()]),
-
-        sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
-        sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
-        sym::fmaf64 => ("llvm.fma", &[bx.type_f64()]),
-        sym::fmaf128 => ("llvm.fma", &[bx.type_f128()]),
-
-        sym::fmuladdf16 => ("llvm.fmuladd", &[bx.type_f16()]),
-        sym::fmuladdf32 => ("llvm.fmuladd", &[bx.type_f32()]),
-        sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
-        sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
-
         sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         sym::minimumf64 if fixed_minmax => ("llvm.minimum", &[bx.type_f64()]),
@@ -99,35 +74,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
         sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
         sym::copysignf128 => ("llvm.copysign", &[bx.type_f128()]),
-
-        sym::floorf16 => ("llvm.floor", &[bx.type_f16()]),
-        sym::floorf32 => ("llvm.floor", &[bx.type_f32()]),
-        sym::floorf64 => ("llvm.floor", &[bx.type_f64()]),
-        sym::floorf128 => ("llvm.floor", &[bx.type_f128()]),
-
-        sym::ceilf16 => ("llvm.ceil", &[bx.type_f16()]),
-        sym::ceilf32 => ("llvm.ceil", &[bx.type_f32()]),
-        sym::ceilf64 => ("llvm.ceil", &[bx.type_f64()]),
-        sym::ceilf128 => ("llvm.ceil", &[bx.type_f128()]),
-
-        sym::truncf16 => ("llvm.trunc", &[bx.type_f16()]),
-        sym::truncf32 => ("llvm.trunc", &[bx.type_f32()]),
-        sym::truncf64 => ("llvm.trunc", &[bx.type_f64()]),
-        sym::truncf128 => ("llvm.trunc", &[bx.type_f128()]),
-
-        // We could use any of `rint`, `nearbyint`, or `roundeven`
-        // for this -- they are all identical in semantics when
-        // assuming the default FP environment.
-        // `rint` is what we used for $forever.
-        sym::round_ties_even_f16 => ("llvm.rint", &[bx.type_f16()]),
-        sym::round_ties_even_f32 => ("llvm.rint", &[bx.type_f32()]),
-        sym::round_ties_even_f64 => ("llvm.rint", &[bx.type_f64()]),
-        sym::round_ties_even_f128 => ("llvm.rint", &[bx.type_f128()]),
-
-        sym::roundf16 => ("llvm.round", &[bx.type_f16()]),
-        sym::roundf32 => ("llvm.round", &[bx.type_f32()]),
-        sym::roundf64 => ("llvm.round", &[bx.type_f64()]),
-        sym::roundf128 => ("llvm.round", &[bx.type_f128()]),
 
         _ => return None,
     };
@@ -569,13 +515,23 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::fabs
+            | sym::sqrt
+            | sym::powf
+            | sym::fma
+            | sym::fmuladd
+            | sym::floor
+            | sym::ceil
+            | sym::trunc
+            | sym::round
+            | sym::round_ties_even
             | sym::exp
             | sym::exp2
             | sym::log
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => {
+            | sym::cos
+            | sym::powi => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -588,6 +544,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let llty = self.type_float_from_ty(*f);
                 let llvm_name = match name {
                     sym::fabs => "llvm.fabs",
+                    sym::sqrt => "llvm.sqrt",
+                    sym::powf => "llvm.pow",
+                    sym::fma => "llvm.fma",
+                    sym::fmuladd => "llvm.fmuladd",
+                    sym::floor => "llvm.floor",
+                    sym::ceil => "llvm.ceil",
+                    sym::trunc => "llvm.trunc",
+                    sym::round => "llvm.round",
+                    // We could use any of `rint`, `nearbyint`, or `roundeven`
+                    // for this -- they are all identical in semantics when
+                    // assuming the default FP environment.
+                    // `rint` is what we used for $forever.
+                    sym::round_ties_even => "llvm.rint",
                     sym::exp => "llvm.exp",
                     sym::exp2 => "llvm.exp2",
                     sym::log => "llvm.log",
@@ -595,11 +564,17 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::log2 => "llvm.log2",
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
+                    sym::powi => "llvm.powi",
+
                     _ => bug!(),
                 };
+
+                let params: &[&'ll Type] =
+                    if name == sym::powi { &[llty, self.type_i32()] } else { &[llty] };
+
                 self.call_intrinsic(
                     llvm_name,
-                    &[llty],
+                    params,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }

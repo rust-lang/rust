@@ -145,10 +145,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             };
                             let op = op.to_scalar();
                             match float_ty {
-                                FloatTy::F16 => self.float_round::<Half>(op, rounding)?,
-                                FloatTy::F32 => self.float_round::<Single>(op, rounding)?,
-                                FloatTy::F64 => self.float_round::<Double>(op, rounding)?,
-                                FloatTy::F128 => self.float_round::<Quad>(op, rounding)?,
+                                FloatTy::F16 => {
+                                    self.float_round::<Half>(op.to_float()?, rounding)?
+                                }
+                                FloatTy::F32 => {
+                                    self.float_round::<Single>(op.to_float()?, rounding)?
+                                }
+                                FloatTy::F64 => {
+                                    self.float_round::<Double>(op.to_float()?, rounding)?
+                                }
+                                FloatTy::F128 => {
+                                    self.float_round::<Quad>(op.to_float()?, rounding)?
+                                }
                             }
                         }
                         Op::Numeric(name) => {

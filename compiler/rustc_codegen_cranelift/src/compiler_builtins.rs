@@ -172,6 +172,10 @@ builtin_functions! {
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn rintf128(f: f128) -> f128;
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+    fn roundf16(f: f16) -> f16;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+    fn roundf128(f: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn sqrtf16(f: f16) -> f16;
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn sqrtf128(f: f128) -> f128;
