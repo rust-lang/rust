@@ -624,7 +624,6 @@ impl ExpressionStore {
                 visitor.on_expr_opt(*end);
             }
             Pat::Lit(expr) | Pat::Expr(expr) => visitor.on_expr(*expr),
-            Pat::ConstBlock(expr) => visitor.on_anon_const_expr(*expr),
             Pat::Path(path) => visitor.on_path(path),
             Pat::Wild | Pat::Missing | Pat::Rest | Pat::NotNull => {}
             &Pat::Bind { subpat, id: _ } => visitor.on_pat_opt(subpat),

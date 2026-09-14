@@ -16,8 +16,8 @@ use rustc_type_ir::{
 };
 
 use crate::next_solver::{
-    GenericArg, TraitIdWrapper, impl_foldable_for_interned_slice, impl_stored_interned_slice,
-    interned_slice,
+    GenericArg, TraitIdWrapper, default_types, impl_foldable_for_interned_slice,
+    impl_stored_interned_slice, interned_slice,
 };
 
 use super::{Binder, BoundVarKinds, DbInterner, Region, Ty};
@@ -274,8 +274,8 @@ impl<'db> std::fmt::Debug for Clauses<'db> {
 
 impl<'db> Clauses<'db> {
     #[inline]
-    pub fn empty(interner: DbInterner<'db>) -> Self {
-        interner.default_types().empty.clauses
+    pub fn empty() -> Self {
+        default_types().empty.clauses
     }
 
     #[inline]
@@ -318,6 +318,13 @@ impl<'db> Clauses<'db> {
     #[inline]
     pub fn is_empty(self) -> bool {
         self.as_slice().is_empty()
+    }
+}
+
+impl Default for Clauses<'_> {
+    #[inline]
+    fn default() -> Self {
+        Self::empty()
     }
 }
 
@@ -437,8 +444,9 @@ pub struct ParamEnv<'db> {
 }
 
 impl<'db> ParamEnv<'db> {
-    pub fn empty(interner: DbInterner<'db>) -> Self {
-        ParamEnv { clauses: Clauses::empty(interner) }
+    #[inline]
+    pub fn empty() -> Self {
+        ParamEnv { clauses: Clauses::empty() }
     }
 
     pub fn clauses(self) -> Clauses<'db> {

@@ -1033,10 +1033,6 @@ impl Printer<'_> {
                 self.print_pat(*inner);
                 w!(self, ")");
             }
-            Pat::ConstBlock(c) => {
-                w!(self, "const ");
-                self.print_expr(*c);
-            }
             Pat::Expr(expr) => {
                 self.print_expr_in(prec, *expr);
             }
