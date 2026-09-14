@@ -154,7 +154,7 @@ impl<
                 self.max_universe = self.max_universe.max(p.universe)
             }
             RegionKind::ReVar(var) if VISIT_INFER => {
-                match self.infcx.shallow_resolve_region_var(var).kind() {
+                match self.infcx.shallow_resolve_region_var(var).reuse_if_unchanged(r).kind() {
                     RegionKind::RePlaceholder(p) if VISIT_PLACEHOLDER => {
                         self.max_universe = self.max_universe.max(p.universe)
                     }

@@ -163,6 +163,8 @@ mod structural_impls;
 mod typeck_results;
 mod visit;
 
+pub type MaybeResolved<T, TI> = rustc_type_ir::MaybeResolved<T, TI>;
+
 // Data types
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash)]
