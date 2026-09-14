@@ -65,9 +65,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         // uses an incorrect delimiter.
 
         // We remember where we were in the arena, so that we can check how many trees were parsed
-        let index = token_builder.length();
+        let index = token_builder.current_index();
         let open_spacing = self.lex_token_trees(token_builder, /* is_delimited */ true)?;
-        let lexed_trees = token_builder.length() - index;
+        let lexed_trees = token_builder.tree_count_since(index);
 
         // Expand to cover the entire delimited token tree.
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
