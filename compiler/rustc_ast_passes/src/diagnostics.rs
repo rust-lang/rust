@@ -676,6 +676,13 @@ pub(crate) struct PatternFnPointer {
 }
 
 #[derive(Diagnostic)]
+#[diag("patterns aren't allowed in parenthesized argument lists", code = E0561)]
+pub(crate) struct PatternParenthesizedArgList {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("only a single explicit lifetime bound is permitted", code = E0226)]
 pub(crate) struct TraitObjectBound {
     #[primary_span]
