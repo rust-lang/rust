@@ -21,8 +21,8 @@ use crate::ast::AttrStyle;
 use crate::ast_traits::HasTokens;
 use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::tokenarena::{
-    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedBounds, DelimitedData,
-    attrs_and_tokens_to_token_trees_arena,
+    AbsoluteTokenTreeIndex, ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree,
+    DelimitedBounds, DelimitedData, attrs_and_tokens_to_token_trees_arena,
 };
 use crate::{AttrVec, Attribute};
 
@@ -940,8 +940,8 @@ impl<'t> Iterator for TokenStreamIter<'t> {
 pub struct TokenCursor {
     pub stream: ArenaTokenStream,
     /// Global index into the token arena.
-    index: usize,
-    delimited_sequence_end: usize,
+    index: AbsoluteTokenTreeIndex,
+    delimited_sequence_end: AbsoluteTokenTreeIndex,
     depth: u32,
     /// The current delimited sequence that we are inside of, if any.
     parent: Option<DelimitedBounds>,
@@ -950,8 +950,9 @@ pub struct TokenCursor {
 impl TokenCursor {
     #[inline]
     pub fn new(stream: ArenaTokenStream) -> Self {
-        let end = stream.length() + 1;
-        TokenCursor { stream, index: 0, delimited_sequence_end: end, depth: 0, parent: None }
+        let index = stream.range().start();
+        let end = stream.range().one_past_end();
+        TokenCursor { stream, index, delimited_sequence_end: end, depth: 0, parent: None }
     }
 
     /// Gets the next token and advances the cursor by one.
@@ -972,11 +973,11 @@ impl TokenCursor {
             let elem = self.stream.get_innermost_elem_at(index);
             match elem {
                 Some(ArenaTokenTree::Token(..)) => {
-                    index += 1;
+                    index.bump_single();
                 }
                 Some(ArenaTokenTree::DelimitedStart(bounds, ..)) => {
                     // Skip the whole delimited sequence
-                    index = bounds.index_of_next_token_tree();
+                    index.bump_delimited(bounds);
                 }
                 None => {
                     // We reached the end of the arena
@@ -1013,7 +1014,7 @@ impl TokenCursor {
         if let Some(bounds) = self.parent.as_ref() {
             self.index = bounds.index_of_next_token_tree();
         } else {
-            self.index = self.stream.length();
+            self.index = self.stream.range().end();
         }
     }
 
@@ -1059,7 +1060,7 @@ impl TokenCursor {
                     .parent
                     .as_ref()
                     .map(|bounds| bounds.index_of_next_token_tree())
-                    .unwrap_or(self.stream.length() + 1);
+                    .unwrap_or(self.stream.range().one_past_end());
 
                 let data = self.get_delimited_data(&bounds);
                 if !data.delimiter.skip() {
@@ -1078,11 +1079,12 @@ impl TokenCursor {
                 match tree {
                     &ArenaTokenTree::Token(token, spacing) => {
                         debug_assert!(!token.kind.is_delim());
-                        self.index += 1;
+                        self.index.bump_single();
                         return (token, spacing);
                     }
                     &ArenaTokenTree::DelimitedStart(bounds, data) => {
-                        self.index += 1;
+                        // We continue into the delimited group, so we use bump_single here
+                        self.index.bump_single();
                         self.depth += 1;
                         self.delimited_sequence_end = bounds.index_of_next_token_tree();
                         self.parent = Some(bounds);
