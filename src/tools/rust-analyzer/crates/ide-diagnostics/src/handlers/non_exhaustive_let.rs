@@ -407,4 +407,29 @@ fn corge<T: Foo<Bar = Infallible>>(result: Result<T, (i32, T::Bar)>) -> T {
 "#,
         );
     }
+
+    #[test]
+    fn regression_23327() {
+        check_diagnostics(
+            r#"
+//- minicore: option
+macro_rules! outer {
+    () => {
+        fn generated() {
+            inner!();
+        }
+    };
+}
+macro_rules! inner {
+    () => {
+        let None = Some(5);
+    };
+}
+mod m {
+    outer!();
+  //^^^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+}
+"#,
+        );
+    }
 }
