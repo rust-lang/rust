@@ -1040,9 +1040,10 @@ pub(crate) struct ForgetCopyDiag<'a> {
 
 #[derive(Diagnostic)]
 #[diag(
-    "calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing"
+    "calls to `{$krate}::mem::drop` with `{$krate}::mem::ManuallyDrop` instead of the inner value does nothing"
 )]
 pub(crate) struct UndroppedManuallyDropsDiag<'a> {
+    pub krate: &'static str,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
@@ -1052,11 +1053,12 @@ pub(crate) struct UndroppedManuallyDropsDiag<'a> {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use `std::mem::ManuallyDrop::into_inner` to get the inner value",
+    "use `{$krate}::mem::ManuallyDrop::into_inner` to get the inner value",
     applicability = "machine-applicable"
 )]
 pub(crate) struct UndroppedManuallyDropsSuggestion {
-    #[suggestion_part(code = "std::mem::ManuallyDrop::into_inner(")]
+    pub krate: &'static str,
+    #[suggestion_part(code = "{krate}::mem::ManuallyDrop::into_inner(")]
     pub start_span: Span,
     #[suggestion_part(code = ")")]
     pub end_span: Span,
@@ -1064,9 +1066,10 @@ pub(crate) struct UndroppedManuallyDropsSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(
-    "calls to `drop_in_place` with a pointer to a `std::mem::ManuallyDrop` instead of the inner value does nothing"
+    "calls to `drop_in_place` with a pointer to a `{$krate}::mem::ManuallyDrop` instead of the inner value does nothing"
 )]
 pub(crate) struct UndroppedManuallyDropsInPlaceDiag<'a> {
+    pub krate: &'static str,
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
     pub label: Span,
@@ -1076,11 +1079,12 @@ pub(crate) struct UndroppedManuallyDropsInPlaceDiag<'a> {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use `std::mem::ManuallyDrop::drop` to drop the inner value",
+    "use `{$krate}::mem::ManuallyDrop::drop` to drop the inner value",
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct UndroppedManuallyDropsInPlaceSuggestion {
-    #[suggestion_part(code = "std::mem::ManuallyDrop::drop(&mut *")]
+    pub krate: &'static str,
+    #[suggestion_part(code = "{krate}::mem::ManuallyDrop::drop(&mut *")]
     pub start_span: Span,
     #[suggestion_part(code = ")")]
     pub end_span: Span,
