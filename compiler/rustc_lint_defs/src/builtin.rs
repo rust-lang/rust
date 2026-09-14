@@ -54,6 +54,7 @@ pub mod hardwired {
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
             INCOMPLETE_INCLUDE,
+            INEFFECTIVE_UNSTABLE_REEXPORTS,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
             INVALID_DOC_ATTRIBUTES,
@@ -2814,6 +2815,39 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
+}
+
+declare_lint! {
+    /// The `ineffective_unstable_reexports` lint detects `#[unstable]`
+    /// attributes on re-exports where the attribute does not make the
+    /// re-exported path unstable.
+    ///
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// #![feature(staged_api)]
+    /// #![stable(feature = "test", since = "1.0.0")]
+    ///
+    /// #[stable(feature = "test", since = "1.0.0")]
+    /// pub struct S;
+    ///
+    /// #[unstable(feature = "reexport", issue = "none")]
+    /// pub use self::S as T;
+    ///
+    /// fn main() {}
+    #[doc = "```"]
+    ///
+    #[cfg_attr(not(bootstrap), doc = "{{produces}}")]
+    ///
+    /// ### Explanation
+    ///
+    /// `#[unstable]` on a re-export does not make a stable path unstable
+    /// re-exports inside unstable modules are already on an unstable path
+    pub INEFFECTIVE_UNSTABLE_REEXPORTS,
+    Deny,
+    "detects ineffective `#[unstable]` attributes on re-exports",
+    @feature_gate = staged_api;
 }
 
 declare_lint! {

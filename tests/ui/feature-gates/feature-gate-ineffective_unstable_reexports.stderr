@@ -1,0 +1,10 @@
+warning: unknown lint: `ineffective_unstable_reexports`
+  --> $DIR/feature-gate-ineffective_unstable_reexports.rs:4:10
+   |
+LL | #![allow(ineffective_unstable_reexports)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `ineffective_unstable_reexports` lint is unstable
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: 1 warning emitted
