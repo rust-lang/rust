@@ -835,6 +835,7 @@ dependencies = [
 name = "stdarch-gen-loongarch"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "rand 0.9.4",
  "stdarch-gen-common",
 ]
