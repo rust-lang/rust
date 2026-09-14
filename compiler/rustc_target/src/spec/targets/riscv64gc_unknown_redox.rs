@@ -8,6 +8,7 @@ pub(crate) fn target() -> Target {
     base.llvm_abiname = LlvmAbi::Lp64d;
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);
+    base.pre_link_args = base::riscv::pre_link_args();
 
     Target {
         llvm_target: "riscv64-unknown-redox".into(),
