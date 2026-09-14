@@ -617,8 +617,7 @@ impl<'a> DiagCtxtHandle<'a> {
             DelayedBug => {
                 return self.dcx.inner.borrow_mut().emit_diagnostic(diag, self.tainted_with_errors);
             }
-            ForceWarning | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
-            | Expect => None,
+            ForceWarning | Warning | Note | Help | FailureNote | Allow | Expect => None,
         };
 
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
@@ -1025,19 +1024,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_fatal(fatal).emit()
     }
 
-    #[track_caller]
-    pub fn create_almost_fatal(
-        self,
-        fatal: impl Diagnostic<'a, FatalError>,
-    ) -> Diag<'a, FatalError> {
-        fatal.into_diag(self, Fatal)
-    }
-
-    #[track_caller]
-    pub fn emit_almost_fatal(self, fatal: impl Diagnostic<'a, FatalError>) -> FatalError {
-        self.create_almost_fatal(fatal).emit()
-    }
-
     // FIXME: This method should be removed (every error should have an associated error code).
     #[track_caller]
     pub fn struct_err(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
@@ -1300,7 +1286,6 @@ impl DiagCtxtInner {
                 }
             }
             Note | Help | FailureNote => {}
-            OnceNote | OnceHelp => panic!("bad level: {:?}", diagnostic.level),
             Allow => {
                 // Nothing emitted for allowed lints.
                 if diagnostic.has_future_breakage() {
@@ -1359,8 +1344,11 @@ impl DiagCtxtInner {
 
                 let not_yet_emitted = |sub: &mut Subdiag| {
                     debug!(?sub);
-                    if sub.level != OnceNote && sub.level != OnceHelp {
-                        return true;
+                    match sub.level {
+                        Sublevel::Error | Sublevel::Warning | Sublevel::Note | Sublevel::Help => {
+                            return true;
+                        }
+                        Sublevel::OnceNote | Sublevel::OnceHelp => {}
                     }
                     let mut hasher = StableHasher::new();
                     sub.hash(&mut hasher);
@@ -1371,7 +1359,7 @@ impl DiagCtxtInner {
                 diagnostic.children.retain_mut(not_yet_emitted);
                 if already_emitted {
                     let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
-                    diagnostic.sub(Note, msg, MultiSpan::new());
+                    diagnostic.sub(Sublevel::Note, msg, MultiSpan::new());
                 }
 
                 if is_error {
@@ -1521,7 +1509,7 @@ impl DiagCtxtInner {
                 let msg = msg!(
                     "`flushed_delayed` got diagnostic with level {$level}, instead of the expected `DelayedBug`"
                 ).arg("level", bug.level).format();
-                bug.sub(Note, msg, bug.span.primary_span().unwrap().into());
+                bug.sub(Sublevel::Note, msg, bug.span.primary_span().unwrap().into());
             }
             bug.level = Bug;
 
@@ -1572,29 +1560,24 @@ impl DelayedDiagInner {
         .arg("emitted_at", diag.emitted_at.clone())
         .arg("note", self.note)
         .format();
-        diag.sub(Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
+        diag.sub(Sublevel::Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
         diag
     }
 }
 
-/// | Level        | is_error | EmissionGuarantee            | Top-level | Sub | Used in lints?
-/// | -----        | -------- | -----------------            | --------- | --- | --------------
-/// | Bug          | yes      | BugAbort                     | yes       | -   | -
-/// | Fatal        | yes      | FatalAbort/FatalError[^star] | yes       | -   | -
-/// | Error        | yes      | ErrorGuaranteed              | yes       | -   | yes
-/// | DelayedBug   | yes      | ErrorGuaranteed              | yes       | -   | -
-/// | ForceWarning | -        | ()                           | yes       | -   | lint-only
-/// | Warning      | -        | ()                           | yes       | yes | yes
-/// | Note         | -        | ()                           | rare      | yes | -
-/// | OnceNote     | -        | ()                           | -         | yes | lint-only
-/// | Help         | -        | ()                           | rare      | yes | -
-/// | OnceHelp     | -        | ()                           | -         | yes | lint-only
-/// | FailureNote  | -        | ()                           | rare      | -   | -
-/// | Allow        | -        | ()                           | yes       | -   | lint-only
-/// | Expect       | -        | ()                           | yes       | -   | lint-only
-///
-/// [^star]: `FatalAbort` normally, `FatalError` in the non-aborting "almost fatal" case that is
-///     occasionally used.
+/// | Level        | is_error | EmissionGuarantee | Top-level | Used in lints?
+/// | -----        | -------- | ----------------- | --------- | --------------
+/// | Bug          | yes      | BugAbort          | yes       | -
+/// | Fatal        | yes      | FatalAbort        | yes       | -
+/// | Error        | yes      | ErrorGuaranteed   | yes       | yes
+/// | DelayedBug   | yes      | ErrorGuaranteed   | yes       | -
+/// | ForceWarning | -        | ()                | yes       | lint-only
+/// | Warning      | -        | ()                | yes       | yes
+/// | Note         | -        | ()                | rare      | -
+/// | Help         | -        | ()                | rare      | -
+/// | FailureNote  | -        | ()                | rare      | -
+/// | Allow        | -        | ()                | yes       | lint-only
+/// | Expect       | -        | ()                | yes       | lint-only
 ///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
@@ -1629,14 +1612,8 @@ pub enum Level {
     /// A message giving additional context.
     Note,
 
-    /// A note that is only emitted once.
-    OnceNote,
-
     /// A message suggesting how to fix something.
     Help,
-
-    /// A help that is only emitted once.
-    OnceHelp,
 
     /// Similar to `Note`, but used in cases where compilation has failed. When printed for human
     /// consumption, it doesn't have any kind of `note:` label.
@@ -1656,30 +1633,13 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    fn color(self) -> anstyle::Style {
-        match self {
-            Bug | Fatal | Error | DelayedBug => AnsiColor::BrightRed.on_default(),
-            ForceWarning | Warning => {
-                if cfg!(windows) {
-                    AnsiColor::BrightYellow.on_default()
-                } else {
-                    AnsiColor::Yellow.on_default()
-                }
-            }
-            Note | OnceNote => AnsiColor::BrightGreen.on_default(),
-            Help | OnceHelp => AnsiColor::BrightCyan.on_default(),
-            FailureNote => anstyle::Style::new(),
-            Allow | Expect => unreachable!(),
-        }
-    }
-
     pub fn to_str(self) -> &'static str {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error => "error",
             ForceWarning | Warning => "warning",
-            Note | OnceNote => "note",
-            Help | OnceHelp => "help",
+            Note => "note",
+            Help => "help",
             FailureNote => "failure-note",
             Allow | Expect => unreachable!(),
         }
@@ -1696,22 +1656,46 @@ impl IntoDiagArg for Level {
     }
 }
 
+/// The level for a subdiagnostic.
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
+pub enum Sublevel {
+    /// See `Level::Error`.
+    ///
+    /// The compiler never uses this level in a subdiagnostic, but it can be produced by proc
+    /// macros. See tests/ui/proc-macro/sub-error-diag.rs for details.
+    Error,
+
+    /// See `Level::Warning`.
+    Warning,
+
+    /// See `Level::Note`.
+    Note,
+
+    /// A note that is only emitted once.
+    OnceNote,
+
+    /// See `Level::Help`.
+    Help,
+
+    /// A help that is only emitted once.
+    OnceHelp,
+}
+
+impl Sublevel {
+    pub fn to_str(self) -> &'static str {
+        match self {
+            Sublevel::Error => "error",
+            Sublevel::Warning => "warning",
+            Sublevel::Note | Sublevel::OnceNote => "note",
+            Sublevel::Help | Sublevel::OnceHelp => "help",
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum Style {
-    MainHeaderMsg,
-    HeaderMsg,
-    LineAndColumn,
-    LineNumber,
-    Quotation,
-    UnderlinePrimary,
-    UnderlineSecondary,
-    LabelPrimary,
-    LabelSecondary,
     NoStyle,
-    Level(Level),
     Highlight,
-    Addition,
-    Removal,
 }
 
 // FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.

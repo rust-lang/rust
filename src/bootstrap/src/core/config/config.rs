@@ -1125,7 +1125,7 @@ impl Config {
         let is_host_system_llvm =
             target_config.get(&host_target).and_then(|c| c.llvm_config.as_ref()).is_some();
 
-        for (target, linker_override) in default_linux_linker_overrides() {
+        for (target, linker_override) in default_linux_linker_overrides(&channel) {
             // If the user overrode the default Linux linker, do not apply bootstrap defaults
             if targets_with_user_linker_override.contains(&target) {
                 continue;

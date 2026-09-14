@@ -1,15 +1,18 @@
 # \*-windows-gnullvm
 
-**Tier: 2 (with host tools)**
-
 Windows targets similar to `*-windows-gnu` but using Universal C Runtime (UCRT) as the runtime and various LLVM tools/libraries instead of
 GCC/Binutils.
 
-Target triples available so far:
+**Tier: 2 (with host tools)**
 
+Target tuples available so far:
 - `aarch64-pc-windows-gnullvm`
-- `i686-pc-windows-gnullvm`
 - `x86_64-pc-windows-gnullvm`
+
+**Tier: 2 (without host tools)**
+
+Target tuples available so far:
+- `i686-pc-windows-gnullvm`
 
 ## Target maintainers
 
