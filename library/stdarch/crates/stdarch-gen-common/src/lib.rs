@@ -318,7 +318,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let committed = tmp.path().join("c");
         write_marker(&committed.join("a.txt"), b"hi");
+
+        let ctx = GeneratorCtx::new(None);
         let e = run_generator(
+            &ctx,
             &committed,
             Mode::Check,
             |out| -> std::result::Result<(), io::Error> {
@@ -341,7 +344,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let committed = tmp.path().join("c");
         write_marker(&committed.join("a.txt"), b"hi");
+
+        let ctx = GeneratorCtx::new(None);
         let e = run_generator(
+            &ctx,
             &committed,
             Mode::Check,
             |_| -> std::result::Result<(), io::Error> { Ok(()) },
@@ -361,7 +367,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let committed = tmp.path().join("c");
         fs::create_dir_all(&committed).unwrap();
+
+        let ctx = GeneratorCtx::new(None);
         let e = run_generator(
+            &ctx,
             &committed,
             Mode::Check,
             |out| -> std::result::Result<(), io::Error> {
@@ -385,7 +394,10 @@ mod tests {
         let committed = tmp.path().join("c");
         write_marker(&committed.join("keep.txt"), b"");
         write_marker(&committed.join("stale.txt"), b"");
+
+        let ctx = GeneratorCtx::new(None);
         run_generator(
+            &ctx,
             &committed,
             Mode::Bless,
             |out| -> std::result::Result<(), io::Error> {
@@ -405,7 +417,9 @@ mod tests {
         fs::create_dir_all(&committed).unwrap();
         fs::write(committed.join("mod.rs"), b"hand-written").unwrap();
         fs::write(committed.join("old.txt"), b"old").unwrap();
+        let ctx = GeneratorCtx::new(None);
         run_generator(
+            &ctx,
             &committed,
             Mode::Bless,
             |out| -> std::result::Result<(), io::Error> {
@@ -417,5 +431,33 @@ mod tests {
         assert_eq!(fs::read(committed.join("mod.rs")).unwrap(), b"hand-written");
         assert_eq!(fs::read(committed.join("old.txt")).unwrap(), b"old");
         assert!(committed.join("new.txt").exists());
+    }
+
+    #[test]
+    fn generation_reformats_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let committed = tmp.path().join("c");
+        let file = committed.join("a.rs");
+        write_marker(&file, b"foo");
+
+        let ctx = GeneratorCtx::new(None);
+        run_generator(
+            &ctx,
+            &committed,
+            Mode::Bless,
+            |out| -> std::result::Result<(), io::Error> {
+                write_marker(&out.join("a.rs"), b"fn      main() {}");
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(file).unwrap(),
+            format!(
+                r#"{GENERATED_MARKER}
+fn main() {{}}
+"#
+            )
+        );
     }
 }
