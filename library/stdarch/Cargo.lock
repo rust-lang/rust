@@ -826,6 +826,7 @@ dependencies = [
 name = "stdarch-gen-hexagon"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "regex",
  "stdarch-gen-common",
 ]

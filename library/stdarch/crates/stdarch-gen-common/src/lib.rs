@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 pub const GENERATED_MARKER: &str = "// This code is automatically generated. DO NOT MODIFY.";
 
 /// Controls what `run_generator` does with the generator's output.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// Verify that the `committed` matches the generator's output for owned files.
     ///
@@ -26,6 +26,7 @@ pub enum Mode {
     /// into `committed`. If the generator no longer produces an owned file, the
     /// committed copy is deleted. Files in `committed` that are not owned
     /// are left untouched.
+    #[default]
     Bless,
 }
 
