@@ -3082,16 +3082,7 @@ impl<'db> ExprCollector<'db> {
                 Pat::Deref { inner }
             }
             ast::Pat::NotNull(_) => Pat::NotNull,
-            ast::Pat::ConstBlockPat(const_block_pat) => {
-                if let Some(block) = const_block_pat.block_expr() {
-                    let expr_id = self.with_label_rib(RibKind::Constant, |this| {
-                        this.with_binding_owner(|this| this.collect_block(block))
-                    });
-                    Pat::ConstBlock(expr_id)
-                } else {
-                    Pat::Missing
-                }
-            }
+            ast::Pat::ConstBlockPat(_) => Pat::Missing,
             ast::Pat::MacroPat(mac) => {
                 return self.collect_macro_pat_with(mac.clone(), |this, expanded_pat| {
                     this.collect_pat(expanded_pat, binding_list)
@@ -3276,16 +3267,6 @@ impl<'db> ExprCollector<'db> {
             ast::Pat::LiteralPat(it) => {
                 let Some((literal, _)) = pat_literal_to_hir(it) else { return self.missing_expr() };
                 self.alloc_expr_from_pat(Expr::Literal(literal), ptr)
-            }
-            ast::Pat::ConstBlockPat(it) => {
-                if let Some(block) = it.block_expr() {
-                    let expr_id = self.with_label_rib(RibKind::Constant, |this| {
-                        this.with_binding_owner(|this| this.collect_block(block))
-                    });
-                    self.alloc_expr_from_pat(Expr::Const(expr_id), ptr)
-                } else {
-                    self.missing_expr()
-                }
             }
             ast::Pat::PathPat(it) => {
                 let path = it
