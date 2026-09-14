@@ -1453,7 +1453,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tokens(&mut self) -> ArenaTokenStream {
-        let mut builder = ArenaTokenStreamBuilder::default();
+        let mut builder = ArenaTokenStreamBuilder::new();
         loop {
             if self.token.kind.is_close_delim_or_eof() {
                 break;

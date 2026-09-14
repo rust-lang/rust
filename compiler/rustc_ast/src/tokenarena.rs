@@ -90,7 +90,7 @@ impl ArenaTokenTree {
 
 static_assert_size!(ArenaTokenTree, 44);
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ArenaTokenStreamBuilder {
     tokens: Vec<ArenaTokenTree>,
     /// Index of the current delimited sequence
@@ -100,6 +100,11 @@ pub struct ArenaTokenStreamBuilder {
 }
 
 impl ArenaTokenStreamBuilder {
+    #[inline]
+    pub fn new() -> Self {
+        Self { tokens: vec![], current_delimited_sequence: None, last_push_was_token: false }
+    }
+
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             tokens: Vec::with_capacity(capacity),
@@ -382,6 +387,13 @@ impl ArenaTokenStreamBuilder {
     }
 }
 
+impl Default for ArenaTokenStreamBuilder {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub enum PerTreeOp {
     /// Continue processing the tree as normally.
     Continue,
@@ -438,7 +450,7 @@ impl ArenaTokenStream {
 
     pub fn from_ast(node: &(impl HasTokens + fmt::Debug)) -> Self {
         let tokens = node.tokens().unwrap_or_else(|| panic!("missing tokens for node: {:?}", node));
-        let mut builder = ArenaTokenStreamBuilder::default();
+        let mut builder = ArenaTokenStreamBuilder::new();
         attrs_and_tokens_to_token_trees_arena(node.attrs(), tokens, &mut builder, 0);
         builder.finish()
     }
@@ -795,8 +807,8 @@ pub fn attrs_and_tokens_to_token_trees_arena(
             AbsoluteTokenTreeIndex(builder.tokens.len() as u32),
             builder,
         ) {
-            // FIXME: implement this in a more efficient way
-            let mut inner = ArenaTokenStreamBuilder::default();
+            // FIXME(tokens): implement this in a more efficient way
+            let mut inner = ArenaTokenStreamBuilder::new();
             for attribute in inner_attrs {
                 attribute.push_token_trees(&mut inner);
             }

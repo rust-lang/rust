@@ -273,7 +273,7 @@ fn source_file_to_stream<'psess>(
         ));
     });
 
-    let mut token_builder = ArenaTokenStreamBuilder::default();
+    let mut token_builder = ArenaTokenStreamBuilder::new();
     lexer::lex_token_trees(
         psess,
         src.as_str(),
@@ -328,12 +328,13 @@ fn fake_token_stream_for_file_mod(
     let attr = attr_to_exclude.expect("file modules must have an attribute to exclude");
     assert_eq!(attr.style, ast::AttrStyle::Inner);
 
-    let mut builder = ArenaTokenStreamBuilder::default();
+    let mut builder = ArenaTokenStreamBuilder::new();
 
     for attr in item.attrs.iter().filter(|attr| attr.style == ast::AttrStyle::Outer) {
         attr.push_token_trees(&mut builder);
     }
     lex_token_trees_for_span(psess, item.span, &mut builder)?;
+    // FIXME(tokens): this can break delimited invariants.
     let Some(ArenaTokenTree::Token(semi, _)) = builder.pop() else {
         return None;
     };

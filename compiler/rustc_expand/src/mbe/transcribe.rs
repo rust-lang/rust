@@ -198,7 +198,7 @@ pub(super) fn transcribe<'a>(
             src_span,
             DelimSpacing::new(Spacing::Alone, Spacing::Alone)
         )],
-        result: ArenaTokenStreamBuilder::default(),
+        result: ArenaTokenStreamBuilder::new(),
         result_stack: Vec::new(),
     };
 
@@ -247,8 +247,8 @@ pub(super) fn transcribe<'a>(
                     }
 
                     // Step back into the parent Delimited.
-                    // FIXME: optimize wrap top-level
-                    let mut builder = ArenaTokenStreamBuilder::default();
+                    // FIXME(tokens): optimize wrap top-level
+                    let mut builder = ArenaTokenStreamBuilder::new();
                     builder.push_delimited(
                         |builder| {
                             builder.push_stream(tscx.result.finish());
@@ -640,8 +640,8 @@ fn transcribe_pnr<'tx>(
 
             let leading_if_span =
                 guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
-            // FIXME: optimize this
-            let mut builder = ArenaTokenStreamBuilder::default();
+            // FIXME(tokens): optimize this
+            let mut builder = ArenaTokenStreamBuilder::with_capacity(2);
             builder.push_token_alone(Token::new(
                 token::Ident(kw::If, IdentKind::Normal),
                 leading_if_span,

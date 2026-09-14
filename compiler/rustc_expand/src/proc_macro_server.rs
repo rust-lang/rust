@@ -701,7 +701,7 @@ impl server::Server for Rustc<'_, '_> {
         &mut self,
         tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
     ) -> Self::TokenStream {
-        let mut builder = ArenaTokenStreamBuilder::default();
+        let mut builder = ArenaTokenStreamBuilder::new();
         push_tree_to_internal(tree, self, &mut builder, |builder, token, spacing| {
             builder.push_token(token, spacing);
         });
@@ -716,7 +716,7 @@ impl server::Server for Rustc<'_, '_> {
         let mut builder = if let Some(base) = base {
             base.into_builder()
         } else {
-            ArenaTokenStreamBuilder::default()
+            ArenaTokenStreamBuilder::new()
         };
         for tree in trees {
             push_tree_to_internal(tree, self, &mut builder, |builder, token, spacing| {
@@ -736,7 +736,7 @@ impl server::Server for Rustc<'_, '_> {
         let mut builder = if let Some(base) = base {
             base.into_builder()
         } else {
-            ArenaTokenStreamBuilder::default()
+            ArenaTokenStreamBuilder::new()
         };
         for s in streams {
             let mut iter = s.iter_top_level_trees();
