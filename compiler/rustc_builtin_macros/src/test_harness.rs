@@ -38,6 +38,7 @@ struct TestCtxt<'a> {
     def_site: Span,
     test_cases: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
+    /// Value of a `#[test_runner]` attribute, if present.
     test_runner: Option<ast::Path>,
 }
 
@@ -320,6 +321,10 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
     let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp);
 
     // pub fn main() { ... }
+    // FIXME: it would be nice if we could use `std::process::ExitCode` as return type here, and
+    // remove all early-exit from libtest itself. Or rather, it should be `test::ExitCode` so we
+    // don't depend on whatever `std` may be. This needs the `extern crate test` to be *outside*
+    // `main`. But naively moving it out causes ICEs that give no hint as to what is wrong.
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
 
     // If no test runner is provided we need to import the test crate
