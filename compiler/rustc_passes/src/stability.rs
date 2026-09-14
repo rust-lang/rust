@@ -568,8 +568,8 @@ struct Checker<'tcx> {
 }
 
 impl<'tcx> Checker<'tcx> {
-    fn unstable_reexport_span(&self, item: &'tcx hir::Item<'tcx>) -> Option<Span> {
-        let attrs = self.tcx.hir_attrs(item.hir_id());
+    fn unstable_reexport_span(&self, hir_id: HirId) -> Option<Span> {
+        let attrs = self.tcx.hir_attrs(hir_id);
         let (stability, span) =
             find_attr!(attrs, Stability { stability, span } => (*stability, *span))?;
 
@@ -622,14 +622,14 @@ impl<'tcx> Checker<'tcx> {
 
     fn record_unstable_reexport(
         &mut self,
-        item: &'tcx hir::Item<'tcx>,
+        hir_id: HirId,
         attr_span: Span,
         span: Span,
         has_target: bool,
         all_targets_stable: bool,
     ) {
         let entry = self.unstable_reexports.entry(attr_span).or_insert(UnstableReexport {
-            hir_id: item.hir_id(),
+            hir_id,
             span,
             has_target: false,
             all_targets_stable: true,
@@ -639,31 +639,28 @@ impl<'tcx> Checker<'tcx> {
         entry.all_targets_stable &= all_targets_stable;
     }
 
-    fn check_single_unstable_reexport(
-        &mut self,
-        item: &'tcx hir::Item<'tcx>,
-        path: &'tcx UsePath<'tcx>,
-    ) {
-        let Some(attr_span) = self.unstable_reexport_span(item) else {
+    fn check_single_unstable_reexport(&mut self, hir_id: HirId, path: &'tcx UsePath<'tcx>) {
+        let Some(attr_span) = self.unstable_reexport_span(hir_id) else {
             return;
         };
 
         let (has_target, all_targets_stable) =
             self.classify_reexport_targets(path.res.present_items());
 
-        self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
+        self.record_unstable_reexport(hir_id, attr_span, path.span, has_target, all_targets_stable);
     }
 
     fn check_glob_unstable_reexport(
         &mut self,
-        item: &'tcx hir::Item<'tcx>,
+        hir_id: HirId,
+        glob_def_id: LocalDefId,
         path: &'tcx UsePath<'tcx>,
     ) {
-        let Some(attr_span) = self.unstable_reexport_span(item) else {
+        let Some(attr_span) = self.unstable_reexport_span(hir_id) else {
             return;
         };
 
-        let glob_def_id = item.owner_id.def_id.to_def_id();
+        let glob_def_id = glob_def_id.to_def_id();
 
         let targets = self
             .tcx
@@ -676,7 +673,7 @@ impl<'tcx> Checker<'tcx> {
 
         let (has_target, all_targets_stable) = self.classify_reexport_targets(targets);
 
-        self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
+        self.record_unstable_reexport(hir_id, attr_span, path.span, has_target, all_targets_stable);
     }
 
     fn containing_module_is_unstable(&self) -> bool {
@@ -735,14 +732,14 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 if self.tcx.features().staged_api()
                     && self.tcx.local_visibility(item.owner_id.def_id).is_public() =>
             {
-                self.check_single_unstable_reexport(item, path);
+                self.check_single_unstable_reexport(item.hir_id(), path);
             }
 
             hir::ItemKind::Use(path, hir::UseKind::Glob)
                 if self.tcx.features().staged_api()
                     && self.tcx.local_visibility(item.owner_id.def_id).is_public() =>
             {
-                self.check_glob_unstable_reexport(item, path);
+                self.check_glob_unstable_reexport(item.hir_id(), item.owner_id.def_id, path);
             }
 
             // For implementations of traits, check the stability of each item
