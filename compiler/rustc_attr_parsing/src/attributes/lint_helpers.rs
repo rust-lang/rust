@@ -72,6 +72,7 @@ impl NoArgsAttributeParser for AutomaticallyDerivedParser {
         Allow(Target::Impl { of_trait: true }),
         Error(Target::Crate),
         Error(Target::WherePredicate),
+        Error(Target::Param),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::AutomaticallyDerived;
