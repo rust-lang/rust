@@ -13,10 +13,7 @@ error[E0425]: cannot find value `value` in this scope
 LL |         let _ = generated_arg!("{} {value}");
    |                                     ^^^^^
    |
-help: you might have meant to use the available field
-   |
-LL |         let _ = generated_arg!("{} {self.value}");
-   |                                     +++++
+   = help: you might have meant to add a named formatting argument: `value = self.value`
 
 error[E0425]: cannot find value `value` in this scope
   --> $DIR/format-captured-non-values.rs:29:38
@@ -24,32 +21,25 @@ error[E0425]: cannot find value `value` in this scope
 LL |         let _ = forwarded_args!("{} {value}", 1);
    |                                      ^^^^^
    |
-help: you might have meant to use the available field
-   |
-LL |         let _ = forwarded_args!("{} {self.value}", 1);
-   |                                      +++++
+   = help: you might have meant to add a named formatting argument: `value = self.value`
 
 error[E0425]: cannot find value `Item` in this scope
   --> $DIR/format-captured-non-values.rs:38:27
    |
+LL |     type Item;
+   |          ---- an associated type by that name is available on `Self` here
+...
 LL |         let _ = format!("{Item}");
    |                           ^^^^
-   |
-help: you might have meant to use the associated type
-   |
-LL |         let _ = format!("{Self::Item}");
-   |                           ++++++
 
 error[E0425]: cannot find value `limit` in this scope
   --> $DIR/format-captured-non-values.rs:48:27
    |
+LL |     fn limit() -> usize { 3 }
+   |     ------------------------- an associated function by that name is available on `Self` here
+...
 LL |         let _ = format!("{limit}");
    |                           ^^^^^
-   |
-help: you might have meant to refer to the associated function
-   |
-LL |         let _ = format!("{Self::limit}");
-   |                           ++++++
 
 error[E0425]: cannot find value `fmt` in this scope
   --> $DIR/format-captured-non-values.rs:56:27
@@ -57,10 +47,9 @@ error[E0425]: cannot find value `fmt` in this scope
 LL |         let _ = format!("{fmt}");
    |                           ^^^
    |
-help: you might have meant to refer to the method
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
-LL |         let _ = format!("{self.fmt}");
-   |                           +++++
+   = note: a method by that name is available on `Self` here
 
 error[E0423]: cannot find value `Example` in this scope
   --> $DIR/format-captured-non-values.rs:64:23
@@ -71,9 +60,13 @@ LL | | }
    | |_- `Example` defined here
 ...
 LL |       let _ = format!("{Example:?}");
-   |                         ^^^^^^^ help: use struct literal syntax instead: `Example { value: val }`
+   |                         ^^^^^^^
    |
    = note: a struct named `Example` exists in another namespace
+help: you might have meant to add a named formatting argument
+   |
+LL |     let _ = format!("{Example:?}", Example = Example { value: val });
+   |                                  ++++++++++++++++++++++++++++++++++
 
 error: aborting due to 7 previous errors
 

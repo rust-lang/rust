@@ -4,10 +4,10 @@ error[E0425]: cannot find value `value` in this scope
 LL |         let _ = write!(String::new(), "{value}");
    |                                         ^^^^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = write!(String::new(), "{self.value}");
-   |                                         +++++
+LL |         let _ = write!(String::new(), "{value}", value = self.value);
+   |                                                ++++++++++++++++++++
 
 error[E0425]: cannot find value `value` in this scope
   --> $DIR/format-captured-standard-macros.rs:20:28
@@ -15,10 +15,10 @@ error[E0425]: cannot find value `value` in this scope
 LL |         assert_eq!(1, 1, "{value}");
    |                            ^^^^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         assert_eq!(1, 1, "{self.value}");
-   |                            +++++
+LL |         assert_eq!(1, 1, "{value}", value = self.value);
+   |                                   ++++++++++++++++++++
 
 error[E0425]: cannot find value `value` in this scope
   --> $DIR/format-captured-standard-macros.rs:24:21
@@ -26,10 +26,10 @@ error[E0425]: cannot find value `value` in this scope
 LL |         panic!("{} {value}", 1);
    |                     ^^^^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         panic!("{} {self.value}", 1);
-   |                     +++++
+LL |         panic!("{} {value}", 1, value = self.value);
+   |                               ++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

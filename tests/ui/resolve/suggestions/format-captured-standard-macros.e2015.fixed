@@ -15,13 +15,13 @@ impl Example {
         use std::fmt::Write;
 
         // A destination or assertion operands precede the formatting arguments.
-        let _ = write!(String::new(), "{value}");
+        let _ = write!(String::new(), "{value}", value = self.value);
         //~^ ERROR cannot find value `value` in this scope
-        assert_eq!(1, 1, "{value}");
+        assert_eq!(1, 1, "{value}", value = self.value);
         //~^ ERROR cannot find value `value` in this scope
 
         // Explicit arguments select formatting in both editions.
-        panic!("{} {value}", 1);
+        panic!("{} {value}", 1, value = self.value);
         //~^ ERROR cannot find value `value` in this scope
     }
 

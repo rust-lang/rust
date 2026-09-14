@@ -4,10 +4,10 @@ error[E0425]: cannot find value `r#type` in this scope
 LL |         let _ = format!(r#"{type:WIDTH$} {type}"#,);
    |                             ^^^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!(r#"{self.type:WIDTH$} {type}"#,);
-   |                             +++++
+LL |         let _ = format!(r#"{type:WIDTH$} {type}"#, r#type = self.r#type,);
+   |                                                  ++++++++++++++++++++++
 
 error[E0425]: cannot find value `WIDTH` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:25:34
@@ -15,10 +15,10 @@ error[E0425]: cannot find value `WIDTH` in this scope
 LL |         let _ = format!(r#"{type:WIDTH$} {type}"#,);
    |                                  ^^^^^ not found in this scope
    |
-help: consider using the associated constant on `Self`
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!(r#"{type:Self::WIDTH$} {type}"#,);
-   |                                  ++++++
+LL |         let _ = format!(r#"{type:WIDTH$} {type}"#, WIDTH = Self::WIDTH,);
+   |                                                  +++++++++++++++++++++
 
 error[E0425]: cannot find value `r#type` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:30:33
@@ -26,10 +26,10 @@ error[E0425]: cannot find value `r#type` in this scope
 LL |         let _ = format!("{} {} {type}", 0, identity!(1));
    |                                 ^^^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!("{} {} {self.type}", 0, identity!(1));
-   |                                 +++++
+LL |         let _ = format!("{} {} {type}", 0, identity!(1), r#type = self.r#type);
+   |                                                        ++++++++++++++++++++++
 
 error[E0425]: cannot find value `r#type` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:32:33
@@ -37,10 +37,10 @@ error[E0425]: cannot find value `r#type` in this scope
 LL |         let _ = format!("{arg} {type}", arg = identity!(1));
    |                                 ^^^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!("{arg} {self.type}", arg = identity!(1));
-   |                                 +++++
+LL |         let _ = format!("{arg} {type}", arg = identity!(1), r#type = self.r#type);
+   |                                                           ++++++++++++++++++++++
 
 error[E0425]: cannot find value `WIDTH` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:36:48
@@ -48,10 +48,10 @@ error[E0425]: cannot find value `WIDTH` in this scope
 LL |         let _ = format!("{} {type}", format!("{WIDTH}"));
    |                                                ^^^^^ not found in this scope
    |
-help: consider using the associated constant on `Self`
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!("{} {type}", format!("{Self::WIDTH}"));
-   |                                                ++++++
+LL |         let _ = format!("{} {type}", format!("{WIDTH}", WIDTH = Self::WIDTH));
+   |                                                       +++++++++++++++++++++
 
 error[E0425]: cannot find value `r#type` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:36:30
@@ -59,10 +59,10 @@ error[E0425]: cannot find value `r#type` in this scope
 LL |         let _ = format!("{} {type}", format!("{WIDTH}"));
    |                              ^^^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!("{} {self.type}", format!("{WIDTH}"));
-   |                              +++++
+LL |         let _ = format!("{} {type}", format!("{WIDTH}"), r#type = self.r#type);
+   |                                                        ++++++++++++++++++++++
 
 error[E0425]: cannot find value `LIMIT` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:46:27
@@ -70,10 +70,10 @@ error[E0425]: cannot find value `LIMIT` in this scope
 LL |         let _ = format!("{LIMIT}");
    |                           ^^^^^
    |
-help: you might have meant to use the associated `const`
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!("{Self::LIMIT}");
-   |                           ++++++
+LL |         let _ = format!("{LIMIT}", LIMIT = Self::LIMIT);
+   |                                  +++++++++++++++++++++
 
 error[E0425]: cannot find value `True` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:53:23
@@ -81,11 +81,10 @@ error[E0425]: cannot find value `True` in this scope
 LL |     let _ = format!("{True}");
    |                       ^^^^ not found in this scope
    |
-help: you may want to use a bool value instead
+help: you might have meant to add a named formatting argument
    |
-LL -     let _ = format!("{True}");
-LL +     let _ = format!("{true}");
-   |
+LL |     let _ = format!("{True}", True = true);
+   |                             +++++++++++++
 
 error[E0423]: cannot find value `CaptureEmpty` in this scope
   --> $DIR/format-captured-field-issue-105520.rs:55:23
@@ -94,9 +93,13 @@ LL | struct CaptureEmpty {}
    | ---------------------- `CaptureEmpty` defined here
 ...
 LL |     let _ = format!("{CaptureEmpty:?}");
-   |                       ^^^^^^^^^^^^ help: use struct literal syntax instead: `CaptureEmpty {}`
+   |                       ^^^^^^^^^^^^
    |
    = note: a struct named `CaptureEmpty` exists in another namespace
+help: you might have meant to add a named formatting argument
+   |
+LL |     let _ = format!("{CaptureEmpty:?}", CaptureEmpty = CaptureEmpty {});
+   |                                       ++++++++++++++++++++++++++++++++
 
 error: aborting due to 9 previous errors
 
