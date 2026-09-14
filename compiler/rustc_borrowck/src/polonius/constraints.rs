@@ -7,10 +7,9 @@ use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
-use crate::polonius::{ConstraintDirection, LiveRegionVariances};
-use crate::region_infer::values::LivenessValues;
+use crate::polonius::ConstraintDirection;
+use crate::polonius::liveness::RegionLiveness;
 use crate::type_check::Locations;
-use crate::universal_regions::UniversalRegions;
 
 /// A localized outlives constraint reifies the CFG location where the outlives constraint holds,
 /// within the origins themselves as if they were different from point to point: from `a: b`
@@ -49,72 +48,10 @@ pub(super) struct LocalizedConstraintGraph {
     logical_edges: IndexVec<RegionVid, FxIndexSet<RegionVid>>,
 }
 
-/// For a given region, the relevant liveness and variance information.
-pub(super) struct RegionLiveness<'a> {
-    region: RegionVid,
-    direction: ConstraintDirection,
-    liveness: &'a LivenessValues,
-}
-
-impl<'a> RegionLiveness<'a> {
-    pub(super) fn new<'tcx>(
-        region: RegionVid,
-        live_region_variances: &LiveRegionVariances,
-        universal_regions: &UniversalRegions<'tcx>,
-        liveness: &'a LivenessValues,
-    ) -> Self {
-        // Universal regions propagate loans along the CFG, i.e. forwards only.
-        let is_universal_region = universal_regions.is_universal_region(region);
-
-        // Note: there currently are cases related to promoted and const generics, where we don't yet
-        // have variance information (possibly about temporary regions created when typeck sanitizes the
-        // promoteds). Until that is done, we conservatively fallback to maximizing reachability by
-        // adding a bidirectional edge here. This will not limit traversal whatsoever, and thus
-        // propagate liveness when needed.
-        //
-        // FIXME: add the missing variance information and remove this fallback bidirectional edge.
-        let direction = if is_universal_region {
-            ConstraintDirection::Forward
-        } else {
-            live_region_variances
-                .get(region)
-                .copied()
-                .flatten()
-                .unwrap_or(ConstraintDirection::Bidirectional)
-        };
-        Self { region, direction, liveness }
-    }
-
-    fn is_live_at(&self, point: PointIndex) -> bool {
-        self.liveness.points().contains(self.region, point)
-    }
-}
-
 /// The source of liveness information for a given region.
 pub(super) trait LivenessSource<'loc> {
     fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_>;
     fn location_map(&self) -> &'loc DenseLocationMap;
-}
-
-/// A `LivenessSource` for already-existing liveness and variance data.
-pub(super) struct CachedLivenessSource<'a, 'tcx> {
-    pub(super) live_region_variances: &'a LiveRegionVariances,
-    pub(super) universal_regions: &'a UniversalRegions<'tcx>,
-    pub(super) liveness: &'a LivenessValues,
-}
-
-impl<'a, 'tcx> LivenessSource<'a> for CachedLivenessSource<'a, 'tcx> {
-    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
-        RegionLiveness::new(
-            region,
-            self.live_region_variances,
-            self.universal_regions,
-            self.liveness,
-        )
-    }
-    fn location_map(&self) -> &'a DenseLocationMap {
-        self.liveness.location_map()
-    }
 }
 
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
