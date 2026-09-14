@@ -3,7 +3,10 @@ use std::mem;
 use rustc_ast::token::{
     self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
-use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedData,
+};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, listify, pluralize};
@@ -64,11 +67,11 @@ struct TranscrCtx<'psess, 'itp> {
     ///
     /// Thus, if we try to pop the `result_stack` and it is empty, we have reached the top-level
     /// again, and we are done transcribing.
-    result: Vec<TokenTree>,
+    result: ArenaTokenStreamBuilder,
 
     /// The in-progress `result` lives at the top of this stack. Each entered `TokenTree` adds a
     /// new entry.
-    result_stack: Vec<Vec<TokenTree>>,
+    result_stack: Vec<ArenaTokenStreamBuilder>,
 }
 
 impl<'psess> TranscrCtx<'psess, '_> {
@@ -170,10 +173,10 @@ pub(super) fn transcribe<'a>(
     src_span: DelimSpan,
     transparency: Transparency,
     expand_id: LocalExpnId,
-) -> PResult<'a, TokenStream> {
+) -> PResult<'a, ArenaTokenStream> {
     // Nothing for us to transcribe...
     if src.tts.is_empty() {
-        return Ok(TokenStream::default());
+        return Ok(ArenaTokenStream::default());
     }
 
     let mut tscx = TranscrCtx {
@@ -186,7 +189,7 @@ pub(super) fn transcribe<'a>(
             src_span,
             DelimSpacing::new(Spacing::Alone, Spacing::Alone)
         )],
-        result: Vec::new(),
+        result: ArenaTokenStreamBuilder::default(),
         result_stack: Vec::new(),
     };
 
@@ -205,7 +208,7 @@ pub(super) fn transcribe<'a>(
                 if repeat_idx < repeat_len {
                     frame.idx = 0;
                     if let Some(sep) = sep {
-                        tscx.result.push(TokenTree::Token(*sep, Spacing::Alone));
+                        tscx.result.push_token_alone(*sep);
                     }
                     continue;
                 }
@@ -231,14 +234,20 @@ pub(super) fn transcribe<'a>(
                     }
                     if tscx.result_stack.is_empty() {
                         // No results left to compute! We are back at the top-level.
-                        return Ok(TokenStream::new(tscx.result));
+                        return Ok(tscx.result.finish());
                     }
 
                     // Step back into the parent Delimited.
-                    let tree =
-                        TokenTree::Delimited(span, spacing, delim, TokenStream::new(tscx.result));
+                    // FIXME: optimize wrap top-level
+                    let mut builder = ArenaTokenStreamBuilder::default();
+                    builder.push_delimited(
+                        |builder| {
+                            builder.push_stream(tscx.result.finish());
+                        },
+                        DelimitedData { span, spacing, delimiter: delim },
+                    );
                     tscx.result = tscx.result_stack.pop().unwrap();
-                    tscx.result.push(tree);
+                    tscx.result.push_stream(builder.finish());
                 }
             }
             continue;
@@ -281,8 +290,7 @@ pub(super) fn transcribe<'a>(
                 if let token::NtIdent(ident, _) | token::NtLifetime(ident, _) = &mut token.kind {
                     tscx.marker.mark_span(&mut ident.span);
                 }
-                let tt = TokenTree::Token(token, Spacing::Alone);
-                tscx.result.push(tt);
+                tscx.result.push_token_alone(token);
             }
 
             // There should be no meta-var declarations in the invocation of a macro.
@@ -434,90 +442,126 @@ fn transcribe_metavar<'tx>(
         // with modified syntax context. (I believe this supports nested macros).
         tscx.marker.mark_span(&mut sp);
         tscx.marker.mark_span(&mut original_ident.span);
-        tscx.result.push(TokenTree::token_joint_hidden(token::Dollar, sp));
-        tscx.result.push(TokenTree::Token(Token::from_ast_ident(original_ident), Spacing::Alone));
+        tscx.result.push_token(Token::new(token::Dollar, sp), Spacing::JointHidden);
+        tscx.result.push_token_alone(Token::from_ast_ident(original_ident));
         return Ok(());
     };
 
-    let MatchedSingle(pnr) = cur_matched else {
+    let MatchedSingle(pnr, stream) = cur_matched else {
         // We were unable to descend far enough. This is an error.
         return Err(dcx.create_err(MacroVarStillRepeating { span: sp, ident }));
     };
 
-    transcribe_pnr(tscx, sp, pnr)
+    transcribe_pnr(tscx, sp, pnr, stream)
 }
 
 fn transcribe_pnr<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     mut sp: Span,
     pnr: &ParseNtResult,
+    stream: &ArenaTokenStream,
 ) -> PResult<'tx, ()> {
     // We wrap the tokens in invisible delimiters, unless they are already wrapped
     // in invisible delimiters with the same `MetaVarKind`. Because some proc
     // macros can't handle multiple layers of invisible delimiters of the same
     // `MetaVarKind`. This loses some span info, though it hopefully won't matter.
-    let mut mk_delimited = |mk_span, mv_kind, mut stream: TokenStream| {
-        if stream.len() == 1 {
-            let tree = stream.iter().next().unwrap();
-            if let TokenTree::Delimited(_, _, delim, inner) = tree
-                && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mvk)) = delim
-                && mv_kind == *mvk
-            {
-                stream = inner.clone();
+    let mut mk_delimited =
+        |mk_span, mv_kind, stream: ArenaTokenStream, builder: &mut ArenaTokenStreamBuilder| {
+            let mut iter = stream.iter_top_level_trees();
+
+            let start = builder.start_delimited();
+
+            // Emit as a token stream within `Delimiter::Invisible` to maintain
+            // parsing priorities.
+            tscx.marker.mark_span(&mut sp);
+            with_metavar_spans(|mspans| mspans.insert(mk_span, sp));
+            // Both the open delim and close delim get the same span, which covers the
+            // `$foo` in the decl macro RHS.
+
+            if iter.has_single_tree() {
+                let tree = iter.next().unwrap();
+                if let ArenaTokenTree::DelimitedStart(bounds, data) = tree
+                    && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mvk)) = data.delimiter
+                    && mv_kind == mvk
+                {
+                    builder.push_iter(stream.iter_delimited_contents(bounds));
+                } else {
+                    builder.push_stream(stream);
+                }
+            } else {
+                builder.push_stream(stream);
             }
-        }
 
-        // Emit as a token stream within `Delimiter::Invisible` to maintain
-        // parsing priorities.
-        tscx.marker.mark_span(&mut sp);
-        with_metavar_spans(|mspans| mspans.insert(mk_span, sp));
-        // Both the open delim and close delim get the same span, which covers the
-        // `$foo` in the decl macro RHS.
-        TokenTree::Delimited(
-            DelimSpan::from_single(sp),
-            DelimSpacing::new(Spacing::Alone, Spacing::Alone),
-            Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)),
-            stream,
-        )
-    };
+            builder.close_delimited(
+                start,
+                DelimitedData {
+                    span: DelimSpan::from_single(sp),
+                    spacing: DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+                    delimiter: Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)),
+                },
+            );
+        };
 
-    let tt = match pnr {
+    match pnr {
         ParseNtResult::Tt(tt) => {
             // `tt`s are emitted into the output stream directly as "raw tokens",
             // without wrapping them into groups. Other variables are emitted into
             // the output stream as groups with `Delimiter::Invisible` to maintain
             // parsing priorities.
-            maybe_use_metavar_location(tscx.psess, &tscx.stack, sp, tt, &mut tscx.marker)
+            maybe_use_metavar_location(
+                tscx.psess,
+                &tscx.stack,
+                sp,
+                tt,
+                stream,
+                &mut tscx.marker,
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Ident(ident, is_raw) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
             let kind = token::NtIdent(*ident, *is_raw);
-            TokenTree::token_alone(kind, sp)
+            tscx.result.push_token_alone(Token::new(kind, sp));
         }
         ParseNtResult::Lifetime(ident, is_raw) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
             let kind = token::NtLifetime(*ident, *is_raw);
-            TokenTree::token_alone(kind, sp)
+            tscx.result.push_token_alone(Token::new(kind, sp));
         }
         ParseNtResult::Item(item) => {
-            mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
+            mk_delimited(
+                item.span,
+                MetaVarKind::Item,
+                ArenaTokenStream::from_ast(item),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Block(block) => {
-            mk_delimited(block.node.span, MetaVarKind::Block, TokenStream::from_ast(block))
+            mk_delimited(
+                block.node.span,
+                MetaVarKind::Block,
+                ArenaTokenStream::from_ast(block),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Stmt(stmt) => {
             let stream = if let StmtKind::Empty = stmt.kind {
                 // FIXME: Properly collect tokens for empty statements.
-                TokenStream::token_alone(token::Semi, stmt.span)
+                ArenaTokenStream::token_alone(token::Semi, stmt.span)
             } else {
-                TokenStream::from_ast(stmt)
+                ArenaTokenStream::from_ast(stmt)
             };
-            mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
+            mk_delimited(stmt.span, MetaVarKind::Stmt, stream, &mut tscx.result);
         }
         ParseNtResult::Pat(pat, pat_kind) => {
-            mk_delimited(pat.node.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
+            mk_delimited(
+                pat.node.span,
+                MetaVarKind::Pat(*pat_kind),
+                ArenaTokenStream::from_ast(pat),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Expr(expr, kind) => {
             let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
@@ -534,29 +578,51 @@ fn transcribe_pnr<'tx>(
                     can_begin_literal_maybe_minus,
                     can_begin_string_literal,
                 },
-                TokenStream::from_ast(expr),
-            )
+                ArenaTokenStream::from_ast(expr),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Literal(lit) => {
-            mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
+            mk_delimited(
+                lit.span,
+                MetaVarKind::Literal,
+                ArenaTokenStream::from_ast(lit),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Ty(ty) => {
             let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
-            mk_delimited(ty.node.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
+            mk_delimited(
+                ty.node.span,
+                MetaVarKind::Ty { is_path },
+                ArenaTokenStream::from_ast(ty),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Meta(attr_item) => {
             let has_meta_form = attr_item.node.meta_kind().is_some();
             mk_delimited(
                 attr_item.node.span,
                 MetaVarKind::Meta { has_meta_form },
-                TokenStream::from_ast(attr_item),
-            )
+                ArenaTokenStream::from_ast(attr_item),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Path(path) => {
-            mk_delimited(path.node.span, MetaVarKind::Path, TokenStream::from_ast(path))
+            mk_delimited(
+                path.node.span,
+                MetaVarKind::Path,
+                ArenaTokenStream::from_ast(path),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Vis(vis) => {
-            mk_delimited(vis.node.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+            mk_delimited(
+                vis.node.span,
+                MetaVarKind::Vis,
+                ArenaTokenStream::from_ast(vis),
+                &mut tscx.result,
+            );
         }
         ParseNtResult::Guard(guard) => {
             // FIXME(macro_guard_matcher):
@@ -565,18 +631,22 @@ fn transcribe_pnr<'tx>(
 
             let leading_if_span =
                 guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
-            let ts = std::iter::once(TokenTree::token_alone(
+            // FIXME: optimize this
+            let mut builder = ArenaTokenStreamBuilder::default();
+            builder.push_token_alone(Token::new(
                 token::Ident(kw::If, IdentIsRaw::No),
                 leading_if_span,
-            ))
-            .chain(TokenStream::from_ast(&guard.cond).iter().cloned())
-            .collect();
-
-            mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
+            ));
+            builder.push_stream(ArenaTokenStream::from_ast(&guard.cond));
+            mk_delimited(
+                guard.span_with_leading_if,
+                MetaVarKind::Guard,
+                builder.finish(),
+                &mut tscx.result,
+            );
         }
     };
 
-    tscx.result.push(tt);
     Ok(())
 }
 
@@ -587,15 +657,16 @@ fn transcribe_metavar_expr<'tx>(
     expr: &MetaVarExpr,
 ) -> PResult<'tx, ()> {
     let dcx = tscx.psess.dcx();
-    let tt = match *expr {
+    match *expr {
         MetaVarExpr::Concat(ref elements) => metavar_expr_concat(tscx, dspan, elements)?,
         MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(dcx, original_ident, tscx.interp)?;
             let count = count_repetitions(dcx, depth, matched, &tscx.repeats, &dspan)?;
-            TokenTree::token_alone(
+            let token = Token::new(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
                 tscx.visited_dspan(dspan),
-            )
+            );
+            tscx.result.push_token_alone(token);
         }
         MetaVarExpr::Ignore(original_ident) => {
             // Used to ensure that `original_ident` is present in the LHS
@@ -603,25 +674,30 @@ fn transcribe_metavar_expr<'tx>(
             return Ok(());
         }
         MetaVarExpr::Index(depth) => match tscx.repeats.iter().nth_back(depth) {
-            Some((index, _)) => TokenTree::token_alone(
-                TokenKind::lit(token::Integer, sym::integer(*index), None),
-                tscx.visited_dspan(dspan),
-            ),
+            Some((index, _)) => {
+                let token = Token::new(
+                    TokenKind::lit(token::Integer, sym::integer(*index), None),
+                    tscx.visited_dspan(dspan),
+                );
+                tscx.result.push_token_alone(token);
+            }
             None => {
                 return Err(out_of_bounds_err(dcx, tscx.repeats.len(), dspan.entire(), "index"));
             }
         },
         MetaVarExpr::Len(depth) => match tscx.repeats.iter().nth_back(depth) {
-            Some((_, length)) => TokenTree::token_alone(
-                TokenKind::lit(token::Integer, sym::integer(*length), None),
-                tscx.visited_dspan(dspan),
-            ),
+            Some((_, length)) => {
+                let token = Token::new(
+                    TokenKind::lit(token::Integer, sym::integer(*length), None),
+                    tscx.visited_dspan(dspan),
+                );
+                tscx.result.push_token_alone(token);
+            }
             None => {
                 return Err(out_of_bounds_err(dcx, tscx.repeats.len(), dspan.entire(), "len"));
             }
         },
     };
-    tscx.result.push(tt);
     Ok(())
 }
 
@@ -630,7 +706,7 @@ fn metavar_expr_concat<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     dspan: DelimSpan,
     elements: &[MetaVarExprConcatElem],
-) -> PResult<'tx, TokenTree> {
+) -> PResult<'tx, ()> {
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
     for element in elements {
@@ -640,7 +716,7 @@ fn metavar_expr_concat<'tx>(
             MetaVarExprConcatElem::Var(ident) => {
                 let key = MacroRulesNormalizedIdent::new(*ident);
                 match lookup_cur_matched(key, tscx.interp, &tscx.repeats) {
-                    Some(NamedMatch::MatchedSingle(pnr)) => {
+                    Some(NamedMatch::MatchedSingle(pnr, _)) => {
                         extract_symbol_from_pnr(dcx, pnr, ident.span)?
                     }
                     Some(NamedMatch::MatchedSeq(..)) => {
@@ -667,13 +743,11 @@ fn metavar_expr_concat<'tx>(
     }
     tscx.psess.symbol_gallery.insert(symbol, concatenated_span);
 
+    tscx.result.push_token_alone(Token::from_ast_ident(Ident::new(symbol, concatenated_span)));
     // The current implementation marks the span as coming from the macro regardless of
     // contexts of the concatenated identifiers but this behavior may change in the
     // future.
-    Ok(TokenTree::Token(
-        Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
-        Spacing::Alone,
-    ))
+    Ok(())
 }
 
 /// Store the metavariable span for this original span into a side table.
@@ -710,9 +784,11 @@ fn maybe_use_metavar_location(
     psess: &ParseSess,
     stack: &[Frame<'_>],
     mut metavar_span: Span,
-    orig_tt: &TokenTree,
+    orig_tt: &ArenaTokenTree,
+    orig_stream: &ArenaTokenStream,
     marker: &mut Marker,
-) -> TokenTree {
+    builder: &mut ArenaTokenStreamBuilder,
+) {
     let undelimited_seq = matches!(
         stack.last(),
         Some(Frame {
@@ -727,40 +803,49 @@ fn maybe_use_metavar_location(
     );
     if undelimited_seq {
         // Do not record metavar spans for tokens from undelimited sequences, for perf reasons.
-        return orig_tt.clone();
+        builder.push_token_tree(orig_tt, orig_stream);
+        return;
     }
 
     marker.mark_span(&mut metavar_span);
     let no_collision = match orig_tt {
-        TokenTree::Token(token, ..) => {
+        ArenaTokenTree::Token(token, ..) => {
             with_metavar_spans(|mspans| mspans.insert(token.span, metavar_span))
         }
-        TokenTree::Delimited(dspan, ..) => with_metavar_spans(|mspans| {
+        ArenaTokenTree::DelimitedStart(_, data) => with_metavar_spans(|mspans| {
+            let dspan = data.span;
             mspans.insert(dspan.open, metavar_span)
                 && mspans.insert(dspan.close, metavar_span)
                 && mspans.insert(dspan.entire(), metavar_span)
         }),
     };
     if no_collision || psess.source_map().is_imported(metavar_span) {
-        return orig_tt.clone();
+        builder.push_token_tree(orig_tt, orig_stream);
+        return;
     }
 
     // Setting metavar spans for the heuristic spans gives better opportunities for combining them
     // with neighboring spans even despite their different syntactic contexts.
     match orig_tt {
-        TokenTree::Token(Token { kind, span }, spacing) => {
+        ArenaTokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
             with_metavar_spans(|mspans| mspans.insert(span, metavar_span));
-            TokenTree::Token(Token { kind: *kind, span }, *spacing)
+            builder.push_token(Token { kind: *kind, span }, *spacing);
         }
-        TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
+        ArenaTokenTree::DelimitedStart(bounds, data) => {
+            let dspan = data.span;
             let open = metavar_span.with_ctxt(dspan.open.ctxt());
             let close = metavar_span.with_ctxt(dspan.close.ctxt());
             with_metavar_spans(|mspans| {
                 mspans.insert(open, metavar_span) && mspans.insert(close, metavar_span)
             });
             let dspan = DelimSpan::from_pair(open, close);
-            TokenTree::Delimited(dspan, *dspacing, *delimiter, tts.clone())
+            builder.push_delimited(
+                |builder| {
+                    builder.push_iter(orig_stream.iter_delimited_contents(bounds));
+                },
+                DelimitedData { span: dspan, spacing: data.spacing, delimiter: data.delimiter },
+            );
         }
     }
 }
@@ -779,7 +864,7 @@ fn lookup_cur_matched<'a>(
     interpolations.get(&ident).map(|mut matched| {
         for &(idx, _) in repeats {
             match matched {
-                MatchedSingle(_) => break,
+                MatchedSingle(_, _) => break,
                 MatchedSeq(ads) => matched = ads.get(idx).unwrap(),
             }
         }
@@ -869,7 +954,7 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(*name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedSingle(_) => LockstepIterSize::Unconstrained,
+                    MatchedSingle(_, _) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
@@ -908,7 +993,7 @@ fn count_repetitions<'dx>(
     // (or at the top-level of `matched` if no depth is given).
     fn count<'a>(depth_curr: usize, depth_max: usize, matched: &NamedMatch) -> PResult<'a, usize> {
         match matched {
-            MatchedSingle(_) => Ok(1),
+            MatchedSingle(_, _) => Ok(1),
             MatchedSeq(named_matches) => {
                 if depth_curr == depth_max {
                     Ok(named_matches.len())
@@ -922,7 +1007,7 @@ fn count_repetitions<'dx>(
     /// Maximum depth
     fn depth(counter: usize, matched: &NamedMatch) -> usize {
         match matched {
-            MatchedSingle(_) => counter,
+            MatchedSingle(_, _) => counter,
             MatchedSeq(named_matches) => {
                 let rslt = counter + 1;
                 if let Some(elem) = named_matches.first() { depth(rslt, elem) } else { rslt }
@@ -950,7 +1035,7 @@ fn count_repetitions<'dx>(
         }
     }
 
-    if let MatchedSingle(_) = matched {
+    if let MatchedSingle(_, _) = matched {
         return Err(dcx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
@@ -1002,7 +1087,7 @@ fn extract_symbol_from_pnr<'a>(
                 Ok(nt_ident.name)
             }
         }
-        ParseNtResult::Tt(TokenTree::Token(
+        ParseNtResult::Tt(ArenaTokenTree::Token(
             Token { kind: TokenKind::Ident(symbol, is_raw), .. },
             _,
         )) => {
@@ -1012,7 +1097,7 @@ fn extract_symbol_from_pnr<'a>(
                 Ok(*symbol)
             }
         }
-        ParseNtResult::Tt(TokenTree::Token(
+        ParseNtResult::Tt(ArenaTokenTree::Token(
             Token {
                 kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
                 ..

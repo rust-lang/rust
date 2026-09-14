@@ -1,7 +1,6 @@
 use std::ops::Range;
 
 use parse::Position::ArgumentNamed;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
     Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
@@ -42,6 +41,7 @@ enum PositionUsedAs {
     Width,
 }
 use PositionUsedAs::*;
+use rustc_ast::tokenarena::ArenaTokenStream;
 
 #[derive(Debug)]
 struct MacroInput {
@@ -68,7 +68,7 @@ struct MacroInput {
 /// ```text
 /// Ok((fmtstr, parsed arguments))
 /// ```
-fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
+fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: ArenaTokenStream) -> PResult<'a, MacroInput> {
     let mut p = ecx.new_parser_from_tts(tts);
 
     // parse the format string
@@ -1127,7 +1127,7 @@ fn report_invalid_references(
 fn expand_format_args_impl<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     mut sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
     nl: bool,
 ) -> MacroExpanderResult<'cx> {
     sp = ecx.with_def_site_ctxt(sp);
@@ -1153,7 +1153,7 @@ fn expand_format_args_impl<'cx>(
 pub(crate) fn expand_format_args<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     expand_format_args_impl(ecx, sp, tts, false)
 }
@@ -1161,7 +1161,7 @@ pub(crate) fn expand_format_args<'cx>(
 pub(crate) fn expand_format_args_nl<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     expand_format_args_impl(ecx, sp, tts, true)
 }

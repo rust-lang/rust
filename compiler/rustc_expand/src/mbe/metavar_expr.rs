@@ -1,5 +1,5 @@
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenTree, ArenaTokenTreeIter, DelimitedData};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
@@ -36,18 +36,21 @@ pub(crate) enum MetaVarExpr {
 impl MetaVarExpr {
     /// Attempt to parse a meta-variable expression from a token stream.
     pub(crate) fn parse<'psess>(
-        input: &TokenStream,
+        mut iter: ArenaTokenTreeIter<'_>,
         outer_span: Span,
         psess: &'psess ParseSess,
     ) -> PResult<'psess, MetaVarExpr> {
-        let mut iter = input.iter();
         let ident = parse_ident(&mut iter, psess, outer_span)?;
         let next = iter.next();
-        let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = next else {
+        let Some(ArenaTokenTree::DelimitedStart(
+            bounds,
+            DelimitedData { delimiter: Delimiter::Parenthesis, .. },
+        )) = next
+        else {
             // No `()`; wrong or no delimiters. Point at a problematic span or a place to
             // add parens if it makes sense.
             let (unexpected_span, insert_span) = match next {
-                Some(TokenTree::Delimited(..)) => (None, None),
+                Some(ArenaTokenTree::DelimitedStart(..)) => (None, None),
                 Some(tt) => (Some(tt.span()), None),
                 None => (None, Some(ident.span.shrink_to_hi())),
             };
@@ -61,7 +64,7 @@ impl MetaVarExpr {
 
         // Ensure there are no trailing tokens in the braces, e.g. `${foo() extra}`
         if iter.peek().is_some() {
-            let span = iter_span(&iter).expect("checked is_some above");
+            let span = iter_span(iter.clone()).expect("checked is_some above");
             let err = diagnostics::MveExtraTokens {
                 span,
                 ident_span: ident.span,
@@ -71,7 +74,7 @@ impl MetaVarExpr {
             return Err(psess.dcx().create_err(err));
         }
 
-        let mut iter = args.iter();
+        let mut iter = iter.stream().iter_delimited_contents(bounds);
         let rslt = match ident.name {
             sym::concat => parse_concat(&mut iter, psess, outer_span, ident.span)?,
             sym::count => parse_count(&mut iter, psess, ident.span)?,
@@ -112,7 +115,7 @@ impl MetaVarExpr {
 /// Checks if there are any remaining tokens (for example, `${ignore($valid, extra)}`) and create
 /// a diag with the correct arg count if so.
 fn check_trailing_tokens<'psess>(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     psess: &'psess ParseSess,
     ident: Ident,
 ) -> PResult<'psess, ()> {
@@ -133,7 +136,7 @@ fn check_trailing_tokens<'psess>(
     };
 
     let err = diagnostics::MveExtraTokens {
-        span: iter_span(iter).expect("checked is_none above"),
+        span: iter_span(iter.clone()).expect("checked is_none above"),
         ident_span: ident.span,
         extra_count: iter.count(),
 
@@ -147,10 +150,9 @@ fn check_trailing_tokens<'psess>(
 }
 
 /// Returns a span encompassing all tokens in the iterator if there is at least one item.
-fn iter_span(iter: &TokenStreamIter<'_>) -> Option<Span> {
-    let mut iter = iter.clone(); // cloning is cheap
+fn iter_span(mut iter: ArenaTokenTreeIter<'_>) -> Option<Span> {
     let first_sp = iter.next()?.span();
-    let last_sp = iter.last().map(TokenTree::span).unwrap_or(first_sp);
+    let last_sp = iter.last().map(ArenaTokenTree::span).unwrap_or(first_sp);
     let span = first_sp.with_hi(last_sp.hi());
     Some(span)
 }
@@ -171,7 +173,7 @@ pub(crate) enum MetaVarExprConcatElem {
 
 /// Parse a meta-variable `concat` expression: `concat($metavar, ident, ...)`.
 fn parse_concat<'psess>(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     psess: &'psess ParseSess,
     outer_span: Span,
     expr_ident_span: Span,
@@ -215,7 +217,7 @@ fn parse_concat<'psess>(
 
 /// Parse a meta-variable `count` expression: `count(ident[, depth])`
 fn parse_count<'psess>(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, MetaVarExpr> {
@@ -237,12 +239,12 @@ fn parse_count<'psess>(
 
 /// Parses the depth used by index(depth) and len(depth).
 fn parse_depth<'psess>(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, usize> {
     let Some(tt) = iter.next() else { return Ok(0) };
-    let TokenTree::Token(Token { kind: TokenKind::Literal(lit), .. }, _) = tt else {
+    let ArenaTokenTree::Token(Token { kind: TokenKind::Literal(lit), .. }, _) = tt else {
         return Err(psess
             .dcx()
             .struct_span_err(span, "meta-variable expression depth must be a literal"));
@@ -260,7 +262,7 @@ fn parse_depth<'psess>(
 
 /// Parses an generic ident
 fn parse_ident<'psess>(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     psess: &'psess ParseSess,
     fallback_span: Span,
 ) -> PResult<'psess, Ident> {
@@ -292,14 +294,14 @@ fn parse_ident_from_token<'psess>(
 }
 
 fn parse_token<'psess, 't>(
-    iter: &mut TokenStreamIter<'t>,
+    iter: &mut ArenaTokenTreeIter<'t>,
     psess: &'psess ParseSess,
     fallback_span: Span,
 ) -> PResult<'psess, &'t Token> {
     let Some(tt) = iter.next() else {
         return Err(psess.dcx().struct_span_err(fallback_span, UNSUPPORTED_CONCAT_ELEM_ERR));
     };
-    let TokenTree::Token(token, _) = tt else {
+    let ArenaTokenTree::Token(token, _) = tt else {
         return Err(psess.dcx().struct_span_err(tt.span(), UNSUPPORTED_CONCAT_ELEM_ERR));
     };
     Ok(token)
@@ -307,8 +309,8 @@ fn parse_token<'psess, 't>(
 
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
-fn try_eat_comma(iter: &mut TokenStreamIter<'_>) -> bool {
-    if let Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) = iter.peek() {
+fn try_eat_comma(iter: &mut ArenaTokenTreeIter<'_>) -> bool {
+    if let Some(ArenaTokenTree::Token(Token { kind: token::Comma, .. }, _)) = iter.peek() {
         let _ = iter.next();
         return true;
     }
@@ -317,8 +319,8 @@ fn try_eat_comma(iter: &mut TokenStreamIter<'_>) -> bool {
 
 /// Tries to move the iterator forward returning `true` if there is a dollar sign. If not, then the
 /// iterator is not modified and the result is `false`.
-fn try_eat_dollar(iter: &mut TokenStreamIter<'_>) -> bool {
-    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.peek() {
+fn try_eat_dollar(iter: &mut ArenaTokenTreeIter<'_>) -> bool {
+    if let Some(ArenaTokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.peek() {
         let _ = iter.next();
         return true;
     }
@@ -327,7 +329,7 @@ fn try_eat_dollar(iter: &mut TokenStreamIter<'_>) -> bool {
 
 /// Expects that the next item is a dollar sign.
 fn eat_dollar<'psess>(
-    iter: &mut TokenStreamIter<'_>,
+    iter: &mut ArenaTokenTreeIter<'_>,
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, ()> {

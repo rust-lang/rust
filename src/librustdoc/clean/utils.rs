@@ -653,15 +653,16 @@ pub(super) fn display_macro_source(tcx: TyCtxt<'_>, name: Symbol, def: &ast::Mac
     if def.macro_rules {
         format!(
             "macro_rules! {name} {{\n{arms}}}",
-            arms = render_macro_arms(tcx, &def.body.tokens, ";")
+            arms = render_macro_arms(tcx, &def.body.tokens.to_token_stream(), ";")
         )
     } else {
-        if def.body.tokens.len() <= 4 {
+        if def.body.tokens.to_token_stream().len() <= 4 {
             format!(
                 "macro {name}{matchers} {{\n    ...\n}}",
                 matchers = def
                     .body
                     .tokens
+                    .to_token_stream()
                     .get(0)
                     .map(|matcher| render_macro_matcher(tcx, matcher))
                     .unwrap_or_default(),
@@ -669,7 +670,7 @@ pub(super) fn display_macro_source(tcx: TyCtxt<'_>, name: Symbol, def: &ast::Mac
         } else {
             format!(
                 "macro {name} {{\n{arms}}}",
-                arms = render_macro_arms(tcx, &def.body.tokens, ",")
+                arms = render_macro_arms(tcx, &def.body.tokens.to_token_stream(), ",")
             )
         }
     }

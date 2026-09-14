@@ -4,7 +4,7 @@ use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stable_hash::StableHash;
 use rustc_hir::OwnerId;
@@ -394,7 +394,7 @@ impl<'tcx> QueryKey for ty::Value<'tcx> {
     }
 }
 
-impl<'tcx> QueryKey for (LocalExpnId, &'tcx TokenStream) {
+impl<'tcx> QueryKey for (LocalExpnId, &'tcx ArenaTokenStream) {
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         self.0.expn_data().call_site
     }

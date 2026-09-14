@@ -1,4 +1,4 @@
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
 use rustc_attr_parsing::{AttributeTemplate, validate_attr};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
@@ -147,7 +147,7 @@ pub(crate) fn expr_to_string(
 /// returns even when `tts` is non-empty, macros that *need* to stop
 /// compilation should call `cx.diagnostic().abort_if_errors()`
 /// (this should be done as rarely as possible).
-pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
+pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: &ArenaTokenStream, name: &str) {
     if !tts.is_empty() {
         cx.dcx().emit_err(diagnostics::TakesNoArguments { span, name });
     }
@@ -170,7 +170,7 @@ pub(crate) fn parse_expr(p: &mut parser::Parser<'_>) -> Result<Box<ast::Expr>, E
 pub(crate) fn get_single_str_from_tts(
     cx: &mut ExtCtxt<'_>,
     span: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
     name: &str,
 ) -> ExpandResult<Result<Symbol, ErrorGuaranteed>, ()> {
     get_single_str_spanned_from_tts(cx, span, tts, name).map(|res| res.map(|(s, _)| s))
@@ -179,7 +179,7 @@ pub(crate) fn get_single_str_from_tts(
 pub(crate) fn get_single_str_spanned_from_tts(
     cx: &mut ExtCtxt<'_>,
     span: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
     name: &str,
 ) -> ExpandResult<Result<(Symbol, Span), ErrorGuaranteed>, ()> {
     let ExpandResult::Ready(ret) = get_single_expr_from_tts(cx, span, tts, name) else {
@@ -203,7 +203,7 @@ pub(crate) fn get_single_str_spanned_from_tts(
 pub(crate) fn get_single_expr_from_tts(
     cx: &mut ExtCtxt<'_>,
     span: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
     name: &str,
 ) -> ExpandResult<Result<Box<ast::Expr>, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);
@@ -227,7 +227,7 @@ pub(crate) fn get_single_expr_from_tts(
 /// On error, emit it, and return `Err`.
 pub(crate) fn get_exprs_from_tts(
     cx: &mut ExtCtxt<'_>,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> ExpandResult<Result<Vec<Box<ast::Expr>>, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();

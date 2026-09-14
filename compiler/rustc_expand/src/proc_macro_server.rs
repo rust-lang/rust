@@ -2,7 +2,11 @@ use std::ops::{Bound, Range};
 
 use rustc_ast as ast;
 use rustc_ast::token as tk;
-use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
+use rustc_ast::token::Token;
+use rustc_ast::tokenarena::{
+    ArenaTokenStream, ArenaTokenStreamBuilder, ArenaTokenTree, DelimitedData,
+};
+use rustc_ast::tokenstream::{self, DelimSpacing, Spacing};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -18,7 +22,6 @@ use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
-use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
 
@@ -103,32 +106,46 @@ impl ToInternal<tk::LitKind> for LitKind {
     }
 }
 
-impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
-    fn from_internal(stream: TokenStream) -> Self {
+impl FromInternal<ArenaTokenStream> for Vec<TokenTree<ArenaTokenStream, Span, Symbol>> {
+    fn from_internal(stream: ArenaTokenStream) -> Self {
         // Estimate the capacity as `stream.len()` rounded up to the next power
         // of two to limit the number of required reallocations.
-        let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
+        // FIXME: try to estimate the allocation size without iterating through the whole thing
+        let mut trees =
+            Vec::with_capacity(stream.iter_top_level_trees().count().next_power_of_two());
 
-        for tree in stream.iter() {
-            let (tk::Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, _, mut delim, mut stream) => {
+        for tree in stream.iter_top_level_trees() {
+            let (tk::Token { kind, span }, joint) = match *tree {
+                ArenaTokenTree::DelimitedStart(mut bounds, data) => {
+                    let span = data.span;
+                    let mut delim = data.delimiter;
+
                     // In `mk_delimited` we avoid nesting invisible delimited
                     // of the same `MetaVarKind`. Here we do the same but
                     // ignore the `MetaVarKind` because it is discarded when we
                     // convert it to a `Group`.
-                    while let tk::Delimiter::Invisible(tk::InvisibleOrigin::MetaVar(_)) = delim
-                        && stream.len() == 1
-                        && let tree = stream.get(0).unwrap()
-                        && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
-                        && let tk::Delimiter::Invisible(tk::InvisibleOrigin::MetaVar(_)) = delim2
-                    {
-                        delim = *delim2;
-                        stream = stream2.clone();
+                    while let tk::Delimiter::Invisible(tk::InvisibleOrigin::MetaVar(_)) = delim {
+                        let mut iter = stream.iter_delimited_contents(&bounds);
+                        let tree = iter.next();
+                        let Some(ArenaTokenTree::DelimitedStart(bounds2, data2)) = tree else {
+                            break;
+                        };
+                        if iter.next().is_some() {
+                            break;
+                        }
+                        let tk::Delimiter::Invisible(tk::InvisibleOrigin::MetaVar(_)) =
+                            data2.delimiter
+                        else {
+                            break;
+                        };
+
+                        delim = data2.delimiter;
+                        bounds = *bounds2;
                     }
 
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::from_internal(delim),
-                        stream: Some(stream),
+                        stream: Some(ArenaTokenStream::separate_delimited_inner(bounds, &stream)),
                         span: DelimSpan {
                             open: span.open,
                             close: span.close,
@@ -137,7 +154,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     }));
                     continue;
                 }
-                tokenstream::TokenTree::Token(token, spacing) => {
+                ArenaTokenTree::Token(token, spacing) => {
                     // Do not be tempted to check here that the `spacing`
                     // values are "correct" w.r.t. the token stream (e.g. that
                     // `Spacing::Joint` is actually followed by a `Punct` token
@@ -252,7 +269,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                 }
                 tk::NtLifetime(ident, is_raw) => {
                     let stream =
-                        TokenStream::token_alone(tk::Lifetime(ident.name, is_raw), ident.span);
+                        ArenaTokenStream::token_alone(tk::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::None,
                         stream: Some(stream),
@@ -273,21 +290,20 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     for ch in data.as_str().chars() {
                         escaped.extend(ch.escape_debug());
                     }
-                    let stream = [
+                    let tokens = [
                         tk::Ident(sym::doc, tk::IdentIsRaw::No),
                         tk::Eq,
                         tk::TokenKind::lit(tk::Str, Symbol::intern(&escaped), None),
                     ]
                     .into_iter()
-                    .map(|kind| tokenstream::TokenTree::token_alone(kind, span))
-                    .collect();
+                    .map(|kind| (Token::new(kind, span), Spacing::Alone));
                     trees.push(TokenTree::Punct(Punct { ch: b'#', joint: false, span }));
                     if attr_style == ast::AttrStyle::Inner {
                         trees.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
                     }
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::Bracket,
-                        stream: Some(stream),
+                        stream: Some(ArenaTokenStream::from_token_iter(tokens)),
                         span: DelimSpan::from_single(span),
                     }));
                 }
@@ -307,97 +323,100 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
     }
 }
 
-// We use a `SmallVec` because the output size is always one or two `TokenTree`s.
-impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
-    for (TokenTree<TokenStream, Span, Symbol>, &mut Rustc<'_, '_>)
+fn push_tree_to_internal<F>(
+    tree: TokenTree<ArenaTokenStream, Span, Symbol>,
+    rustc: &mut Rustc<'_, '_>,
+    builder: &mut ArenaTokenStreamBuilder,
+    push_token: F,
+) where
+    F: Fn(&mut ArenaTokenStreamBuilder, Token, Spacing),
 {
-    fn to_internal(self) -> SmallVec<[tokenstream::TokenTree; 2]> {
-        // The code below is conservative, using `token_alone`/`Spacing::Alone`
-        // in most places. It's hard in general to do better when working at
-        // the token level. When the resulting code is pretty-printed by
-        // `print_tts` the `space_between` function helps avoid a lot of
-        // unnecessary whitespace, so the results aren't too bad.
-        let (tree, rustc) = self;
-        match tree {
-            TokenTree::Punct(Punct { ch, joint, span }) => {
-                let kind = match ch {
-                    b'=' => tk::Eq,
-                    b'<' => tk::Lt,
-                    b'>' => tk::Gt,
-                    b'!' => tk::Bang,
-                    b'~' => tk::Tilde,
-                    b'+' => tk::Plus,
-                    b'-' => tk::Minus,
-                    b'*' => tk::Star,
-                    b'/' => tk::Slash,
-                    b'%' => tk::Percent,
-                    b'^' => tk::Caret,
-                    b'&' => tk::And,
-                    b'|' => tk::Or,
-                    b'@' => tk::At,
-                    b'.' => tk::Dot,
-                    b',' => tk::Comma,
-                    b';' => tk::Semi,
-                    b':' => tk::Colon,
-                    b'#' => tk::Pound,
-                    b'$' => tk::Dollar,
-                    b'?' => tk::Question,
-                    b'\'' => tk::SingleQuote,
-                    _ => unreachable!(),
-                };
-                // We never produce `tk::Spacing::JointHidden` here, which
-                // means the pretty-printing of code produced by proc macros is
-                // ugly, with lots of whitespace between tokens. This is
-                // unavoidable because `proc_macro::Spacing` only applies to
-                // `Punct` token trees.
-                smallvec![if joint {
-                    tokenstream::TokenTree::token_joint(kind, span)
-                } else {
-                    tokenstream::TokenTree::token_alone(kind, span)
-                }]
-            }
-            TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
-                smallvec![tokenstream::TokenTree::Delimited(
-                    tokenstream::DelimSpan { open, close },
-                    DelimSpacing::new(Spacing::Alone, Spacing::Alone),
-                    delimiter.to_internal(),
-                    stream.unwrap_or_default(),
-                )]
-            }
-            TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
-                rustc.psess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(tk::Ident(sym, is_raw.into()), span)]
-            }
-            TokenTree::Literal(self::Literal {
-                kind: self::LitKind::Integer,
-                symbol,
-                suffix,
-                span,
-            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
-                let symbol = Symbol::intern(symbol);
-                let integer = tk::TokenKind::lit(tk::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(tk::Minus, span);
-                let b = tokenstream::TokenTree::token_alone(integer, span);
-                smallvec![a, b]
-            }
-            TokenTree::Literal(self::Literal {
-                kind: self::LitKind::Float,
-                symbol,
-                suffix,
-                span,
-            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
-                let symbol = Symbol::intern(symbol);
-                let float = tk::TokenKind::lit(tk::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(tk::Minus, span);
-                let b = tokenstream::TokenTree::token_alone(float, span);
-                smallvec![a, b]
-            }
-            TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
-                smallvec![tokenstream::TokenTree::token_alone(
-                    tk::TokenKind::lit(kind.to_internal(), symbol, suffix),
-                    span,
-                )]
-            }
+    // The code below is conservative, using `token_alone`/`Spacing::Alone`
+    // in most places. It's hard in general to do better when working at
+    // the token level. When the resulting code is pretty-printed by
+    // `print_tts` the `space_between` function helps avoid a lot of
+    // unnecessary whitespace, so the results aren't too bad.
+    match tree {
+        TokenTree::Punct(Punct { ch, joint, span }) => {
+            let kind = match ch {
+                b'=' => tk::Eq,
+                b'<' => tk::Lt,
+                b'>' => tk::Gt,
+                b'!' => tk::Bang,
+                b'~' => tk::Tilde,
+                b'+' => tk::Plus,
+                b'-' => tk::Minus,
+                b'*' => tk::Star,
+                b'/' => tk::Slash,
+                b'%' => tk::Percent,
+                b'^' => tk::Caret,
+                b'&' => tk::And,
+                b'|' => tk::Or,
+                b'@' => tk::At,
+                b'.' => tk::Dot,
+                b',' => tk::Comma,
+                b';' => tk::Semi,
+                b':' => tk::Colon,
+                b'#' => tk::Pound,
+                b'$' => tk::Dollar,
+                b'?' => tk::Question,
+                b'\'' => tk::SingleQuote,
+                _ => unreachable!(),
+            };
+            // We never produce `tk::Spacing::JointHidden` here, which
+            // means the pretty-printing of code produced by proc macros is
+            // ugly, with lots of whitespace between tokens. This is
+            // unavoidable because `proc_macro::Spacing` only applies to
+            // `Punct` token trees.
+            let spacing = if joint { Spacing::Joint } else { Spacing::Alone };
+            push_token(builder, Token::new(kind, span), spacing);
+        }
+        TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
+            builder.push_delimited(
+                |builder| {
+                    if let Some(stream) = stream {
+                        // Note that we don't call push_token here for the tokens created inside
+                        // `push_stream`. Glueing only happens if the top-level tree is a token, but here
+                        // all tokens will be nested.
+                        builder.push_stream(stream);
+                    }
+                },
+                DelimitedData {
+                    span: tokenstream::DelimSpan { open, close },
+                    spacing: DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+                    delimiter: delimiter.to_internal(),
+                },
+            );
+        }
+        TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
+            rustc.psess().symbol_gallery.insert(sym, span);
+            push_token(builder, Token::new(tk::Ident(sym, is_raw.into()), span), Spacing::Alone);
+        }
+        TokenTree::Literal(self::Literal {
+            kind: self::LitKind::Integer,
+            symbol,
+            suffix,
+            span,
+        }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+            let symbol = Symbol::intern(symbol);
+            let integer = tk::TokenKind::lit(tk::Integer, symbol, suffix);
+            push_token(builder, Token::new(tk::Minus, span), Spacing::JointHidden);
+            push_token(builder, Token::new(integer, span), Spacing::Alone);
+        }
+        TokenTree::Literal(self::Literal { kind: self::LitKind::Float, symbol, suffix, span })
+            if let Some(symbol) = symbol.as_str().strip_prefix('-') =>
+        {
+            let symbol = Symbol::intern(symbol);
+            let float = tk::TokenKind::lit(tk::Float, symbol, suffix);
+            push_token(builder, Token::new(tk::Minus, span), Spacing::JointHidden);
+            push_token(builder, Token::new(float, span), Spacing::Alone);
+        }
+        TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
+            push_token(
+                builder,
+                Token::new(tk::TokenKind::lit(kind.to_internal(), symbol, suffix), span),
+                Spacing::Alone,
+            );
         }
     }
 }
@@ -465,7 +484,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
 }
 
 impl server::Server for Rustc<'_, '_> {
-    type TokenStream = TokenStream;
+    type TokenStream = ArenaTokenStream;
     type Span = Span;
     type Symbol = Symbol;
 
@@ -624,27 +643,27 @@ impl server::Server for Rustc<'_, '_> {
         // be recovered in the general case.
         match &expr.kind {
             ast::ExprKind::Lit(token_lit) if token_lit.kind == tk::Bool => {
-                Ok(tokenstream::TokenStream::token_alone(
+                Ok(ArenaTokenStream::token_alone(
                     tk::Ident(token_lit.symbol, tk::IdentIsRaw::No),
                     expr.span,
                 ))
             }
             ast::ExprKind::Lit(token_lit) => {
-                Ok(tokenstream::TokenStream::token_alone(tk::Literal(*token_lit), expr.span))
+                Ok(ArenaTokenStream::token_alone(tk::Literal(*token_lit), expr.span))
             }
             ast::ExprKind::IncludedBytes(byte_sym) => {
                 let lit =
                     tk::Lit::new(tk::ByteStr, escape_byte_str_symbol(byte_sym.as_byte_str()), None);
-                Ok(tokenstream::TokenStream::token_alone(tk::TokenKind::Literal(lit), expr.span))
+                Ok(ArenaTokenStream::token_alone(tk::TokenKind::Literal(lit), expr.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(token_lit) => match token_lit {
                     tk::Lit { kind: tk::Integer | tk::Float, .. } => {
-                        Ok(Self::TokenStream::from_iter([
+                        Ok(Self::TokenStream::from_token_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
-                            tokenstream::TokenTree::token_joint_hidden(tk::Minus, e.span),
-                            tokenstream::TokenTree::token_alone(tk::Literal(*token_lit), e.span),
+                            (Token::new(tk::Minus, e.span), Spacing::JointHidden),
+                            (Token::new(tk::Literal(*token_lit), e.span), Spacing::Alone),
                         ]))
                     }
                     _ => Err(()),
@@ -659,7 +678,11 @@ impl server::Server for Rustc<'_, '_> {
         &mut self,
         tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
     ) -> Self::TokenStream {
-        Self::TokenStream::new((tree, &mut *self).to_internal().into_iter().collect::<Vec<_>>())
+        let mut builder = ArenaTokenStreamBuilder::default();
+        push_tree_to_internal(tree, self, &mut builder, |builder, token, spacing| {
+            builder.push_token(token, spacing);
+        });
+        builder.finish()
     }
 
     fn ts_concat_trees(
@@ -667,13 +690,19 @@ impl server::Server for Rustc<'_, '_> {
         base: Option<Self::TokenStream>,
         trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
     ) -> Self::TokenStream {
-        let mut stream = base.unwrap_or_default();
+        let mut builder = if let Some(base) = base {
+            base.into_builder()
+        } else {
+            ArenaTokenStreamBuilder::default()
+        };
         for tree in trees {
-            for tt in (tree, &mut *self).to_internal() {
-                stream.push_tree_with_gluing(tt);
-            }
+            push_tree_to_internal(tree, self, &mut builder, |builder, token, spacing| {
+                if !builder.try_glue_to_last_top_level_token(&token, spacing) {
+                    builder.push_token(token, spacing);
+                }
+            });
         }
-        stream
+        builder.finish()
     }
 
     fn ts_concat_streams(
@@ -681,11 +710,22 @@ impl server::Server for Rustc<'_, '_> {
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
     ) -> Self::TokenStream {
-        let mut stream = base.unwrap_or_default();
+        let mut builder = if let Some(base) = base {
+            base.into_builder()
+        } else {
+            ArenaTokenStreamBuilder::default()
+        };
         for s in streams {
-            stream.push_stream_with_gluing(s);
+            let mut iter = s.iter_top_level_trees();
+            if let Some(ArenaTokenTree::Token(token, spacing)) = iter.peek()
+                && builder.try_glue_to_last_top_level_token(&token, *spacing)
+            {
+                // Skip the first token, as it was glued
+                iter.next();
+            }
+            builder.push_iter(iter);
         }
-        stream
+        builder.finish()
     }
 
     fn ts_into_trees(

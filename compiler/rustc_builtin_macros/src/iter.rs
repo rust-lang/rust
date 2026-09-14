@@ -1,4 +1,4 @@
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{CoroutineKind, CoroutineMarker, Expr, ast, token};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
@@ -7,7 +7,7 @@ use rustc_span::Span;
 pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let closure = match parse_closure(cx, sp, tts) {
         Ok(parsed) => parsed,
@@ -22,7 +22,7 @@ pub(crate) fn expand<'cx>(
 fn parse_closure<'a>(
     cx: &mut ExtCtxt<'a>,
     span: Span,
-    stream: TokenStream,
+    stream: ArenaTokenStream,
 ) -> PResult<'a, Box<Expr>> {
     let mut closure_parser = cx.new_parser_from_tts(stream);
 

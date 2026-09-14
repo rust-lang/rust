@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
@@ -29,7 +29,7 @@ struct ValidatedAsmArgs {
 fn parse_args<'a>(
     ecx: &ExtCtxt<'a>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
     asm_macro: AsmMacro,
 ) -> PResult<'a, ValidatedAsmArgs> {
     let args = parse_asm_args(&mut ecx.new_parser_from_tts(tts), sp, asm_macro)?;
@@ -582,7 +582,7 @@ fn expand_preparsed_asm(
 pub(super) fn expand_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, AsmMacro::Asm) {
         Ok(args) => {
@@ -611,7 +611,7 @@ pub(super) fn expand_asm<'cx>(
 pub(super) fn expand_naked_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, AsmMacro::NakedAsm) {
         Ok(args) => {
@@ -641,7 +641,7 @@ pub(super) fn expand_naked_asm<'cx>(
 pub(super) fn expand_global_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     ExpandResult::Ready(match parse_args(ecx, sp, tts, AsmMacro::GlobalAsm) {
         Ok(args) => {

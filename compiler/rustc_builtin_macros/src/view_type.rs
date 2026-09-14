@@ -1,5 +1,5 @@
 use rustc_ast::token::TokenKind;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{Ty, ast};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
@@ -10,7 +10,7 @@ use thin_vec::ThinVec;
 pub(crate) fn expand<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let (ty, pat) = match parse_view_ty(cx, tts) {
         Ok(parsed) => parsed,
@@ -24,7 +24,7 @@ pub(crate) fn expand<'cx>(
 
 fn parse_view_ty<'a>(
     cx: &mut ExtCtxt<'a>,
-    stream: TokenStream,
+    stream: ArenaTokenStream,
 ) -> PResult<'a, (Box<Ty>, ThinVec<Ident>)> {
     let mut parser = cx.new_parser_from_tts(stream);
 
