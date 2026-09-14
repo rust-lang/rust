@@ -128,6 +128,14 @@ fn main() {
         cmd.env("RUST_BACKTRACE", "1");
     }
 
+    if let Ok(lto) = env::var("RUSTC_DYLIB_LTO") {
+        if crate_name != Some("rustc_driver") {
+            cmd.arg("-Clinker-plugin-lto");
+        } else {
+            cmd.arg(format!("-Clto={lto}"));
+        }
+    }
+
     if let Ok(lint_flags) = env::var("RUSTC_LINT_FLAGS") {
         cmd.args(lint_flags.split_whitespace());
     }

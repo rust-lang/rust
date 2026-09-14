@@ -1265,7 +1265,8 @@ pub fn rustc_cargo(
                     RustcLto::Fat => "fat",
                     _ => unreachable!(),
                 };
-                cargo.rustflag(&format!("-Clto={lto_type}"));
+                cargo.env("RUSTC_DYLIB_LTO", lto_type);
+                // cargo.rustflag(&format!("-Clto={lto_type}"));
                 cargo.rustflag("-Cembed-bitcode=yes");
             }
             RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
