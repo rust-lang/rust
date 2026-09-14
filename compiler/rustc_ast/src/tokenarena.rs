@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::num::NonZeroU32;
 use std::sync::{Arc, LazyLock};
 
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
@@ -83,7 +84,7 @@ impl ArenaTokenTree {
     }
 }
 
-static_assert_size!(ArenaTokenTree, 40);
+static_assert_size!(ArenaTokenTree, 44);
 
 #[derive(Debug, Default)]
 pub struct ArenaTokenStreamBuilder {
@@ -91,7 +92,7 @@ pub struct ArenaTokenStreamBuilder {
     /// Index of the current delimited sequence
     current_delimited_sequence: Option<AbsoluteTokenTreeIndex>,
     /// This is only useful to optimize glueing
-    last_top_level_delimited_sequence: Option<AbsoluteTokenTreeIndex>,
+    last_push_was_token: bool,
 }
 
 impl ArenaTokenStreamBuilder {
@@ -99,7 +100,7 @@ impl ArenaTokenStreamBuilder {
         Self {
             tokens: Vec::with_capacity(capacity),
             current_delimited_sequence: None,
-            last_top_level_delimited_sequence: None,
+            last_push_was_token: false,
         }
     }
 
@@ -109,16 +110,17 @@ impl ArenaTokenStreamBuilder {
 
     pub fn push_token(&mut self, token: Token, spacing: Spacing) {
         self.tokens.push(ArenaTokenTree::Token(token, spacing));
+        self.last_push_was_token = true;
     }
 
     pub fn push_token_alone(&mut self, token: Token) {
-        self.tokens.push(ArenaTokenTree::Token(token, Spacing::Alone));
+        self.push_token(token, Spacing::Alone);
     }
 
     pub fn push_token_tree(&mut self, tt: &ArenaTokenTree, stream: &ArenaTokenStream) {
         match tt {
-            token @ ArenaTokenTree::Token(..) => {
-                self.tokens.push(*token);
+            ArenaTokenTree::Token(token, spacing) => {
+                self.push_token(*token, *spacing);
             }
             ArenaTokenTree::DelimitedStart(bounds, data) => {
                 self.push_delimited(
@@ -155,15 +157,10 @@ impl ArenaTokenStreamBuilder {
         assert!(self.current_delimited_sequence.is_none());
         if let Some(ArenaTokenTree::Token(last_tok, Spacing::Joint | Spacing::JointHidden)) =
             self.tokens.last()
-            // We can only do this if the last tree is a top-level token
+            // We can only do this if the last tree is a top-level token within the current
+            // delimited sequence.
             // If there is no last top-level sequence, then the last token has to be top-level
-            && self.last_top_level_delimited_sequence.map(|index| {
-            let ArenaTokenTree::DelimitedStart(bounds, _) = self.get_innermost_elem_at(index).expect("Invalid last top level delimited sequence index") else {
-                panic!("Invalid last top level delimited sequence type");
-            };
-            // The last top-level delimited sequence DOES NOT contain the last token
-            bounds.index_of_next_token_tree() <= AbsoluteTokenTreeIndex((self.tokens.len() - 1) as u32)
-        }).unwrap_or(true)
+            && self.last_push_was_token
             && let Some(glued_tok) = last_tok.glue(&token)
         {
             // ...then overwrite the last token tree in `vec` with the glued token.
@@ -189,7 +186,12 @@ impl ArenaTokenStreamBuilder {
         let parent = self.current_delimited_sequence.replace(index);
 
         self.tokens.push(ArenaTokenTree::DelimitedStart(
-            DelimitedBounds { start: index, length: 0, parent },
+            DelimitedBounds {
+                start: index,
+                length: NonZeroU32::MIN,
+                parent,
+                last_push_was_token: false,
+            },
             DelimitedData {
                 span: DelimSpan { open: Default::default(), close: Default::default() },
                 spacing: DelimSpacing { open: Spacing::Alone, close: Spacing::Alone },
@@ -200,6 +202,9 @@ impl ArenaTokenStreamBuilder {
     }
 
     pub fn close_delimited(&mut self, open: OpenDelimited, delimited_data: DelimitedData) {
+        let last_push_was_token = self.last_push_was_token;
+        self.last_push_was_token = false;
+
         let length = self.length();
         match &mut self.tokens[open.start.as_usize()] {
             ArenaTokenTree::Token(..) => {
@@ -207,12 +212,10 @@ impl ArenaTokenStreamBuilder {
             }
             ArenaTokenTree::DelimitedStart(bounds, data) => {
                 let len = length.saturating_sub(open.start.as_usize());
-                bounds.length = len as u32;
+                bounds.length = NonZeroU32::new(len as u32).unwrap();
                 *data = delimited_data;
                 self.current_delimited_sequence = bounds.parent;
-                if bounds.parent.is_none() {
-                    self.last_top_level_delimited_sequence = Some(bounds.start());
-                }
+                bounds.last_push_was_token = last_push_was_token;
             }
         }
     }
@@ -298,14 +301,12 @@ impl ArenaTokenStreamBuilder {
         let start = start.as_usize();
         // Fix-up the length of trees before what was inserted, including the current delimited
         // sequence.
-        // FIXME: do not iterate all the way to the beginning of the builder, we can probably stop
-        // sooner.
         for tree in self.tokens[..start + 1].iter_mut().rev() {
             match tree {
                 ArenaTokenTree::Token(_, _) => {}
                 ArenaTokenTree::DelimitedStart(b, _) => {
                     if b.index_of_next_token_tree().as_usize() > start {
-                        b.length += inserted_len;
+                        b.length = b.length.checked_add(inserted_len).unwrap();
                     }
                 }
             }
@@ -349,7 +350,11 @@ impl ArenaTokenStreamBuilder {
             ArenaTokenStream::default()
         } else {
             let range = TokenTreeRange::full(&self.tokens);
-            ArenaTokenStream { tokens: Arc::new(self.tokens), range }
+            ArenaTokenStream {
+                tokens: Arc::new(self.tokens),
+                range,
+                last_push_was_token: self.last_push_was_token,
+            }
         }
     }
 
@@ -377,12 +382,14 @@ pub enum PerTreeOp {
 static EMPTY_TOKEN_STREAM: LazyLock<ArenaTokenStream> = LazyLock::new(|| ArenaTokenStream {
     tokens: Arc::new(Vec::new()),
     range: TokenTreeRange::empty(),
+    last_push_was_token: false,
 });
 
 #[derive(Clone, Debug)]
 pub struct ArenaTokenStream {
     tokens: Arc<Vec<ArenaTokenTree>>,
     range: TokenTreeRange,
+    last_push_was_token: bool,
 }
 
 impl ArenaTokenStream {
@@ -401,7 +408,7 @@ impl ArenaTokenStream {
                 .collect::<Vec<_>>(),
         );
         let range = TokenTreeRange::full(&tokens);
-        Self { tokens, range }
+        Self { tokens, range, last_push_was_token: true }
     }
 
     /// Create a new stream out of the token trees.
@@ -437,23 +444,11 @@ impl ArenaTokenStream {
     pub fn into_builder(self) -> ArenaTokenStreamBuilder {
         // Reuse the whole thing
         if self.range.start.0 == 0 && self.range.end.0 == self.tokens.len() as u32 {
-            // FIXME: try to optimize this
-            let last_toplevel = self
-                .iter_all_trees()
-                .rev()
-                .find_map(|tree| match tree {
-                    ArenaTokenTree::DelimitedStart(bounds, _)
-                        if self.get_parent_of(*bounds).is_none() =>
-                    {
-                        Some(bounds.start)
-                    }
-                    ArenaTokenTree::DelimitedStart(_, _) | ArenaTokenTree::Token(_, _) => None,
-                })
-                .map(|index| index);
+            let last_push_was_token = self.last_push_was_token;
             ArenaTokenStreamBuilder {
                 tokens: self.try_take_tokens(),
                 current_delimited_sequence: None,
-                last_top_level_delimited_sequence: last_toplevel,
+                last_push_was_token,
             }
         } else {
             // Copy out the given range
@@ -478,6 +473,7 @@ impl ArenaTokenStream {
         Self {
             tokens: Arc::new(vec![ArenaTokenTree::token_alone(kind, span)]),
             range: TokenTreeRange::single(),
+            last_push_was_token: true,
         }
     }
 
@@ -493,7 +489,11 @@ impl ArenaTokenStream {
             return Self::default();
         }
         let range = TokenTreeRange::from_bounds_contents(&bounds);
-        Self { tokens: stream.tokens.clone(), range }
+        Self {
+            tokens: stream.tokens.clone(),
+            range,
+            last_push_was_token: bounds.last_push_was_token,
+        }
     }
 
     pub fn range(&self) -> TokenTreeRange {
@@ -574,7 +574,7 @@ impl ArenaTokenStream {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 enum FlattenedTokenTree {
     Token(Token, Spacing),
-    Delimited { data: DelimitedData, length: u32 },
+    Delimited { data: DelimitedData, length: NonZeroU32 },
 }
 
 impl Default for ArenaTokenStream {
@@ -641,7 +641,7 @@ impl<D: SpanDecoder> Decodable<D> for ArenaTokenStream {
                     builder.push_token(token, spacing);
                 }
                 FlattenedTokenTree::Delimited { data, length } => {
-                    let mut remaining_children = length as usize - 1;
+                    let mut remaining_children = length.get() as usize - 1;
                     builder.push_delimited(
                         |builder| {
                             while remaining_children > 0 {
@@ -650,7 +650,7 @@ impl<D: SpanDecoder> Decodable<D> for ArenaTokenStream {
                         },
                         data,
                     );
-                    *remaining -= (length - 1) as usize;
+                    *remaining -= (length.get() - 1) as usize;
                 }
             }
         }
@@ -922,10 +922,11 @@ pub struct DelimitedBounds {
     start: AbsoluteTokenTreeIndex,
     /// The length includes both the start token.
     /// So an empty delimited sequence has length 1.
-    length: u32,
+    length: NonZeroU32,
     /// Index of the parent of the current delimited sequence.
     /// If this is the root delimited sequence, is `None`.
     parent: Option<AbsoluteTokenTreeIndex>,
+    last_push_was_token: bool,
 }
 
 impl DelimitedBounds {
@@ -935,11 +936,11 @@ impl DelimitedBounds {
 
     /// Return the index of the next token tree that follows this delimited token sequence.
     pub fn index_of_next_token_tree(&self) -> AbsoluteTokenTreeIndex {
-        AbsoluteTokenTreeIndex(self.start.0 + self.length)
+        AbsoluteTokenTreeIndex(self.start.0 + self.length.get())
     }
 
     pub fn is_empty(&self) -> bool {
-        self.length == 1
+        self.length.get() == 1
     }
 }
 
