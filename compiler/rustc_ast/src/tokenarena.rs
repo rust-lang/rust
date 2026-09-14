@@ -193,7 +193,7 @@ impl ArenaTokenStreamBuilder {
     }
 
     pub fn start_delimited(&mut self) -> OpenDelimited {
-        let index = AbsoluteTokenTreeIndex(self.length() as u32);
+        let index = AbsoluteTokenTreeIndex::from_u32(self.length() as u32);
         let parent = self.current_delimited_sequence.replace(index);
 
         self.tokens.push(ArenaTokenTree::DelimitedStart(
@@ -293,7 +293,7 @@ impl ArenaTokenStreamBuilder {
         };
         // Insert the trees
         let inserted_len = builder.tokens.len() as u32;
-        let after_insertion = bounds.start.0 + 1 + inserted_len;
+        let after_insertion = bounds.start.as_u32() + 1 + inserted_len;
         self.tokens.splice(start.as_usize() + 1..start.as_usize() + 1, builder.tokens);
 
         // Fix-up the start indices and parents after what was inserted
@@ -301,9 +301,13 @@ impl ArenaTokenStreamBuilder {
             match tree {
                 ArenaTokenTree::Token(_, _) => {}
                 ArenaTokenTree::DelimitedStart(b, _) => {
-                    b.start = AbsoluteTokenTreeIndex(b.start.0 + inserted_len);
+                    b.start = AbsoluteTokenTreeIndex::from_u32(b.start.as_u32() + inserted_len);
                     b.parent = b.parent.map(|p| {
-                        if p > start { AbsoluteTokenTreeIndex(p.0 + inserted_len) } else { p }
+                        if p > start {
+                            AbsoluteTokenTreeIndex::from_u32(p.as_u32() + inserted_len)
+                        } else {
+                            p
+                        }
                     });
                 }
             }
@@ -329,9 +333,9 @@ impl ArenaTokenStreamBuilder {
             match tree {
                 ArenaTokenTree::Token(_, _) => {}
                 ArenaTokenTree::DelimitedStart(b, _) => {
-                    b.start = AbsoluteTokenTreeIndex(b.start.0 + offset.0);
+                    b.start = AbsoluteTokenTreeIndex::from_u32(b.start.as_u32() + offset.as_u32());
                     b.parent = Some(match b.parent {
-                        Some(p) => AbsoluteTokenTreeIndex(p.0 + offset.0),
+                        Some(p) => AbsoluteTokenTreeIndex::from_u32(p.as_u32() + offset.as_u32()),
                         None => {
                             // Reparent the inserted top-level delimited sequences to the current
                             // delimited sequence
@@ -350,12 +354,12 @@ impl ArenaTokenStreamBuilder {
 
     #[inline]
     pub fn current_index(&self) -> AbsoluteTokenTreeIndex {
-        AbsoluteTokenTreeIndex(self.length() as u32)
+        AbsoluteTokenTreeIndex::from_u32(self.length() as u32)
     }
 
     #[inline]
     pub fn tree_count_since(&self, index: AbsoluteTokenTreeIndex) -> u32 {
-        self.current_index().0.saturating_sub(index.0)
+        self.current_index().as_u32().saturating_sub(index.as_u32())
     }
 
     #[inline]
@@ -467,7 +471,7 @@ impl ArenaTokenStream {
     /// If it is not the only copy, clones the inner tokens.
     pub fn into_builder(self) -> ArenaTokenStreamBuilder {
         // Reuse the whole thing
-        if self.range.start.0 == 0 && self.range.end.0 == self.tokens.len() as u32 {
+        if self.range.start.as_u32() == 0 && self.range.end.as_usize() == self.tokens.len() {
             let last_push_was_token = self.last_push_was_token;
             ArenaTokenStreamBuilder {
                 tokens: self.try_take_tokens(),
@@ -696,6 +700,13 @@ impl<D: SpanDecoder> Decodable<D> for ArenaTokenStream {
 pub struct AbsoluteTokenTreeIndex(u32);
 
 impl AbsoluteTokenTreeIndex {
+    fn from_u32(value: u32) -> Self {
+        Self(value)
+    }
+    fn from_usize(value: usize) -> Self {
+        Self::from_u32(value as u32)
+    }
+
     #[inline]
     pub fn bump_single(&mut self) {
         self.0 += 1;
@@ -708,11 +719,17 @@ impl AbsoluteTokenTreeIndex {
 
     #[inline]
     pub fn next_index(&self) -> Self {
-        Self(self.0 + 1)
+        Self::from_u32(self.as_u32() + 1)
     }
 
+    #[inline]
     fn as_usize(self) -> usize {
         self.0 as usize
+    }
+
+    #[inline]
+    fn as_u32(self) -> u32 {
+        self.0
     }
 }
 
@@ -726,15 +743,24 @@ pub struct TokenTreeRange {
 
 impl TokenTreeRange {
     fn empty() -> Self {
-        Self { start: AbsoluteTokenTreeIndex(0), end: AbsoluteTokenTreeIndex(0) }
+        Self {
+            start: AbsoluteTokenTreeIndex::from_u32(0),
+            end: AbsoluteTokenTreeIndex::from_u32(0),
+        }
     }
 
     fn full(tokens: &[ArenaTokenTree]) -> Self {
-        Self { start: AbsoluteTokenTreeIndex(0), end: AbsoluteTokenTreeIndex(tokens.len() as u32) }
+        Self {
+            start: AbsoluteTokenTreeIndex::from_u32(0),
+            end: AbsoluteTokenTreeIndex::from_usize(tokens.len()),
+        }
     }
 
     fn single() -> Self {
-        Self { start: AbsoluteTokenTreeIndex(0), end: AbsoluteTokenTreeIndex(1) }
+        Self {
+            start: AbsoluteTokenTreeIndex::from_u32(0),
+            end: AbsoluteTokenTreeIndex::from_u32(1),
+        }
     }
 
     /// Extract a range containing the *contents* of the delimited sequence, without its starting
@@ -760,7 +786,7 @@ impl TokenTreeRange {
 
     #[inline]
     pub fn len(&self) -> usize {
-        (self.end.0 - self.start.0) as usize
+        self.end.as_usize() - self.start.as_usize()
     }
 
     #[inline]
@@ -803,8 +829,8 @@ pub fn attrs_and_tokens_to_token_trees_arena(
     if !inner_attrs.is_empty() {
         if let Some(bounds) = get_insertion_point(
             inner_attrs,
-            AbsoluteTokenTreeIndex(start as u32),
-            AbsoluteTokenTreeIndex(builder.tokens.len() as u32),
+            AbsoluteTokenTreeIndex::from_usize(start),
+            AbsoluteTokenTreeIndex::from_usize(builder.tokens.len()),
             builder,
         ) {
             // FIXME(tokens): implement this in a more efficient way
@@ -978,7 +1004,7 @@ impl DelimitedBounds {
     /// Return the index of the next token tree that follows this delimited token sequence.
     #[inline]
     pub fn index_of_next_token_tree(&self) -> AbsoluteTokenTreeIndex {
-        AbsoluteTokenTreeIndex(self.start.0 + self.length.get())
+        AbsoluteTokenTreeIndex::from_u32(self.start.as_u32() + self.length.get())
     }
 
     #[inline]
