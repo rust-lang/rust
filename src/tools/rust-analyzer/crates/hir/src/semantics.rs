@@ -1634,6 +1634,9 @@ impl<'db> SemanticsImpl<'db> {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     expansion_info.arg().map(|node| node?.parent()).transpose()
                 })
+                .inspect(|node| {
+                    self.cache(node.value.tree_top(), node.file_id);
+                })
             }
         })
     }
