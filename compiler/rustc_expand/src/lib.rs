@@ -8,6 +8,7 @@
 #![feature(proc_macro_internals)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![feature(gen_blocks)]
 // tidy-alphabetical-end
 
 mod build;
