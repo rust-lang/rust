@@ -112,8 +112,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        bitcode_needed: bool,
     ) -> (ModuleCodegen<ModuleLlvm>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name)
+        base::compile_codegen_unit(tcx, cgu_name, bitcode_needed)
     }
 }
 

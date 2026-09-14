@@ -215,6 +215,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_ast_item(i),
+            Some(i),
             &extra_hir_attributes,
         );
 
@@ -272,7 +273,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 generics,
                 ty,
                 body,
-                kind,
                 define_opaque,
             }) => {
                 let ident = self.lower_ident(*ident);
@@ -284,7 +284,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ty,
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
                         );
-                        let rhs = this.lower_const_item_rhs(body, *kind, span);
+                        let rhs = this.lower_const_item_rhs(body, span);
                         (ty, rhs)
                     },
                 );
@@ -332,7 +332,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, itctx, |this| {
-                        this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coroutine_marker)
+                        this.lower_fn_decl(decl, id, FnDeclKind::Fn, coroutine_marker)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -741,7 +741,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
                     (
                         // Disallow `impl Trait` in foreign items.
-                        this.lower_fn_decl(fdec, i.id, sig.span, FnDeclKind::ExternFn, None),
+                        this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None),
                         this.lower_fn_params_to_idents(fdec),
                     )
                 });
@@ -924,13 +924,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (ident, generics, kind, has_value) = match &i.kind {
             AssocItemKind::Const(ConstItem {
-                ident,
-                generics,
-                ty,
-                body,
-                kind,
-                define_opaque,
-                ..
+                ident, generics, ty, body, define_opaque, ..
             }) => {
                 let (generics, kind) = self.lower_generics(
                     generics,
@@ -942,7 +936,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         );
                         // Trait associated consts don't need an expression/body.
                         let rhs = if body.is_some() {
-                            Some(this.lower_const_item_rhs(body, *kind, i.span))
+                            Some(this.lower_const_item_rhs(body, i.span))
                         } else {
                             None
                         };
@@ -1187,13 +1181,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (ident, (generics, kind)) = match &i.kind {
             AssocItemKind::Const(ConstItem {
-                ident,
-                generics,
-                ty,
-                body,
-                kind,
-                define_opaque,
-                ..
+                ident, generics, ty, body, define_opaque, ..
             }) => (
                 *ident,
                 self.lower_generics(
@@ -1205,7 +1193,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
                         );
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        let rhs = this.lower_const_item_rhs(body, *kind, i.span);
+                        let rhs = this.lower_const_item_rhs(body, i.span);
                         hir::ImplItemKind::Const(ty, rhs)
                     },
                 ),
@@ -1680,7 +1668,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_marker)
+            this.lower_fn_decl(&sig.decl, id, kind, coroutine_marker)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }

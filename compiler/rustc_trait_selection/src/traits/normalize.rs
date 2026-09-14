@@ -10,8 +10,8 @@ use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
-    self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
-    TypeVisitableExt, TypingMode, Unnormalized,
+    self, AliasTerm, PredicateProxy, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable, TypeVisitableExt, TypingMode, Unnormalized,
 };
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
@@ -78,7 +78,7 @@ impl<'tcx> At<'_, 'tcx> {
                 .normalize(value)
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
-            let value = self.infcx.resolve_vars_if_possible(value);
+            let value = self.infcx.deeply_resolve_ignoring_regions(value);
             match errors {
                 TraitErrors::NoErrors => Ok(value),
                 TraitErrors::HasErrors(errors) => {
@@ -171,7 +171,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
-        let value = self.selcx.infcx.resolve_vars_if_possible(value);
+        let value = self.selcx.infcx.deeply_resolve_ignoring_regions(value);
         debug!(?value);
 
         assert!(
@@ -512,7 +512,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     }
 
     #[inline]
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.allow_normalization() && needs_normalization(self.selcx.infcx, &p) {
             p.super_fold_with(self)
         } else {

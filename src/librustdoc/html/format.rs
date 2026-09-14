@@ -432,7 +432,7 @@ fn generate_item_def_id_path(
         let ty = infcx
             .at(&ObligationCause::dummy(), tcx.param_env(def_id))
             .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
-            .map(|resolved| infcx.resolve_vars_if_possible(resolved.value).skip_binder())
+            .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
             .unwrap_or(ty.skip_binder());
         if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
             def_id = new_def_id;
@@ -547,7 +547,7 @@ pub(crate) fn href_with_root_path(
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(original_did);
     let did = match def_kind {
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
             // documented on their parent's page
             tcx.parent(original_did)
         }
@@ -846,7 +846,7 @@ pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         let def_kind = tcx.def_kind(did);
         match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
                 let item_type = ItemType::from_def_id(did, tcx);
                 write!(f, "#{}.{}", item_type.as_str(), tcx.item_name(did))
             }

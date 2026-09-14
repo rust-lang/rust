@@ -315,11 +315,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         Self { impl_trait_mode: ImplTraitLoweringState::new(impl_trait_mode), ..self }
     }
 
-    pub(crate) fn impl_trait_mode(&mut self, impl_trait_mode: ImplTraitLoweringMode) -> &mut Self {
-        self.impl_trait_mode = ImplTraitLoweringState::new(impl_trait_mode);
-        self
-    }
-
     pub(crate) fn forbid_params_after(&mut self, index: u32, reason: ForbidParamsAfterReason) {
         self.forbid_params_after = Some(index);
         self.forbid_params_after_reason = reason;

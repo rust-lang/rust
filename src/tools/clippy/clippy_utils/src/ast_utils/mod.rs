@@ -337,7 +337,6 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 generics: lg,
                 ty: lt,
                 body: lb,
-                kind: lk,
                 define_opaque: _,
             }),
             Const(ConstItem {
@@ -347,7 +346,6 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ty: rt,
 
                 body: rb,
-                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -355,7 +353,6 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && lk == rk
                 && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (
@@ -606,7 +603,6 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 generics: lg,
                 ty: lt,
                 body: lb,
-                kind: lk,
                 define_opaque: _,
             }),
             Const(ConstItem {
@@ -615,7 +611,6 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 generics: rg,
                 ty: rt,
                 body: rb,
-                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -623,7 +618,6 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && lk == rk
                 && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (

@@ -110,7 +110,7 @@ struct LivenessResults<'a, 'typeck, 'tcx> {
     /// Points where the current variable is "drop live" -- meaning
     /// that there is no future "full use" that may use its value, but
     /// there is a future drop.
-    drop_live_at: IntervalSet<PointIndex>,
+    drop_live_at: DenseBitSet<PointIndex>,
 
     /// Locations where drops may occur.
     drop_locations: Vec<Location>,
@@ -126,7 +126,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
             cx,
             defs: DenseBitSet::new_empty(num_points),
             use_live_at: IntervalSet::new(num_points),
-            drop_live_at: IntervalSet::new(num_points),
+            drop_live_at: DenseBitSet::new_empty(num_points),
             drop_locations: vec![],
             stack: vec![],
         }
@@ -146,12 +146,16 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
             }
 
             if !self.drop_live_at.is_empty() {
-                self.cx.add_drop_live_facts_for(
-                    local,
-                    local_ty,
-                    &self.drop_locations,
-                    &self.drop_live_at,
-                );
+                // `drop_live_at` is using a DenseBitSet, but `add_drop_live_facts_for` expects
+                // an IntervalSet. We thus convert between those two here.
+                let mut set: IntervalSet<PointIndex> =
+                    IntervalSet::new(self.drop_live_at.domain_size());
+                for item in self.drop_live_at.iter() {
+                    // We iterate the `drop_live_at` set from smallest to largest values, so
+                    // we can use append to add things to the interval set at the end.
+                    set.append(item);
+                }
+                self.cx.add_drop_live_facts_for(local, local_ty, &self.drop_locations, &set);
             }
         }
     }

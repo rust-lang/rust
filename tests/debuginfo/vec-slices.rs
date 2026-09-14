@@ -1,3 +1,7 @@
+//@ revisions: msvc non-msvc
+
+//@ [msvc] only-msvc
+//@ [non-msvc] ignore-msvc
 //@ ignore-gdb-version: 15.0 - 99.0
 // ^ test temporarily disabled as it fails under gdb 15
 
@@ -55,22 +59,29 @@
 //@ lldb-command:run
 
 //@ lldb-command:v empty
-//@ lldb-check:[...] size=0
+//@ [non-msvc] lldb-check:[...] size=0
+//@ [msvc] lldb-check: []
 
 //@ lldb-command:v singleton
-//@ lldb-check:[...] size=1 { [0] = 1 }
+//@ [non-msvc] lldb-check:[...] size=1 { [0] = 1 }
+//@ [msvc] lldb-check:[...] [1] { [0] = 1 }
 
 //@ lldb-command:v multiple
-//@ lldb-check:[...] size=4 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
+//@ [non-msvc] lldb-check:[...] size=4 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
+//@ [msvc] lldb-check:[...] [2, 3, 4, 5] { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
 
 //@ lldb-command:v slice_of_slice
-//@ lldb-check:[...] size=2 { [0] = 3 [1] = 4 }
+//@ [non-msvc] lldb-check:[...] size=2 { [0] = 3 [1] = 4 }
+//@ [msvc] lldb-check:[...] [3, 4] { [0] = 3 [1] = 4 }
 
 //@ lldb-command:v padded_tuple
-//@ lldb-check:[...] size=2 { [0] = (6, 7) [1] = (8, 9) }
+//@ [non-msvc] lldb-check:[...] size=2 { [0] = (6, 7) [1] = (8, 9) }
+//@ [msvc] lldb-check:[...] [(6, 7), (8, 9)] { [0] = (6, 7) [1] = (8, 9) }
 
 //@ lldb-command:v padded_struct
-//@ lldb-check:[...] size=2 { [0] = {x:10, y:11, z:12} [1] = {x:13, y:14, z:15} }
+//@ [non-msvc] lldb-check:[...] size=2 { [0] = {x:10, y:11, z:12} [1] = {x:13, y:14, z:15} }
+// ignore-tidy-linelength
+//@ [msvc] lldb-check:[...] [{x:10, y:11, z:12}, {x:13, y:14, z:15}] { [0] = {x:10, y:11, z:12} [1] = {x:13, y:14, z:15} }
 
 #![allow(dead_code, unused_variables)]
 

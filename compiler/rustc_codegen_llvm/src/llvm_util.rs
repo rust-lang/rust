@@ -459,15 +459,13 @@ pub(crate) fn print_version() {
     println!("LLVM version: {major}.{minor}.{patch}");
 }
 
+/// Returns the version of LLVM that we are actually linked to at runtime.
 pub(crate) fn get_version() -> (u32, u32, u32) {
-    // Can be called without initializing LLVM
-    unsafe {
-        let mut llvm_major = 0;
-        let mut llvm_minor = 0;
-        let mut llvm_patch = 0;
-        llvm::LLVMGetVersion(&mut llvm_major, &mut llvm_minor, &mut llvm_patch);
-        (llvm_major, llvm_minor, llvm_patch)
-    }
+    let mut llvm_major = 0;
+    let mut llvm_minor = 0;
+    let mut llvm_patch = 0;
+    llvm::LLVMGetVersion(&mut llvm_major, &mut llvm_minor, &mut llvm_patch);
+    (llvm_major, llvm_minor, llvm_patch)
 }
 
 pub(crate) fn print_passes() {

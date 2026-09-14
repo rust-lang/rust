@@ -577,10 +577,12 @@ pub enum BuiltinImplSource {
     /// unless more specific information is necessary.
     Misc,
     /// A built-in impl for trait objects. The index is only used in winnowing.
+    // FIXME(-Znext-solver=no): The new solver does not need this index, remove!
     Object(usize),
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
     /// The index is only used for winnowing.
+    // FIXME(-Znext-solver=no): The new solver does not need this index, remove!
     TraitUpcasting(usize),
 }
 

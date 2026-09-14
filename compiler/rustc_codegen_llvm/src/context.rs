@@ -14,18 +14,19 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
+    codegen_handle_fn_abi_err,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_structures::CrateType;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
@@ -93,6 +94,7 @@ pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
 
 pub(crate) struct FullCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub bitcode_needed: bool,
     pub scx: SimpleCx<'ll>,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
@@ -608,6 +610,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
+        bitcode_needed: bool,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -703,6 +706,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         GenericCx(
             FullCx {
                 tcx,
+                bitcode_needed,
                 scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size()),
                 use_dll_storage_attrs,
                 tls_model,
@@ -913,11 +917,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
     pub(crate) fn get_const_i8(&self, n: u64) -> &'ll Value {
         self.get_const_int(self.type_i8(), n)
-    }
-
-    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
-        let name = SmallCStr::new(name);
-        unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
     }
 
     pub(crate) fn get_md_kind_id(&self, name: &str) -> llvm::MetadataKindId {
@@ -1318,21 +1317,6 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        match err {
-            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
-                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
-            }
-            _ => match fn_abi_request {
-                FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
-                }
-                FnAbiRequest::OfInstance { instance, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
-                    );
-                }
-            },
-        }
+        codegen_handle_fn_abi_err(self.tcx, err, span, fn_abi_request).raise_fatal()
     }
 }

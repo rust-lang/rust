@@ -4,12 +4,11 @@ use std::path::{self, Path, PathBuf};
 use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_attr_parsing::template;
 use rustc_attr_parsing::validate_attr::emit_malformed_attribute;
-use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed, FatalError};
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
-use rustc_span::fatal_error::FatalError;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::ThinVec;
 

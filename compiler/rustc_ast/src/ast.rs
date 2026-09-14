@@ -294,6 +294,14 @@ impl GenericArg {
             GenericArg::Const(ct) => ct.value.span,
         }
     }
+
+    pub fn is_maybe_parenthesised_infer(&self) -> bool {
+        match self {
+            GenericArg::Lifetime(lt) => lt.ident.name == kw::UnderscoreLifetime,
+            GenericArg::Type(ty) => ty.is_maybe_parenthesised_infer(),
+            GenericArg::Const(_) => false,
+        }
+    }
 }
 
 /// A path like `Foo<'a, T>`.
@@ -4035,15 +4043,7 @@ pub struct ConstItem {
     pub generics: Generics,
     pub ty: Box<Ty>,
     pub body: Option<Box<Expr>>,
-    #[visitable(ignore)]
-    pub kind: ConstItemKind,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
-}
-
-#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
-pub enum ConstItemKind {
-    Body,
-    TypeConst,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

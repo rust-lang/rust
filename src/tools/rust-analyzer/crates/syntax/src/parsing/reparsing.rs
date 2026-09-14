@@ -385,14 +385,6 @@ fn baz $0$0 () {}
             2,
         );
         do_check(
-            r"
-/// foo $0$0omment
-mod { }
-",
-            "c",
-            14,
-        );
-        do_check(
             r#"
 fn -> &str { "Hello$0$0" }
 "#,

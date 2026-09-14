@@ -59,7 +59,7 @@ mod transmutability;
 pub use transmutability::{Assume, TransmuteFrom};
 
 mod drop_guard;
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
 pub use drop_guard::DropGuard;
 
 // This one has to be a re-export (rather than wrapping the underlying intrinsic) so that we can do

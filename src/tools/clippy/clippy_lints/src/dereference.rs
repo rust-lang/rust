@@ -12,7 +12,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt as _, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,

@@ -12,8 +12,7 @@ enum MyEnum<T> {
     Unit,
 }
 
-
-type const CONST_ITEM: u32 = 42;
+const CONST_ITEM: u32 = core::direct_const_arg!(42);
 
 fn accepts_point<const P: Point>() {}
 fn accepts_enum<const E: MyEnum<u32>>() {}

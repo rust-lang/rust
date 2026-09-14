@@ -427,8 +427,8 @@ fn check_opaque_meets_bounds<'tcx>(
     } else {
         // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
         for (mut key, mut ty) in infcx.take_opaque_types() {
-            ty.ty = infcx.resolve_vars_if_possible(ty.ty);
-            key = infcx.resolve_vars_if_possible(key);
+            ty.ty = infcx.deeply_resolve_ignoring_regions(ty.ty);
+            key = infcx.deeply_resolve_ignoring_regions(key);
             sanity_check_found_hidden_type(tcx, key, ty)?;
         }
         Ok(())
@@ -864,6 +864,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                             ty::TraitRef::new_from_args(tcx, def_id.to_def_id(), trait_args),
                         );
                     }
+                    ty::AssocKind::Const { .. } if assoc_item.defaultness(tcx).has_value() => {
+                        let _: Result<_, rustc_errors::ErrorGuaranteed> =
+                            super::compare_impl_item::compare_const_directness(
+                                tcx, assoc_item, assoc_item,
+                            );
+                    }
                     _ => {}
                 }
             }
@@ -932,7 +938,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::Const { .. } => {
+        DefKind::Const => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().clauses_of(def_id);
@@ -1116,7 +1122,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::AssocConst { .. } => {
+        DefKind::AssocConst => {
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().clauses_of(def_id);
             res = res.and(check_associated_item(tcx, def_id));
@@ -2314,8 +2320,8 @@ pub(super) fn check_coroutine_obligations(
         // Check that any hidden types found when checking these stalled coroutine obligations
         // are valid.
         for (key, ty) in infcx.take_opaque_types() {
-            let hidden_type = infcx.resolve_vars_if_possible(ty);
-            let key = infcx.resolve_vars_if_possible(key);
+            let hidden_type = infcx.deeply_resolve_ignoring_regions(ty);
+            let key = infcx.deeply_resolve_ignoring_regions(key);
             sanity_check_found_hidden_type(tcx, key, hidden_type)?;
         }
     } else {

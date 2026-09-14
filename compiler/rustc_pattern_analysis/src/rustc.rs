@@ -932,6 +932,10 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         span_bug!(self.scrut_span, "{}", fmt)
     }
 
+    fn delayed_bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
+        self.tcx.dcx().span_delayed_bug(self.scrut_span, format!("{fmt}"))
+    }
+
     fn lint_overlapping_range_endpoints(
         &self,
         pat: &crate::pat::DeconstructedPat<Self>,

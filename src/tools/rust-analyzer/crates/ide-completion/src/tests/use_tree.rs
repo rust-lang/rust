@@ -252,7 +252,7 @@ mod a {
 }
 "#,
         expect![[r#"
-            ct A usize
+            ct A  = 0 usize
             md b
             kw super::
         "#]],

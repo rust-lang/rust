@@ -271,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         };
-        let args = self.resolve_vars_if_possible(args);
+        let args = self.deeply_resolve_ignoring_regions(args);
         let closure_def_id = closure_def_id.expect_local();
 
         assert_eq!(self.tcx.hir_body_owner_def_id(body.id()), closure_def_id);
@@ -290,18 +290,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // moved, and so on.
         let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(body);
 
-        // `consume_body` only sees how the lowered closure body uses those
-        // places. For `move(foo).clone()`, the body may only borrow the
-        // synthetic local for `foo`, but the source `move(...)` still requires
-        // capturing that local by value.
+        // Save the captures that must be upgraded to by-value after inferring
+        // the closure kind from the operations in the body.
         let explicit_captures = match self.tcx.hir_node(closure_hir_id).expect_expr().kind {
             hir::ExprKind::Closure(closure) => closure.explicit_captures,
             _ => bug!("expected closure expr for {:?}", closure_hir_id),
         };
-        for capture in explicit_captures {
-            let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
-            delegate.consume(&PlaceWithHirId { hir_id: capture.var_hir_id, place }, closure_hir_id);
-        }
 
         // There are several curious situations with coroutine-closures where
         // analysis is too aggressive with borrows when the coroutine-closure is
@@ -400,8 +394,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
 
-        let (capture_information, closure_kind, origin) = self
+        let (mut capture_information, closure_kind, origin) = self
             .process_collected_capture_information(capture_clause, &delegate.capture_information);
+
+        // `move(expr)` requires its synthetic local to be captured by value,
+        // regardless of how the closure body uses it. Apply that requirement
+        // after closure-kind inference so capturing a value does not by itself
+        // make the closure `FnOnce`.
+        for capture in explicit_captures {
+            let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
+            capture_information.push((
+                place,
+                ty::CaptureInfo {
+                    capture_kind_expr_id: Some(closure_hir_id),
+                    path_expr_id: Some(closure_hir_id),
+                    capture_kind: UpvarCapture::ByValue,
+                },
+            ));
+        }
 
         self.compute_min_captures(closure_def_id, capture_information, span);
 
@@ -1319,7 +1329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let root_var_min_capture_list = min_captures.and_then(|m| m.get(&var_hir_id))?;
 
-        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.deeply_resolve_ignoring_regions(self.node_ty(var_hir_id));
 
         let ty = match closure_clause {
             hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
@@ -1417,7 +1427,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_clause: hir::CaptureBy,
         var_hir_id: HirId,
     ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
-        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.deeply_resolve_ignoring_regions(self.node_ty(var_hir_id));
 
         // FIXME(#132279): Using `non_body_analysis` here feels wrong.
         if !ty.has_significant_drop(

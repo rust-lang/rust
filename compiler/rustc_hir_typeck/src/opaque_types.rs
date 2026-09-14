@@ -93,7 +93,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         error_on_missing_defining_use: bool,
     ) {
         for entry in opaque_types.iter_mut() {
-            *entry = self.resolve_vars_if_possible(*entry);
+            *entry = self.deeply_resolve_ignoring_regions(*entry);
         }
         debug!(?opaque_types);
 
@@ -198,6 +198,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             )
+                            // The shared E0282 label only says "cannot infer type", which gives no
+                            // hint that the ambiguity is in an opaque's hidden type rather than an
+                            // ordinary local inference failure.
+                            .with_note("cannot infer type of hidden type of opaque")
                             .emit()
                     }
                 }

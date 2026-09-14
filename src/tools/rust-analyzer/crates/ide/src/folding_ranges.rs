@@ -10,8 +10,8 @@ use syntax::{
 
 use std::hash::Hash;
 
-const REGION_START: &str = "// region:";
-const REGION_END: &str = "// endregion";
+const REGION_START: &str = "region:";
+const REGION_END: &str = "endregion";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FoldKind {
@@ -109,7 +109,7 @@ pub(crate) fn folding_ranges(file: &SourceFile, add_collapsed_text: bool) -> Vec
         match element {
             NodeOrToken::Token(token) => {
                 // Fold groups of comments
-                if let Some(comment) = ast::Comment::cast(token) {
+                if let Some(comment) = ast::AnyComment::cast(token) {
                     if visited_comments.contains(&comment) {
                         continue;
                     }
@@ -200,7 +200,7 @@ fn fold_kind(
     }
 
     match element.kind() {
-        COMMENT => Some(FoldKind::Comment),
+        COMMENT | INNER_DOC_COMMENT | OUTER_DOC_COMMENT => Some(FoldKind::Comment),
         ARG_LIST | PARAM_LIST | GENERIC_ARG_LIST | GENERIC_PARAM_LIST => Some(FoldKind::ArgList),
         ARRAY_EXPR => Some(FoldKind::Array),
         RET_TYPE => Some(FoldKind::ReturnType),
@@ -391,8 +391,8 @@ fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -
 }
 
 fn contiguous_range_for_comment(
-    first: ast::Comment,
-    visited: &mut FxHashSet<ast::Comment>,
+    first: ast::AnyComment,
+    visited: &mut FxHashSet<ast::AnyComment>,
 ) -> Option<TextRange> {
     visited.insert(first.clone());
 
@@ -403,33 +403,29 @@ fn contiguous_range_for_comment(
     }
 
     let mut last = first.clone();
-    for element in first.syntax().siblings_with_tokens(Direction::Next) {
-        match element {
-            NodeOrToken::Token(token) => {
-                if let Some(ws) = ast::Whitespace::cast(token.clone())
-                    && !ws.spans_multiple_lines()
-                {
-                    // Ignore whitespace without blank lines
-                    continue;
-                }
-                if let Some(c) = ast::Comment::cast(token)
-                    && c.kind() == group_kind
-                {
-                    let text = c.text().trim_start();
-                    // regions are not real comments
-                    if !(text.starts_with(REGION_START) || text.starts_with(REGION_END)) {
-                        visited.insert(c.clone());
-                        last = c;
-                        continue;
-                    }
-                }
-                // The comment group ends because either:
-                // * An element of a different kind was reached
-                // * A comment of a different flavor was reached
-                break;
+    let next_comments = std::iter::successors(Some(first.syntax().clone()), |it| it.next_token());
+    for token in next_comments {
+        if let Some(ws) = ast::Whitespace::cast(token.clone())
+            && !ws.spans_multiple_lines()
+        {
+            // Ignore whitespace without blank lines
+            continue;
+        }
+        if let Some(c) = ast::AnyComment::cast(token)
+            && c.kind() == group_kind
+        {
+            let text = c.text().trim_start();
+            // regions are not real comments
+            if !(text.starts_with(REGION_START) || text.starts_with(REGION_END)) {
+                visited.insert(c.clone());
+                last = c;
+                continue;
             }
-            NodeOrToken::Node(_) => break,
-        };
+        }
+        // The comment group ends because either:
+        // * An element of a different kind was reached
+        // * A comment of a different flavor was reached
+        break;
     }
 
     if first != last {

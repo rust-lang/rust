@@ -245,6 +245,16 @@ impl ReprOptions {
     pub fn inhibits_union_abi_opt(&self) -> bool {
         self.c()
     }
+
+    /// Ensures two `repr` are equal up to the seed.
+    pub fn equal_up_to_seed(&self, other: &Self) -> bool {
+        let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } = *self;
+        int == other.int
+            && align == other.align
+            && pack == other.pack
+            && flags == other.flags
+            && scalable == other.scalable
+    }
 }
 
 /// The maximum supported number of lanes in a SIMD vector.
@@ -1447,6 +1457,31 @@ impl Float {
             F32 => "f32",
             F64 => "f64",
             F128 => "f128",
+        }
+    }
+}
+
+/// Numeric primitives.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+pub enum Numeric {
+    /// The `bool` is the signedness of the `Integer` type.
+    Int(Integer, bool),
+    Float(Float),
+}
+
+impl Numeric {
+    pub fn size(self) -> Size {
+        match self {
+            Numeric::Int(integer, _) => integer.size(),
+            Numeric::Float(float) => float.size(),
+        }
+    }
+
+    pub fn reg_kind(self) -> RegKind {
+        match self {
+            Numeric::Int(_, _) => RegKind::Integer,
+            Numeric::Float(_) => RegKind::Float,
         }
     }
 }

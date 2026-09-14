@@ -4,12 +4,13 @@
     adt_const_params,
     min_generic_const_args,
     unsized_const_params,
-    generic_const_parameter_types,
+    generic_const_parameter_types
 )]
 #![allow(incomplete_features)]
 
 trait Trait<'a> {
-    type const K: &'a ();
+    #[rustc_always_gca]
+    const K: &'a ();
 }
 
 fn take(_: impl for<'r> Trait<'r, K = const { &() }>) {}

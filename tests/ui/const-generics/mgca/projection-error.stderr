@@ -1,5 +1,5 @@
 error[E0425]: cannot find type `T` in this scope
-  --> $DIR/projection-error.rs:12:17
+  --> $DIR/projection-error.rs:13:17
    |
 LL | fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
    |                 ^ not found in this scope
@@ -19,7 +19,7 @@ LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
    |            +++
 
 error[E0425]: cannot find type `T` in this scope
-  --> $DIR/projection-error.rs:12:29
+  --> $DIR/projection-error.rs:13:29
    |
 LL | fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
    |                             ^ not found in this scope

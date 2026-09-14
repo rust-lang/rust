@@ -156,7 +156,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { ref pat, expr } => {
-                self.check_let(pat, Some(expr), ex.span, None);
+                self.check_let(pat, Some(expr), ex.span);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
@@ -180,9 +180,8 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.with_hir_source(hir_id, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
-                    let else_span = else_block.map(|bid| this.thir.blocks[bid].span);
                     this.with_let_source(let_source, |this| {
-                        this.check_let(pattern, initializer, span, else_span)
+                        this.check_let(pattern, initializer, span)
                     });
                     visit::walk_stmt(this, stmt);
                 });
@@ -424,13 +423,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let(
-        &mut self,
-        pat: &'p Pat<'tcx>,
-        scrutinee: Option<ExprId>,
-        span: Span,
-        else_span: Option<Span>,
-    ) {
+    fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
@@ -1074,7 +1067,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
-                    && let Res::Def(DefKind::Const { .. }, id) = value_ns
+                    && let Res::Def(DefKind::Const, id) = value_ns
                     && infcx.can_eq(
                         param_env,
                         ty,
@@ -1095,7 +1088,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                 }
             }
-            if let DefKind::Const { .. } = cx.tcx.def_kind(item.owner_id)
+            if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
                 && infcx.can_eq(
                     param_env,
                     ty,
@@ -1238,7 +1231,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
     if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+        && tcx.def_kind(def_id) == DefKind::Const
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
     {

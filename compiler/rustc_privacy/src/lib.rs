@@ -31,8 +31,8 @@ use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, 
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, AssocContainer, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
+    self, AssocContainer, Const, GenericParamDefKind, PredicateProxy, TraitRef, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -56,7 +56,7 @@ impl<'tcx> fmt::Display for LazyDefPathStr<'tcx> {
 /// Implemented to visit all `DefId`s in a type.
 /// Visiting `DefId`s is useful because visibilities and reachabilities are attached to them.
 /// The idea is to visit "all components of a type", as documented in
-/// <https://github.com/rust-lang/rfcs/blob/master/text/2145-type-privacy.md#how-to-determine-visibility-of-a-type>.
+/// <https://rust-lang.github.io/rfcs/2145-type-privacy.html#how-to-determine-visibility-of-a-type>.
 /// The default type visitor (`TypeVisitor`) does most of the job, but it has some shortcomings.
 /// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait `DefId`s
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
@@ -130,8 +130,8 @@ where
         }
     }
 
-    fn visit_clause(&mut self, clause: ty::Clause<'tcx>) -> V::Result {
-        match clause.kind().skip_binder() {
+    fn visit_clause(&mut self, clause: ty::Binder<'tcx, ty::ClauseKind<'tcx>>) -> V::Result {
+        match clause.skip_binder() {
             ty::ClauseKind::Trait(ty::TraitClause { trait_ref, polarity: _ }) => {
                 self.visit_trait(trait_ref)
             }
@@ -160,7 +160,7 @@ where
 
     fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> V::Result {
         for &(clause, _) in clauses {
-            try_visit!(self.visit_clause(clause));
+            try_visit!(self.visit_clause(clause.kind()));
         }
         V::Result::output()
     }
@@ -172,8 +172,8 @@ where
 {
     type Result = V::Result;
 
-    fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> Self::Result {
-        self.visit_clause(p.as_clause().unwrap())
+    fn visit_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> Self::Result {
+        self.visit_clause(p.clause_kind_unchecked().unwrap())
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
@@ -590,7 +590,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // Effective visibilities for macros are processed earlier.
             DefKind::Macro { .. } => {}
             DefKind::ForeignTy
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::Static { .. }
             | DefKind::Fn
             | DefKind::TyAlias => {
@@ -712,7 +712,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::Variant
             | DefKind::AssocFn
             | DefKind::AssocTy
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::TyParam
             | DefKind::AnonConst
             | DefKind::OpaqueTy
@@ -790,7 +790,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 self.ev.queue.insert(def_id);
             }
 
-            DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => {
                 // Traverse the whole impl/trait.
                 self.ev.queue.insert(self.ev.tcx.local_parent(def_id));
             }
@@ -825,7 +825,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
             | DefKind::ExternCrate
             | DefKind::GlobalAsm
             | DefKind::ForeignMod
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::TestBinderConstraints => {
                 span_bug!(
                     self.tcx().def_span(def_id),
@@ -1293,10 +1293,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         let def = def.filter(|(kind, _)| {
             matches!(
                 kind,
-                DefKind::AssocFn
-                    | DefKind::AssocConst { .. }
-                    | DefKind::AssocTy
-                    | DefKind::Static { .. }
+                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static { .. }
             )
         });
         if let Some((kind, def_id)) = def {
@@ -1621,7 +1618,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         let def_kind = tcx.def_kind(def_id);
 
         match def_kind {
-            DefKind::Const { .. } | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
                 if let DefKind::TyAlias = def_kind {
                     self.check_unnameable(def_id, effective_vis);
                 }

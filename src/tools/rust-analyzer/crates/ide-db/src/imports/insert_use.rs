@@ -573,5 +573,5 @@ fn insert_use_with_editor_(
 }
 
 fn is_inner_attribute(node: SyntaxNode) -> bool {
-    ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
+    ast::AnyAttr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
 }

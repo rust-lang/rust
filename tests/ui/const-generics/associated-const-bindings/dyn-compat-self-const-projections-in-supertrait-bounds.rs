@@ -8,8 +8,9 @@
 #![expect(incomplete_features)]
 
 trait Trait: SuperTrait<{ Self::N }> {
-//~^ NOTE it uses `Self` as a type parameter
-    type const N: usize;
+    //~^ NOTE it uses `Self` as a type parameter
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 trait SuperTrait<const N: usize> {}

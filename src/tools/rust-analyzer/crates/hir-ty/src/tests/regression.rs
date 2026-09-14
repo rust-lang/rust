@@ -3039,6 +3039,7 @@ fn array_repeat_closure() {
         r#"
 fn f() {[_; || ()]}
      // ^^^^^^^^^^ expected (), got [{unknown}; _]
+         // ^^^^^ expected usize, got impl Fn()
     "#,
     );
 }

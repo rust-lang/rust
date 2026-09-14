@@ -809,7 +809,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     DefKind::Static { .. } => {
                         Some(diagnostics::GenericParamsFromOuterItemStaticOrConst::Static)
                     }
-                    DefKind::Const { .. } => {
+                    DefKind::Const => {
                         Some(diagnostics::GenericParamsFromOuterItemStaticOrConst::Const)
                     }
                     _ => None,
@@ -993,8 +993,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 Res::Def(
                                     DefKind::Ctor(CtorOf::Variant, CtorKind::Const)
                                         | DefKind::Ctor(CtorOf::Struct, CtorKind::Const)
-                                        | DefKind::Const { .. }
-                                        | DefKind::AssocConst { .. },
+                                        | DefKind::Const
+                                        | DefKind::AssocConst,
                                     _,
                                 )
                             )
@@ -1005,8 +1005,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let kind_matches: [fn(DefKind) -> bool; 4] = [
                             |kind| matches!(kind, DefKind::Ctor(CtorOf::Variant, CtorKind::Const)),
                             |kind| matches!(kind, DefKind::Ctor(CtorOf::Struct, CtorKind::Const)),
-                            |kind| matches!(kind, DefKind::Const { .. }),
-                            |kind| matches!(kind, DefKind::AssocConst { .. }),
+                            |kind| matches!(kind, DefKind::Const),
+                            |kind| matches!(kind, DefKind::AssocConst),
                         ];
                         let mut local_names = vec![];
                         self.add_module_candidates(
@@ -1522,7 +1522,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Never recommend deprecated helper attributes.
                 }
                 Scope::MacroRules(macro_rules_scope) => {
-                    if let MacroRulesScope::Def(macro_rules_def) = macro_rules_scope.get() {
+                    if let MacroRulesScope::Def(macro_rules_def) = *macro_rules_scope.read() {
                         let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
                             suggestions.push(TypoSuggestion::new(
@@ -2112,7 +2112,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Not in scope: check if the name refers to a trait importable from elsewhere.
-        if macro_kind == MacroKind::Derive {
+        // An exact derive macro candidate is much more likely to be intended than any
+        // same-named traits, so we only consider them if there are no import suggestions for the derive macro.
+        if macro_kind == MacroKind::Derive && import_suggestions.is_empty() {
             let trait_candidates =
                 self.lookup_import_candidates(ident, TypeNS, parent_scope, |res| {
                     matches!(res, Res::Def(DefKind::Trait, _))

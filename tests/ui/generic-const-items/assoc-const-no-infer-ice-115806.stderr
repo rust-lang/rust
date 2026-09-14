@@ -1,14 +1,29 @@
-error[E0119]: conflicting implementations of trait `Pins<_>` for type `NoPin`
-  --> $DIR/assoc-const-no-infer-ice-115806.rs:17:1
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/assoc-const-no-infer-ice-115806.rs:22:50
    |
-LL | impl<TA> Pins<TA> for NoPin {}
-   | --------------------------- first implementation here
+LL |     T: PinA<USART, A = { core::direct_const_arg!(const { &() }) }>,
+   |                                                  ^^^^^^^^^^^^^
+
+error[E0119]: conflicting implementations of trait `Pins<_>` for type `NoPin`
+  --> $DIR/assoc-const-no-infer-ice-115806.rs:19:1
+   |
+LL |   impl<TA> Pins<TA> for NoPin {}
+   |   --------------------------- first implementation here
 ...
-LL | impl<USART, T> Pins<USART> for T where T: PinA<USART, A = const { &() }> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `NoPin`
+LL | / impl<USART, T> Pins<USART> for T
+LL | |
+LL | | where
+LL | |     T: PinA<USART, A = { core::direct_const_arg!(const { &() }) }>,
+   | |___________________________________________________________________^ conflicting implementation for `NoPin`
    |
    = note: downstream crates may implement trait `PinA<_>` for type `NoPin`
 
-error: aborting due to 1 previous error
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/assoc-const-no-infer-ice-115806.rs:13:52
+   |
+LL |     const A: &'static () = core::direct_const_arg!(const { &() });
+   |                                                    ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0119`.

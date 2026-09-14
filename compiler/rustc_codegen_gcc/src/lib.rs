@@ -365,6 +365,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        _bitcode_needed: bool,
     ) -> (ModuleCodegen<Self::Module>, u64) {
         base::compile_codegen_unit(
             tcx,

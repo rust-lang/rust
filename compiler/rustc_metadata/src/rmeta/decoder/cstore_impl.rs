@@ -402,6 +402,7 @@ provide! { tcx, def_id, other, cdata,
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items(tcx) }
     canonical_symbols => { cdata.get_canonical_symbols(tcx) }
+    fake_doc_items => { cdata.get_fake_doc_items(tcx) }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {

@@ -364,8 +364,8 @@ fn is_const_evaluatable_helper<'tcx>(tcx: TyCtxt<'tcx>, typeck: &'tcx TypeckResu
             if matches!(
                 typeck.qpath_res(p, e.hir_id),
                 Res::Def(
-                    DefKind::Const { .. }
-                        | DefKind::AssocConst { .. }
+                    DefKind::Const
+                        | DefKind::AssocConst
                         | DefKind::AnonConst
                         | DefKind::ConstParam
                         | DefKind::Ctor(..)

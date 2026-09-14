@@ -12,6 +12,7 @@ use crate::{
         operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
         support,
     },
+    match_ast,
 };
 
 use super::RangeItem;
@@ -56,11 +57,11 @@ impl AstNode for ElseBranch {
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if let Some(block_expr) = ast::BlockExpr::cast(syntax.clone()) {
-            Some(Self::Block(block_expr))
-        } else {
-            ast::IfExpr::cast(syntax).map(Self::IfExpr)
-        }
+        match_ast!(match syntax {
+            ast::BlockExpr(it) => Some(Self::Block(it)),
+            ast::IfExpr(it) => Some(Self::IfExpr(it)),
+            _ => None,
+        })
     }
 
     fn syntax(&self) -> &SyntaxNode {
@@ -342,33 +343,20 @@ impl ast::Literal {
     pub fn kind(&self) -> LiteralKind {
         let token = self.token();
 
-        if let Some(t) = ast::IntNumber::cast(token.clone()) {
-            return LiteralKind::IntNumber(t);
-        }
-        if let Some(t) = ast::FloatNumber::cast(token.clone()) {
-            return LiteralKind::FloatNumber(t);
-        }
-        if let Some(t) = ast::String::cast(token.clone()) {
-            return LiteralKind::String(t);
-        }
-        if let Some(t) = ast::ByteString::cast(token.clone()) {
-            return LiteralKind::ByteString(t);
-        }
-        if let Some(t) = ast::CString::cast(token.clone()) {
-            return LiteralKind::CString(t);
-        }
-        if let Some(t) = ast::Char::cast(token.clone()) {
-            return LiteralKind::Char(t);
-        }
-        if let Some(t) = ast::Byte::cast(token.clone()) {
-            return LiteralKind::Byte(t);
-        }
-
-        match token.kind() {
-            T![true] => LiteralKind::Bool(true),
-            T![false] => LiteralKind::Bool(false),
-            _ => unreachable!(),
-        }
+        match_ast!(match token {
+            ast::IntNumber(t) => LiteralKind::IntNumber(t),
+            ast::FloatNumber(t) => LiteralKind::FloatNumber(t),
+            ast::String(t) => LiteralKind::String(t),
+            ast::ByteString(t) => LiteralKind::ByteString(t),
+            ast::CString(t) => LiteralKind::CString(t),
+            ast::Char(t) => LiteralKind::Char(t),
+            ast::Byte(t) => LiteralKind::Byte(t),
+            _ => match token.kind() {
+                T![true] => LiteralKind::Bool(true),
+                T![false] => LiteralKind::Bool(false),
+                _ => unreachable!(),
+            },
+        })
     }
 }
 

@@ -78,9 +78,9 @@ pub enum TypeKind {
     /// Tuples.
     Tuple,
     /// Arrays.
-    Array(Array),
+    Array,
     /// Slices.
-    Slice(Slice),
+    Slice,
     /// Dynamic Traits.
     DynTrait(DynTrait),
     /// Structs.
@@ -100,33 +100,15 @@ pub enum TypeKind {
     /// String slice type.
     Str(Str),
     /// References.
-    Reference(Reference),
+    Reference,
     /// Pointers.
-    Pointer(Pointer),
+    Pointer,
     /// Function pointers.
-    FnPtr(FnPtr),
+    FnPtr,
     /// FIXME(#146922): add all the common types
+    /// non exhaustive list:
+    /// - Never
     Other,
-}
-
-/// Compile-time type information about arrays.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Array {
-    /// The type of each element in the array.
-    pub element_ty: TypeId,
-    /// The length of the array.
-    pub len: usize,
-}
-
-/// Compile-time type information about slices.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Slice {
-    /// The type of each element in the slice.
-    pub element_ty: TypeId,
 }
 
 /// Compile-time type information about dynamic traits.
@@ -207,65 +189,55 @@ pub struct Str {
     // No additional information to provide for now.
 }
 
-/// Compile-time type information about references.
 #[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Reference {
-    /// The type of the value being referred to.
-    pub pointee: TypeId,
-    /// Whether this reference is mutable or not.
-    pub mutable: bool,
-}
-
-/// Compile-time type information about pointers.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Pointer {
-    /// The type of the value being pointed to.
-    pub pointee: TypeId,
-    /// Whether this pointer is mutable or not.
-    pub mutable: bool,
-}
-
-#[derive(Debug)]
+#[lang = "FnPtr"]
 #[unstable(feature = "type_info", issue = "146922")]
 /// Function pointer, e.g. fn(u8),
 pub struct FnPtr {
-    /// Unsafety, true is unsafe
-    pub unsafety: bool,
-
-    /// Abi, e.g. extern "C"
-    pub abi: Abi,
-
-    /// Function inputs
-    pub inputs: &'static [TypeId],
-
-    /// Function return type, default is TypeId::of::<()>
-    pub output: TypeId,
-
-    /// Vardiadic function, e.g. extern "C" fn add(n: usize, mut args: ...);
-    pub variadic: bool,
-
+    is_unsafe: bool,
+    abi: Abi,
+    inputs: &'static [TypeId],
+    output: TypeId,
+    variadic: bool,
     // FIXME(splat): should these fields be private, or merged into an Option<u8/u16>?
     /// Is any function argument splatted?
-    pub is_splatted: bool,
+    is_splatted: bool,
 
-    /// The index of the splatted function argument in `inputs`, only valid if `is_splatted` is true.
-    /// e.g. in `fn overload(a: u8, #[rustc_splat] b: (f32, usize))` the index is 1, and it can be called
-    /// as `overload(a, 1.0, 2)`.
-    pub splatted_index: u8,
+    splatted_index: u8,
 }
 
 impl FnPtr {
     /// Returns the splatted function argument index, or `None` if no argument is splatted.
+    ///
+    /// e.g. in `fn overload(a: u8, #[rustc_splat] b: (f32, usize))` the index is 1,
+    /// and it can be called as `overload(a, 1.0, 2)`.
     pub const fn splatted(&self) -> Option<u8> {
         if self.is_splatted { Some(self.splatted_index) } else { None }
     }
+    /// Whether this function is variadic, e.g. extern "C" fn add(n: usize, mut args: ...);
+    pub const fn is_variadic(&self) -> bool {
+        self.variadic
+    }
+    /// whether this refers to an unsafe function.
+    pub const fn is_unsafe(&self) -> bool {
+        self.is_unsafe
+    }
+    /// Returns the application binary interface. For example extern "C".
+    pub const fn abi(&self) -> Abi {
+        self.abi
+    }
+    /// The types of the functions parameters
+    pub const fn inputs(&self) -> &'static [TypeId] {
+        self.inputs
+    }
+    /// List of the types returned by the function. For a function with no output
+    /// specified this returns `TypeId::of<()>`.
+    pub const fn output(&self) -> TypeId {
+        self.output
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
 /// Abi of [FnPtr]
@@ -301,6 +273,44 @@ impl TypeId {
     #[rustc_comptime]
     pub fn is_signed(self) -> bool {
         intrinsics::type_id_is_signed(self)
+    }
+
+    /// When called on a `TypeId` representing an array or slice this returns the type of each
+    /// element otherwise this returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().element_ty() }, Some(TypeId::of::<u32>()));
+    /// assert_eq!(const { TypeId::of::<u8>().element_ty() }, None); // not an array or slice
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn element_ty(self) -> Option<TypeId> {
+        intrinsics::type_id_element_ty(self)
+    }
+
+    /// When called on a `TypeId` representing an array this returns the length of the array in
+    /// all other cases this returns zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().array_len() }, 16);
+    /// assert_eq!(const { TypeId::of::<u8>().array_len() }, 0); // not an array
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn array_len(self) -> usize {
+        intrinsics::type_id_array_len(self)
     }
 
     /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
@@ -566,6 +576,86 @@ impl TypeId {
     #[rustc_comptime]
     pub fn generics(self) -> &'static [Generic] {
         intrinsics::type_id_generics(self)
+    }
+
+    /// Given a `TypeId` that represents a pointer this returns the `TypeId`
+    /// which that pointer points to. When called on anything else this returns
+    /// None.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(
+    ///     const { TypeId::of::<&i32>().points_to() },
+    ///     const { Some(TypeId::of::<i32>()) },
+    /// );
+    ///
+    /// assert_eq!(
+    ///     const { TypeId::of::<*const i32>().points_to() },
+    ///     const { Some(TypeId::of::<i32>()) },
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn points_to(self) -> Option<TypeId> {
+        intrinsics::type_id_points_to(self)
+    }
+
+    /// Given a `TypeId` that represents a pointer returns whether that pointer is mutable.
+    /// When called on anything else this returns `false`.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert!(const { TypeId::of::<&mut i32>().points_mutably() });
+    /// assert!(const { !TypeId::of::<&i32>().points_mutably() });
+    ///
+    /// assert!(!const { TypeId::of::<*const i32>().points_mutably() });
+    /// assert!(const { TypeId::of::<*mut i32>().points_mutably() });
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn points_mutably(self) -> bool {
+        intrinsics::type_id_points_mutably(self)
+    }
+
+    /// Given a `TypeId` that represents a function pointer returns an
+    /// [`FnPtr`]. When called on something else this returns `None`.
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    /// use std::mem::type_info::{Abi, FnPtr};
+    ///
+    /// const F: FnPtr = TypeId::of::<fn(u8, u16) -> usize>()
+    ///     .function_ptr()
+    ///     .expect("TypeId of a function ptr");
+    ///
+    /// assert!(F.inputs() == [TypeId::of::<u8>(), TypeId::of::<u16>()]);
+    /// assert!(F.output() == TypeId::of::<usize>());
+    /// assert!(F.abi() == Abi::default());
+    /// ```
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    /// # use std::mem::type_info::{Abi, FnPtr};
+    /// #
+    /// const F: FnPtr = TypeId::of::<unsafe fn()>()
+    ///     .function_ptr()
+    ///     .expect("TypeId of a function ptr");
+    ///
+    /// assert!(F.inputs() == []);
+    /// assert!(F.output() == TypeId::of::<()>());
+    /// assert!(F.abi() == Abi::default());
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn function_ptr(self) -> Option<FnPtr> {
+        intrinsics::type_id_function_ptr(self)
     }
 }
 

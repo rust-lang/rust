@@ -9,6 +9,7 @@
 //@ needs-llvm-components: arm x86 webassembly
 // Note: without the needs-llvm-components it will fail on LLVM built without the required
 // components listed above.
+//@ ignore-backends: gcc
 
 use std::collections::HashSet;
 use std::iter::FromIterator;

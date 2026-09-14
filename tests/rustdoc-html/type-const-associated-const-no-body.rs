@@ -6,7 +6,8 @@
 #![expect(incomplete_features)]
 
 pub trait Tr {
-    type const SIZE: usize;
+    #[rustc_always_gca]
+    const SIZE: usize;
 }
 
 //@ has 'foo/fn.mk_array.html'

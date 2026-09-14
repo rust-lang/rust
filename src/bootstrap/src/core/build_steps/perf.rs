@@ -95,6 +95,7 @@ pub enum Profile {
     Check,
     Debug,
     Doc,
+    DocJson,
     Opt,
     Clippy,
 }
@@ -105,6 +106,7 @@ impl Display for Profile {
             Profile::Check => "Check",
             Profile::Debug => "Debug",
             Profile::Doc => "Doc",
+            Profile::DocJson => "DocJson",
             Profile::Opt => "Opt",
             Profile::Clippy => "Clippy",
         };
@@ -134,7 +136,7 @@ impl Display for Scenario {
 }
 
 /// Performs profiling using `rustc-perf` on a built version of the compiler.
-pub fn perf(builder: &Builder<'_>, args: &PerfArgs) {
+pub fn perf(builder: &Builder<'_>, args: &PerfArgs, trailing_args: &[String]) {
     let collector = builder.ensure(RustcPerf {
         compiler: builder.compiler(0, builder.config.host_target),
         target: builder.config.host_target,
@@ -197,6 +199,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg(prepare_rustc());
 
             apply_shared_opts(&mut cmd, opts);
+            cmd.args(trailing_args);
             cmd.run(builder);
 
             println!("You can find the results at `{}`", results_dir.display());
@@ -208,6 +211,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg(prepare_rustc());
 
             apply_shared_opts(&mut cmd, opts);
+            cmd.args(trailing_args);
             cmd.run(builder);
         }
         PerfCommand::Compare { base, modified } => {
@@ -215,6 +219,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg("--db").arg(&db_path);
             cmd.arg(base).arg(modified);
 
+            cmd.args(trailing_args);
             cmd.run(builder);
         }
     }

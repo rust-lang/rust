@@ -55,14 +55,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Block { block: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
-            ExprKind::Match { scrutinee, ref arms, .. } => this.match_expr(
-                destination,
-                block,
-                scrutinee,
-                arms,
-                expr_span,
-                this.thir[scrutinee].span,
-            ),
+            ExprKind::Match { scrutinee, ref arms, .. } => {
+                this.match_expr(destination, block, scrutinee, arms, expr_span)
+            }
             ExprKind::If { cond, then, else_opt, if_then_scope } => {
                 let then_span = this.thir[then].span;
                 let then_source_info = this.source_info(then_span);
@@ -303,9 +298,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Logic for `match`.
                     let scrutinee_span = this.thir.exprs[scrutinee].span;
-                    let scrutinee_place_builder = unpack!(
-                        body_block = this.lower_scrutinee(body_block, scrutinee, scrutinee_span)
-                    );
+                    let scrutinee_place_builder =
+                        unpack!(body_block = this.lower_scrutinee(body_block, scrutinee));
 
                     let match_start_span = match_span.shrink_to_lo().to(scrutinee_span);
 

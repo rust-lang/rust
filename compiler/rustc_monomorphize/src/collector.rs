@@ -345,6 +345,8 @@ impl<'tcx> Extend<Spanned<MonoItem<'tcx>>> for MonoItems<'tcx> {
     where
         I: IntoIterator<Item = Spanned<MonoItem<'tcx>>>,
     {
+        let iter = iter.into_iter();
+        self.items.reserve(iter.size_hint().0);
         for item in iter {
             self.push(item)
         }
@@ -1653,7 +1655,7 @@ impl<'v> RootCollector<'_, 'v> {
                 debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
                 self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
-            DefKind::Const { .. } => {
+            DefKind::Const => {
                 // Const items only generate mono items if they are actually used somewhere.
                 // Just declaring them is insufficient.
 

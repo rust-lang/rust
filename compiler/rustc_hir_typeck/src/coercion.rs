@@ -736,7 +736,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)))
                     if traits.contains(&trait_pred.def_id()) =>
                 {
-                    self.resolve_vars_if_possible(trait_pred)
+                    self.deeply_resolve_ignoring_regions(trait_pred)
                 }
                 _ => {
                     coercion.obligations.push(obligation);
@@ -1140,7 +1140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         allow_two_phase: AllowTwoPhase,
         cause: Option<ObligationCause<'tcx>>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.resolve_vars_with_obligations(expr_ty);
+        let source = self.deeply_resolve_ignoring_regions_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause =
@@ -1184,6 +1184,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ocx.register_obligations(ok.obligations);
             ocx.try_evaluate_obligations().no_errors()
         })
+    }
+
+    /// Like [`Self::may_coerce`], but for suggestions whose replacement must complete with a
+    /// value of the target type. A coercion from `!` to another type does not provide such a
+    /// value, so it should not by itself justify these suggestions.
+    ///
+    /// This should only be used for suggestions.
+    pub(crate) fn may_coerce_except_never(&self, expr_ty: Ty<'tcx>, target_ty: Ty<'tcx>) -> bool {
+        if expr_ty.is_never() && !target_ty.is_never() {
+            return false;
+        }
+        self.may_coerce(expr_ty, target_ty)
     }
 
     /// Given a type and a target type, this function will calculate and return
@@ -1323,8 +1335,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         new: &hir::Expr<'_>,
         new_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let prev_ty = self.resolve_vars_with_obligations(prev_ty);
-        let new_ty = self.resolve_vars_with_obligations(new_ty);
+        let prev_ty = self.deeply_resolve_ignoring_regions_with_obligations(prev_ty);
+        let new_ty = self.deeply_resolve_ignoring_regions_with_obligations(new_ty);
         debug!(
             "coercion::try_find_coercion_lub({:?}, {:?}, exprs={:?} exprs)",
             prev_ty,
@@ -1743,7 +1755,7 @@ impl<'tcx> CoerceMany<'tcx> {
                 fcx.set_tainted_by_errors(
                     fcx.dcx().span_delayed_bug(cause.span, "coercion error but no error emitted"),
                 );
-                let (expected, found) = fcx.resolve_vars_if_possible((expected, found));
+                let (expected, found) = fcx.deeply_resolve_ignoring_regions((expected, found));
 
                 let mut err;
                 let mut unsized_return = false;

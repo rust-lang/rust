@@ -37,7 +37,7 @@ pub fn syscall<'tcx>(
             // Used by getrandom 0.1
             // The first argument is the syscall id, so skip over it.
             let ([ptr, len, flags], _) = ecx.check_varargs(
-                shim_varargs![*_, usize, i32],
+                shim_varargs![*libc::c_void, usize, i32],
                 varargs,
                 "syscall(SYS_getrandom, ...)",
             )?;
@@ -70,7 +70,7 @@ pub fn syscall<'tcx>(
         num if num == sys_accept4 => {
             // Used on Android.
             let ([socket, address, address_len, flags], _) = ecx.check_varargs(
-                shim_varargs![i32, *_, *_, i32],
+                shim_varargs![i32, *libc::sockaddr, *libc::socklen_t, i32],
                 varargs,
                 "syscall(SYS_accept4, ...)",
             )?;

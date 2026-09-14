@@ -282,7 +282,7 @@ impl LowerTypeRelativePathMode {
     fn def_kind_for_diagnostics(self) -> DefKind {
         match self {
             Self::Type(_) => DefKind::AssocTy,
-            Self::Const => DefKind::AssocConst { is_type_const: false },
+            Self::Const => DefKind::AssocConst,
         }
     }
 
@@ -1482,7 +1482,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             TypeRelativePath::AssocItem(alias_term) => {
                 let alias_ct = alias_term.expect_ct();
                 if let Some(def_id) = alias_ct.kind.opt_def_id() {
-                    self.require_type_const_attribute(def_id, span)?;
+                    self.check_const_item_in_type_system(def_id, span)?;
                 }
                 let ct = Const::new_alias(tcx, ty::IsRigid::No, alias_ct);
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
@@ -1945,7 +1945,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             item_segment,
             ty::AssocTag::Const,
         )?;
-        self.require_type_const_attribute(item_def_id, span)?;
+        self.check_const_item_in_type_system(item_def_id, span)?;
         let alias_const = ty::AliasConst::new(
             tcx,
             ty::AliasConstKind::new_from_def_id(
@@ -2165,12 +2165,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // Case 3. Reference to a top-level value.
-            DefKind::Fn | DefKind::Const { .. } | DefKind::ConstParam | DefKind::Static { .. } => {
+            DefKind::Fn | DefKind::Const | DefKind::ConstParam | DefKind::Static { .. } => {
                 generic_segments.push(GenericPathSegment(def_id, last));
             }
 
             // Case 4. Reference to a method or associated const.
-            DefKind::AssocFn | DefKind::AssocConst { .. } => {
+            DefKind::AssocFn | DefKind::AssocConst => {
                 if segments.len() >= 2 {
                     let generics = tcx.generics_of(def_id);
                     generic_segments.push(GenericPathSegment(generics.parent.unwrap(), last - 1));
@@ -2397,11 +2397,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // we have the ability to intermix typeck of anon const const args with the parent
             // bodies typeck.
 
+            // FIXME(min_generic_const_args): This check should be removed for mGCA, it is due to
+            // the lack of ConstParamTy rib-checking in nameres for directly represented const
+            // items.
+
             // We also error if the type contains any regions as effectively any region will wind
             // up as a region variable in mir borrowck. It would also be somewhat concerning if
             // hir typeck was using equality but mir borrowck wound up using subtyping as that could
             // result in a non-infer in hir typeck but a region variable in borrowck.
-            if tcx.features().generic_const_parameter_types()
+            if (tcx.features().generic_const_parameter_types()
+                || tcx.features().min_generic_const_args())
                 && (ty.has_free_regions() || ty.has_erased_regions())
             {
                 let e = self.dcx().span_err(
@@ -2894,8 +2899,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 self.lower_const_param(def_id, hir_id)
             }
-            Res::Def(DefKind::Const { .. }, did) => {
-                if let Err(guar) = self.require_type_const_attribute(did, span) {
+            Res::Def(DefKind::Const, did) => {
+                if let Err(guar) = self.check_const_item_in_type_system(did, span) {
                     return Const::new_error(self.tcx(), guar);
                 }
 
@@ -2975,7 +2980,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 ty::Const::zero_sized(tcx, tcx.type_of(did).instantiate(tcx, args).skip_norm_wip())
             }
-            Res::Def(DefKind::AssocConst { .. }, did) => {
+            Res::Def(DefKind::AssocConst, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
                     let _ = self.prohibit_generic_args(modules.iter(), GenericsArgsErrExtend::None);
                     Some(trait_)
@@ -3147,42 +3152,47 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         })
     }
 
-    fn require_type_const_attribute(
+    /// `def_id` is a const item used in the type system. Checks if that's OK.
+    fn check_const_item_in_type_system(
         &self,
         def_id: DefId,
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if tcx.is_type_const_syntax(def_id) || tcx.features().generic_const_args() {
+        if tcx.features().generic_const_args() || tcx.is_direct_const(def_id) {
             Ok(())
         } else {
-            let mut err = self.dcx().struct_span_err(
-                span,
-                "use of `const` in the type system not defined as `type const`",
-            );
+            let mut err = self
+                .dcx()
+                .struct_span_err(span, "use of `const` in the type system not marked as direct");
             if let Some(local_def_id) = def_id.as_local() {
-                let name = tcx.def_path_str(def_id);
-                let (insertion_span, sugg) = match tcx.hir_node_by_def_id(local_def_id) {
-                    hir::Node::Item(item) if !item.vis_span.is_empty() => {
-                        (item.vis_span.shrink_to_hi(), " type")
-                    }
-                    hir::Node::ImplItem(impl_item)
-                        if let Some(vis_span) =
-                            impl_item.vis_span().filter(|span| !span.is_empty()) =>
-                    {
-                        (vis_span.shrink_to_hi(), " type")
-                    }
-                    _ => (tcx.def_span(def_id).shrink_to_lo(), "type "),
-                };
+                if let Some(body_id) = tcx.hir_node_by_def_id(local_def_id).body_id() {
+                    let body_span = tcx.hir_body(body_id).value.span;
 
-                err.span_suggestion_verbose(
-                    insertion_span,
-                    format!("add `type` before `const` for `{name}`"),
-                    sugg,
-                    Applicability::MaybeIncorrect,
-                );
+                    err.multipart_suggestion(
+                        "add direct_const_arg!() to the right-hand side of the constant",
+                        vec![
+                            (body_span.shrink_to_lo(), String::from("core::direct_const_arg!(")),
+                            (body_span.shrink_to_hi(), String::from(")")),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                } else if let DefKind::AssocConst = tcx.def_kind(def_id)
+                    && let DefKind::Trait = tcx.def_kind(tcx.parent(def_id))
+                {
+                    let node = tcx.hir_node_by_def_id(local_def_id).expect_trait_item();
+                    let sp = node.span.shrink_to_lo();
+                    err.span_suggestion_verbose(
+                        sp,
+                        "add `#[rustc_always_gca]` to the constant",
+                        "#[rustc_always_gca] ",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             } else {
-                err.note("only consts marked defined as `type const` may be used in types");
+                err.note(
+                    "only consts with a `direct_const_arg!` right-hand side may be used in types",
+                );
             }
             Err(err.emit())
         }
