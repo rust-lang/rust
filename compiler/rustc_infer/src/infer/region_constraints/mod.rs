@@ -676,11 +676,13 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         vid: ty::RegionVid,
-    ) -> ty::Region<'tcx> {
+    ) -> ty::MaybeResolved<'tcx, ty::RegionVid> {
         let (root_vid, value) = self.unification_table_mut().inlined_probe_key_value(vid);
         match value {
-            RegionVariableValue::Known { value } => value,
-            RegionVariableValue::Unknown { .. } => ty::Region::new_var(tcx, root_vid.vid),
+            RegionVariableValue::Known { value } => ty::MaybeResolved::resolved(value),
+            RegionVariableValue::Unknown { .. } => {
+                ty::MaybeResolved::unresolved(tcx, vid, root_vid.vid)
+            }
         }
     }
 

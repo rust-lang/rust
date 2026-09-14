@@ -942,6 +942,14 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_var(tcx, vid)
     }
 
+    fn new_int_var(tcx: TyCtxt<'tcx>, vid: ty::IntVid) -> Self {
+        Ty::new_int_var(tcx, vid)
+    }
+
+    fn new_float_var(tcx: TyCtxt<'tcx>, vid: ty::FloatVid) -> Self {
+        Ty::new_float_var(tcx, vid)
+    }
+
     fn new_param(tcx: TyCtxt<'tcx>, param: ty::ParamTy) -> Self {
         Ty::new_param(tcx, param.index, param.name)
     }

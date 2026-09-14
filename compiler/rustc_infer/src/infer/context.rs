@@ -118,23 +118,32 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.root_const_var(var)
     }
 
-    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> ty::MaybeResolved<'tcx, ty::TyVid> {
         self.shallow_resolve_ty_var(vid)
     }
 
-    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> ty::MaybeResolved<'tcx, ty::IntVid> {
         self.shallow_resolve_int_var(vid)
     }
 
-    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
+    fn shallow_resolve_float_var(
+        &self,
+        vid: ty::FloatVid,
+    ) -> ty::MaybeResolved<'tcx, ty::FloatVid> {
         self.shallow_resolve_float_var(vid)
     }
 
-    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
+    fn shallow_resolve_const_var(
+        &self,
+        vid: ty::ConstVid,
+    ) -> ty::MaybeResolved<'tcx, ty::ConstVid> {
         self.shallow_resolve_const_var(vid)
     }
 
-    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
+    fn shallow_resolve_region_var(
+        &self,
+        vid: ty::RegionVid,
+    ) -> ty::MaybeResolved<'tcx, ty::RegionVid> {
         self.inner
             .borrow_mut()
             .unwrap_region_constraints()

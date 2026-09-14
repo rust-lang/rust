@@ -104,7 +104,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for DeepRegionResolver<'a, 'tcx> {
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .shallow_resolve_region_var(TypeFolder::cx(self), vid),
+                .shallow_resolve_region_var(TypeFolder::cx(self), vid)
+                .reuse_if_unchanged(r),
             _ => r,
         }
     }

@@ -162,6 +162,8 @@ mod structural_impls;
 mod typeck_results;
 mod visit;
 
+pub type MaybeResolved<'tcx, T> = rustc_type_ir::MaybeResolved<TyCtxt<'tcx>, T>;
+
 // Data types
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash)]

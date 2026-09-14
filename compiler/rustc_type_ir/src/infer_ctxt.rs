@@ -11,7 +11,7 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
+    self as ty, Interner, PredicateProxy, Region, RegionVid, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
 
@@ -366,6 +366,90 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
     }
 }
 
+pub trait InternAfterResolve<I: Interner>: Eq {
+    type Output;
+    fn intern(self, cx: I) -> Self::Output;
+}
+impl<I: Interner> InternAfterResolve<I> for RegionVid {
+    type Output = Region<I>;
+
+    fn intern(self, cx: I) -> Self::Output {
+        Region::new_var(cx, self)
+    }
+}
+impl<I: Interner> InternAfterResolve<I> for ty::IntVid {
+    type Output = I::Ty;
+
+    fn intern(self, cx: I) -> Self::Output {
+        I::Ty::new_int_var(cx, self)
+    }
+}
+impl<I: Interner> InternAfterResolve<I> for ty::FloatVid {
+    type Output = I::Ty;
+
+    fn intern(self, cx: I) -> Self::Output {
+        I::Ty::new_float_var(cx, self)
+    }
+}
+impl<I: Interner> InternAfterResolve<I> for TyVid {
+    type Output = I::Ty;
+
+    fn intern(self, cx: I) -> Self::Output {
+        I::Ty::new_var(cx, self)
+    }
+}
+impl<I: Interner> InternAfterResolve<I> for ty::ConstVid {
+    type Output = I::Const;
+
+    fn intern(self, cx: I) -> Self::Output {
+        I::Const::new_var(cx, self)
+    }
+}
+
+pub enum MaybeResolved<I: Interner, T: InternAfterResolve<I>> {
+    Resolved(T::Output),
+    Unchanged { cx: I, root: T },
+}
+
+impl<I: Interner, T: InternAfterResolve<I>> MaybeResolved<I, T> {
+    pub fn unresolved(cx: I, before: T, after: T) -> Self {
+        if before == after {
+            // If unchanged, mark as such so we can reuse.
+            Self::Unchanged { cx, root: after }
+        } else {
+            // If changed, immediately intern it, no reuse is possible anyway.
+            Self::Resolved(after.intern(cx))
+        }
+    }
+
+    pub fn resolved(r: T::Output) -> Self {
+        Self::Resolved(r)
+    }
+
+    pub fn is_unchanged(&self) -> bool {
+        match self {
+            MaybeResolved::Resolved(_) => false,
+            MaybeResolved::Unchanged { .. } => true,
+        }
+    }
+
+    #[inline]
+    pub fn intern(self) -> T::Output {
+        match self {
+            MaybeResolved::Resolved(r) => r,
+            MaybeResolved::Unchanged { cx, root: inp } => inp.intern(cx),
+        }
+    }
+
+    #[inline]
+    pub fn reuse_if_unchanged(self, before: T::Output) -> T::Output {
+        match self {
+            MaybeResolved::Resolved(r) => r,
+            MaybeResolved::Unchanged { cx: _, root: _ } => before,
+        }
+    }
+}
+
 /// `InferCtxtLike` is one of the two traits abstracting over the [InferCtxt][inferctxt-doc], which
 /// had to be split due to coherence reasons:
 /// - `InferCtxtLike`] contains the parts that have to live in `rustc_infer`, and thus aren't only
@@ -431,11 +515,21 @@ pub trait InferCtxtLike: Sized {
     fn is_sub_unification_table_root_var(&self, var: ty::TyVid) -> bool;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
-    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
-    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
-    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> <Self::Interner as Interner>::Ty;
-    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> <Self::Interner as Interner>::Const;
-    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> MaybeResolved<Self::Interner, ty::TyVid>;
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid)
+    -> MaybeResolved<Self::Interner, ty::IntVid>;
+    fn shallow_resolve_float_var(
+        &self,
+        vid: ty::FloatVid,
+    ) -> MaybeResolved<Self::Interner, ty::FloatVid>;
+    fn shallow_resolve_const_var(
+        &self,
+        vid: ty::ConstVid,
+    ) -> MaybeResolved<Self::Interner, ty::ConstVid>;
+    fn shallow_resolve_region_var(
+        &self,
+        vid: ty::RegionVid,
+    ) -> MaybeResolved<Self::Interner, RegionVid>;
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
@@ -663,15 +757,19 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let resolved = self.delegate.shallow_resolve_ty_var(vid);
+                let resolved = self.delegate.shallow_resolve_ty_var(vid).reuse_if_unchanged(t);
                 if t != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
                     resolved
                 }
             }
-            ty::Infer(ty::IntVar(vid)) => self.delegate.shallow_resolve_int_var(vid),
-            ty::Infer(ty::FloatVar(vid)) => self.delegate.shallow_resolve_float_var(vid),
+            ty::Infer(ty::IntVar(vid)) => {
+                self.delegate.shallow_resolve_int_var(vid).reuse_if_unchanged(t)
+            }
+            ty::Infer(ty::FloatVar(vid)) => {
+                self.delegate.shallow_resolve_float_var(vid).reuse_if_unchanged(t)
+            }
             _ => {
                 if t.has_infer() {
                     if let Some(&ty) = self.cache.get(&t) {
@@ -689,7 +787,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReVar(vid) => self.delegate.shallow_resolve_region_var(vid),
+            ty::ReVar(vid) => self.delegate.shallow_resolve_region_var(vid).reuse_if_unchanged(r),
             _ => r,
         }
     }
@@ -697,7 +795,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
     fn fold_const(&mut self, c: I::Const) -> I::Const {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let resolved = self.delegate.shallow_resolve_const_var(vid);
+                let resolved = self.delegate.shallow_resolve_const_var(vid).reuse_if_unchanged(c);
                 if c != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
